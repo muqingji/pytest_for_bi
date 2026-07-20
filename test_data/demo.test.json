@@ -1,0 +1,44 @@
+{
+  "cases": [
+    {
+      "id": "demo_health_check",
+      "name": "Health check example",
+      "enabled": false,
+      "tags": ["smoke"],
+      "variables": {
+        "tenant": "demo"
+      },
+      "steps": [
+        {
+          "name": "Call health endpoint",
+          "request": {
+            "protocol": "https",
+            "method": "GET",
+            "path": "/health",
+            "params": {"tenant": "{{ tenant }}"}
+          },
+          "extract": {"request_id": "data.request_id"},
+          "expect": {
+            "status_code": 200,
+            "body": {"code": 0},
+            "schema": {
+              "type": "object",
+              "required": ["code", "data"],
+              "properties": {"code": {"type": "integer"}}
+            }
+          }
+        },
+        {
+          "name": "Verify database record",
+          "request": {
+            "protocol": "mysql",
+            "database": "mysql",
+            "sql": "SELECT request_id FROM request_log WHERE request_id = %s",
+            "parameters": ["{{ request_id }}"]
+          },
+          "expect": {"status_code": 200}
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+allure-results/
+allure-report/
+artifacts/
+.coverage
+htmlcov/
+.env
+*.egg-info/
+config/environment.*.local.json

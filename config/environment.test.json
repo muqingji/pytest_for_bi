@@ -1,0 +1,34 @@
+{
+  "name": "test",
+  "http": {
+    "base_url": "${TEST_HTTP_BASE_URL}",
+    "headers": {},
+    "timeout": 20,
+    "verify": true
+  },
+  "rpc": {
+    "endpoint": "${TEST_RPC_ENDPOINT}",
+    "headers": {},
+    "timeout": 20,
+    "verify": true
+  },
+  "databases": {
+    "mysql": {
+      "engine": "mysql",
+      "host": "${TEST_MYSQL_HOST}",
+      "port": "${TEST_MYSQL_PORT:-3306}",
+      "user": "${TEST_MYSQL_USER}",
+      "password": "${TEST_MYSQL_PASSWORD}",
+      "database": "${TEST_MYSQL_DATABASE}",
+      "charset": "utf8mb4"
+    },
+    "clickhouse": {
+      "engine": "clickhouse",
+      "host": "${TEST_CH_HOST}",
+      "port": "${TEST_CH_PORT:-8123}",
+      "username": "${TEST_CH_USERNAME:-default}",
+      "password": "${TEST_CH_PASSWORD}",
+      "database": "${TEST_CH_DATABASE:-default}"
+    }
+  }
+}

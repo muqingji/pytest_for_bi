@@ -1,0 +1,27 @@
+{
+  "cases": [
+    {
+      "id": "replace_with_unique_case_id",
+      "name": "Replace with case name",
+      "enabled": true,
+      "tags": ["smoke"],
+      "variables": {},
+      "steps": [
+        {
+          "name": "Call endpoint",
+          "request": {
+            "protocol": "http",
+            "method": "GET",
+            "path": "/replace-path",
+            "params": {},
+            "headers": {}
+          },
+          "expect": {
+            "status_code": 200,
+            "body": {"code": 0}
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "cases": [
+    {
+      "id": "demo_health_check_prod",
+      "name": "Production health check example",
+      "enabled": false,
+      "steps": [
+        {
+          "name": "Call health endpoint",
+          "request": {
+            "protocol": "https",
+            "method": "GET",
+            "path": "/health"
+          },
+          "expect": {"status_code": 200}
+        }
+      ]
+    }
+  ]
+}

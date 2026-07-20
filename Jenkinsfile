@@ -1,0 +1,86 @@
+pipeline {
+    agent any
+
+    options {
+        skipDefaultCheckout(true)
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
+    parameters {
+        choice(name: 'TEST_ENV', choices: ['test', 'hk', 'prod'], description: 'Environment suffix for config and case data files')
+        string(name: 'CASE_FILTER', defaultValue: '', description: 'Optional pytest -k expression, for example: get_user')
+        booleanParam(name: 'USE_CONFIG_CREDENTIAL', defaultValue: true, description: 'Inject environment local JSON from Jenkins credentials')
+    }
+
+    environment {
+        PYTHON_BIN = 'python3.11'
+        VENV_DIR = '.venv'
+        PIP_DISABLE_PIP_VERSION_CHECK = '1'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install dependencies') {
+            steps {
+                sh '''
+                    set -eu
+                    "$PYTHON_BIN" --version
+                    "$PYTHON_BIN" -m venv "$VENV_DIR"
+                    "$VENV_DIR/bin/python" -m pip install --upgrade pip
+                    "$VENV_DIR/bin/python" -m pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Run interface cases') {
+            steps {
+                script {
+                    def runTests = {
+                        sh '''
+                            set -eu
+                            mkdir -p artifacts allure-results
+                            local_config="config/environment.${TEST_ENV}.local.json"
+                            cleanup() { rm -f "$local_config"; }
+                            trap cleanup EXIT
+
+                            if [ -n "${LOCAL_ENV_CONFIG:-}" ]; then
+                                install -m 600 "$LOCAL_ENV_CONFIG" "$local_config"
+                            fi
+
+                            if [ -n "$CASE_FILTER" ]; then
+                                TEST_ENV="$TEST_ENV" "$VENV_DIR/bin/python" -m pytest --env "$TEST_ENV" \
+                                    -k "$CASE_FILTER" --alluredir=allure-results --junitxml=artifacts/junit.xml
+                            else
+                                TEST_ENV="$TEST_ENV" "$VENV_DIR/bin/python" -m pytest --env "$TEST_ENV" \
+                                    --alluredir=allure-results --junitxml=artifacts/junit.xml
+                            fi
+                        '''
+                    }
+
+                    if (params.USE_CONFIG_CREDENTIAL) {
+                        def credentialId = "interface-test-${params.TEST_ENV}-config"
+                        withCredentials([file(credentialsId: credentialId, variable: 'LOCAL_ENV_CONFIG')]) {
+                            runTests()
+                        }
+                    } else {
+                        runTests()
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            junit allowEmptyResults: true, testResults: 'artifacts/junit.xml'
+            archiveArtifacts allowEmptyArchive: true, artifacts: 'allure-results/**,artifacts/**'
+            allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
+        }
+    }
+}
