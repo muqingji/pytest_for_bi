@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/pytest_for_bi.iml" filepath="$PROJECT_DIR$/.idea/pytest_for_bi.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/pytest-interface-framework.iml" filepath="$PROJECT_DIR$/.idea/pytest-interface-framework.iml" />
     </modules>
   </component>
 </project>
