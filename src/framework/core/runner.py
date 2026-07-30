@@ -11,6 +11,8 @@ from framework.clients.database import DatabaseClient
 from framework.clients.http import HttpClient
 from framework.clients.models import ApiResponse
 from framework.clients.rpc import RpcClient
+from framework.api.catalog import HttpApiCatalog
+from framework.api.http_api import HttpApiInvoker
 from framework.config.environment import EnvironmentConfig
 from framework.core.assertions import assert_response, get_by_path
 
@@ -30,11 +32,14 @@ class CaseRunner:
         http_client: HttpClient,
         rpc_client: RpcClient,
         database_client: DatabaseClient,
+        api_catalog: HttpApiCatalog | None = None,
     ) -> None:
         self.environment = environment
         self.http_client = http_client
         self.rpc_client = rpc_client
         self.database_client = database_client
+        self.api_catalog = api_catalog or HttpApiCatalog({})
+        self.http_api = HttpApiInvoker(http_client, self.api_catalog)
 
     def run(self, case: dict[str, Any]) -> dict[str, Any]:
         context: dict[str, Any] = {"config": self.environment.values, **deepcopy(case.get("variables", {}))}
@@ -59,17 +64,33 @@ class CaseRunner:
         request = step.get("request", {})
         protocol = request.get("protocol", "http").lower()
         if protocol in {"http", "https"}:
-            if not request["path"].startswith(("http://", "https://")):
+            if "api" in request:
+                self.environment.require("http.base_url")
+                return self.http_api.call(
+                    request["api"],
+                    body=request.get("json", request.get("body")),
+                    path_params=request.get("path_params"),
+                    params=request.get("params"),
+                    headers=request.get("headers"),
+                    data=request.get("data"),
+                    timeout=request.get("timeout"),
+                )
+            operation = None
+            path = operation.path if operation else request["path"]
+            method = operation.method if operation else request.get("method", "GET")
+            params = dict(request.get("params") or {})
+            headers = {**(operation.default_headers if operation else {}), **(request.get("headers") or {})}
+            if not path.startswith(("http://", "https://")):
                 self.environment.require("http.base_url")
             if self.environment.get("http.headers") is not None:
                 self.environment.require_section("http.headers")
             return self.http_client.request(
-                request.get("method", "GET"),
-                request["path"],
-                params=request.get("params"),
+                method,
+                path,
+                params=params or None,
                 json_body=request.get("json", request.get("body")),
                 data=request.get("data"),
-                headers=request.get("headers"),
+                headers=headers or None,
                 timeout=request.get("timeout"),
             )
         if protocol == "rpc":

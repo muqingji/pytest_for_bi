@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from framework.clients.models import ApiResponse
+from framework.api.catalog import HttpApiCatalog, HttpOperation
 from framework.config.environment import EnvironmentConfig
 from framework.core.runner import CaseRunner
 
@@ -57,3 +58,59 @@ def test_runner_resolves_variables_extracts_values_and_runs_rpc() -> None:
     )
     assert context["token"] == "token-1"
     assert context["response"] == {"id": "10001", "active": True}
+
+
+class FakeAuthenticatedHttpClient:
+    def __init__(self) -> None:
+        self.cookies = {"fs_token": "session-token"}
+        self.request_args = None
+
+    def request(self, method, path, **kwargs):
+        self.request_args = (method, path, kwargs)
+        return ApiResponse(status_code=200, body={"code": 0})
+
+
+def test_runner_resolves_openapi_operation_and_injects_session_token() -> None:
+    http = FakeAuthenticatedHttpClient()
+    catalog = HttpApiCatalog(
+        {
+            "bi.query": HttpOperation(
+                operation_id="bi.query",
+                method="POST",
+                path="/query",
+                default_headers={"X-Requested-With": "XMLHttpRequest"},
+                auth_cookie_query={"cookie": "fs_token", "parameter": "_fs_token"},
+            )
+        }
+    )
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "https://crm.ceshi112.com", "headers": {}}}),
+        http,
+        FakeRpcClient(),
+        FakeDatabaseClient(),
+        catalog,
+    )
+
+    runner.run(
+        {
+            "id": "bi_category::english",
+            "steps": [
+                {
+                    "request": {"protocol": "http", "api": "bi.query", "json": {"language": "en"}},
+                    "expect": {"status_code": 200},
+                }
+            ],
+        }
+    )
+
+    assert http.request_args == (
+        "POST",
+        "/query",
+        {
+            "params": {"_fs_token": "session-token"},
+            "json_body": {"language": "en"},
+            "data": None,
+            "headers": {"X-Requested-With": "XMLHttpRequest"},
+            "timeout": None,
+        },
+    )

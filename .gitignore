@@ -8,5 +8,6 @@ artifacts/
 .coverage
 htmlcov/
 .env
+.cache/
 *.egg-info/
 config/environment.*.local.json

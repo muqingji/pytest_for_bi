@@ -30,6 +30,22 @@ TEST_ENV=prod python3 -m pytest --alluredir=allure-results
 python3 -m pytest --env=hk --alluredir=allure-results
 ```
 
+Fxiaoke CRM cases use dedicated `112` and `online` environments. Generated BI
+cases should use the `.112.json` suffix and run with:
+
+```bash
+export FXIAOKE_112_ENTERPRISE_ACCOUNT=your-enterprise-account
+export FXIAOKE_112_USERNAME=your-username
+export FXIAOKE_112_PASSWORD=your-password
+python3 -m pytest --env=112 --alluredir=allure-results
+```
+
+The 112 environment authenticates through `www.ceshi112.com` and sends BI API
+requests to `crm.ceshi112.com`. The online environment uses `www.fxiaoke.com`
+for both. Login cookies are retained by the shared HTTP session. Keep all
+credentials in environment variables, CI secrets, or an ignored
+`config/environment.112.local.json` file.
+
 `--env` overrides `TEST_ENV`; `test` is the default. Each selected environment
 requires `config/environment.<env>.json`. `test`, `hk`, and `prod` templates
 are included. Case files are recursively loaded only when their names end in
@@ -64,6 +80,47 @@ clear error only when a case uses that protocol.
 `.env.example` lists all supported environment-variable names. Keep actual
 secrets in CI secrets, an exported shell environment, or the ignored local
 override file.
+
+## API contracts and test subjects
+
+HTTP interfaces are maintained as OpenAPI contracts under `idl/http`. Test
+data refers to an interface by `operationId`, so endpoint paths, methods and
+authentication token rules are not duplicated in case files. The complete
+case model is documented in [docs/API_CASE_MODEL.md](docs/API_CASE_MODEL.md).
+
+BI HTTP contracts and Python callers are generated from the local `fs-bi`
+Java repository. Run:
+
+```bash
+make sync-fs-bi-http
+```
+
+Only routes with a CRM gateway mapping verified in repository code are emitted
+as callable APIs. Currently `fs-bi-stat` is verified by its own dialing scripts
+as `/FHH/EM1HBISTAT/fs-bi-stat/...`. Other BI modules are not exposed through
+the CRM client until their real `/FHH/<application>` mapping is found in code.
+The OpenAPI output is written to `idl/http/generated/fs-bi/`, and `FsBiApi` is
+the aggregate entry point:
+
+```python
+from framework.api.catalog import HttpApiCatalog
+from framework.api.generated.fs_bi import FsBiApi
+from framework.config.environment import project_root
+
+catalog = HttpApiCatalog.load(project_root() / "idl" / "http")
+bi_api = FsBiApi(http_client, catalog)
+response = bi_api.stat.view_data_query_api_get_chart_config(body=request_body)
+```
+
+Generated method signatures expose path parameters explicitly and accept
+request bodies, query parameters, and headers through `body`, `params`, and
+`headers`. Generated files should not be edited by hand; update `fs-bi` and
+run the sync command again.
+
+A test-data document contains one `test_case` subject and multiple concrete
+`cases`. Every concrete case owns its `req`, expected `resp`, and `priority`.
+Select priorities during pytest collection with `--priority=P0,P1` or the
+`TEST_PRIORITIES` environment variable.
 
 ## Case format
 
