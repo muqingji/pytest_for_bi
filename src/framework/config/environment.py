@@ -130,7 +130,11 @@ def load_cases(
         for case in entries:
             if not isinstance(case, dict) or not case.get("id") or not case.get("steps"):
                 raise ValueError(f"{path}: every case needs id and steps")
-            case = {**case, "__source__": str(path)}
+            case = {
+                **case,
+                "workflow": document.get("workflow") if isinstance(document, dict) else None,
+                "__source__": str(path),
+            }
             cases.append(case)
     return cases
 
@@ -168,6 +172,7 @@ def _expand_test_subject(
                 "enabled": subject.get("enabled", True) and instance.get("enabled", True),
                 "tags": list(dict.fromkeys([*subject.get("tags", []), *instance.get("tags", [])])),
                 "variables": {**subject.get("variables", {}), **instance.get("variables", {})},
+                "workflow": subject.get("workflow"),
                 "steps": [
                     {
                         "name": instance.get("name") or instance["id"],

@@ -80,6 +80,15 @@ class HttpClient:
     def cookies(self) -> httpx.Cookies:
         return self._client.cookies
 
+    def set_cookie(self, name: str, value: str) -> None:
+        """Update a session cookie while preserving its existing domain and path."""
+        matches = [cookie for cookie in self._client.cookies.jar if cookie.name == name]
+        if matches:
+            for cookie in matches:
+                cookie.value = value
+            return
+        self._client.cookies.set(name, value)
+
     def close(self) -> None:
         if self._owns_client:
             self._client.close()

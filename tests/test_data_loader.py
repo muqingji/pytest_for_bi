@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from framework.config.environment import EnvironmentConfig, load_cases
@@ -68,3 +70,13 @@ def test_subject_case_requires_req_resp_and_priority(tmp_path) -> None:
 
     with pytest.raises(ValueError, match="priority, req, resp"):
         load_cases("112", tmp_path)
+
+
+def test_pass_api_language_cases_are_independent_and_restore_english() -> None:
+    data_dir = Path(__file__).resolve().parents[1] / "test_data"
+
+    cases = [case for case in load_cases("112", data_dir) if case.get("subject_id") == "pass_api_set_app_language"]
+
+    assert [case["case_id"] for case in cases] == ["switch_to_chinese", "switch_to_english"]
+    assert [case["steps"][0]["request"]["json"]["language"] for case in cases] == ["zh-CN", "en"]
+    assert all(case["steps"][0]["request"]["api"] == "pass_api.set_app_language" for case in cases)

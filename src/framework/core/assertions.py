@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -72,6 +73,24 @@ def assert_schema(value: Any, schema: Any, path: str = "body") -> None:
             assert_schema(item, schema["items"], f"{path}[{index}]")
 
 
+def contains_key(value: Any, expected: str) -> bool:
+    if isinstance(value, dict):
+        return expected in value or any(
+            item == expected or contains_key(item, expected) for item in value.values()
+        )
+    if isinstance(value, list):
+        return any(contains_key(item, expected) for item in value)
+    if isinstance(value, str):
+        if value == expected:
+            return True
+        try:
+            decoded = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return False
+        return contains_key(decoded, expected)
+    return False
+
+
 def assert_response(response: ApiResponse, expected: dict[str, Any]) -> None:
     """Validate an ApiResponse with a consistent case-file contract."""
     if "status_code" in expected and response.status_code != expected["status_code"]:
@@ -80,6 +99,9 @@ def assert_response(response: ApiResponse, expected: dict[str, Any]) -> None:
         assert_contains(response.body, expected["body"])
     if "body_exact" in expected and response.body != expected["body_exact"]:
         raise AssertionError(f"body: expected exactly {expected['body_exact']!r}, got {response.body!r}")
+    for key in expected.get("body_contains_keys", []):
+        if not contains_key(response.body, key):
+            raise AssertionError(f"body: expected key {key!r} to exist")
     for path, value in expected.get("json_path", {}).items():
         actual = get_by_path(response.body, path)
         if actual != value:
@@ -90,4 +112,3 @@ def assert_response(response: ApiResponse, expected: dict[str, Any]) -> None:
         actual = response.headers.get(header.lower()) or response.headers.get(header)
         if actual != value:
             raise AssertionError(f"header '{header}': expected {value!r}, got {actual!r}")
-

@@ -51,7 +51,11 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     environment = metafunc.config.getoption("--env") or os.getenv("TEST_ENV", "test")
     priority_option = metafunc.config.getoption("--priority") or os.getenv("TEST_PRIORITIES")
     priorities = {item.strip().upper() for item in priority_option.split(",") if item.strip()} if priority_option else None
-    cases = load_cases(environment, priorities=priorities)
+    cases = [
+        case
+        for case in load_cases(environment, priorities=priorities)
+        if not case.get("workflow")
+    ]
     parameters = []
     for case in cases:
         marks = [getattr(pytest.mark, tag) for tag in case.get("tags", [])]

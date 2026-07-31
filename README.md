@@ -23,6 +23,46 @@ make allure
 
 Open the report with `allure open allure-report`, or run `make serve-allure`.
 
+BI interface automation reports use one dedicated directory instead of writing
+multiple `allure-results-*` directories at the repository root:
+
+```bash
+make interface-test       # reports/interface-automation/allure-results
+make interface-report     # prints details and saves reports/interface-automation/report.txt
+make print-interface-report  # reprints the latest results without rerunning cases
+make interface-html-report   # optionally generates the local Allure HTML report
+```
+
+The text report includes every case and step, request/response attachments,
+assertion results, duration, failure traces, and an execution summary. Sensitive
+fields are redacted. Each attachment is limited to 6000 characters by default;
+set `INTERFACE_REPORT_MAX_CHARS=0` for full output or another number to change
+the limit. `interface-report` still prints and saves the report when pytest
+fails, then returns pytest's original exit code.
+
+The 112 translation report contains four pytest subjects, covering the complete
+matrix of personal language (Chinese or English) and translation language
+(Chinese or English). The translation language is independent of the personal
+language and is propagated to classification, folder/group, and final-term
+requests. Each case still validates its HTTP response, business result, and
+target `translateKey`; validation of the returned name's language is deferred.
+The two English personal-language subjects run last so a complete workflow
+restores the personal language to English.
+
+To publish the generated static report under `oss.firstshare.cn`, configure the
+server-side rsync/SSH destination outside the repository and run:
+
+```bash
+OSS_REPORT_DEPLOY_TARGET='user@host:/var/www/reports/interface-automation/current/' \
+  make publish-interface-report  # explicitly generates HTML and publishes it
+```
+
+The published URL defaults to
+`https://oss.firstshare.cn/reports/interface-automation/current/`. Override it
+with `INTERFACE_REPORT_URL` when the nginx directory mapping differs. The
+machine running `interface-html-report` or `publish-interface-report` must have
+the Allure CLI installed.
+
 Select an environment by suffix:
 
 ```bash

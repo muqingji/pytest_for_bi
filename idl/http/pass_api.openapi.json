@@ -1,0 +1,78 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Fxiaoke CRM Personal Settings API",
+    "version": "1.0.0",
+    "description": "Personal setting interfaces captured for pass_api tests. Runtime tokens are supplied by CRM session authentication."
+  },
+  "paths": {
+    "/FHH/EM1HLGN/General/SetAppLanguage": {
+      "post": {
+        "operationId": "pass_api.set_app_language",
+        "summary": "Switch the current user's application language",
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "parameters": [
+          {
+            "name": "traceId",
+            "in": "query",
+            "required": false,
+            "description": "Optional browser request trace identifier",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAppLanguageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Language switch result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SetAppLanguageRequest": {
+        "type": "object",
+        "required": [
+          "language"
+        ],
+        "properties": {
+          "language": {
+            "type": "string",
+            "enum": [
+              "zh-CN",
+              "en"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
