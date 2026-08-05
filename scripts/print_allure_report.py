@@ -44,6 +44,24 @@ _QUOTED_SECRET = re.compile(
 _UNQUOTED_SECRET = re.compile(
     rf"(?i)([\"']?(?:{_SENSITIVE_KEY_PATTERN})[\w-]*[\"']?\s*[:=]\s*)([^\s,;}}\]&]+)"
 )
+_TRANSLATION_CASE = re.compile(r"^翻译 case (?P<number>\d+)：(?P<name>.+)$")
+_MATCHED_TRANSLATION_TERM = re.compile(r"^采集最终词条：(?P<path>.+)$")
+_TRANSLATION_SUBJECT = re.compile(
+    r"个人语言为(?P<personal>中文|英文)，翻译成(?P<translation>中文|英文)"
+)
+_LANGUAGE_FAILURE = re.compile(
+    r"(?P<field>.+?)字段应为 (?P<expected>zh-CN|en): "
+    r"(?P<value>.*?)（识别为 (?P<actual>zh-CN|en|mixed|unknown)）"
+)
+_LANGUAGE_LABELS = {
+    "zh-CN": "中文",
+    "en": "英文",
+    "mixed": "中英混合",
+    "unknown": "空值或无法识别",
+}
+_LANGUAGE_CODES = {"中文": "zh-CN", "英文": "en"}
+_HAN = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]")
+_LATIN = re.compile(r"[A-Za-z]")
 
 
 def _duration_ms(item: dict[str, Any]) -> int:
@@ -100,6 +118,81 @@ def _case_metadata(result: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
+def _translation_case_info(step: dict[str, Any]) -> tuple[str, str] | None:
+    match = _TRANSLATION_CASE.match(str(step.get("name", "")))
+    if not match:
+        return None
+    return match.group("number"), match.group("name").replace("-", " > ")
+
+
+def _matched_translation_path(step: dict[str, Any]) -> str | None:
+    match = _MATCHED_TRANSLATION_TERM.match(str(step.get("name", "")))
+    if match:
+        path = match.group("path")
+        return None if path.startswith("<") else path
+    for child in step.get("steps") or []:
+        path = _matched_translation_path(child)
+        if path:
+            return path
+    return None
+
+
+def _translation_case_display(step: dict[str, Any]) -> tuple[str, str] | None:
+    info = _translation_case_info(step)
+    if not info:
+        return None
+    number, path = info
+    matched_path = _matched_translation_path(step)
+    return number, f"{path} > {matched_path}" if matched_path else path
+
+
+def _translation_subject_languages(result: dict[str, Any]) -> tuple[str, str] | None:
+    match = _TRANSLATION_SUBJECT.search(str(result.get("name", "")))
+    if not match:
+        return None
+    return _LANGUAGE_CODES[match.group("personal")], _LANGUAGE_CODES[match.group("translation")]
+
+
+def _detect_language(value: Any) -> str:
+    if not isinstance(value, str) or not value.strip():
+        return "unknown"
+    has_han = _HAN.search(value) is not None
+    has_latin = _LATIN.search(value) is not None
+    if has_han and has_latin:
+        return "mixed"
+    if has_han:
+        return "zh-CN"
+    if has_latin:
+        return "en"
+    return "unknown"
+
+
+def _language_matches(actual: str, expected: str) -> bool:
+    if expected == "zh-CN":
+        return actual in {"zh-CN", "mixed"}
+    return actual == expected
+
+
+def _humanize_failure(message: Any) -> list[str]:
+    rendered = _redact_text(str(message or "")).strip()
+    rendered = re.sub(r"^AssertionError:\s*", "", rendered)
+    if not rendered:
+        return ["未提供具体失败原因，请查看详细报告。"]
+    failures = []
+    for fragment in rendered.replace("\n", " ").split("；"):
+        fragment = fragment.strip()
+        match = _LANGUAGE_FAILURE.fullmatch(fragment)
+        if not match:
+            failures.append(fragment)
+            continue
+        failures.append(
+            f"{match.group('field')}：期望{_LANGUAGE_LABELS[match.group('expected')]}，"
+            f"实际值={match.group('value')}，"
+            f"识别为{_LANGUAGE_LABELS[match.group('actual')]}"
+        )
+    return failures
+
+
 class LocalReportRenderer:
     def __init__(self, results_dir: Path, max_attachment_chars: int = 6000) -> None:
         self.results_dir = results_dir.resolve()
@@ -125,6 +218,174 @@ class LocalReportRenderer:
             if isinstance(value, dict):
                 results.append(value)
         return sorted(results, key=lambda item: (item.get("start", 0), item.get("name", "")))
+
+    def render_summary(self, results: list[dict[str, Any]]) -> str:
+        subject_counts = Counter(result.get("status", "unknown") for result in results)
+        all_case_steps = [
+            step
+            for result in results
+            for step in result.get("steps") or []
+            if _translation_case_info(step)
+        ]
+        case_counts = Counter(step.get("status", "unknown") for step in all_case_steps)
+        starts = [result["start"] for result in results if isinstance(result.get("start"), (int, float))]
+        stops = [result["stop"] for result in results if isinstance(result.get("stop"), (int, float))]
+        elapsed_ms = max(stops) - min(starts) if starts and stops else 0
+        lines = [
+            "=" * 88,
+            "翻译工作台自动化测试报告",
+            "=" * 88,
+            f"生成时间: {datetime.now().astimezone().strftime('%Y-%m-%d %H:%M:%S %z')}",
+            f"测试主体: {len(results)} 个  |  通过: {subject_counts['passed']}  |  "
+            f"失败: {subject_counts['failed']}  |  异常: {subject_counts['broken']}",
+            f"翻译路径 Case: {len(all_case_steps)} 条  |  通过: {case_counts['passed']}  |  "
+            f"失败: {case_counts['failed']}  |  异常: {case_counts['broken']}  |  "
+            f"总耗时: {elapsed_ms / 1000:.3f}s",
+            "",
+            "断言规则:",
+            "  - 接口返回分组行时，分组名称（needTransName）必须符合当前个人语言。",
+            "  - 名称（needTransName）必须符合当前个人语言。",
+            "  - 名称翻译（translateValue）必须符合目标翻译语言。",
+            "  - 空值、缺失值或语言不匹配均判定为失败。",
+            "",
+        ]
+
+        for index, result in enumerate(results, start=1):
+            subject_languages = _translation_subject_languages(result)
+            case_steps = [
+                step for step in result.get("steps") or [] if _translation_case_info(step)
+            ]
+            counts = Counter(step.get("status", "unknown") for step in case_steps)
+            lines.extend(
+                [
+                    "-" * 88,
+                    f"场景 {index}: {result.get('name', '<unnamed>')}",
+                    f"结果: {STATUS_LABELS.get(result.get('status', 'unknown'), '未知')}  |  "
+                    f"Case 通过 {counts['passed']} / 失败 {counts['failed']} / "
+                    f"异常 {counts['broken']} / 共 {len(case_steps)} 条",
+                    "",
+                ]
+            )
+            failed_steps = [
+                step for step in case_steps if step.get("status") in {"failed", "broken"}
+            ]
+            passed_steps = [step for step in case_steps if step.get("status") == "passed"]
+
+            if failed_steps:
+                lines.append(f"失败 Case（{len(failed_steps)} 条）:")
+                for step in failed_steps:
+                    number, path = _translation_case_display(step) or ("??", str(step.get("name")))
+                    lines.append(f"  [{number}] [FAIL] {path}")
+                    lines.extend(self._render_translation_field_checks(step, subject_languages))
+                    message = (step.get("statusDetails") or {}).get("message")
+                    if not self._matched_translation_fields(step):
+                        for failure in _humanize_failure(message):
+                            lines.append(f"       - {failure}")
+                lines.append("")
+
+            if passed_steps:
+                lines.append(f"通过 Case（{len(passed_steps)} 条）:")
+                for step in passed_steps:
+                    number, path = _translation_case_display(step) or ("??", str(step.get("name")))
+                    lines.append(f"  [{number}] [PASS] {path}")
+                    lines.extend(self._render_translation_field_checks(step, subject_languages))
+                lines.append("")
+
+            if not case_steps and result.get("status") in {"failed", "broken"}:
+                lines.append("主体在执行翻译 Case 前失败:")
+                message = (result.get("statusDetails") or {}).get("message")
+                for failure in _humanize_failure(message):
+                    lines.append(f"  - {failure}")
+                lines.append("")
+
+        failed_subjects = subject_counts["failed"] + subject_counts["broken"]
+        failed_cases = case_counts["failed"] + case_counts["broken"]
+        if failed_subjects:
+            conclusion = (
+                f"共有 {failed_subjects} 个测试主体未通过，其中 {failed_cases} 条翻译路径 Case 未通过。"
+            )
+        elif failed_cases:
+            conclusion = (
+                f"共有 {failed_cases} 条翻译路径 Case 未通过，请优先处理上方各场景的失败 Case。"
+            )
+        else:
+            conclusion = "全部翻译路径 Case 通过。"
+
+        lines.extend(
+            [
+                "=" * 88,
+                "结论",
+                "=" * 88,
+                conclusion,
+                "原始请求、响应及调用栈请查看 report-details.txt。",
+            ]
+        )
+        return "\n".join(lines) + "\n"
+
+    def _attachment_rows(
+        self, step: dict[str, Any], attachment_name: str
+    ) -> list[dict[str, Any]]:
+        for attachment in step.get("attachments") or []:
+            if attachment.get("name") != attachment_name:
+                continue
+            source = attachment.get("source")
+            if not isinstance(source, str):
+                return []
+            path = (self.results_dir / source).resolve()
+            if self.results_dir not in path.parents or not path.is_file():
+                return []
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                return []
+            return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+        for child in step.get("steps") or []:
+            fields = self._attachment_rows(child, attachment_name)
+            if fields:
+                return fields
+        return []
+
+    def _matched_translation_fields(self, step: dict[str, Any]) -> list[dict[str, Any]]:
+        return self._attachment_rows(step, "命中的名称与名称翻译字段")
+
+    def _matched_folder_fields(self, step: dict[str, Any]) -> list[dict[str, Any]]:
+        return self._attachment_rows(step, "命中的文件夹名称字段")
+
+    def _render_translation_field_checks(
+        self,
+        step: dict[str, Any],
+        subject_languages: tuple[str, str] | None,
+    ) -> list[str]:
+        if not subject_languages:
+            return []
+        rows = self._matched_translation_fields(step)
+        folder_rows = self._matched_folder_fields(step)
+        if not rows and not folder_rows:
+            return []
+        personal_language, translation_language = subject_languages
+        lines = []
+        for row in folder_rows:
+            value = row.get("needTransName")
+            actual = _detect_language(value)
+            mark = "[PASS]" if _language_matches(actual, personal_language) else "[FAIL]"
+            lines.append(
+                f"       - {mark} 分组名称（needTransName）："
+                f"期望{_LANGUAGE_LABELS[personal_language]}，实际值={value!r}，"
+                f"识别为{_LANGUAGE_LABELS[actual]}"
+            )
+        for row in rows:
+            for field_name, field_key, expected in (
+                ("名称（needTransName）", "needTransName", personal_language),
+                ("名称翻译（translateValue）", "translateValue", translation_language),
+            ):
+                value = row.get(field_key)
+                actual = _detect_language(value)
+                mark = "[PASS]" if _language_matches(actual, expected) else "[FAIL]"
+                lines.append(
+                    f"       - {mark} {field_name}：期望{_LANGUAGE_LABELS[expected]}，"
+                    f"实际值={value!r}，识别为{_LANGUAGE_LABELS[actual]}"
+                )
+        return lines
 
     def render(self, results: list[dict[str, Any]]) -> str:
         self._seen_attachments.clear()
@@ -267,6 +528,16 @@ def parse_args() -> argparse.Namespace:
         default=6000,
         help="Maximum characters printed for one attachment; 0 means unlimited",
     )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Do not print the report body; useful when only --output is needed",
+    )
+    parser.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="Render a readable translation Case summary without raw request/response JSON",
+    )
     return parser.parse_args()
 
 
@@ -277,12 +548,14 @@ def main() -> int:
     if not results:
         print(f"没有找到 Allure 用例结果: {args.results_dir}")
         return 2
-    report = renderer.render(results)
-    print(report, end="")
+    report = renderer.render_summary(results) if args.summary_only else renderer.render(results)
+    if not args.quiet:
+        print(report, end="")
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(report, encoding="utf-8")
-        print(f"报告文件: {args.output.resolve()}")
+        if not args.quiet:
+            print(f"报告文件: {args.output.resolve()}")
     return 0
 
 

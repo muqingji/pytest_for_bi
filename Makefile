@@ -1,11 +1,12 @@
 PYTHON ?= python3
 
-.PHONY: install test allure serve-allure interface-test interface-report print-interface-report interface-html-report publish-interface-report sync-idl sync-fs-bi-http sync-fs-bi-remote
+.PHONY: install test allure serve-allure interface-test interface-report print-interface-report print-interface-report-details interface-html-report publish-interface-report sync-idl sync-fs-bi-http sync-fs-bi-remote
 
 INTERFACE_REPORT_ROOT ?= reports/interface-automation
 INTERFACE_RESULTS_DIR ?= $(INTERFACE_REPORT_ROOT)/allure-results
 INTERFACE_HTML_DIR ?= $(INTERFACE_REPORT_ROOT)/allure-report
 INTERFACE_TEXT_REPORT ?= $(INTERFACE_REPORT_ROOT)/report.txt
+INTERFACE_DETAIL_REPORT ?= $(INTERFACE_REPORT_ROOT)/report-details.txt
 INTERFACE_REPORT_MAX_CHARS ?= 6000
 INTERFACE_REPORT_URL ?= https://oss.firstshare.cn/reports/interface-automation/current/
 
@@ -23,19 +24,25 @@ serve-allure:
 
 interface-test:
 	mkdir -p $(INTERFACE_REPORT_ROOT)
-	PYTHONPATH=.:src .venv/bin/pytest --env=112 tests/test_translation_language.py --alluredir=$(INTERFACE_RESULTS_DIR) --clean-alluredir
+	PYTHONPATH=.:src .venv/bin/pytest -n 0 --env=112 tests/translation_workbench/test_translation_language.py --alluredir=$(INTERFACE_RESULTS_DIR) --clean-alluredir
 
 interface-report:
 	@mkdir -p $(INTERFACE_REPORT_ROOT)
-	@PYTHONPATH=.:src .venv/bin/pytest -q --tb=short --env=112 tests/test_translation_language.py --alluredir=$(INTERFACE_RESULTS_DIR) --clean-alluredir; \
+	@PYTHONPATH=.:src .venv/bin/pytest -n 0 -q --tb=short --env=112 tests/translation_workbench/test_translation_language.py --alluredir=$(INTERFACE_RESULTS_DIR) --clean-alluredir; \
 	pytest_status=$$?; \
-	$(PYTHON) scripts/print_allure_report.py $(INTERFACE_RESULTS_DIR) --output $(INTERFACE_TEXT_REPORT) --max-attachment-chars $(INTERFACE_REPORT_MAX_CHARS); \
+	$(PYTHON) scripts/print_allure_report.py $(INTERFACE_RESULTS_DIR) --output $(INTERFACE_TEXT_REPORT) --summary-only; \
 	report_status=$$?; \
+	$(PYTHON) scripts/print_allure_report.py $(INTERFACE_RESULTS_DIR) --output $(INTERFACE_DETAIL_REPORT) --max-attachment-chars $(INTERFACE_REPORT_MAX_CHARS) --quiet; \
+	detail_status=$$?; \
 	test $$report_status -eq 0 || exit $$report_status; \
+	test $$detail_status -eq 0 || exit $$detail_status; \
 	exit $$pytest_status
 
 print-interface-report:
-	@$(PYTHON) scripts/print_allure_report.py $(INTERFACE_RESULTS_DIR) --output $(INTERFACE_TEXT_REPORT) --max-attachment-chars $(INTERFACE_REPORT_MAX_CHARS)
+	@$(PYTHON) scripts/print_allure_report.py $(INTERFACE_RESULTS_DIR) --output $(INTERFACE_TEXT_REPORT) --summary-only
+
+print-interface-report-details:
+	@$(PYTHON) scripts/print_allure_report.py $(INTERFACE_RESULTS_DIR) --output $(INTERFACE_DETAIL_REPORT) --max-attachment-chars $(INTERFACE_REPORT_MAX_CHARS)
 
 interface-html-report: interface-test
 	@command -v allure >/dev/null || { echo "allure CLI is required to generate HTML"; exit 1; }

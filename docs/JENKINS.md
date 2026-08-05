@@ -24,6 +24,7 @@ Jenkinsfile 会自行创建工作区下的 `.venv` 并安装 `requirements.txt`�
 interface-test-test-config
 interface-test-hk-config
 interface-test-prod-config
+interface-test-112-config
 ```
 
 凭据文件内容是对应的本地环境覆盖 JSON。不要在凭据文件中放进 Git。下面是
@@ -54,19 +55,53 @@ interface-test-prod-config
 构建时该文件只会临时复制为
 `config/environment.<TEST_ENV>.local.json`，测试结束后通过 shell trap 删除。
 
+`interface-test-112-config` 用于翻译工作台专项，至少需要提供 112 环境的
+`auth.enterprise_account`、`auth.username` 和 `auth.password`。示例：
+
+```json
+{
+  "auth": {
+    "enterprise_account": "your-enterprise-account",
+    "username": "your-username",
+    "password": "your-password"
+  }
+}
+```
+
 ## 构建参数
 
 | 参数 | 含义 |
 | --- | --- |
-| `TEST_ENV` | 选择 `test`、`hk` 或 `prod`，同时决定配置与 `*.环境.json` case 文件。 |
+| `TEST_ENV` | 选择 `112`、`test`、`hk` 或 `prod`。选择 `112` 时只执行翻译工作台专项。 |
 | `CASE_FILTER` | 可选 pytest `-k` 表达式，例如 `get_user`。留空运行该环境全部启用 case。 |
 | `USE_CONFIG_CREDENTIAL` | 默认开启。关闭时不注入凭据，只适合不需要真实环境配置的框架自测。 |
 
 ## 构建产物
 
 - `artifacts/junit.xml`：Jenkins Tests 页面显示的 pytest 结果；
+- `artifacts/interface-report.txt`：可在 Jenkins 构建产物中直接下载的详细文本报告；
 - `allure-results/`：原始 Allure 结果，始终归档；
 - Allure Jenkins Plugin 生成的构建报告：在构建页面的 Allure Report 入口查看。
+
+## 远端查看翻译工作台报告
+
+1. 在 Jenkins Credentials 中创建 Secret file，ID 为 `interface-test-112-config`。
+2. 创建或更新指向本仓库 `Jenkinsfile` 的 Pipeline/Multibranch Pipeline Job。
+3. 触发参数化构建，`TEST_ENV` 选择 `112`。
+4. 构建完成后，在构建页面点击 **Allure Report** 查看完整的远端报告。
+5. 需要纯文本时，打开 **Build Artifacts**，下载 `artifacts/interface-report.txt`。
+
+对应 URL 通常为：
+
+```text
+${JENKINS_URL}/job/<job-name>/<build-number>/allure/
+${JENKINS_URL}/job/<job-name>/<build-number>/artifact/artifacts/interface-report.txt
+```
+
+Multibranch Pipeline 会在 URL 中增加分支层级，以构建页面实际生成的链接为准。
+
+语言断言失败不会阻止报告发布。Jenkins 构建状态会保持失败，以便持续集成正确告警，
+但 Allure 页面、JUnit 结果和文本报告仍会在 `post { always { ... } }` 中生成。
 
 当新增环境时，需要同时完成四件事：新增 `config/environment.<env>.json`、新增
 `*.<env>.json` case 文件、创建 `interface-test-<env>-config` Secret file 凭据，

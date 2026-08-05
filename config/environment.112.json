@@ -4,7 +4,7 @@
     "base_url": "https://crm.ceshi112.com",
     "headers": {},
     "timeout": 30,
-    "verify": true
+    "verify": "system"
   },
   "auth": {
     "enabled": true,

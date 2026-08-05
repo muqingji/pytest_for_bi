@@ -28,26 +28,37 @@ multiple `allure-results-*` directories at the repository root:
 
 ```bash
 make interface-test       # reports/interface-automation/allure-results
-make interface-report     # prints details and saves reports/interface-automation/report.txt
+make interface-report     # readable Case summary in reports/interface-automation/report.txt
 make print-interface-report  # reprints the latest results without rerunning cases
+make print-interface-report-details  # raw request/response troubleshooting report
 make interface-html-report   # optionally generates the local Allure HTML report
 ```
 
-The text report includes every case and step, request/response attachments,
-assertion results, duration, failure traces, and an execution summary. Sensitive
-fields are redacted. Each attachment is limited to 6000 characters by default;
-set `INTERFACE_REPORT_MAX_CHARS=0` for full output or another number to change
-the limit. `interface-report` still prints and saves the report when pytest
-fails, then returns pytest's original exit code.
+The default text report groups results by personal/translation language scenario,
+lists every translation-path Case, and explains failed fields in plain language.
+Raw steps, request/response attachments, and failure traces are saved separately
+to `report-details.txt`; sensitive fields are redacted. Each detailed attachment
+is limited to 6000 characters by default. Set `INTERFACE_REPORT_MAX_CHARS=0` for
+full output or another number to change the limit. `interface-report` still
+generates both reports when pytest fails, then returns pytest's original exit code.
 
 The 112 translation report contains four pytest subjects, covering the complete
 matrix of personal language (Chinese or English) and translation language
 (Chinese or English). The translation language is independent of the personal
 language and is propagated to classification, folder/group, and final-term
 requests. Each case still validates its HTTP response, business result, and
-target `translateKey`; validation of the returned name's language is deferred.
+target `translateKey`. The matched `needTransName` is validated against the
+personal language, while `translateValue` is validated against the translation
+language. Missing, empty, or mismatched values fail the case.
 The two English personal-language subjects run last so a complete workflow
 restores the personal language to English.
+The translation workflow is always run serially (`pytest -n 0`) because all
+subjects mutate the same account language and share one authenticated session.
+
+For a remotely viewable report, run the repository Jenkins Pipeline with
+`TEST_ENV=112`. Jenkins publishes the Allure report even when language
+assertions fail and archives `artifacts/interface-report.txt`. See
+[docs/JENKINS.md](docs/JENKINS.md) for the required credential and Job setup.
 
 To publish the generated static report under `oss.firstshare.cn`, configure the
 server-side rsync/SSH destination outside the repository and run:

@@ -204,6 +204,12 @@ def test_translation_preflight_reports_each_classification_request(
     classification_api = ClassificationApi()
     runner.http_api = classification_api
 
+    context = {
+        "__case_name": "图表配置-报表列表-统计图",
+        "__classification_values": ["reportList", "stat"],
+        "__expected_keys": ["target-key"],
+        "matched_folder_names": [],
+    }
     result = runner._run_translation_classification_preflight(
         {
             "api": "bi.sub_query_optimize",
@@ -216,11 +222,7 @@ def test_translation_preflight_reports_each_classification_request(
                 },
             },
         },
-        {
-            "__case_name": "图表配置-报表列表-统计图",
-            "__classification_values": ["reportList", "stat"],
-            "__expected_keys": ["target-key"],
-        },
+        context,
     )
 
     assert result.body["Value"] == '{"target-key":"value"}'
@@ -278,6 +280,14 @@ def test_translation_preflight_reports_each_classification_request(
     for _, body in classification_api.requests:
         request_languages.append(body.get("language", body.get("argMap", {}).get("language")))
     assert request_languages == [translation_language] * 5
+    assert context["matched_folder_names"] == ["统计图_区域"]
+    folder_steps = [
+        step for step in fake_allure.steps if step["name"] == "采集文件夹名称：统计图_区域"
+    ]
+    assert folder_steps[0]["attachments"][0]["name"] == "命中的文件夹名称字段"
+    assert folder_steps[0]["attachments"][0]["value"] == [
+        {"needTransName": "统计图_区域", "rowKey": "chart-1"}
+    ]
 
 
 def test_find_option_ignores_whitespace_in_folder_names() -> None:
@@ -360,8 +370,111 @@ def test_shape_two_returns_query_optimize_terms_without_sub_query(monkeypatch) -
 
     assert response.body["Value"]["dataRowsAll"][0]["translateKey"] == "schema-description-key"
     assert context["matched_names"] == ["主题描述"]
+    assert context["matched_translate_values"] == ["description"]
+    assert context["matched_display_paths"] == ["主题描述"]
     assert [operation for operation, _ in shape_two_api.requests] == ["bi.query_optimize"]
     assert any(
         step["name"] == "形态二：queryOptimize 已返回最终词条，无需展开分组"
         for step in fake_allure.steps
     )
+    assert any(step["name"] == "采集最终词条：主题描述" for step in fake_allure.steps)
+
+
+def test_static_row_key_label_is_not_recorded_as_returned_folder() -> None:
+    runner = CaseRunner(
+        EnvironmentConfig("test", {"http": {"base_url": "http://test.local"}}),
+        FakeHttpClient(),
+        FakeRpcClient(),
+        FakeDatabaseClient(),
+    )
+
+    class FallbackFolderApi:
+        def __init__(self):
+            self.responses = iter(
+                [
+                    ApiResponse(
+                        status_code=200,
+                        body={
+                            "Result": {"FailureCode": 0},
+                            "Value": {"dataRowsAll": []},
+                        },
+                    ),
+                    ApiResponse(
+                        status_code=200,
+                        body={
+                            "Result": {"FailureCode": 0},
+                            "Value": {
+                                "dataRowsAll": [
+                                    {
+                                        "needTransName": "Dashboard",
+                                        "translateValue": "数据驾驶舱",
+                                        "translateKey": "target-key",
+                                    }
+                                ]
+                            },
+                        },
+                    ),
+                ]
+            )
+
+        def call(self, operation_id, *, body):
+            return next(self.responses)
+
+    runner.http_api = FallbackFolderApi()
+    context = {
+        "__expected_keys": ["target-key"],
+        "matched_folder_names": [],
+    }
+
+    runner._run_translation_shape_one(
+        {
+            "language": "zh-CN",
+            "dataType": "bi",
+            "objectApiName": "",
+            "subType": "",
+        },
+        {
+            "bi_objects": "dashboard",
+            "rowKey": "folder-1",
+            "rowKeyLabel": "静态中文文件夹",
+        },
+        {
+            "language": "zh-CN",
+            "dataType": "bi",
+            "objectApiName": "",
+            "subType": "",
+            "bi_objects": "dashboard",
+            "bi_classification_names": "dashboardName",
+        },
+        context,
+        3,
+    )
+
+    assert context["matched_folder_name"] == "静态中文文件夹"
+    assert context["matched_folder_names"] == []
+    assert context["matched_display_paths"] == ["静态中文文件夹 > Dashboard"]
+
+
+@pytest.mark.parametrize(
+    ("row", "expected"),
+    [
+        (
+            {
+                "translateValue": "top-level",
+                "returnRowUdef": {"translateValue": "nested"},
+            },
+            "top-level",
+        ),
+        ({"returnRowUdef": {"translateValue": "nested"}}, "nested"),
+        (
+            {
+                "translateValue": "",
+                "returnRowUdef": {"translateValue": "nested"},
+            },
+            "",
+        ),
+        ({}, None),
+    ],
+)
+def test_row_translate_value_supports_final_response_shapes(row, expected) -> None:
+    assert CaseRunner._row_translate_value(row) == expected

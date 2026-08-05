@@ -65,7 +65,11 @@ class CaseRunner:
             "__case_name": case.get("name", case["id"]),
             "__classification_path": case.get("classification_path"),
             "__classification_values": case.get("classification_values"),
+            "matched_folder_name": None,
+            "matched_folder_names": [],
             "matched_names": [],
+            "matched_translate_values": [],
+            "matched_display_paths": [],
             **deepcopy(case.get("variables", {})),
         }
         last_response: ApiResponse | None = None
@@ -280,6 +284,7 @@ class CaseRunner:
         ]
         if not matching_rows:
             if target_row_key:
+                context["matched_folder_name"] = source_arg.get("rowKeyLabel") or None
                 sub_arg = {
                     **query_arg,
                     "rowKey": target_row_key,
@@ -295,7 +300,7 @@ class CaseRunner:
         row = matching_rows[0]
         row_key = self._row_key(row)
         if not row_key:
-            self._capture_matched_names(query_response, context)
+            self._capture_matched_translation_fields(query_response, context)
             assertion_context = (
                 allure.step("形态二：queryOptimize 已返回最终词条，无需展开分组")
                 if allure
@@ -314,9 +319,38 @@ class CaseRunner:
             "rowKey": row_key,
             "rowKeyLabel": row.get("needTransName", ""),
         }
+        self._capture_matched_folder(row, context)
         return self._run_shape_one_sub_query(
             common, view_type, view_type_at_top_level, sub_arg, context, level + 1
         )
+
+    def _capture_matched_folder(
+        self, row: dict[str, Any], context: dict[str, Any]
+    ) -> None:
+        """Record only an expandable folder row actually returned by queryOptimize."""
+        folder_name = row.get("needTransName")
+        context["matched_folder_name"] = folder_name or None
+        context.setdefault("matched_folder_names", []).append(folder_name)
+        display_name = (
+            folder_name
+            if isinstance(folder_name, str) and folder_name.strip()
+            else "<名称缺失>"
+        )
+        step_context = (
+            allure.step(f"采集文件夹名称：{display_name}")
+            if allure
+            else nullcontext()
+        )
+        with step_context:
+            self._attach_json(
+                "命中的文件夹名称字段",
+                [
+                    {
+                        "needTransName": folder_name,
+                        "rowKey": self._row_key(row),
+                    }
+                ],
+            )
 
     def _run_shape_one_sub_query(
         self,
@@ -341,10 +375,10 @@ class CaseRunner:
             "bi.sub_query_optimize",
             sub_query_body,
         )
-        self._capture_matched_names(response, context)
+        self._capture_matched_translation_fields(response, context)
         return response
 
-    def _capture_matched_names(
+    def _capture_matched_translation_fields(
         self, response: ApiResponse, context: dict[str, Any]
     ) -> None:
         expected_keys = set(context.get("__expected_keys") or [])
@@ -354,27 +388,46 @@ class CaseRunner:
             for row in rows
             if not expected_keys or row.get("translateKey") in expected_keys
         ]
-        names = [
-            row["needTransName"]
-            for row in matches
-            if isinstance(row.get("needTransName"), str) and row["needTransName"].strip()
+        names = [row.get("needTransName") for row in matches]
+        translate_values = [self._row_translate_value(row) for row in matches]
+        folder_name = context.get("matched_folder_name")
+        display_paths = [
+            " > ".join(
+                part
+                for part in (
+                    folder_name if isinstance(folder_name, str) and folder_name.strip() else None,
+                    name if isinstance(name, str) and name.strip() else "<名称缺失>",
+                )
+                if part
+            )
+            for name in names
         ]
-        if not names:
-            return
         context.setdefault("matched_names", []).extend(names)
-        matched_name_context = allure.step("采集最终名称字段：needTransName") if allure else nullcontext()
+        context.setdefault("matched_translate_values", []).extend(translate_values)
+        context.setdefault("matched_display_paths", []).extend(display_paths)
+        display_label = "；".join(display_paths) or "<未采集到最终词条>"
+        matched_name_context = (
+            allure.step(f"采集最终词条：{display_label}") if allure else nullcontext()
+        )
         with matched_name_context:
             self._attach_json(
-                "命中的名称字段",
+                "命中的名称与名称翻译字段",
                 [
                     {
                         "needTransName": row.get("needTransName"),
+                        "translateValue": self._row_translate_value(row),
                         "translateKey": row.get("translateKey"),
                     }
                     for row in matches
-                    if row.get("needTransName") in names
                 ],
             )
+
+    @staticmethod
+    def _row_translate_value(row: dict[str, Any]) -> Any:
+        if "translateValue" in row:
+            return row["translateValue"]
+        row_udef = row.get("returnRowUdef")
+        return row_udef.get("translateValue") if isinstance(row_udef, dict) else None
 
     def _run_reported_api_request(
         self, name: str, operation_id: str, body: dict[str, Any]

@@ -2,12 +2,22 @@
 
 from __future__ import annotations
 
+import ssl
 from typing import Any
 from urllib.parse import urljoin
 
 import httpx
+import truststore
 
 from .models import ApiResponse
+
+
+def _resolve_tls_verify(verify: bool | str | ssl.SSLContext) -> bool | ssl.SSLContext:
+    if verify == "system":
+        return truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    if isinstance(verify, str):
+        raise ValueError("HTTP verify must be true, false, or 'system'")
+    return verify
 
 
 class HttpClient:
@@ -16,7 +26,7 @@ class HttpClient:
         base_url: str = "",
         headers: dict[str, str] | None = None,
         timeout: float = 20.0,
-        verify: bool = True,
+        verify: bool | str | ssl.SSLContext = True,
         client: httpx.Client | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/") + "/" if base_url else ""
@@ -24,7 +34,10 @@ class HttpClient:
         self.timeout = timeout
         self.verify = verify
         self._owns_client = client is None
-        self._client = client or httpx.Client(timeout=timeout, verify=verify)
+        self._client = client or httpx.Client(
+            timeout=timeout,
+            verify=_resolve_tls_verify(verify),
+        )
 
     def request(
         self,
