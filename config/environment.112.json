@@ -1,0 +1,18 @@
+{
+  "name": "112",
+  "http": {
+    "base_url": "https://crm.ceshi112.com",
+    "headers": {},
+    "timeout": 30,
+    "verify": "system"
+  },
+  "auth": {
+    "enabled": true,
+    "type": "fxiaoke_crm",
+    "login_base_url": "https://www.ceshi112.com",
+    "login_path": "/FHH/EM0HUL/Authorize/EnterpriseAccountLogin",
+    "enterprise_account": "${FXIAOKE_112_ENTERPRISE_ACCOUNT}",
+    "username": "${FXIAOKE_112_USERNAME}",
+    "password": "${FXIAOKE_112_PASSWORD}"
+  }
+}

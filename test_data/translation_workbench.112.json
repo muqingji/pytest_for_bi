@@ -1,0 +1,389 @@
+{
+    "workflow": "translation_language",
+    "cases": [
+        {
+            "id": "translation_chart_stat",
+            "name": "\u56fe\u8868\u914d\u7f6e-\u62a5\u8868\u5217\u8868-\u7edf\u8ba1\u56fe",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u7edf\u8ba1\u56fe\u7ffb\u8bd1\u9879",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "",
+                            "subArg": {
+                                "rowKey": "BI_68b948eb669f380001f66b87",
+                                "rowKeyLabel": "\u7edf\u8ba1\u56fe_\u533a\u57df",
+                                "bi_objects": "chartConfig",
+                                "bi_classification_names": "0",
+                                "bi_viewType_names": "stat"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.AggName.BI_68b948eb669f380001f66b88.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_chart_report",
+            "name": "\u56fe\u8868\u914d\u7f6e-\u62a5\u8868\u5217\u8868-\u62a5\u8868",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u62a5\u8868\u7ffb\u8bd1\u9879",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "",
+                            "subArg": {
+                                "rowKey": "BI_68b95fe66398d90001536407",
+                                "rowKeyLabel": "\u62a5\u8868_\u533a\u57df",
+                                "bi_objects": "chartConfig",
+                                "bi_classification_names": "0",
+                                "bi_viewType_names": "report"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.customName.BI_68b95fe76398d90001536414.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_chart_lwt",
+            "name": "\u56fe\u8868\u914d\u7f6e-\u62a5\u8868\u5217\u8868-\u62fc\u8868",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u62fc\u8868\u7ffb\u8bd1\u9879",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "",
+                            "subArg": {
+                                "rowKey": "BI_lwt_1768789131662",
+                                "rowKeyLabel": "\u62fc\u8868-\u91d1\u989d\u5b57\u6bb5\u6d4b\u8bd5",
+                                "bi_objects": "chartConfig",
+                                "bi_classification_names": "0",
+                                "bi_viewType_names": "lwt"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.LwtHeader.BI_lwt_1768789131662.1ung3.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_schema_description",
+            "name": "\u4e3b\u9898\u6307\u6807-\u6307\u6807\u63cf\u8ff0",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u6307\u6807\u63cf\u8ff0",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "",
+                            "bi_viewType_names": "stat",
+                            "subArg": {
+                                "rowKey": "BI_db23173e3ed8bf680f1e572e",
+                                "rowKeyLabel": "mqj-\u4e3b\u5bf9\u8c61\u4e3b\u9898",
+                                "bi_objects": "schemaAndAgg",
+                                "bi_classification_names": "schemaAndAggDescription"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.AggDescription.BI_6a03069c30de070007f852d9.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_schema_name",
+            "name": "\u4e3b\u9898\u6307\u6807-\u6307\u6807\u540d\u79f0",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u6307\u6807\u540d\u79f0",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "",
+                            "bi_viewType_names": "stat",
+                            "subArg": {
+                                "rowKey": "BI_db23173e3ed8bf680f1e572e",
+                                "rowKeyLabel": "mqj-\u4e3b\u5bf9\u8c61\u4e3b\u9898",
+                                "bi_objects": "schemaAndAgg",
+                                "bi_classification_names": "schemaAndAggName"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.AggName.BI_69d4a492529a1c00079eef0c.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_dimension_description",
+            "name": "\u4e3b\u9898\u6307\u6807-\u81ea\u5b9a\u4e49\u7ef4\u5ea6\u63cf\u8ff0",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u81ea\u5b9a\u4e49\u7ef4\u5ea6\u63cf\u8ff0",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "",
+                            "bi_viewType_names": "stat",
+                            "subArg": {
+                                "rowKey": "BI_db23173e3ed8bf680f1e572e",
+                                "rowKeyLabel": "mqj-\u4e3b\u5bf9\u8c61\u4e3b\u9898",
+                                "bi_objects": "schemaAndAgg",
+                                "bi_classification_names": "customDimensionDescription"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.customDimensionDescription.BI_0100ca0f3ca84338a1095af1cf1eacc0.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_dimension_name",
+            "name": "\u4e3b\u9898\u6307\u6807-\u81ea\u5b9a\u4e49\u7ef4\u5ea6\u540d\u79f0",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u81ea\u5b9a\u4e49\u7ef4\u5ea6\u540d\u79f0",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "",
+                            "bi_viewType_names": "stat",
+                            "subArg": {
+                                "rowKey": "BI_db23173e3ed8bf680f1e572e",
+                                "rowKeyLabel": "mqj-\u4e3b\u5bf9\u8c61\u4e3b\u9898",
+                                "bi_objects": "schemaAndAgg",
+                                "bi_classification_names": "customDimensionName"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.customDimensionName.BI_0100ca0f3ca84338a1095af1cf1eacc0.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_enum_name",
+            "name": "\u4e3b\u9898\u6307\u6807-\u81ea\u5b9a\u4e49\u679a\u4e3e\u503c\u540d\u79f0",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u679a\u4e3e\u503c\u540d\u79f0",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "",
+                            "bi_viewType_names": "stat",
+                            "subArg": {
+                                "rowKey": "BI_5caea6dfe1adb40001f81c32",
+                                "rowKeyLabel": "\u9500\u552e\u7ebf\u7d22\u7edf\u8ba1",
+                                "bi_objects": "schemaAndAgg",
+                                "bi_classification_names": "customDimensionGroupName"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.customDimensionGroupName.BI_0610e2b1619445d3a543c5cfeafc6cbf.d8f96119b.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_enum_description",
+            "name": "\u4e3b\u9898\u6307\u6807-\u81ea\u5b9a\u4e49\u679a\u4e3e\u503c\u63cf\u8ff0",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u679a\u4e3e\u63cf\u8ff0",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "",
+                            "bi_viewType_names": "stat",
+                            "subArg": {
+                                "rowKey": "BI_5caea6dfe1adb40001f81c32",
+                                "rowKeyLabel": "\u9500\u552e\u7ebf\u7d22\u7edf\u8ba1",
+                                "bi_objects": "schemaAndAgg",
+                                "bi_classification_names": "customDimensionGroupDescription"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.customDimensionGroupDescription.BI_0610e2b1619445d3a543c5cfeafc6cbf.d8f96119b.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_dashboard_chart",
+            "name": "\u6570\u636e\u9a7e\u9a76\u8231-\u6570\u636e\u9a7e\u9a76\u8231\u7ec4\u4ef6\u540d\u79f0",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u9a7e\u9a76\u8231\u7ec4\u4ef6\u540d\u79f0",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "flowChartDescription",
+                            "bi_viewType_names": "lwt",
+                            "subArg": {
+                                "rowKey": "BI_DSB_6a69d8220027290007ec8fc6",
+                                "rowKeyLabel": "Dashboard-2",
+                                "bi_objects": "dashboard",
+                                "bi_classification_names": "dashboardChartName"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.DashBoardChartName.BI_6a69d8220027290007ec8fc8.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_dashboard_filter",
+            "name": "\u6570\u636e\u9a7e\u9a76\u8231-\u9a7e\u9a76\u8231\u81ea\u5b9a\u4e49\u7b5b\u9009\u5668\u540d\u79f0",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u9a7e\u9a76\u8231\u7b5b\u9009\u5668\u540d\u79f0",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "flowChartDescription",
+                            "bi_viewType_names": "lwt",
+                            "subArg": {
+                                "rowKey": "BI_DSB_69394a4aacddf0000724165e",
+                                "rowKeyLabel": "\u6570\u636e\u9a7e\u9a76\u8231-\u679a\u4e3e-\u4e1a\u52a1\u7c7b\u578b",
+                                "bi_objects": "dashboard",
+                                "bi_classification_names": "dashboardCustomFilter"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.DashBoardCustomFilterName.BI_69394f41acddf0000724178f.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_dashboard_tabs",
+            "name": "\u6570\u636e\u9a7e\u9a76\u8231-\u6570\u636e\u9a7e\u9a76\u8231\u9875\u7b7e\u5bb9\u5668\u9009\u9879\u5361\u540d\u79f0",
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u9a7e\u9a76\u8231\u9875\u7b7e\u540d\u79f0",
+                    "request": {
+                        "api": "bi.sub_query_optimize",
+                        "body": {
+                            "language": "en",
+                            "dataType": "bi",
+                            "objectApiName": "",
+                            "subType": "flowChartDescription",
+                            "bi_viewType_names": "lwt",
+                            "subArg": {
+                                "rowKey": "BI_DSB_5ea2a209e3caad0001sfae60",
+                                "rowKeyLabel": "\u5e02\u573a\u6d3b\u52a8\u5206\u6790",
+                                "bi_objects": "dashboard",
+                                "bi_classification_names": "dashboardFxTabsWithFxTabPane"
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.FxTabPane.BI_DSB_5ea2a209e3caad0001sfae60.m9cli7e0.Label"
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+}

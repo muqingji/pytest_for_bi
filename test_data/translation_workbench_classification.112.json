@@ -1,0 +1,507 @@
+{
+    "workflow": "translation_language",
+    "cases": [
+        {
+            "id": "translation_schema_description",
+            "name": "\u4e3b\u9898\u6307\u6807-\u4e3b\u9898\u63cf\u8ff0",
+            "classification_values": ["schemaDescription"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u4e3b\u9898\u63cf\u8ff0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                            "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "",
+                                "bi_objects": "schemaAndAgg",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.StatSchemaDescription.BI_db23173e3ed8bf680f1e572e.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_schema_name",
+            "name": "\u4e3b\u9898\u6307\u6807-\u4e3b\u9898\u540d\u79f0",
+            "classification_values": ["schemaName"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u4e3b\u9898\u540d\u79f0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                            "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "",
+                                "bi_objects": "schemaAndAgg",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.StatSchemaName.BI_db23173e3ed8bf680f1e572e.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_chart_names",
+            "name": "\u56fe\u8868\u540d\u79f0-\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice-\u7edf\u8ba1\u56fe-\u56fe\u8868\u540d\u79f0",
+            "classification_path": ["\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice", "\u7edf\u8ba1\u56fe"],
+            "classification_values": ["BI_6a69711b0027290007ec7ff2", "stat"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u7edf\u8ba1\u56fe\u540d\u79f0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                            "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "flowChartName",
+                                "bi_objects": "chartName",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.StatName.BI_6a6ac3cc0027290007ecafac.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_chart_desc",
+            "name": "\u56fe\u8868\u540d\u79f0-\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice-\u7edf\u8ba1\u56fe-\u56fe\u8868\u63cf\u8ff0",
+            "classification_path": ["\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice", "\u7edf\u8ba1\u56fe"],
+            "classification_values": ["BI_6a69711b0027290007ec7ff2", "stat"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u7edf\u8ba1\u56fe\u63cf\u8ff0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                            "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "flowChartDescription",
+                                "bi_objects": "chartName",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.StatDescription.BI_6a6ac3cc0027290007ecafac.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_report_name",
+            "name": "\u56fe\u8868\u540d\u79f0-\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice-\u62a5\u8868-\u56fe\u8868\u540d\u79f0",
+            "classification_path": ["\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice", "\u62a5\u8868"],
+            "classification_values": ["BI_6a69711b0027290007ec7ff2", "report"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u62a5\u8868\u540d\u79f0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                            "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "flowChartName",
+                                "bi_objects": "chartName",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.RptName.BI_6a6b113eb986360007cb61a4.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_report_desc",
+            "name": "\u56fe\u8868\u540d\u79f0-\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice-\u62a5\u8868-\u56fe\u8868\u63cf\u8ff0",
+            "classification_path": ["\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice", "\u62a5\u8868"],
+            "classification_values": ["BI_6a69711b0027290007ec7ff2", "report"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u62a5\u8868\u63cf\u8ff0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                            "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "flowChartDescription",
+                                "bi_objects": "chartName",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.RptDescription.BI_6a69ae90b986360007cb30c8.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_lwt_name",
+            "name": "\u56fe\u8868\u540d\u79f0-\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice-\u62fc\u8868-\u56fe\u8868\u540d\u79f0",
+            "classification_path": ["\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice", "\u62fc\u8868"],
+            "classification_values": ["BI_6a69711b0027290007ec7ff2", "lwt"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u62fc\u8868\u540d\u79f0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                                "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "flowChartName",
+                                "bi_objects": "chartName",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.RptName.BI_lwt_1785315734410.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_lwt_desc",
+            "name": "\u56fe\u8868\u540d\u79f0-\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice-\u62fc\u8868-\u56fe\u8868\u63cf\u8ff0",
+            "classification_path": ["\u4e0d\u533a\u5206\u5927\u5c0f\u5199 Single Choice", "\u62fc\u8868"],
+            "classification_values": ["BI_6a69711b0027290007ec7ff2", "lwt"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u62fc\u8868\u63cf\u8ff0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                                "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "flowChartDescription",
+                                "bi_objects": "chartName",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.RptDescription.BI_lwt_1785315734410.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_goal_name",
+            "name": "\u76ee\u6807-\u76ee\u6807\u540d\u79f0",
+            "classification_values": ["goalRuleName"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u76ee\u6807\u540d\u79f0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                                "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "",
+                                "bi_objects": "goal",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.GoalRuleName.68ef570431a716000140cb22.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_goal_desc",
+            "name": "\u76ee\u6807-\u76ee\u6807\u63cf\u8ff0",
+            "classification_values": ["goalRuleDescription"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u76ee\u6807\u63cf\u8ff0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                                "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "",
+                                "bi_objects": "goal",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.GoalRuleDescription.6a4f755cdb01a60007fd1ce7.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_template_stat",
+            "name": "\u9884\u8bbe\u6a21\u677f-\u7edf\u8ba1\u56fe",
+            "classification_values": ["stat"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u7edf\u8ba1\u56fe\u6a21\u677f\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                                "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "",
+                                "bi_objects": "preTemplate",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.preTemplateName.BI_5d9efdaf37aa1b9ff04a4ce8.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_template_report",
+            "name": "\u9884\u8bbe\u6a21\u677f-\u62a5\u8868",
+            "classification_values": ["report"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u62a5\u8868\u6a21\u677f\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                                "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "",
+                                "bi_objects": "preTemplate",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.preTemplateName.0.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_subscription",
+            "name": "\u8ba2\u9605-\u8ba2\u9605\u540d\u79f0",
+            "classification_values": ["subscriptionName"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u8ba2\u9605\u540d\u79f0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                                "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "",
+                                "bi_objects": "subscription",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.subscriptionName.BI_68eca489851c1f0001670e15.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_category_name",
+            "name": "\u6587\u4ef6\u5939\u540d\u79f0-\u6587\u4ef6\u5939\u540d\u79f0",
+            "classification_values": ["categoryName"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u6587\u4ef6\u5939\u540d\u79f0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                                "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "",
+                                "bi_objects": "category",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.CategoryName.BI_6a6af2c80027290007ecb751.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_dashboard_description",
+            "name": "\u6570\u636e\u9a7e\u9a76\u8231-\u6570\u636e\u9a7e\u9a76\u8231\u63cf\u8ff0",
+            "classification_values": ["dashboardDescription"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u9a7e\u9a76\u8231\u63cf\u8ff0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                                "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "",
+                                "bi_objects": "dashboard",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.DashBoardDescription.BI_DSB_67f8e75df6c5660001e95644.Label"
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "id": "translation_dashboard_name",
+            "name": "\u6570\u636e\u9a7e\u9a76\u8231-\u6570\u636e\u9a7e\u9a76\u8231\u540d\u79f0",
+            "classification_values": ["dashboardName"],
+            "priority": "P1",
+            "steps": [
+                {
+                    "name": "\u67e5\u8be2\u9a7e\u9a76\u8231\u540d\u79f0\u5206\u7c7b",
+                    "request": {
+                        "api": "bi.query_dynamic_type_info_and_options",
+                        "body": {
+                            "dynamicTypeKey": "bi_classification_names",
+                            "argMap": {
+                                "language": "en",
+                                "dataType": "bi",
+                                "objectApiName": "",
+                                "subType": "",
+                                "bi_objects": "dashboard",
+                                "bi_classification_names": ""
+                            }
+                        }
+                    },
+                    "expect": {
+                        "status_code": 200,
+                        "body_contains_keys": [
+                            "Bi.Custom.Realtime.DashBoardName.BI_DSB_6a69d8220027290007ec8fc6.Label"
+                        ]
+                    }
+                }
+            ]
+        }
+    ]
+}

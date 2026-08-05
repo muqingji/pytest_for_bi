@@ -1,0 +1,6100 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "fs-bi-stat generated HTTP API",
+    "version": "generated"
+  },
+  "paths": {
+    "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions": {
+      "post": {
+        "operationId": "fs_bi_stat.custom_dimension.find_custom_dimensions",
+        "summary": "CustomDimensionController.findCustomDimensions",
+        "x-java-return-type": "FindCustomDimensionsResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "FindCustomDimensionsResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "type": "object",
+                    "x-java-type": "FindCustomDimensionsArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  }
+                },
+                "required": [
+                  "request",
+                  "userInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/objects": {
+      "post": {
+        "operationId": "fs_bi_stat.custom_dimension.find_all_custom_dimension_objects",
+        "summary": "CustomDimensionController.findAllCustomDimensionObjects",
+        "x-java-return-type": "FindCustomDimensionDescribeApiNamesResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "FindCustomDimensionDescribeApiNamesResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "type": "object",
+                    "x-java-type": "FindCustomDimensionDescribeApiNamesArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  }
+                },
+                "required": [
+                  "request",
+                  "userInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/getById": {
+      "post": {
+        "operationId": "fs_bi_stat.custom_dimension.get_custom_dimension",
+        "summary": "CustomDimensionController.getCustomDimension",
+        "x-java-return-type": "GetCustomDimensionResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "GetCustomDimensionResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "getCustomDimensionArg": {
+                    "type": "object",
+                    "x-java-type": "GetCustomDimensionArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  }
+                },
+                "required": [
+                  "getCustomDimensionArg",
+                  "userInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/create": {
+      "post": {
+        "operationId": "fs_bi_stat.custom_dimension.create_custom_dimension",
+        "summary": "CustomDimensionController.createCustomDimension",
+        "x-java-return-type": "CreateCustomDimensionResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "CreateCustomDimensionResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "type": "object",
+                    "x-java-type": "CreateCustomDimensionArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  }
+                },
+                "required": [
+                  "request",
+                  "userInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/update": {
+      "post": {
+        "operationId": "fs_bi_stat.custom_dimension.update_custom_dimension",
+        "summary": "CustomDimensionController.updateCustomDimension",
+        "x-java-return-type": "UpdateCustomDimensionResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateCustomDimensionResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "type": "object",
+                    "x-java-type": "UpdateCustomDimensionArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  }
+                },
+                "required": [
+                  "request",
+                  "userInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/delete": {
+      "post": {
+        "operationId": "fs_bi_stat.custom_dimension.delete_custom_dimension",
+        "summary": "CustomDimensionController.deleteCustomDimension",
+        "x-java-return-type": "DeleteCustomDimensionResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "DeleteCustomDimensionResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "getCustomDimensionArg": {
+                    "type": "object",
+                    "x-java-type": "GetCustomDimensionArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  }
+                },
+                "required": [
+                  "getCustomDimensionArg",
+                  "userInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/disable": {
+      "post": {
+        "operationId": "fs_bi_stat.custom_dimension.disable_custom_dimension",
+        "summary": "CustomDimensionController.disableCustomDimension",
+        "x-java-return-type": "DisableCustomDimensionResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "DisableCustomDimensionResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "getCustomDimensionArg": {
+                    "type": "object",
+                    "x-java-type": "GetCustomDimensionArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  }
+                },
+                "required": [
+                  "getCustomDimensionArg",
+                  "userInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/enable": {
+      "post": {
+        "operationId": "fs_bi_stat.custom_dimension.enable_custom_dimension",
+        "summary": "CustomDimensionController.enableCustomDimension",
+        "x-java-return-type": "EnableCustomDimensionResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "EnableCustomDimensionResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "getCustomDimensionArg": {
+                    "type": "object",
+                    "x-java-type": "GetCustomDimensionArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  }
+                },
+                "required": [
+                  "getCustomDimensionArg",
+                  "userInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/copy": {
+      "post": {
+        "operationId": "fs_bi_stat.custom_dimension.copy_custom_dimension",
+        "summary": "CustomDimensionController.copyCustomDimension",
+        "x-java-return-type": "CopyCustomDimensionResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "CopyCustomDimensionResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "type": "object",
+                    "x-java-type": "CopyCustomDimensionArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  }
+                },
+                "required": [
+                  "request",
+                  "userInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/describes/detail": {
+      "post": {
+        "operationId": "fs_bi_stat.describe_query.detail",
+        "summary": "DescribeQueryController.detail",
+        "x-java-return-type": "BiMtDescribe",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "BiMtDescribe"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "queryParam": {
+                    "type": "object",
+                    "x-java-type": "GetDescribeDetailArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  },
+                  "outerUserInfo": {
+                    "type": "object",
+                    "x-java-type": "OuterUserInfo"
+                  }
+                },
+                "required": [
+                  "queryParam",
+                  "userInfo",
+                  "outerUserInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/describes/list": {
+      "post": {
+        "operationId": "fs_bi_stat.describe_query.list",
+        "summary": "DescribeQueryController.list",
+        "x-java-return-type": "QueryDescribesResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryDescribesResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "queryParam": {
+                    "type": "object",
+                    "x-java-type": "QueryDescribesArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  },
+                  "outerUserInfo": {
+                    "type": "object",
+                    "x-java-type": "OuterUserInfo"
+                  }
+                },
+                "required": [
+                  "queryParam",
+                  "userInfo",
+                  "outerUserInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/describes/relations": {
+      "post": {
+        "operationId": "fs_bi_stat.describe_query.relations",
+        "summary": "DescribeQueryController.relations",
+        "x-java-return-type": "QueryDescribeRelationsResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryDescribeRelationsResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "queryParam": {
+                    "type": "object",
+                    "x-java-type": "QueryDescribeRelationsArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  },
+                  "outerUserInfo": {
+                    "type": "object",
+                    "x-java-type": "OuterUserInfo"
+                  }
+                },
+                "required": [
+                  "queryParam",
+                  "userInfo",
+                  "outerUserInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/multiCurrency/getMultiCurrencyList": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_currency_query.get_multi_currency_list",
+        "summary": "MultiCurrencyQueryController.getMultiCurrencyList",
+        "x-java-return-type": "MultiCurrencyListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "MultiCurrencyListResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "UserInfo"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/multiCurrency/config/save": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_currency_query.save_config",
+        "summary": "MultiCurrencyQueryController.saveConfig",
+        "x-java-return-type": "void",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "void"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currencyConfigArg": {
+                    "type": "object",
+                    "x-java-type": "CurrencyConfig"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  }
+                },
+                "required": [
+                  "currencyConfigArg",
+                  "userInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/multiCurrency/config/get": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_currency_query.get_config",
+        "summary": "MultiCurrencyQueryController.getConfig",
+        "x-java-return-type": "CurrencyConfig",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "CurrencyConfig"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "UserInfo"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/schemas/detail": {
+      "post": {
+        "operationId": "fs_bi_stat.schema_query.detail",
+        "summary": "SchemaQueryController.detail",
+        "x-java-return-type": "Schema",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "Schema"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "queryParam": {
+                    "type": "object",
+                    "x-java-type": "GetSchemaDetailArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  },
+                  "outerUserInfo": {
+                    "type": "object",
+                    "x-java-type": "OuterUserInfo"
+                  }
+                },
+                "required": [
+                  "queryParam",
+                  "userInfo",
+                  "outerUserInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/schemas/list": {
+      "post": {
+        "operationId": "fs_bi_stat.schema_query.list",
+        "summary": "SchemaQueryController.list",
+        "x-java-return-type": "List<Schema>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {},
+                  "x-java-type": "List<Schema>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "queryParam": {
+                    "type": "object",
+                    "x-java-type": "QuerySchemasArg"
+                  },
+                  "userInfo": {
+                    "type": "object",
+                    "x-java-type": "UserInfo"
+                  },
+                  "outerUserInfo": {
+                    "type": "object",
+                    "x-java-type": "OuterUserInfo"
+                  }
+                },
+                "required": [
+                  "queryParam",
+                  "userInfo",
+                  "outerUserInfo"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/business/data/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_business_view_data.query_report_data",
+        "summary": "StatBusinessViewDataController.queryReportData",
+        "x-java-return-type": "QueryChartData.Result",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryChartData.Result"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggData/diff": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_data_diff.agg_data_diff",
+        "summary": "AggDataDiffController.aggDataDiff",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "CheckDiffArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleList/batchStopAggRule": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.batch_stop_agg_rule",
+        "summary": "AggRuleController.batchStopAggRule",
+        "x-java-return-type": "UpdateAggRuleStatusResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateAggRuleStatusResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "BatchAggRuleFieldArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleList/batchEnableAggRule": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.batch_enable_agg_rule",
+        "summary": "AggRuleController.batchEnableAggRule",
+        "x-java-return-type": "UpdateAggRuleStatusResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateAggRuleStatusResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "BatchAggRuleFieldArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleList/batchModifyAggTimeZone": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.batch_modify_agg_time_zone",
+        "summary": "AggRuleController.batchModifyAggTimeZone",
+        "x-java-return-type": "UpdateAggRuleStatusResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateAggRuleStatusResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "BatchAggRuleFieldArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleList/unusedQuery": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.query_unused_field_list",
+        "summary": "AggRuleController.queryUnusedFieldList",
+        "x-java-return-type": "DefaultQueryAggListResult<UnusedStatFieldBO>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "DefaultQueryAggListResult<UnusedStatFieldBO>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/updateAggData": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.update_agg_data",
+        "summary": "AggRuleController.updateAggData",
+        "x-java-return-type": "Status",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "Status"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "UpdateAggDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/allObjectDescribeApiList/query": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.query_all_object_describe_api_list",
+        "summary": "AggRuleController.queryAllObjectDescribeApiList",
+        "x-java-return-type": "QueryAllObjectDescribeApiListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAllObjectDescribeApiListResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleList/query": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.query_agg_rule_list",
+        "summary": "AggRuleController.queryAggRuleList",
+        "x-java-return-type": "QueryAggRuleListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAggRuleListResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryAggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggObjectListBySchemaObjectName/query": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.query_agg_object_list_by_schema_object_name",
+        "summary": "AggRuleController.queryAggObjectListBySchemaObjectName",
+        "x-java-return-type": "QueryAggObjectListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAggObjectListResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggConditionsByAggObject/query": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.query_agg_conditions_by_agg_object",
+        "summary": "AggRuleController.queryAggConditionsByAggObject",
+        "x-java-return-type": "QueryAggConditionsResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAggConditionsResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/newAggRule/add": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.add_new_agg_rule",
+        "summary": "AggRuleController.addNewAggRule",
+        "x-java-return-type": "AddNewAggRuleResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AddNewAggRuleResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AddAggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/newAggRule/detail/copy": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.copy_detail_agg_rule",
+        "summary": "AggRuleController.copyDetailAggRule",
+        "x-java-return-type": "AddNewAggRuleResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AddNewAggRuleResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AddAggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/newAggRule/list/copy": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.copy_list_agg_rule",
+        "summary": "AggRuleController.copyListAggRule",
+        "x-java-return-type": "AddNewAggRuleResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AddNewAggRuleResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AddAggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleByFieldId/query": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+        "summary": "AggRuleController.queryAggRuleByFieldId",
+        "x-java-return-type": "AggRuleArg",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AggRuleArg"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRule/update": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.update_agg_rule",
+        "summary": "AggRuleController.updateAggRule",
+        "x-java-return-type": "UpdateAggRuleResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateAggRuleResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AddAggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleStatus/update": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.update_agg_rule_status",
+        "summary": "AggRuleController.updateAggRuleStatus",
+        "x-java-return-type": "UpdateAggRuleStatusResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateAggRuleStatusResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleLimitCount/verify": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.verify_agg_rule_limit_count",
+        "summary": "AggRuleController.verifyAggRuleLimitCount",
+        "x-java-return-type": "VerifyAggRuleCountResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "VerifyAggRuleCountResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRule/delete": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.delete_agg_rule",
+        "summary": "AggRuleController.deleteAggRule",
+        "x-java-return-type": "DeleteAggRuleResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "DeleteAggRuleResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AggRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRule/getStatus": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.get_status",
+        "summary": "AggRuleController.getStatus",
+        "x-java-return-type": "QueryDetailGoalRuleStatusResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryDetailGoalRuleStatusResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryDetailGoalRuleStatusArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/getPermission": {
+      "post": {
+        "operationId": "fs_bi_stat.agg_rule.get_permission",
+        "summary": "AggRuleController.getPermission",
+        "x-java-return-type": "Permission",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "Permission"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/billBoard/measureData/query": {
+      "post": {
+        "operationId": "fs_bi_stat.bill_board.query_bill_measure_data",
+        "summary": "BillBoardController.queryBillMeasureData",
+        "x-java-return-type": "QueryBillMeasureDataResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryBillMeasureDataResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryBillMeasureDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/billBoard/detail/query": {
+      "post": {
+        "operationId": "fs_bi_stat.bill_board.query_bill_board_detail",
+        "summary": "BillBoardController.queryBillBoardDetail",
+        "x-java-return-type": "QueryReportResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryReportResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryBillBoardDetailArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/config/saveConfig": {
+      "post": {
+        "operationId": "fs_bi_stat.biz_config.save_config",
+        "summary": "BizConfigController.saveConfig",
+        "x-java-return-type": "Boolean",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "boolean",
+                  "x-java-type": "Boolean"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "SaveBizConfigArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/config/getConfig": {
+      "post": {
+        "operationId": "fs_bi_stat.biz_config.get_config",
+        "summary": "BizConfigController.getConfig",
+        "x-java-return-type": "QueryBizConfigResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryBizConfigResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryBizConfigArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/config/getUserAuth": {
+      "post": {
+        "operationId": "fs_bi_stat.biz_config.get_user_auth",
+        "summary": "BizConfigController.getUserAuth",
+        "x-java-return-type": "UserDataAuthResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UserDataAuthResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "UserDataAuthArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/goalObjectListBySchemaObjectName/query": {
+      "post": {
+        "operationId": "fs_bi_stat.goal_rule.query_goal_object_list_by_schema_object_name",
+        "summary": "GoalRuleController.queryGoalObjectListBySchemaObjectName",
+        "x-java-return-type": "QueryAggObjectListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAggObjectListResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "GoalRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/aggConditionsByAggObject/query": {
+      "post": {
+        "operationId": "fs_bi_stat.goal_rule.query_agg_conditions_by_agg_object",
+        "summary": "GoalRuleController.queryAggConditionsByAggObject",
+        "x-java-return-type": "QueryGoalRuleFieldResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryGoalRuleFieldResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "GoalRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/checkLevel/query": {
+      "post": {
+        "operationId": "fs_bi_stat.goal_rule.query_level_fields_by_check_object_name",
+        "summary": "GoalRuleController.queryLevelFieldsByCheckObjectName",
+        "x-java-return-type": "QueryGoalRuleLevelFieldResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryGoalRuleLevelFieldResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "GoalRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/deptRelation/query": {
+      "post": {
+        "operationId": "fs_bi_stat.goal_rule.query_dept_relation",
+        "summary": "GoalRuleController.queryDeptRelation",
+        "x-java-return-type": "QueryGoalRuleDeptFieldResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryGoalRuleDeptFieldResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "GoalRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/getWeekDay": {
+      "post": {
+        "operationId": "fs_bi_stat.goal_rule.get_week_day",
+        "summary": "GoalRuleController.getWeekDay",
+        "x-java-return-type": "QueryWeekDayResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryWeekDayResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryWeekDayArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/areaInfo/query": {
+      "post": {
+        "operationId": "fs_bi_stat.goal_rule.query_area",
+        "summary": "GoalRuleController.queryArea",
+        "x-java-return-type": "QueryAreaResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAreaResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryAreaArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat": {
+      "get": {
+        "operationId": "fs_bi_stat.index.index",
+        "summary": "IndexController.index",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/ws": {
+      "get": {
+        "operationId": "fs_bi_stat.index.ws_test",
+        "summary": "IndexController.wsTest",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/license/query": {
+      "post": {
+        "operationId": "fs_bi_stat.license_service.query_tenant_license",
+        "summary": "LicenseServiceController.queryTenantLicense",
+        "x-java-return-type": "QueryTenantLicenseDto.Result",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryTenantLicenseDto.Result"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryTenantLicenseDto.Arg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/aggObject/query": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_dim_goal_rule.query_goal_object_list",
+        "summary": "MultiDimGoalRuleController.queryGoalObjectList",
+        "x-java-return-type": "QueryMultiDimGoalObjectListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryMultiDimGoalObjectListResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "MultiDimGoalRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/getUdfDescribe": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_dim_goal_rule.get_udf_describe",
+        "summary": "MultiDimGoalRuleController.getUdfDescribe",
+        "x-java-return-type": "GetUdfDescribeResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "GetUdfDescribeResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "GetUdfDescribeArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/aggConditionsByAggObject/query": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_dim_goal_rule.query_agg_conditions_by_agg_object",
+        "summary": "MultiDimGoalRuleController.queryAggConditionsByAggObject",
+        "x-java-return-type": "QueryMultiDimGoalFieldListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryMultiDimGoalFieldListResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "MultiDimGoalRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/dimObject/query": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_dim_goal_rule.query_dim_conditions_by_agg_object",
+        "summary": "MultiDimGoalRuleController.queryDimConditionsByAggObject",
+        "x-java-return-type": "QueryAggObjectListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAggObjectListResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "MultiDimGoalRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/dimField/query": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_dim_goal_rule.query_dim_fields",
+        "summary": "MultiDimGoalRuleController.queryDimFields",
+        "x-java-return-type": "QueryGoalDimFieldResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryGoalDimFieldResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "MultiDimGoalRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/deptRelation/query": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_dim_goal_rule.query_dept_relation",
+        "summary": "MultiDimGoalRuleController.queryDeptRelation",
+        "x-java-return-type": "QueryGoalRuleDeptFieldResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryGoalRuleDeptFieldResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "GoalRuleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/getWeekDay": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_dim_goal_rule.get_week_day",
+        "summary": "MultiDimGoalRuleController.getWeekDay",
+        "x-java-return-type": "QueryWeekDayResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryWeekDayResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryWeekDayArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/areaInfo/query": {
+      "post": {
+        "operationId": "fs_bi_stat.multi_dim_goal_rule.query_area",
+        "summary": "MultiDimGoalRuleController.queryArea",
+        "x-java-return-type": "QueryAreaResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAreaResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryAreaArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/rpt/data/query": {
+      "post": {
+        "operationId": "fs_bi_stat.rpt_query.query_report_data",
+        "summary": "RptQueryController.queryReportData",
+        "x-java-return-type": "QueryReportResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryReportResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryReportDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/rpt/data/queryWithKryo": {
+      "post": {
+        "operationId": "fs_bi_stat.rpt_query.query_report_data_byte_array",
+        "summary": "RptQueryController.queryReportDataByteArray",
+        "x-java-return-type": "KryoResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "KryoResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryReportDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/rpt/filter/queryFilterChSql": {
+      "post": {
+        "operationId": "fs_bi_stat.rpt_query.query_filter_ch_sql",
+        "summary": "RptQueryController.queryFilterChSql",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryReportDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/rpt/reconciliation/createSql": {
+      "post": {
+        "operationId": "fs_bi_stat.rpt_query.get_reconciliation_sql",
+        "summary": "RptQueryController.getReconciliationSql",
+        "x-java-return-type": "ReconciliationSqlResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ReconciliationSqlResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryReportDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/searchQueryInfo/query": {
+      "post": {
+        "operationId": "fs_bi_stat.search_query_info_easy_stat.query",
+        "summary": "SearchQueryInfoEasyStatController.query",
+        "x-java-return-type": "JoinQueryResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "JoinQueryResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "SearchQueryInfoRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/area/region/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_area.query_region_result",
+        "summary": "StatAreaController.queryRegionResult",
+        "x-java-return-type": "QueryAreaRegionResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAreaRegionResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryAreaRegionArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/async/sendQueryStatRequest": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_async.send_query_stat_request",
+        "summary": "StatAsyncController.sendQueryStatRequest",
+        "x-java-return-type": "AsyncQueryStatSendResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AsyncQueryStatSendResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AsyncQueryStatChartDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/async/loadQueryStatResult": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_async.load_query_report_result",
+        "summary": "StatAsyncController.loadQueryReportResult",
+        "x-java-return-type": "AsyncQueryStatResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AsyncQueryStatResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "LoadQueryStatResultArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/async/sendQueryStatMergeRequest": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_async.send_query_stat_merge_request",
+        "summary": "StatAsyncController.sendQueryStatMergeRequest",
+        "x-java-return-type": "AsyncQueryStatSendResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AsyncQueryStatSendResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AsyncQueryStatChartArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/async/loadQueryStatMergeResult": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_async.load_query_report_merge_result",
+        "summary": "StatAsyncController.loadQueryReportMergeResult",
+        "x-java-return-type": "AsyncQueryStatMergeResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AsyncQueryStatMergeResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "LoadQueryStatResultArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/async/detail/data/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_async.data_query",
+        "summary": "StatAsyncController.dataQuery",
+        "x-java-return-type": "AsyncQueryStatSendResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AsyncQueryStatSendResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AsyncQueryStatDetailInfoArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/async/detail/loadQueryStatResult": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_async.load_query_detail_report_result",
+        "summary": "StatAsyncController.loadQueryDetailReportResult",
+        "x-java-return-type": "AsyncQueryDetailResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AsyncQueryDetailResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "LoadQueryStatResultArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/batchQuery": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.data_batch_query",
+        "summary": "StatBaseController.dataBatchQuery",
+        "x-java-return-type": "List<QueryChartDataResult>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {},
+                  "x-java-type": "List<QueryChartDataResult>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {},
+                "x-java-type": "List<QueryChartDataArg>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.data_query",
+        "summary": "StatBaseController.dataQuery",
+        "x-java-return-type": "QueryChartDataResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryChartDataResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/calcagg/subfields": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.get_calc_agg_sub_fields",
+        "summary": "StatBaseController.getCalcAggSubFields",
+        "x-java-return-type": "CalcAggSubFieldsResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "CalcAggSubFieldsResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "CalcAggSubFieldsArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.data_query_da655ba1",
+        "summary": "StatBaseController.dataQuery",
+        "x-java-return-type": "QueryReportResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryReportResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryStatDetailInfoArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/detailDataQuery": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.detail_data_query",
+        "summary": "StatBaseController.detailDataQuery",
+        "x-java-return-type": "HttpEntity",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "HttpEntity"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryStatDetailInfoArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/detailSimpleReportDataQuery": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.detail_simple_report_data_query",
+        "summary": "StatBaseController.detailSimpleReportDataQuery",
+        "x-java-return-type": "HttpEntity",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "HttpEntity"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryStatDetailInfoArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/saveQuery": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.save_query",
+        "summary": "StatBaseController.saveQuery",
+        "x-java-return-type": "void",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "void"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "SaveQueryArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/saveDetailConfig": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.save_detail_config",
+        "summary": "StatBaseController.saveDetailConfig",
+        "x-java-return-type": "void",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "void"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "SaveQueryArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/personalConfig/delete": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.delete_personal_config",
+        "summary": "StatBaseController.deletePersonalConfig",
+        "x-java-return-type": "void",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "void"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "DeletePersonalConfigArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schemaDrillFields/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.get_schema_drill_fields_result",
+        "summary": "StatBaseController.getSchemaDrillFieldsResult",
+        "x-java-return-type": "SchemaDillFieldsResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "SchemaDillFieldsResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "GetSchemaDrillFieldsArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/previewSchemaDrillFields/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.preview_schema_drill_fields_result",
+        "summary": "StatBaseController.previewSchemaDrillFieldsResult",
+        "x-java-return-type": "SchemaDillFieldsResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "SchemaDillFieldsResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "PreviewSchemaDrillFieldsArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/queryAndUpload": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.backstage_data_query_and_upload",
+        "summary": "StatBaseController.backstageDataQueryAndUpload",
+        "x-java-return-type": "FileModel",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "FileModel"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryStatDetailInfoArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/queryMetadataFeature": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.query_metadata_feature",
+        "summary": "StatBaseController.queryMetadataFeature",
+        "x-java-return-type": "MetadataFeatureResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "MetadataFeatureResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/queryViewRestructureFeature": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.query_view_restructure_feature",
+        "summary": "StatBaseController.queryViewRestructureFeature",
+        "x-java-return-type": "QueryViewRestructureFeatureResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryViewRestructureFeatureResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryViewRestructureFeatureArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/getAppointLevelDataInfo": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.get_appoint_level_data_info",
+        "summary": "StatBaseController.getAppointLevelDataInfo",
+        "x-java-return-type": "QueryAppointLevelDataResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAppointLevelDataResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryAppointLevelDataInfoArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/queryAndUploadByPage": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.query_stat_data_and_upload_by_page",
+        "summary": "StatBaseController.queryStatDataAndUploadByPage",
+        "x-java-return-type": "FileModelExt",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "FileModelExt"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/dataQueryByPaging": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.data_query_by_paging",
+        "summary": "StatBaseController.dataQueryByPaging",
+        "x-java-return-type": "HttpEntity",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "HttpEntity"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/userSegment/save": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.save_user_segment",
+        "summary": "StatBaseController.saveUserSegment",
+        "x-java-return-type": "BiUserSegmentResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "BiUserSegmentResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryStatDetailInfoArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/userSegment/get": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.query_user_segment",
+        "summary": "StatBaseController.queryUserSegment",
+        "x-java-return-type": "UserSegmentResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UserSegmentResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryUserSegmentArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/userSegment/update": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.update_user_segment",
+        "summary": "StatBaseController.updateUserSegment",
+        "x-java-return-type": "UserSegmentResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UserSegmentResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "UpdateUserSegmentArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/chart/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_base.chart_query",
+        "summary": "StatBaseController.chartQuery",
+        "x-java-return-type": "QueryChartResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryChartResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartFullArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/calcField/grammarCheck": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_calc_field.grammar_check",
+        "summary": "StatCalcFieldController.grammarCheck",
+        "x-java-return-type": "GrammarCheckResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "GrammarCheckResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "GrammarCheckArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/calcField/save": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_calc_field.save_calc_field",
+        "summary": "StatCalcFieldController.saveCalcField",
+        "x-java-return-type": "SaveCalcFieldResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "SaveCalcFieldResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "SaveCalcFieldArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/calcField/delete": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_calc_field.delete_calc_field",
+        "summary": "StatCalcFieldController.deleteCalcField",
+        "x-java-return-type": "DelCalcFieldResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "DelCalcFieldResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "DelCalcFieldArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/objRelation/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.get_obj_relation_result",
+        "summary": "StatEditController.getObjRelationResult",
+        "x-java-return-type": "ObjectRelationResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ObjectRelationResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getFiltersResult": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.get_filters_result",
+        "summary": "StatEditController.getFiltersResult",
+        "x-java-return-type": "StatFilterResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "StatFilterResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "StatFilterArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/batchGetFiltersResult": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.batch_get_filters_result",
+        "summary": "StatEditController.batchGetFiltersResult",
+        "x-java-return-type": "BatchStatFilterResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "BatchStatFilterResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "BatchStatFilterArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getLocalFilter": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.get_local_filter",
+        "summary": "StatEditController.getLocalFilter",
+        "x-java-return-type": "StatLocalFilterResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "StatLocalFilterResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "StatLocalFilterArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.get_chart_config",
+        "summary": "StatEditController.getChartConfig",
+        "x-java-return-type": "StatChartConfResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "StatChartConfResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "StatChartConfArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/objRelationByObjName/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.get_obj_relation_by_obj_name_result",
+        "summary": "StatEditController.getObjRelationByObjNameResult",
+        "x-java-return-type": "ObjectRelationByObjNameResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ObjectRelationByObjNameResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/allDimHideStatus/update": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.update_all_dim_hide_status",
+        "summary": "StatEditController.updateAllDimHideStatus",
+        "x-java-return-type": "UpdateAllDimHideStatusResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateAllDimHideStatusResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "UpdateAllDimHideStatusArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/allDimListById/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.get_all_dim_list_by_id_result",
+        "summary": "StatEditController.getAllDimListByIdResult",
+        "x-java-return-type": "ObjectRelationResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ObjectRelationResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/creatStatView": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.creat_stat_view",
+        "summary": "StatEditController.creatStatView",
+        "x-java-return-type": "CreateStatViewResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "CreateStatViewResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "CreateStatViewArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/updateStatView": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.update_stat_view",
+        "summary": "StatEditController.updateStatView",
+        "x-java-return-type": "UpdateStatViewResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateStatViewResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "UpdateStatViewArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getInsightFilterList": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit.get_insight_filter_list",
+        "summary": "StatEditController.getInsightFilterList",
+        "x-java-return-type": "InsightFilterResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "InsightFilterResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "InsightFilterArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/simple/getAllAgg/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit_simple.get_all_dim_list_by_id_result",
+        "summary": "StatEditSimpleController.getAllDimListByIdResult",
+        "x-java-return-type": "ObjectRelationResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ObjectRelationResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/simple/data/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit_simple.data_query",
+        "summary": "StatEditSimpleController.dataQuery",
+        "x-java-return-type": "List<QueryChartDataResult>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {},
+                  "x-java-type": "List<QueryChartDataResult>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryStatDataSimpleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/simple/query/accountlevel": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_edit_simple.data_query_account_level",
+        "summary": "StatEditSimpleController.dataQueryAccountLevel",
+        "x-java-return-type": "List<QueryChartDataResult>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {},
+                  "x-java-type": "List<QueryChartDataResult>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryStatDataSimpleArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/query/test": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_metadata_query_test.query_test",
+        "summary": "StatMetadataQueryTestController.queryTest",
+        "x-java-return-type": "StatMetadataQueryResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "StatMetadataQueryResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "StatMetadataQueryTestArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/ratio/ratioFilterType/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_ratio.query_ratio_filter_type",
+        "summary": "StatRatioController.queryRatioFilterType",
+        "x-java-return-type": "QueryRatioFilterTypeResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryRatioFilterTypeResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryRatioFilterTypeArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/ratio/confirmationDate/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_ratio.confirmation_ratio_date",
+        "summary": "StatRatioController.confirmationRatioDate",
+        "x-java-return-type": "ConfirmationRatioDateResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ConfirmationRatioDateResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "ConfirmationRatioDateArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schemaList/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.query_schema_list",
+        "summary": "StatSchemaController.querySchemaList",
+        "x-java-return-type": "QuerySchemaListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QuerySchemaListResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryStatSchemaArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/allObjectList/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.query_all_object_list",
+        "summary": "StatSchemaController.queryAllObjectList",
+        "x-java-return-type": "QueryAllObjectListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryAllObjectListResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/objectList/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.query_object_list",
+        "summary": "StatSchemaController.queryObjectList",
+        "x-java-return-type": "QueryObjectListResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryObjectListResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/newSchema/add": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.add_new_schema",
+        "summary": "StatSchemaController.addNewSchema",
+        "x-java-return-type": "AddNewSchemaResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "AddNewSchemaResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "StatSchemaBO"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/newSchema/sql": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.add_new_schema_sql",
+        "summary": "StatSchemaController.addNewSchemaSql",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {},
+                "x-java-type": "List<StatSchemaBO>"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schemaStatus/update": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.update_schema_status",
+        "summary": "StatSchemaController.updateSchemaStatus",
+        "x-java-return-type": "UpdateSchemaStatusResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateSchemaStatusResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "StatSchemaArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schemaStatus/batchUpdate": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.batch_update_schema_status",
+        "summary": "StatSchemaController.batchUpdateSchemaStatus",
+        "x-java-return-type": "UpdateSchemaStatusResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateSchemaStatusResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "BatchStatSchemaArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schema/update": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.update_schema",
+        "summary": "StatSchemaController.updateSchema",
+        "x-java-return-type": "UpdateSchemaResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "UpdateSchemaResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "StatSchemaArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schemaLimitCount/verify": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.verify_schema_limit_count",
+        "summary": "StatSchemaController.verifySchemaLimitCount",
+        "x-java-return-type": "VerifySchemaListCountResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "VerifySchemaListCountResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schema/delete": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.delete_schema",
+        "summary": "StatSchemaController.deleteSchema",
+        "x-java-return-type": "DeleteSchemaResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "DeleteSchemaResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "StatSchemaArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/allSchema/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.get_all_schema",
+        "summary": "StatSchemaController.getAllSchema",
+        "x-java-return-type": "List<StatSchemaDO>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {},
+                  "x-java-type": "List<StatSchemaDO>"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/goalType/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.query_goal_rule_type",
+        "summary": "StatSchemaController.queryGoalRuleType",
+        "x-java-return-type": "GoalRuleTypeResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "GoalRuleTypeResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryGoalRuleTypeArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/fieldsBySchemaId/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+        "summary": "StatSchemaController.getFieldsBySchemaId",
+        "x-java-return-type": "QueryStatFieldsResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryStatFieldsResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "StatSchemaArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/validateView": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.validate_view",
+        "summary": "StatSchemaController.validateView",
+        "x-java-return-type": "ValidateViewResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ValidateViewResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "ValidateViewArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/fieldDetail/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.query_field_detail",
+        "summary": "StatSchemaController.queryFieldDetail",
+        "x-java-return-type": "List<AggRuleArg>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {},
+                  "x-java-type": "List<AggRuleArg>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AggRuleIdArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/fieldTopology/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.query_field_topology",
+        "summary": "StatSchemaController.queryFieldTopology",
+        "x-java-return-type": "ResponseResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ResponseResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AggRuleIdArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/insight/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.get_insight_lookup_relation_field_list",
+        "summary": "StatSchemaController.getInsightLookupRelationFieldList",
+        "x-java-return-type": "PaasLookup.Result",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "PaasLookup.Result"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/syncEntry": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_schema.sync_entry",
+        "summary": "StatSchemaController.syncEntry",
+        "x-java-return-type": "void",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "void"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_template.get_obj_relation_result",
+        "summary": "StatTemplateController.getObjRelationResult",
+        "x-java-return-type": "DomainTemplateResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "DomainTemplateResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/template/viewToTemplate": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_template.view_to_template",
+        "summary": "StatTemplateController.viewToTemplate",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "ViewToTemplateArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/preschema/sync": {
+      "post": {
+        "operationId": "fs_bi_stat.sync_pre_schema.sync_pre_schemas",
+        "summary": "SyncPreSchemaController.syncPreSchemas",
+        "x-java-return-type": "RestBaseResult",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "RestBaseResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "SyncPreSchemaArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/bisystem/sql/execute": {
+      "post": {
+        "operationId": "fs_bi_stat.sync_pre_schema.execute_bi_system_pg",
+        "summary": "SyncPreSchemaController.executeBiSystemPg",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "ExecuteSqlArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/bi/pg/sql/execute": {
+      "post": {
+        "operationId": "fs_bi_stat.sync_pre_schema.execute_bi_pg",
+        "summary": "SyncPreSchemaController.executeBiPg",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "ExecuteSqlArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/bi/pg/customerschemaforarea/brush": {
+      "post": {
+        "operationId": "fs_bi_stat.sync_pre_schema.brush_customer_schema_for_area",
+        "summary": "SyncPreSchemaController.brushCustomerSchemaForArea",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "ExecuteSqlArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/bi/pg/brushCustomerSchema74203/brush": {
+      "post": {
+        "operationId": "fs_bi_stat.sync_pre_schema.brush_customer_schema74203",
+        "summary": "SyncPreSchemaController.brushCustomerSchema74203",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/PreSchema/add": {
+      "post": {
+        "operationId": "fs_bi_stat.sync_pre_schema.add_pre_schemas",
+        "summary": "SyncPreSchemaController.addPreSchemas",
+        "x-java-return-type": "int",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "integer",
+                  "x-java-type": "int"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "AddPreSchemaArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/chart/query": {
+      "post": {
+        "operationId": "fs_bi_stat.view_data_query_api.sync_chart_query",
+        "summary": "ViewDataQueryApiController.syncChartQuery",
+        "x-java-return-type": "ApiResult<QueryChartResult>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ApiResult<QueryChartResult>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartFullArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/data/query": {
+      "post": {
+        "operationId": "fs_bi_stat.view_data_query_api.query",
+        "summary": "ViewDataQueryApiController.query",
+        "x-java-return-type": "ApiResult<QueryChartDataResult>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ApiResult<QueryChartDataResult>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "ViewDataQueryArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/chartConfig/query": {
+      "post": {
+        "operationId": "fs_bi_stat.view_data_query_api.get_chart_config",
+        "summary": "ViewDataQueryApiController.getChartConfig",
+        "x-java-return-type": "ApiResult<StatChartConfResult>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ApiResult<StatChartConfResult>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "ChartConfigArg"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/clearAllViewCache": {
+      "get": {
+        "operationId": "fs_bi_stat.view_data_query_api.clear_all_view_cache",
+        "summary": "ViewDataQueryApiController.clearAllViewCache",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/clearCache/{ei}/{viewId}": {
+      "get": {
+        "operationId": "fs_bi_stat.view_data_query_api.clear_view_cache_by_key",
+        "summary": "ViewDataQueryApiController.clearViewCacheByKey",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [
+          {
+            "name": "ei",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-java-type": "String"
+            },
+            "x-java-name": "ei"
+          },
+          {
+            "name": "viewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-java-type": "String"
+            },
+            "x-java-name": "viewId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/noticeChange/{ei}/{viewId}": {
+      "get": {
+        "operationId": "fs_bi_stat.view_data_query_api.notice_change",
+        "summary": "ViewDataQueryApiController.noticeChange",
+        "x-java-return-type": "String",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [
+          {
+            "name": "ei",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-java-type": "String"
+            },
+            "x-java-name": "ei"
+          },
+          {
+            "name": "viewId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "x-java-type": "String"
+            },
+            "x-java-name": "viewId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "x-java-type": "String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/perm/query": {
+      "post": {
+        "operationId": "fs_bi_stat.view_data_query_api.get_perm",
+        "summary": "ViewDataQueryApiController.getPerm",
+        "x-java-return-type": "ApiResult<Permission>",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "ApiResult<Permission>"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "PermArg"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

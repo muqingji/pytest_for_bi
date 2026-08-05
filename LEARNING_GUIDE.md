@@ -148,7 +148,7 @@ load_cases("test")
 一次 pytest 测试。业务测试函数只有一个，不能为每个接口创建 Python 测试文件。
 
 手写时先支持：
-
+gitgit git pull git add .git commit -m ''重新chongxin t重新chongxin ss重新‘啊git push
 ```python
 pytest.param(case, id=case["id"])
 ```

@@ -1,0 +1,46 @@
+{
+  "test_case": {
+    "id": "pass_api_set_app_language",
+    "name": "个人语言切换",
+    "api": "pass_api.set_app_language",
+    "workflow": "translation_language",
+    "enabled": true,
+    "tags": [
+      "smoke"
+    ]
+  },
+  "cases": [
+    {
+      "id": "switch_to_chinese",
+      "name": "个人语言切换成中文",
+      "priority": "P1",
+      "req": {
+        "body": {
+          "language": "zh-CN"
+        }
+      },
+      "resp": {
+        "status_code": 200,
+        "json_path": {
+          "Result.FailureCode": 0
+        }
+      }
+    },
+    {
+      "id": "switch_to_english",
+      "name": "个人语言切换成英文",
+      "priority": "P1",
+      "req": {
+        "body": {
+          "language": "en"
+        }
+      },
+      "resp": {
+        "status_code": 200,
+        "json_path": {
+          "Result.FailureCode": 0
+        }
+      }
+    }
+  ]
+}

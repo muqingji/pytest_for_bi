@@ -110,19 +110,90 @@ def _find_missing_values(value: Any, path: str) -> list[str]:
     return []
 
 
-def load_cases(environment: str, data_dir: Path | None = None) -> list[dict[str, Any]]:
-    """Load every ``*.{environment}.json`` case file in deterministic order."""
+def load_cases(
+    environment: str,
+    data_dir: Path | None = None,
+    priorities: set[str] | None = None,
+) -> list[dict[str, Any]]:
+    """Load and expand every ``*.{environment}.json`` case file."""
     directory = data_dir or project_root() / "test_data"
     cases: list[dict[str, Any]] = []
     for path in sorted(directory.rglob(f"*.{environment}.json")):
         with path.open(encoding="utf-8") as file:
             document = json.load(file)
+        if isinstance(document, dict) and "test_case" in document:
+            cases.extend(_expand_test_subject(document, path, priorities))
+            continue
         entries = document["cases"] if isinstance(document, dict) else document
         if not isinstance(entries, list):
             raise ValueError(f"{path}: root must be a list or an object with a cases list")
         for case in entries:
             if not isinstance(case, dict) or not case.get("id") or not case.get("steps"):
                 raise ValueError(f"{path}: every case needs id and steps")
-            case = {**case, "__source__": str(path)}
+            case = {
+                **case,
+                "workflow": document.get("workflow") if isinstance(document, dict) else None,
+                "__source__": str(path),
+            }
             cases.append(case)
     return cases
+
+
+def _expand_test_subject(
+    document: dict[str, Any],
+    path: Path,
+    priorities: set[str] | None,
+) -> list[dict[str, Any]]:
+    subject = document["test_case"]
+    entries = document.get("cases")
+    if not isinstance(subject, dict) or not subject.get("id") or not subject.get("api"):
+        raise ValueError(f"{path}: test_case needs id and api")
+    if not isinstance(entries, list):
+        raise ValueError(f"{path}: cases must be a list")
+
+    expanded = []
+    for instance in entries:
+        if not isinstance(instance, dict):
+            raise ValueError(f"{path}: every case must be an object")
+        required = [key for key in ("id", "priority", "req", "resp") if key not in instance]
+        if required:
+            raise ValueError(f"{path}: case is missing {', '.join(required)}")
+        priority = str(instance["priority"]).upper()
+        if priorities is not None and priority not in priorities:
+            continue
+        request = _normalize_case_request(instance["req"], subject["api"])
+        expanded.append(
+            {
+                "id": f"{subject['id']}::{instance['id']}",
+                "subject_id": subject["id"],
+                "case_id": instance["id"],
+                "name": instance.get("name") or instance["id"],
+                "priority": priority,
+                "enabled": subject.get("enabled", True) and instance.get("enabled", True),
+                "tags": list(dict.fromkeys([*subject.get("tags", []), *instance.get("tags", [])])),
+                "variables": {**subject.get("variables", {}), **instance.get("variables", {})},
+                "workflow": subject.get("workflow"),
+                "steps": [
+                    {
+                        "name": instance.get("name") or instance["id"],
+                        "request": request,
+                        "expect": instance["resp"],
+                    }
+                ],
+                "__source__": str(path),
+            }
+        )
+    return expanded
+
+
+def _normalize_case_request(request: Any, operation_id: str) -> dict[str, Any]:
+    if not isinstance(request, dict):
+        raise ValueError("case req must be an object")
+    normalized = dict(request)
+    if "body" in normalized:
+        if "json" in normalized:
+            raise ValueError("case req cannot contain both body and json")
+        normalized["json"] = normalized.pop("body")
+    normalized["protocol"] = "http"
+    normalized["api"] = operation_id
+    return normalized

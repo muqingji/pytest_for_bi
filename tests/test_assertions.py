@@ -24,3 +24,12 @@ def test_assert_response_reports_mismatched_values() -> None:
     with pytest.raises(AssertionError, match="expected 1"):
         assert_response(ApiResponse(status_code=200, body={"code": 0}), {"body": {"code": 1}})
 
+
+def test_assert_response_finds_key_in_serialized_json_field_value() -> None:
+    expected_key = "Bi.Custom.Realtime.StatName.BI_1.Label"
+    response = ApiResponse(
+        status_code=200,
+        body={"Value": '{"items":[{"translateKey":"' + expected_key + '"}]}'},
+    )
+
+    assert_response(response, {"body_contains_keys": [expected_key]})

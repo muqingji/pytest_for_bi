@@ -8,7 +8,7 @@ pipeline {
     }
 
     parameters {
-        choice(name: 'TEST_ENV', choices: ['test', 'hk', 'prod'], description: 'Environment suffix for config and case data files')
+        choice(name: 'TEST_ENV', choices: ['112', 'test', 'hk', 'prod'], description: 'Environment suffix; 112 runs the translation workbench suite')
         string(name: 'CASE_FILTER', defaultValue: '', description: 'Optional pytest -k expression, for example: get_user')
         booleanParam(name: 'USE_CONFIG_CREDENTIAL', defaultValue: true, description: 'Inject environment local JSON from Jenkins credentials')
     }
@@ -53,12 +53,20 @@ pipeline {
                                 install -m 600 "$LOCAL_ENV_CONFIG" "$local_config"
                             fi
 
+                            if [ "$TEST_ENV" = "112" ]; then
+                                set -- -n 0 tests/translation_workbench/test_translation_language.py
+                            else
+                                set --
+                            fi
+
                             if [ -n "$CASE_FILTER" ]; then
                                 TEST_ENV="$TEST_ENV" "$VENV_DIR/bin/python" -m pytest --env "$TEST_ENV" \
-                                    -k "$CASE_FILTER" --alluredir=allure-results --junitxml=artifacts/junit.xml
+                                    "$@" -k "$CASE_FILTER" --alluredir=allure-results \
+                                    --clean-alluredir --junitxml=artifacts/junit.xml
                             else
                                 TEST_ENV="$TEST_ENV" "$VENV_DIR/bin/python" -m pytest --env "$TEST_ENV" \
-                                    --alluredir=allure-results --junitxml=artifacts/junit.xml
+                                    "$@" --alluredir=allure-results \
+                                    --clean-alluredir --junitxml=artifacts/junit.xml
                             fi
                         '''
                     }
@@ -78,6 +86,13 @@ pipeline {
 
     post {
         always {
+            sh '''
+                if [ -d allure-results ]; then
+                    "$VENV_DIR/bin/python" scripts/print_allure_report.py allure-results \
+                        --output artifacts/interface-report.txt \
+                        --summary-only --quiet || true
+                fi
+            '''
             junit allowEmptyResults: true, testResults: 'artifacts/junit.xml'
             archiveArtifacts allowEmptyArchive: true, artifacts: 'allure-results/**,artifacts/**'
             allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]

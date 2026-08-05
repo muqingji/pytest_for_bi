@@ -4,9 +4,12 @@ __pycache__/
 .pytest_cache/
 allure-results/
 allure-report/
+allure-results-*/
+reports/
 artifacts/
 .coverage
 htmlcov/
 .env
+.cache/
 *.egg-info/
 config/environment.*.local.json

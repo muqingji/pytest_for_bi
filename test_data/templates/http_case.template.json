@@ -1,28 +1,24 @@
 {
+  "test_case": {
+    "id": "replace_with_subject_id",
+    "name": "Replace with test subject name",
+    "api": "service.operation_id",
+    "enabled": true,
+    "tags": ["smoke"]
+  },
   "cases": [
     {
-      "id": "replace_with_unique_case_id",
-      "name": "Replace with case name",
-      "enabled": true,
-      "tags": ["smoke"],
-      "variables": {},
-      "steps": [
-        {
-          "name": "Call endpoint",
-          "request": {
-            "protocol": "http",
-            "method": "GET",
-            "path": "/replace-path",
-            "params": {},
-            "headers": {}
-          },
-          "expect": {
-            "status_code": 200,
-            "body": {"code": 0},
-
-          }
-        }
-      ]
+      "id": "replace_with_case_id",
+      "name": "Replace with concrete scenario name",
+      "priority": "P1",
+      "req": {
+        "params": {},
+        "body": {}
+      },
+      "resp": {
+        "status_code": 200,
+        "body": {"code": 0}
+      }
     }
   ]
 }

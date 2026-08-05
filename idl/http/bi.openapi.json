@@ -1,0 +1,131 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Fxiaoke CRM BI HTTP API",
+    "version": "1.0.0",
+    "description": "HTTP interface contract used by pytest BI automation. Runtime tokens are supplied by CRM session authentication."
+  },
+  "paths": {
+    "/FHH/EM1HNCRM/API/v1/object/trans_workbench/service/queryDynamicTypeInfoAndOptions": {
+      "post": {
+        "operationId": "bi.query_dynamic_type_info_and_options",
+        "summary": "Query BI dynamic classifications and options",
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryDynamicTypeInfoAndOptionsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "BI classification query result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/FHH/EM1HNCRM/API/v1/object/trans_workbench/service/sub_query_optimize": {
+      "post": {
+        "operationId": "bi.sub_query_optimize",
+        "summary": "Query translation terms for a BI classification group",
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "x-auth-cookie-query": {"cookie": "fs_token", "parameter": "_fs_token"},
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/SubQueryOptimizeRequest"}}}
+        },
+        "responses": {"200": {"description": "Translation term query result", "content": {"application/json": {"schema": {"type": "object"}}}}}
+        }
+      },
+    "/FHH/EM1HNCRM/API/v1/object/trans_workbench/service/queryOptimize": {
+      "post": {
+        "operationId": "bi.query_optimize",
+        "summary": "Query translation workbench rows for a selected BI classification",
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "x-auth-cookie-query": {"cookie": "fs_token", "parameter": "_fs_token"},
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/QueryOptimizeRequest"}}}
+        },
+        "responses": {"200": {"description": "Translation workbench row query result", "content": {"application/json": {"schema": {"type": "object"}}}}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "QueryDynamicTypeInfoAndOptionsRequest": {
+        "type": "object",
+        "required": ["dynamicTypeKey", "argMap"],
+        "properties": {
+          "dynamicTypeKey": {"type": "string"},
+          "argMap": {
+            "type": "object",
+            "required": ["language", "dataType", "objectApiName", "subType", "bi_objects"],
+            "properties": {
+              "language": {"type": "string"},
+              "dataType": {"type": "string"},
+              "objectApiName": {"type": "string"},
+              "subType": {"type": "string"},
+              "bi_objects": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubQueryOptimizeRequest": {
+        "type": "object",
+        "required": ["language", "dataType", "objectApiName", "subType", "subArg"],
+        "properties": {
+          "language": {"type": "string"},
+          "dataType": {"type": "string"},
+          "objectApiName": {"type": "string"},
+          "subType": {"type": "string"},
+          "subArg": {"type": "object", "additionalProperties": true}
+        },
+        "additionalProperties": false
+      },
+      "QueryOptimizeRequest": {
+        "type": "object",
+        "required": ["language", "dataType", "objectApiName", "subType", "subArg", "breadcrumbCode"],
+        "properties": {
+          "language": {"type": "string"},
+          "dataType": {"type": "string"},
+          "objectApiName": {"type": "string"},
+          "subType": {"type": "string"},
+          "bi_viewType_names": {"type": "string"},
+          "subArg": {"type": "object", "additionalProperties": true},
+          "breadcrumbCode": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

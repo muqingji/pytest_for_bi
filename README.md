@@ -23,12 +23,79 @@ make allure
 
 Open the report with `allure open allure-report`, or run `make serve-allure`.
 
+BI interface automation reports use one dedicated directory instead of writing
+multiple `allure-results-*` directories at the repository root:
+
+```bash
+make interface-test       # reports/interface-automation/allure-results
+make interface-report     # readable Case summary in reports/interface-automation/report.txt
+make print-interface-report  # reprints the latest results without rerunning cases
+make print-interface-report-details  # raw request/response troubleshooting report
+make interface-html-report   # optionally generates the local Allure HTML report
+```
+
+The default text report groups results by personal/translation language scenario,
+lists every translation-path Case, and explains failed fields in plain language.
+Raw steps, request/response attachments, and failure traces are saved separately
+to `report-details.txt`; sensitive fields are redacted. Each detailed attachment
+is limited to 6000 characters by default. Set `INTERFACE_REPORT_MAX_CHARS=0` for
+full output or another number to change the limit. `interface-report` still
+generates both reports when pytest fails, then returns pytest's original exit code.
+
+The 112 translation report contains four pytest subjects, covering the complete
+matrix of personal language (Chinese or English) and translation language
+(Chinese or English). The translation language is independent of the personal
+language and is propagated to classification, folder/group, and final-term
+requests. Each case still validates its HTTP response, business result, and
+target `translateKey`. The matched `needTransName` is validated against the
+personal language, while `translateValue` is validated against the translation
+language. Missing, empty, or mismatched values fail the case.
+The two English personal-language subjects run last so a complete workflow
+restores the personal language to English.
+The translation workflow is always run serially (`pytest -n 0`) because all
+subjects mutate the same account language and share one authenticated session.
+
+For a remotely viewable report, run the repository Jenkins Pipeline with
+`TEST_ENV=112`. Jenkins publishes the Allure report even when language
+assertions fail and archives `artifacts/interface-report.txt`. See
+[docs/JENKINS.md](docs/JENKINS.md) for the required credential and Job setup.
+
+To publish the generated static report under `oss.firstshare.cn`, configure the
+server-side rsync/SSH destination outside the repository and run:
+
+```bash
+OSS_REPORT_DEPLOY_TARGET='user@host:/var/www/reports/interface-automation/current/' \
+  make publish-interface-report  # explicitly generates HTML and publishes it
+```
+
+The published URL defaults to
+`https://oss.firstshare.cn/reports/interface-automation/current/`. Override it
+with `INTERFACE_REPORT_URL` when the nginx directory mapping differs. The
+machine running `interface-html-report` or `publish-interface-report` must have
+the Allure CLI installed.
+
 Select an environment by suffix:
 
 ```bash
 TEST_ENV=prod python3 -m pytest --alluredir=allure-results
 python3 -m pytest --env=hk --alluredir=allure-results
 ```
+
+Fxiaoke CRM cases use dedicated `112` and `online` environments. Generated BI
+cases should use the `.112.json` suffix and run with:
+
+```bash
+export FXIAOKE_112_ENTERPRISE_ACCOUNT=your-enterprise-account
+export FXIAOKE_112_USERNAME=your-username
+export FXIAOKE_112_PASSWORD=your-password
+python3 -m pytest --env=112 --alluredir=allure-results
+```
+
+The 112 environment authenticates through `www.ceshi112.com` and sends BI API
+requests to `crm.ceshi112.com`. The online environment uses `www.fxiaoke.com`
+for both. Login cookies are retained by the shared HTTP session. Keep all
+credentials in environment variables, CI secrets, or an ignored
+`config/environment.112.local.json` file.
 
 `--env` overrides `TEST_ENV`; `test` is the default. Each selected environment
 requires `config/environment.<env>.json`. `test`, `hk`, and `prod` templates
@@ -64,6 +131,47 @@ clear error only when a case uses that protocol.
 `.env.example` lists all supported environment-variable names. Keep actual
 secrets in CI secrets, an exported shell environment, or the ignored local
 override file.
+
+## API contracts and test subjects
+
+HTTP interfaces are maintained as OpenAPI contracts under `idl/http`. Test
+data refers to an interface by `operationId`, so endpoint paths, methods and
+authentication token rules are not duplicated in case files. The complete
+case model is documented in [docs/API_CASE_MODEL.md](docs/API_CASE_MODEL.md).
+
+BI HTTP contracts and Python callers are generated from the local `fs-bi`
+Java repository. Run:
+
+```bash
+make sync-fs-bi-http
+```
+
+Only routes with a CRM gateway mapping verified in repository code are emitted
+as callable APIs. Currently `fs-bi-stat` is verified by its own dialing scripts
+as `/FHH/EM1HBISTAT/fs-bi-stat/...`. Other BI modules are not exposed through
+the CRM client until their real `/FHH/<application>` mapping is found in code.
+The OpenAPI output is written to `idl/http/generated/fs-bi/`, and `FsBiApi` is
+the aggregate entry point:
+
+```python
+from framework.api.catalog import HttpApiCatalog
+from framework.api.generated.fs_bi import FsBiApi
+from framework.config.environment import project_root
+
+catalog = HttpApiCatalog.load(project_root() / "idl" / "http")
+bi_api = FsBiApi(http_client, catalog)
+response = bi_api.stat.view_data_query_api_get_chart_config(body=request_body)
+```
+
+Generated method signatures expose path parameters explicitly and accept
+request bodies, query parameters, and headers through `body`, `params`, and
+`headers`. Generated files should not be edited by hand; update `fs-bi` and
+run the sync command again.
+
+A test-data document contains one `test_case` subject and multiple concrete
+`cases`. Every concrete case owns its `req`, expected `resp`, and `priority`.
+Select priorities during pytest collection with `--priority=P0,P1` or the
+`TEST_PRIORITIES` environment variable.
 
 ## Case format
 

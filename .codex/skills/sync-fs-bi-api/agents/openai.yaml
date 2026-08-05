@@ -1,0 +1,4 @@
+interface:
+  display_name: "同步 FS BI API"
+  short_description: "从只读业务代码仓库安全更新 BI IDL 和 Python API"
+  default_prompt: "使用 $sync-fs-bi-api 从业务仓库安全更新 BI IDL 和 Python API。"
