@@ -1,0 +1,25 @@
+{
+  "schema_version": "permission-policy/1.0",
+  "business_repository_access": "read_only",
+  "allowed_write_targets": [
+    "workflow_artifact_store",
+    "approved_automation_repository"
+  ],
+  "forbidden_business_git_actions": [
+    "add",
+    "commit",
+    "push",
+    "merge",
+    "rebase",
+    "tag",
+    "reset",
+    "clean",
+    "create_branch",
+    "delete_branch",
+    "create_merge_request",
+    "comment",
+    "approve",
+    "trigger_pipeline"
+  ],
+  "agent_oracle_access": "denied"
+}

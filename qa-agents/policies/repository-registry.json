@@ -1,0 +1,15 @@
+{
+  "schema_version": "repository-registry/1.0",
+  "repositories": [
+    {"id": "fs-bi-ai-native-workspace", "url": "git@git.firstshare.cn:bi/fs-bi-ai-native-workspace.git", "access_class": "document_source_read_only"},
+    {"id": "fs-qa-knowledge", "url": "git@git.firstshare.cn:autotest/fs-qa-knowledge.git", "access_class": "case_capability_provider_read_only"},
+    {"id": "fs-bi-crm-report", "url": "git@git.firstshare.cn:bi/fs-bi-crm-report.git", "access_class": "business_source_read_only"},
+    {"id": "fs-bi-dev-platform", "url": "git@git.firstshare.cn:bi/fs-bi-dev-platform.git", "access_class": "business_source_read_only"},
+    {"id": "fs-bi", "url": "git@git.firstshare.cn:bi/fs-bi.git", "access_class": "business_source_read_only"},
+    {"id": "fs-bi-udf-report", "url": "git@git.firstshare.cn:dataplatform/fs-bi-udf-report.git", "access_class": "business_source_read_only"},
+    {"id": "fbi", "url": "git@git.firstshare.cn:fe/fbi.git", "access_class": "business_source_read_only"},
+    {"id": "bi-sdk", "url": "git@git.firstshare.cn:fe-bi/bi-sdk.git", "access_class": "business_source_read_only"},
+    {"id": "bi-xkcharts", "url": "git@git.firstshare.cn:fe/bi-xkcharts.git", "access_class": "business_source_read_only"},
+    {"id": "fs-bi-warehouse", "url": "git@git.firstshare.cn:bi/fs-bi-warehouse.git", "access_class": "business_source_read_only"}
+  ]
+}

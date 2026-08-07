@@ -1,0 +1,1 @@
+{"agent_id":"A04","name":"frontend-change-analyzer","version":"1.0.0","runtime":"analysis-runtime","allowed_inputs":["frontend_change_set","read_only_source_snapshot"],"allowed_tools":["read_frozen_source"],"repository_access":{"read":["business_source_read_only"],"write":[]},"output_contract":"change-analysis/1.0"}

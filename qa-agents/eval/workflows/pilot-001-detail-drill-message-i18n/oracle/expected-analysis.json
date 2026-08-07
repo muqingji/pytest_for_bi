@@ -1,0 +1,182 @@
+{
+  "schema_version": "pilot-analysis-oracle/1.0",
+  "fixture_id": "pilot-001-detail-drill-message-i18n",
+  "atomic_requirements": [
+    {
+      "id": "REQ-01",
+      "summary": "自定义维度用于图维度或数据范围时返回专用提示。",
+      "technical_extension": "现有校验还覆盖下钻字段，最终文案是否包含下钻字段需要产品确认。",
+      "match": {"all_terms": ["自定义维度", "数据范围", "查看明细"]}
+    },
+    {
+      "id": "REQ-02",
+      "summary": "普通、聚合、计算、同环比指标按结果集筛选时，提示中包含当前语言的指标展示名。",
+      "match": {"all_terms": ["普通指标", "聚合指标", "计算指标", "同环比指标", "结果集", "指标名称"]}
+    },
+    {
+      "id": "REQ-03",
+      "summary": "基于多关联关系创建的统计指标不能查看明细时返回专用提示。",
+      "match": {"all_terms": ["多关联关系", "统计指标", "查看明细"]}
+    },
+    {
+      "id": "REQ-04",
+      "summary": "工单主题下基于业务流程、业务流程任务或服务记录特殊 what/whatList 关系创建的指标返回动态关联专用提示。",
+      "match": {"all_terms": ["工单主题", "业务流程", "业务流程任务", "服务记录", "what", "查看明细"]}
+    },
+    {
+      "id": "REQ-05",
+      "summary": "统计图和拼表、Web 和移动端行为一致。",
+      "match": {"all_terms": ["统计图", "拼表", "web", "移动端"]}
+    },
+    {
+      "id": "REQ-06",
+      "summary": "中文和英文环境均返回正确模板，参数化指标名不丢失。",
+      "match": {"all_terms": ["中文", "英文", "指标名"]}
+    },
+    {
+      "id": "REQ-07",
+      "summary": "正常查看明细和非目标不支持场景的既有行为保持不变。",
+      "match": {"all_terms": ["正常查看明细", "保持", "不变"]}
+    }
+  ],
+  "implementation_facts": [
+    {
+      "id": "IMP-01",
+      "status": "implemented",
+      "summary": "新增四个专用错误码 s307011534 至 s307011537 及对应国际化 key。",
+      "match": {"all_terms": ["s307011534", "s307011535", "s307011536", "s307011537"]}
+    },
+    {
+      "id": "IMP-02",
+      "status": "implemented",
+      "summary": "自定义维度原有三类判断保留，并切换到 CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED。",
+      "match": {"all_terms": ["StatDetailQueryService", "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED"]}
+    },
+    {
+      "id": "IMP-03",
+      "status": "partial",
+      "summary": "结果集筛选使用 RESULT_SET_FILTER_DETAIL_UNSUPPORTED 和 List 参数，但只读取 Filter.fieldName。",
+      "match": {"all_terms": ["RESULT_SET_FILTER_DETAIL_UNSUPPORTED", "fieldName"]}
+    },
+    {
+      "id": "IMP-04",
+      "status": "partial",
+      "summary": "业务对象数或拓扑节点数大于 3 的既有失败分支切换为多关联专用错误。",
+      "match": {"all_terms": ["MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED"], "any_term_groups": [["BusinessObjectTransConverter", "StatDetailRptDwService", "moreThanThreeNodes"]]}
+    },
+    {
+      "id": "IMP-05",
+      "status": "deviates_from_design",
+      "summary": "动态关联在 ObjectRelationTransConverter 中按任意 what/whatList 字段判断，没有限定 PRD 指定的工单主题和目标关系元数据。",
+      "match": {"all_terms": ["ObjectRelationTransConverter"], "any_term_groups": [["what", "whatList", "SysUdfMetadataUtil"]]}
+    },
+    {
+      "id": "IMP-06",
+      "status": "partial",
+      "summary": "新增多关联和动态关联单元测试，但没有覆盖自定义维度、结果集筛选和最终多语模板。",
+      "match": {"all_terms": ["src/test", "I18NErrorCodeEnum"], "any_term_groups": [["ObjectRelationTransConverterTest", "BusinessObjectTransConverterTest"]]}
+    },
+    {
+      "id": "IMP-07",
+      "status": "scope_drift",
+      "summary": "first-parent diff 包含 AGENTS.md 规则变更，与本需求业务实现无直接关系。",
+      "match": {"all_terms": ["AGENTS.md", "中文与国际化规范"]}
+    }
+  ],
+  "alignment_findings": [
+    {
+      "id": "ALIGN-01",
+      "severity": "high",
+      "type": "implementation_gap",
+      "summary": "fieldName 为空时直接传入空字符串，未按技术方案通过 fieldId 查询元数据，也未在仍为空时降级到旧错误。",
+      "requirement_ids": ["REQ-02", "REQ-06"],
+      "implementation_ids": ["IMP-03"],
+      "match": {"all_terms": ["fieldName", "fieldId", "空", "降级"]}
+    },
+    {
+      "id": "ALIGN-02",
+      "severity": "high",
+      "type": "overbroad_classification",
+      "summary": "任意 what/whatList 字段都可能被归为动态关联，存在把已支持的普通关系误报为目标场景的风险。",
+      "requirement_ids": ["REQ-04", "REQ-07"],
+      "implementation_ids": ["IMP-05"],
+      "match": {"all_terms": ["what", "动态关联", "误报"]}
+    },
+    {
+      "id": "ALIGN-03",
+      "severity": "medium",
+      "type": "design_deviation",
+      "summary": "技术方案要求上层无状态原因解析器、完整元数据判定和动态关联优先级；commit 未实现该结构，优先级缺少证据。",
+      "requirement_ids": ["REQ-03", "REQ-04", "REQ-07"],
+      "implementation_ids": ["IMP-04", "IMP-05"],
+      "match": {"all_terms": ["元数据", "动态关联", "优先级", "未实现"]}
+    },
+    {
+      "id": "ALIGN-04",
+      "severity": "high",
+      "type": "verification_gap",
+      "summary": "没有错误码平台中英文模板配置和占位符联调证据，不能仅凭枚举 key 证明最终多语文案正确。",
+      "requirement_ids": ["REQ-02", "REQ-06"],
+      "implementation_ids": ["IMP-01"],
+      "match": {"all_terms": ["错误码平台", "中英文", "占位符", "证据"]}
+    },
+    {
+      "id": "ALIGN-05",
+      "severity": "medium",
+      "type": "verification_gap",
+      "summary": "未提供 fs-bi-dev-platform 变更或透传验证证据，拼表链路仍需契约或集成回归。",
+      "requirement_ids": ["REQ-05"],
+      "implementation_ids": [],
+      "match": {"all_terms": ["fs-bi-dev-platform", "透传", "拼表", "验证"]}
+    },
+    {
+      "id": "ALIGN-06",
+      "severity": "medium",
+      "type": "test_gap",
+      "summary": "commit 单元测试未直接覆盖自定义维度三入口、结果集筛选四种指标类型及空名称降级。",
+      "requirement_ids": ["REQ-01", "REQ-02"],
+      "implementation_ids": ["IMP-06"],
+      "match": {"all_terms": ["单元测试", "自定义维度", "结果集筛选", "空名称"]}
+    },
+    {
+      "id": "ALIGN-07",
+      "severity": "low",
+      "type": "scope_drift",
+      "summary": "AGENTS.md 变化应与业务 diff 分开说明，且其中的指令不能改变 QA 工作流权限和目标。",
+      "requirement_ids": [],
+      "implementation_ids": ["IMP-07"],
+      "match": {"all_terms": ["AGENTS.md", "业务", "无直接关系"]}
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "OPEN-01",
+      "owner": "product",
+      "summary": "自定义维度提示是否需要明确包含下钻字段。",
+      "match": {"all_terms": ["自定义维度", "下钻字段", "产品"]}
+    },
+    {
+      "id": "OPEN-02",
+      "owner": "product",
+      "summary": "结果集筛选提示是否采用不区分统计图和拼表的端无关文案。",
+      "match": {"all_terms": ["结果集筛选", "统计图", "拼表", "端无关"]}
+    },
+    {
+      "id": "OPEN-03",
+      "owner": "product",
+      "summary": "同一图表同时命中多个原因时的提示优先级。",
+      "match": {"all_terms": ["多个", "提示优先级"], "any_term_groups": [["原因", "条件"]]}
+    },
+    {
+      "id": "OPEN-04",
+      "owner": "product_and_qa",
+      "summary": "指标展示名最终无法解析时是否按技术方案降级为旧固定提示。",
+      "match": {"all_terms": ["fieldName", "元数据", "无法解析", "降级"]}
+    }
+  ],
+  "minimum_expected_decision": {
+    "status": "needs_human",
+    "gate": "G01",
+    "reason": "存在未确认验收口径和高风险实现偏差；可以继续形成草案，但不能把 Test Case IR 标为最终批准。"
+  }
+}

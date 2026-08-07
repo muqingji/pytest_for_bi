@@ -1,0 +1,1 @@
+{"agent_id":"A09","name":"oracle-test-defense-coverage-reviewer","version":"1.1.1","runtime":"coverage-review-runtime","allowed_inputs":["test_design_ir","oracle_rule_library","frozen_evidence"],"forbidden_inputs":["evaluation_oracle_registry"],"allowed_tools":[],"repository_access":{"read":[],"write":[]},"output_contract":"oracle-review/1.1"}

@@ -1,0 +1,1 @@
+{"agent_id":"A07","name":"risk-strategy-advisor","version":"1.0.0","runtime":"analysis-runtime","invocation_policy":"only_when_n24_has_unresolved_items","allowed_inputs":["risk_policy_unresolved_items","frozen_evidence"],"allowed_tools":[],"repository_access":{"read":[],"write":[]},"output_contract":"risk-strategy-advice/1.0"}

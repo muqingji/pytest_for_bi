@@ -1,0 +1,28 @@
+{
+  "schema_version": "automation-target-policy/1.0",
+  "targets": [
+    {
+      "repository_id": "pytest_for_bi",
+      "access_class": "approved_automation_repository",
+      "allowed_candidate_roots": ["generated/backend"],
+      "frameworks": ["pytest"],
+      "languages": ["python"]
+    }
+  ],
+  "command_allowlist": ["pytest"],
+  "forbidden_python_imports": [
+    "ctypes",
+    "os",
+    "pathlib",
+    "shutil",
+    "socket",
+    "subprocess"
+  ],
+  "forbidden_calls": [
+    "eval",
+    "exec",
+    "open",
+    "compile",
+    "__import__"
+  ]
+}

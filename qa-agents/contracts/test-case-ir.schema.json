@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "test-case-ir/1.0",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "intent_ids",
+    "layer",
+    "risk",
+    "priority",
+    "source_refs",
+    "preconditions",
+    "test_data",
+    "steps",
+    "expected",
+    "cleanup",
+    "execution_policy",
+    "automation_candidate"
+  ],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "parent_case_id": {"type": ["string", "null"]},
+    "title": {"type": "string", "minLength": 1},
+    "intent_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "layer": {"enum": ["scenario", "frontend", "backend", "contract", "e2e", "non_functional"]},
+    "risk": {"enum": ["low", "medium", "high", "critical"]},
+    "priority": {"enum": ["P0", "P1", "P2", "P3"]},
+    "source_refs": {"type": "array", "minItems": 1},
+    "preconditions": {"type": "array"},
+    "test_data": {"type": "object"},
+    "steps": {"type": "array", "minItems": 1},
+    "expected": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "oracle"]
+      }
+    },
+    "cleanup": {"type": "array"},
+    "execution_policy": {"type": "object"},
+    "automation_candidate": {"type": "boolean"}
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,121 @@
+{
+  "schema_version": "multica-qa-workspace/1.0",
+  "workspace": {
+    "id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
+    "name": "QA 多 Agent 质量系统",
+    "slug": "qa-multi-agent",
+    "issue_prefix": "QAA"
+  },
+  "project": {
+    "id": "c2c84f1f-20af-456d-9eca-c9fbbd253840",
+    "title": "QA 多 Agent 质量系统试点"
+  },
+  "squad": {
+    "id": "c9195ed4-dfb0-407a-83c6-13334d2a7216",
+    "name": "BI QA 质量系统试点组",
+    "leader_id": "e7354c2e-c418-4979-8294-5ca3b5707afb"
+  },
+  "runtimes": [
+    {
+      "id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
+      "provider": "codex",
+      "model": "gpt-5.6-sol",
+      "status": "active"
+    },
+    {
+      "id": "c12c5f20-80df-459a-8a6f-710e878e2aad",
+      "provider": "claude",
+      "model": "claude-sonnet-4-6",
+      "status": "unavailable_auth_401"
+    }
+  ],
+  "defaults": {
+    "permission_mode": "private",
+    "max_concurrent_tasks": 1,
+    "mcp_config": null,
+    "skills": [],
+    "repository_access": "none"
+  },
+  "pilot_state": {
+    "workflow_run_id": "multica-pilot-001",
+    "current_node": "human_test_design_correction",
+    "g02_status": "not_started",
+    "accepted_a08_task_id": "3e91044f-9b07-4d0c-a83c-f6ee60739d34",
+    "accepted_a09_task_id": "9aa7569d-9acd-4881-9065-3492a48c0f2b",
+    "n04_valid": false,
+    "correction_attempt": 2,
+    "max_correction_attempts": 2,
+    "reason_code": "test_case_ir_correction_budget_exhausted",
+    "shadow_a08_task_id": "0198fd74-bdae-46d3-afde-f014d71d2e82"
+  },
+  "agents": [
+    {
+      "logical_id": "LEAD",
+      "remote_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
+      "name": "QA 流程组长",
+      "output_contract": "workflow-coordination/1.0",
+      "instruction_version": "1.0.0",
+      "runtime_status": "unavailable_auth_401"
+    },
+    {
+      "logical_id": "A02",
+      "remote_id": "c67247f6-c668-4d1d-ab01-c1d7d0503d5a",
+      "name": "A02 需求分析",
+      "output_contract": "requirement-analysis/1.0",
+      "instruction_version": "1.1.0",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
+    },
+    {
+      "logical_id": "A03",
+      "remote_id": "5bed44c7-d486-4664-a39f-2666409315b2",
+      "name": "A03 技术方案与可测性分析",
+      "output_contract": "technical-analysis/1.0",
+      "instruction_version": "1.1.0",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
+    },
+    {
+      "logical_id": "A05",
+      "remote_id": "4864c5be-cdbe-4f92-af99-a5a0c82b7f3b",
+      "name": "A05 后端变更分析",
+      "output_contract": "change-analysis/1.0",
+      "instruction_version": "1.1.0",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
+    },
+    {
+      "logical_id": "A06",
+      "remote_id": "0e2a8d5c-36b1-4458-9264-5c900075142a",
+      "name": "A06 需求与变更对齐",
+      "output_contract": "alignment-result/1.0",
+      "instruction_version": "1.0.1",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
+    },
+    {
+      "logical_id": "A08",
+      "remote_id": "83c08d9f-1f32-49c9-88c7-c8de3bf51869",
+      "name": "A08 测试设计",
+      "output_contract": "test-design-ir/1.1",
+      "instruction_version": "1.2.1",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
+      "runtime_status": "active"
+    },
+    {
+      "logical_id": "A09",
+      "remote_id": "596cc65b-0917-4e0e-a046-084bb217c29a",
+      "name": "A09 Oracle 与测试防范覆盖审查",
+      "output_contract": "oracle-review/1.1",
+      "instruction_version": "1.1.1",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
+      "runtime_status": "active",
+      "forbidden_inputs": [
+        "evaluation_oracle_registry"
+      ]
+    }
+  ],
+  "safety": {
+    "business_repositories": "read_only_external_evidence_only",
+    "fs_qa_knowledge": "read_only_external_evidence_only",
+    "oracle_registry_access": "denied",
+    "external_side_effects": "denied",
+    "artifact_only": true
+  }
+}

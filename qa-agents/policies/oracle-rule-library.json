@@ -1,0 +1,70 @@
+{
+  "schema_version": "oracle-rule-library/1.0",
+  "purpose": "Generic Test Case IR Oracle and test-defense review rules; contains no evaluation answers",
+  "required_oracle_fields": [
+    "type",
+    "observation_point",
+    "matcher",
+    "source_ref"
+  ],
+  "allowed_oracle_types": [
+    "deterministic",
+    "human_review"
+  ],
+  "manual_oracle": {
+    "matcher": "manual_confirmation",
+    "required_allowed_mode": "manual"
+  },
+  "case_contract": {
+    "test_data_type": "object",
+    "steps_min_items": 1,
+    "expected_min_items": 1,
+    "execution_policy_allowed_modes_min_items": 1
+  },
+  "required_coverage_dimensions": [
+    "requirements",
+    "acceptance_criteria",
+    "business_rules",
+    "risk_layers",
+    "happy_path",
+    "exceptions",
+    "boundaries",
+    "permissions",
+    "state_transitions",
+    "data_consistency",
+    "compatibility",
+    "localization",
+    "entry_client_consistency",
+    "cleanup_isolation"
+  ],
+  "coverage_statuses": [
+    "covered",
+    "partial",
+    "missing",
+    "not_applicable"
+  ],
+  "blocking_issue_categories": [
+    "schema",
+    "oracle",
+    "coverage",
+    "test_data",
+    "cleanup",
+    "risk_strategy",
+    "upstream_conflict"
+  ],
+  "routing": {
+    "schema": "A08",
+    "oracle": "A08",
+    "coverage": "A08",
+    "test_data": "A08",
+    "cleanup": "A08",
+    "risk_strategy": "A07",
+    "upstream_conflict": "A06/G01"
+  },
+  "forbidden_inputs": [
+    "evaluation_oracle_registry",
+    "golden_answer",
+    "expected_agent_output"
+  ],
+  "code_coverage_reviewed": false
+}

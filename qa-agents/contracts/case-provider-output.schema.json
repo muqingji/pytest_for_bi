@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "case-provider-output/1.0",
+  "type": "object",
+  "required": ["metadata", "candidates"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["mode", "provider_commit", "output_contract", "side_effects"],
+      "properties": {
+        "mode": {"const": "artifact_only"},
+        "provider_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "output_contract": {"const": "case-provider-output/1.0"},
+        "side_effects": {"type": "array", "maxItems": 0},
+        "source_format": {"enum": ["json", "markdown_table"]},
+        "source_refs": {"type": "array"}
+      },
+      "additionalProperties": true
+    },
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "feature",
+          "title",
+          "priority",
+          "case_type",
+          "preconditions",
+          "steps",
+          "expected",
+          "source_refs"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

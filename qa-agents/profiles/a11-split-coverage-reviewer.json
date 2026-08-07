@@ -1,0 +1,1 @@
+{"agent_id":"A11","name":"split-coverage-reviewer","version":"1.0.0","runtime":"coverage-review-runtime","allowed_inputs":["parent_test_case_ir","n25_compiled_test_case_ir"],"allowed_tools":[],"repository_access":{"read":[],"write":[]},"output_contract":"split-review/1.0"}

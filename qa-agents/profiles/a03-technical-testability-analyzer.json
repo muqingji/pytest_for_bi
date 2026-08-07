@@ -1,0 +1,1 @@
+{"agent_id":"A03","name":"technical-testability-analyzer","version":"1.1.0","runtime":"analysis-runtime","allowed_inputs":["frozen_technical_design","test_tool_capabilities"],"allowed_tools":["read_trusted_runtime_skill","read_current_issue","download_approved_attachment"],"repository_access":{"read":[],"write":[]},"output_contract":"technical-analysis/1.0"}

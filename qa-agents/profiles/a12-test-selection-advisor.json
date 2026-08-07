@@ -1,0 +1,1 @@
+{"agent_id":"A12","name":"test-selection-advisor","version":"1.0.0","runtime":"test-design-runtime","invocation_policy":"only_when_n26_has_unresolved_items","allowed_inputs":["selection_unresolved_items","change_set","asset_evidence"],"allowed_tools":[],"repository_access":{"read":[],"write":[]},"output_contract":"test-selection-advice/1.0"}

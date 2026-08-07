@@ -1,0 +1,39 @@
+{
+  "schema_version": "pilot-test-obligations-oracle/1.0",
+  "fixture_id": "pilot-001-detail-drill-message-i18n",
+  "evaluation_rule": "以下义务必须映射为独立 Case 或可审查的参数化 Case；只在摘要中提及不算覆盖。",
+  "obligations": [
+    {"id": "TEST-001", "priority": "P0", "level": "backend", "summary": "自定义维度作为原始图维度时返回专用错误码和当前语言文案。", "match": {"all_terms": ["自定义维度", "原始图维度", "错误码", "文案"]}},
+    {"id": "TEST-002", "priority": "P0", "level": "backend", "summary": "自定义维度作为数据范围时返回专用错误码和当前语言文案。", "match": {"all_terms": ["自定义维度", "数据范围", "错误码", "文案"]}},
+    {"id": "TEST-003", "priority": "P0", "level": "backend", "summary": "自定义维度作为下钻字段时返回专用错误码，并按确认后的文案口径断言。", "match": {"all_terms": ["自定义维度", "下钻字段", "错误码", "文案"]}},
+    {"id": "TEST-004", "priority": "P0", "level": "backend", "summary": "时分筛选继续返回原错误，不误报为自定义维度。", "match": {"all_terms": ["时分筛选", "原错误", "自定义维度"]}},
+    {"id": "TEST-005", "priority": "P0", "level": "backend", "summary": "普通指标按结果集筛选时返回专用错误和正确指标名参数。", "match": {"all_terms": ["普通指标", "结果集", "指标名"]}},
+    {"id": "TEST-006", "priority": "P0", "level": "backend", "summary": "聚合指标按结果集筛选时返回专用错误和正确指标名参数。", "match": {"all_terms": ["聚合指标", "结果集", "指标名"]}},
+    {"id": "TEST-007", "priority": "P0", "level": "backend", "summary": "计算指标按结果集筛选时返回专用错误和正确指标名参数。", "match": {"all_terms": ["计算指标", "结果集", "指标名"]}},
+    {"id": "TEST-008", "priority": "P0", "level": "backend", "summary": "同环比指标按结果集筛选时返回专用错误和正确指标名参数。", "match": {"all_terms": ["同环比指标", "结果集", "指标名"]}},
+    {"id": "TEST-009", "priority": "P0", "level": "backend", "summary": "fieldName 为空时按 fieldId 获取当前语言展示名。", "match": {"all_terms": ["fieldName", "为空", "fieldId", "展示名"]}},
+    {"id": "TEST-010", "priority": "P0", "level": "backend", "summary": "fieldName 和元数据名称均为空时不返回空占位符，按确认口径降级旧错误。", "match": {"all_terms": ["fieldName", "元数据", "为空", "降级", "旧错误"]}},
+    {"id": "TEST-011", "priority": "P0", "level": "backend", "summary": "下游复杂虚拟指标继续返回原错误，不使用结果集筛选新模板。", "match": {"all_terms": ["下游复杂虚拟指标", "原错误", "结果集筛选"]}},
+    {"id": "TEST-012", "priority": "P0", "level": "backend", "summary": "多关联原因且原关系处理失败时返回多关联专用错误。", "match": {"all_terms": ["多关联", "原关系", "失败", "专用错误"]}},
+    {"id": "TEST-013", "priority": "P0", "level": "backend", "summary": "具有多关联特征但原关系处理成功时仍允许正常查看明细。", "match": {"all_terms": ["多关联", "原关系", "成功", "正常查看明细"]}},
+    {"id": "TEST-014", "priority": "P0", "level": "backend", "summary": "业务流程特殊动态关联在原关系失败时返回动态关联专用错误。", "match": {"all_terms": ["业务流程", "动态关联", "失败", "专用错误"]}},
+    {"id": "TEST-015", "priority": "P0", "level": "backend", "summary": "业务流程任务特殊动态关联在原关系失败时返回动态关联专用错误。", "match": {"all_terms": ["业务流程任务", "动态关联", "失败", "专用错误"]}},
+    {"id": "TEST-016", "priority": "P0", "level": "backend", "summary": "服务记录特殊动态关联在原关系失败时返回动态关联专用错误。", "match": {"all_terms": ["服务记录", "动态关联", "失败", "专用错误"]}},
+    {"id": "TEST-017", "priority": "P0", "level": "backend", "summary": "已支持的普通 what/whatList 关系不被误报为特殊动态关联。", "match": {"all_terms": ["普通", "what", "误报", "动态关联"]}},
+    {"id": "TEST-018", "priority": "P0", "level": "backend", "summary": "普通对象关系元数据异常保留原错误，不误报多关联或动态关联。", "match": {"all_terms": ["普通对象关系", "元数据异常", "原错误", "误报"]}},
+    {"id": "TEST-019", "priority": "P1", "level": "backend", "summary": "动态关联和多关联特征同时命中时按确认后的优先级返回首个原因。", "match": {"all_terms": ["动态关联", "多关联", "同时命中", "优先级"]}},
+    {"id": "TEST-020", "priority": "P0", "level": "backend", "summary": "正常查看明细的查询参数、数据、分页和历史图表行为不变。", "match": {"all_terms": ["正常查看明细", "查询参数", "分页", "历史图表", "不变"]}},
+    {"id": "TEST-021", "priority": "P0", "level": "contract", "summary": "错误码平台中文模板、标点和指标名占位符渲染正确。", "match": {"all_terms": ["错误码平台", "中文模板", "标点", "占位符"]}},
+    {"id": "TEST-022", "priority": "P0", "level": "contract", "summary": "错误码平台英文模板和当前语言指标展示名渲染正确。", "match": {"all_terms": ["错误码平台", "英文模板", "指标展示名"]}},
+    {"id": "TEST-023", "priority": "P0", "level": "contract", "summary": "fs-bi-dev-platform 对专用错误码和指标名参数完整透传，不包装或丢失。", "match": {"all_terms": ["fs-bi-dev-platform", "错误码", "指标名", "透传"]}},
+    {"id": "TEST-024", "priority": "P0", "level": "e2e", "summary": "统计图 Web 和移动端对四类原因展示一致。", "match": {"all_terms": ["统计图", "web", "移动端", "四类原因"]}},
+    {"id": "TEST-025", "priority": "P0", "level": "e2e", "summary": "拼表 Web 和移动端对四类原因展示一致。", "match": {"all_terms": ["拼表", "web", "移动端", "四类原因"]}},
+    {"id": "TEST-026", "priority": "P1", "level": "e2e", "summary": "超长指标名提示可完整阅读或按端规范截断，不遮挡主操作。", "match": {"all_terms": ["超长指标名", "截断", "不遮挡"]}}
+  ],
+  "coverage_groups": {
+    "custom_dimension": ["TEST-001", "TEST-002", "TEST-003", "TEST-004"],
+    "result_set_filter": ["TEST-005", "TEST-006", "TEST-007", "TEST-008", "TEST-009", "TEST-010", "TEST-011"],
+    "relation_reason": ["TEST-012", "TEST-013", "TEST-014", "TEST-015", "TEST-016", "TEST-017", "TEST-018", "TEST-019"],
+    "compatibility": ["TEST-020", "TEST-021", "TEST-022", "TEST-023", "TEST-024", "TEST-025", "TEST-026"]
+  }
+}

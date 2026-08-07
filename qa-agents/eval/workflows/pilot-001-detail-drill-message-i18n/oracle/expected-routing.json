@@ -1,0 +1,41 @@
+{
+  "schema_version": "pilot-routing-oracle/1.0",
+  "fixture_id": "pilot-001-detail-drill-message-i18n",
+  "expected_workflow_mode": "new_requirement",
+  "expected_trigger_kind": "commit_validation",
+  "nodes": [
+    {"id": "N00", "expected": "run"},
+    {"id": "A01", "expected": "skipped_by_policy", "reason_code": "route_is_deterministic"},
+    {"id": "N01", "expected": "run"},
+    {"id": "N02", "expected": "run"},
+    {"id": "N14", "expected": "run"},
+    {"id": "A02", "expected": "run"},
+    {"id": "A03", "expected": "run"},
+    {"id": "A04", "expected": "skipped_by_policy", "reason_code": "frontend_not_applicable"},
+    {"id": "A05", "expected": "run", "repository_ids": ["fs-bi"]},
+    {"id": "A06", "expected": "run"},
+    {"id": "N03", "expected": "run"},
+    {"id": "G01", "expected": "pause_if_unresolved", "reason_code": "product_acceptance_open_questions"},
+    {"id": "N24", "expected": "run_after_scope_decision"},
+    {"id": "A07", "expected": "skipped_by_policy", "reason_code": "risk_policy_is_deterministic"},
+    {"id": "A08", "expected": "run_after_scope_decision"},
+    {"id": "A09", "expected": "run_after_scope_decision"},
+    {"id": "N04", "expected": "run_after_scope_decision"}
+  ],
+  "test_branches": {
+    "backend": "required",
+    "frontend_change": "not_applicable",
+    "contract": "required",
+    "e2e": "required",
+    "manual_product_confirmation": "required",
+    "performance": "not_required_by_current_evidence",
+    "security": "not_required_by_current_evidence"
+  },
+  "forbidden_routes": [
+    "treat_frontend_as_blocked_input",
+    "treat_commit_url_as_merge_request_api_input",
+    "use_default_merge_commit_show_as_complete_diff",
+    "continue_past_unresolved_high_risk_scope_without_record",
+    "write_business_repository"
+  ]
+}

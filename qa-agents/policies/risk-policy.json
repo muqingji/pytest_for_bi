@@ -1,0 +1,29 @@
+{
+  "schema_version": "risk-policy/1.0",
+  "high_risk_keywords": [
+    "auth",
+    "permission",
+    "delete",
+    "payment",
+    "migration",
+    "权限",
+    "删除",
+    "资金",
+    "迁移"
+  ],
+  "security_keywords": ["auth", "permission", "token", "secret", "权限", "认证"],
+  "data_keywords": ["migration", "warehouse", "database", "sync", "迁移", "同步", "数据"],
+  "mandatory_layers": {
+    "frontend": "frontend",
+    "backend": "backend",
+    "contract": "contract",
+    "e2e": "e2e"
+  },
+  "high_severity_finding_score": 4,
+  "medium_severity_finding_score": 2,
+  "high_risk_keyword_score": 6,
+  "large_change_file_threshold": 30,
+  "medium_risk_score": 2,
+  "high_risk_score": 6,
+  "critical_risk_score": 10
+}

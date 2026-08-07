@@ -1,0 +1,51 @@
+{
+  "schema_version": "pilot-workflow-input/1.0",
+  "fixture_id": "pilot-001-detail-drill-message-i18n",
+  "title": "下钻查看明细提示文案优化",
+  "workflow_mode": "new_requirement",
+  "trigger": {
+    "kind": "commit_validation",
+    "url": "https://git.firstshare.cn/bi/fs-bi/-/commit/c6b785344c6973b6d6fc5bb108c45b3971f36c64"
+  },
+  "goal": "根据冻结的需求、后端技术方案和实现 commit 生成可追溯的 Test Case IR，并识别需求、方案、实现和既有测试之间的差异。",
+  "requirement_scope": {
+    "story_path": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化",
+    "requirement_file": "product/prd.md",
+    "heading": "下钻查看明细提示文案优化",
+    "heading_occurrence": 1,
+    "exclude_sibling_requirements": true,
+    "technical_design_files": [
+      "dev/tech-review-backend.md"
+    ]
+  },
+  "component_applicability": {
+    "frontend": {
+      "status": "not_applicable",
+      "reason": "本需求没有前端实现或前端变更 commit。"
+    },
+    "backend": {
+      "status": "applicable",
+      "primary_repository": "fs-bi"
+    },
+    "contract": {
+      "status": "applicable",
+      "reason": "错误码、国际化模板参数和下游透传属于消费者契约。"
+    },
+    "e2e": {
+      "status": "applicable",
+      "reason": "PRD 要求统计图、拼表、Web、移动端和中英文最终文案一致。"
+    }
+  },
+  "source_access_policy": {
+    "business_repositories": "read_only",
+    "fetch_from_remote": true,
+    "use_mutable_local_worktree": false,
+    "allow_business_repository_metadata_writes": false,
+    "writable_targets": [
+      "workflow_artifact_store",
+      "approved_automation_repository"
+    ]
+  },
+  "requested_stage_end": "N04",
+  "secrets_required": false
+}

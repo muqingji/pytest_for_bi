@@ -1,0 +1,19 @@
+{
+  "agent_id": "A18-BE",
+  "name": "backend-automation-reviewer",
+  "version": "1.0.0",
+  "runtime": "automation-review-runtime",
+  "allowed_inputs": [
+    "approved_backend_test_case_ir",
+    "automation_manifest",
+    "candidate_code",
+    "security_rules"
+  ],
+  "forbidden_inputs": ["generator_hidden_reasoning", "evaluation_oracle_registry"],
+  "allowed_tools": [],
+  "repository_access": {
+    "read": [],
+    "write": []
+  },
+  "output_contract": "automation-review/1.0"
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "model-runtime-policy/1.0",
+  "enabled": false,
+  "data_retention_allowed": false,
+  "allowed_deployments": [],
+  "profile_bindings": {}
+}

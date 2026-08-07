@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "change-set/1.0",
+  "type": "object",
+  "required": [
+    "change_set_id",
+    "repository_id",
+    "change_kind",
+    "source_ref",
+    "base_commit",
+    "head_commit",
+    "parents",
+    "diff_mode",
+    "changed_files",
+    "diff_hash"
+  ],
+  "properties": {
+    "change_set_id": {"type": "string", "minLength": 1},
+    "repository_id": {"type": "string", "minLength": 1},
+    "change_kind": {
+      "enum": ["single_commit", "merge_commit", "merge_request", "commit_range", "release_manifest"]
+    },
+    "base_commit": {"type": "string", "minLength": 1},
+    "head_commit": {"type": "string", "minLength": 1},
+    "parents": {"type": "array", "items": {"type": "string"}},
+    "diff_mode": {"enum": ["first_parent", "merge_base", "explicit_range", "release_manifest"]},
+    "changed_files": {"type": "array", "items": {"type": "string"}},
+    "diff_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "additionalProperties": true
+}

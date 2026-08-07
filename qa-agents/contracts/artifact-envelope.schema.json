@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "artifact-envelope/1.0",
+  "type": "object",
+  "required": [
+    "workflow_run_id",
+    "workflow_mode",
+    "schema_version",
+    "artifact_id",
+    "artifact_hash",
+    "source_snapshot_id",
+    "producer",
+    "created_at",
+    "status",
+    "evidence_refs",
+    "payload"
+  ],
+  "properties": {
+    "workflow_run_id": {"type": "string", "minLength": 1},
+    "workflow_mode": {"type": "string", "minLength": 1},
+    "schema_version": {"const": "artifact-envelope/1.0"},
+    "artifact_id": {"type": "string", "minLength": 1},
+    "artifact_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "source_snapshot_id": {"type": "string", "minLength": 1},
+    "producer": {
+      "type": "object",
+      "required": [
+        "component_id",
+        "component_version",
+        "runtime",
+        "profile_version",
+        "model_provider",
+        "model_snapshot",
+        "prompt_version",
+        "inference_config_hash",
+        "tool_bundle_version"
+      ]
+    },
+    "created_at": {"type": "string", "format": "date-time"},
+    "status": {
+      "enum": [
+        "completed",
+        "completed_with_gaps",
+        "needs_human",
+        "blocked_input",
+        "not_applicable",
+        "skipped_by_policy",
+        "stale",
+        "cancelled",
+        "inconclusive",
+        "failed_retryable",
+        "failed_fatal"
+      ]
+    },
+    "evidence_refs": {"type": "array"},
+    "payload": {"type": "object"}
+  },
+  "additionalProperties": true
+}

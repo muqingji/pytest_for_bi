@@ -1,0 +1,36 @@
+{
+  "schema_version": "g01-review-policy/1.1",
+  "allowed_roles": [
+    "qa_owner"
+  ],
+  "allowed_dispositions": [
+    "confirmed",
+    "resolved_upstream",
+    "return_to_a02",
+    "return_to_a03",
+    "return_to_a05",
+    "return_to_a06"
+  ],
+  "required_roles_by_source": {
+    "A02": [
+      "qa_owner"
+    ],
+    "A03": [
+      "qa_owner"
+    ],
+    "A06": [
+      "qa_owner"
+    ]
+  },
+  "approval_mode": "qa_owner_single_signoff",
+  "policy_scope": "pilot_test_design_only",
+  "temporary_policy": true,
+  "production_release_authority": false,
+  "exit_criteria": "Restore separation-of-duties roles before production release integration",
+  "required_approval_fields": [
+    "test_rules"
+  ],
+  "approval_rule": "all_review_issues_confirmed_or_resolved_upstream",
+  "agent_approval_allowed": false,
+  "invalidation_rule": "any_upstream_artifact_hash_change"
+}
