@@ -1,0 +1,16 @@
+{
+  "agent_id": "A01",
+  "name": "workflow-route-advisor",
+  "version": "1.0.0",
+  "runtime": "analysis-runtime",
+  "allowed_inputs": [
+    "n00_unresolved_routing_items",
+    "workflow_template_registry"
+  ],
+  "allowed_tools": [],
+  "repository_access": {
+    "read": [],
+    "write": []
+  },
+  "output_contract": "workflow-route-advice/1.0"
+}

@@ -5,10 +5,12 @@ PILOT_INPUT := eval/workflows/pilot-001-detail-drill-message-i18n/input
 PILOT_ORACLE := eval/workflows/pilot-001-detail-drill-message-i18n/oracle
 PILOT_RUN := runs/pilot-001
 
-.PHONY: test pilot pilot-full pilot-automation collect-pilot evaluate-pilot prepare-multica-pilot prepare-multica-alignment-pilot report-multica-alignment-pilot prepare-g01-pilot record-g01-pilot run-n24-pilot prepare-multica-test-design-pilot prepare-multica-oracle-review-pilot run-n04-pilot prepare-multica-test-design-correction-pilot prepare-multica-oracle-review-correction-pilot run-n04-correction-pilot
+.PHONY: test pilot pilot-full pilot-automation collect-pilot evaluate-pilot prepare-multica-pilot prepare-multica-alignment-pilot report-multica-alignment-pilot prepare-g01-pilot record-g01-pilot run-n24-pilot prepare-multica-test-design-pilot prepare-multica-oracle-review-pilot run-n04-pilot prepare-multica-test-design-correction-pilot prepare-multica-oracle-review-correction-pilot run-n04-correction-pilot prepare-human-correction-pilot open-human-correction-pilot sync-human-correction-pilot prepare-multica-human-correction-pilot prepare-g02-pilot open-g02-pilot sync-g02-pilot
 
 G01_DIR := $(PILOT_RUN)/g01
 G01_DECISION_INPUT ?= $(G01_DIR)/g01-decision-input.json
+G02_DIR := $(PILOT_RUN)/g02
+HUMAN_CORRECTION_DIR := $(PILOT_RUN)/human-correction
 
 test:
 	PYTHONPATH=$(PYTHONPATH) $(PYTEST) -q tests
@@ -63,3 +65,76 @@ prepare-multica-oracle-review-correction-pilot:
 
 run-n04-correction-pilot:
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n04-after-a09 --test-design-artifact $(PILOT_RUN)/multica-stage7/artifacts/a08-test-design-ir.json --oracle-review-artifact $(PILOT_RUN)/multica-stage8/artifacts/a09-oracle-coverage-review.json --oracle-review-bundle $(PILOT_RUN)/multica-inputs/a09-correction-01/a09-input.json --output $(PILOT_RUN)/multica-stage9 --correction-attempt 2 --max-correction-attempts 2
+
+prepare-human-correction-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-human-correction --test-design-artifact $(PILOT_RUN)/multica-stage7/artifacts/a08-test-design-ir.json --oracle-review-artifact $(PILOT_RUN)/multica-stage8/artifacts/a09-oracle-coverage-review.json --n04-artifact $(PILOT_RUN)/multica-stage9/artifacts/n04-test-case-ir-validation.json --policy policies/human-correction-policy.json --output $(HUMAN_CORRECTION_DIR)
+
+open-human-correction-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents open-human-correction-multica --request $(HUMAN_CORRECTION_DIR)/human-correction-request.json --policy policies/human-correction-policy.json --output $(HUMAN_CORRECTION_DIR)
+
+sync-human-correction-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents sync-human-correction-multica --request $(HUMAN_CORRECTION_DIR)/human-correction-request.json --n04-artifact $(PILOT_RUN)/multica-stage9/artifacts/n04-test-case-ir-validation.json --policy policies/human-correction-policy.json --output $(HUMAN_CORRECTION_DIR) --run-manifest $(PILOT_RUN)/multica-run-manifest.json --workspace-manifest multica/workspace-manifest.json
+
+prepare-multica-human-correction-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-multica-human-test-design-correction --previous-test-design-artifact $(PILOT_RUN)/multica-stage7/artifacts/a08-test-design-ir.json --previous-test-design-bundle $(PILOT_RUN)/multica-inputs/a08-correction-01/a08-input.json --oracle-review-artifact $(PILOT_RUN)/multica-stage8/artifacts/a09-oracle-coverage-review.json --n04-artifact $(PILOT_RUN)/multica-stage9/artifacts/n04-test-case-ir-validation.json --human-request $(HUMAN_CORRECTION_DIR)/human-correction-request.json --human-decision $(HUMAN_CORRECTION_DIR)/human-correction-decision.json --human-policy policies/human-correction-policy.json --output $(PILOT_RUN)/multica-inputs/a08-human-correction-01
+
+prepare-g02-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-g02 --test-design-artifact $(PILOT_RUN)/multica-stage7/artifacts/a08-test-design-ir.json --oracle-review-artifact $(PILOT_RUN)/multica-stage8/artifacts/a09-oracle-coverage-review.json --n04-artifact $(PILOT_RUN)/multica-stage9/artifacts/n04-test-case-ir-validation.json --policy policies/g02-review-policy.json --output $(G02_DIR)
+
+open-g02-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents open-g02-multica --request $(G02_DIR)/g02-review-request.json --policy policies/g02-review-policy.json --output $(G02_DIR)
+
+sync-g02-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents sync-g02-multica --request $(G02_DIR)/g02-review-request.json --n04-artifact $(PILOT_RUN)/multica-stage9/artifacts/n04-test-case-ir-validation.json --policy policies/g02-review-policy.json --output $(G02_DIR)
+
+
+# Human recovery continuum after QAA-19 authorization.
+# A accepted A08 Multica run must emit binding fields as final text and pass tool-trace audit.
+
+HUMAN_A08_BUNDLE=$(PILOT_RUN)/multica-inputs/a08-human-correction-01/a08-input.json
+HUMAN_A08_RESPONSE=$(PILOT_RUN)/multica-outputs/a08-human-correction-01-run-messages.json
+HUMAN_A08_STAGE=$(PILOT_RUN)/multica-stage10
+HUMAN_A09_INPUT=$(PILOT_RUN)/multica-inputs/a09-human-correction-01
+HUMAN_A09_STAGE=$(PILOT_RUN)/multica-stage11
+HUMAN_N04_STAGE=$(PILOT_RUN)/multica-stage12
+
+validate-human-a08-candidate-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents validate-multica-candidate --bundle $(HUMAN_A08_BUNDLE) --response $(HUMAN_A08_RESPONSE) --task-id ef5825a9-71c1-4938-ba70-23939896fa9a --issue-id 1cd41070-3051-49bb-82e2-020e7f6281f4 --attachment-id 019fea88-f67f-7c78-850c-b2f91497c919 --model-provider codex --model gpt-5.6-sol --prompt-version 1.3.0 --expect-reject
+
+prepare-multica-oracle-review-human-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-multica-oracle-review --test-design-artifact $(HUMAN_A08_STAGE)/artifacts/a08-test-design-ir.json --test-design-bundle $(HUMAN_A08_BUNDLE) --oracle-rules policies/oracle-rule-library.json --output $(HUMAN_A09_INPUT)
+
+run-n04-human-correction-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n04-after-a09 --test-design-artifact $(HUMAN_A08_STAGE)/artifacts/a08-test-design-ir.json --oracle-review-artifact $(HUMAN_A09_STAGE)/artifacts/a09-oracle-coverage-review.json --oracle-review-bundle $(HUMAN_A09_INPUT)/a09-input.json --output $(HUMAN_N04_STAGE) --correction-attempt 3 --max-correction-attempts 2
+
+prepare-g02-after-human-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-g02 --test-design-artifact $(HUMAN_A08_STAGE)/artifacts/a08-test-design-ir.json --oracle-review-artifact $(HUMAN_A09_STAGE)/artifacts/a09-oracle-coverage-review.json --n04-artifact $(HUMAN_N04_STAGE)/artifacts/n04-test-case-ir-validation.json --policy policies/g02-review-policy.json --output $(G02_DIR)
+
+open-g02-after-human-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents open-g02-multica --request $(G02_DIR)/g02-review-request.json --policy policies/g02-review-policy.json --output $(G02_DIR)
+
+sync-g02-after-human-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents sync-g02-multica --request $(G02_DIR)/g02-review-request.json --n04-artifact $(HUMAN_N04_STAGE)/artifacts/n04-test-case-ir-validation.json --policy policies/g02-review-policy.json --output $(G02_DIR)
+
+# Stage-two real chain after G02 approval (N25 -> A11 -> N26 -> N15).
+# A11 is an external Multica review: prepare the input, hand it to the A11 Agent
+# in the Multica desktop, then ingest the accepted output before N26/N15.
+
+HUMAN_A08_STAGE=$(PILOT_RUN)/multica-stage10
+HUMAN_N25_STAGE=$(PILOT_RUN)/multica-stage13
+HUMAN_A11_INPUT=$(PILOT_RUN)/multica-inputs/a11-01
+HUMAN_A11_STAGE=$(PILOT_RUN)/multica-stage14
+HUMAN_N26_STAGE=$(PILOT_RUN)/multica-stage15
+HUMAN_N15_STAGE=$(PILOT_RUN)/multica-stage16
+
+run-n25-after-g02-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n25-after-g02 --a08-artifact $(HUMAN_A08_STAGE)/artifacts/a08-test-design-ir.json --g02-request $(G02_DIR)/g02-review-request.json --g02-outcome $(G02_DIR)/g02-review-outcome.json --output $(HUMAN_N25_STAGE)
+
+prepare-multica-split-review-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-multica-split-review --test-design-artifact $(HUMAN_A08_STAGE)/artifacts/a08-test-design-ir.json --test-design-bundle $(PILOT_RUN)/multica-inputs/a08-human-correction-01/a08-input.json --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --oracle-rules policies/oracle-rule-library.json --output $(HUMAN_A11_INPUT)
+
+run-n26-after-a11-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n26-after-a11 --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --split-review-artifact $(HUMAN_A11_STAGE)/artifacts/a11-split-coverage-review.json --split-review-bundle $(HUMAN_A11_INPUT)/a11-input.json --output $(HUMAN_N26_STAGE)
+
+run-n15-after-n26-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n15-after-n26 --selection-artifact $(HUMAN_N26_STAGE)/artifacts/n26-test-selection.json --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --output $(HUMAN_N15_STAGE)

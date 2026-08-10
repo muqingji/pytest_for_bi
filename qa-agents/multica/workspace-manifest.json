@@ -1,121 +1,174 @@
 {
-  "schema_version": "multica-qa-workspace/1.0",
-  "workspace": {
-    "id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
-    "name": "QA 多 Agent 质量系统",
-    "slug": "qa-multi-agent",
-    "issue_prefix": "QAA"
+  "agents": [
+    {
+      "instruction_version": "1.0.0",
+      "logical_id": "LEAD",
+      "name": "QA 流程组长",
+      "output_contract": "workflow-coordination/1.0",
+      "remote_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
+      "runtime_status": "active",
+      "last_checked": "2026-08-10T12:00:00Z",
+      "note": "Runtime c12c5f20 (Claude MacBook-Pro-3.local) online; stale unavailable_auth_401 replaced after live query on 2026-08-10."
+    },
+    {
+      "instruction_version": "1.1.0",
+      "logical_id": "A02",
+      "name": "A02 需求分析",
+      "output_contract": "requirement-analysis/1.0",
+      "remote_id": "c67247f6-c668-4d1d-ab01-c1d7d0503d5a",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
+    },
+    {
+      "instruction_version": "1.1.0",
+      "logical_id": "A03",
+      "name": "A03 技术方案与可测性分析",
+      "output_contract": "technical-analysis/1.0",
+      "remote_id": "5bed44c7-d486-4664-a39f-2666409315b2",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
+    },
+    {
+      "instruction_version": "1.1.0",
+      "logical_id": "A05",
+      "name": "A05 后端变更分析",
+      "output_contract": "change-analysis/1.0",
+      "remote_id": "4864c5be-cdbe-4f92-af99-a5a0c82b7f3b",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
+    },
+    {
+      "instruction_version": "1.0.1",
+      "logical_id": "A06",
+      "name": "A06 需求与变更对齐",
+      "output_contract": "alignment-result/1.0",
+      "remote_id": "0e2a8d5c-36b1-4458-9264-5c900075142a",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
+    },
+    {
+      "instruction_version": "1.3.0",
+      "logical_id": "A08",
+      "name": "A08 测试设计",
+      "output_contract": "test-design-ir/1.1",
+      "remote_id": "83c08d9f-1f32-49c9-88c7-c8de3bf51869",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
+      "runtime_status": "active",
+      "recovery_instruction_version": "1.3.0",
+      "recovery_instruction_path": "multica/agent-instructions/a08-v1.3.0.md",
+      "note": "A08 Multica agent currently hosts human-recovery instruction 1.3.0 for the authorized rerun. After pilot recovery closes, restore automatic-correction instruction 1.2.1 unless a dedicated recovery agent is created.",
+      "published_instruction_version": "1.3.0",
+      "published_at": "2026-08-10T10:28:23Z",
+      "published_from": "qa-agents/multica/agent-instructions/a08-v1.3.0.md"
+    },
+    {
+      "forbidden_inputs": [
+        "evaluation_oracle_registry"
+      ],
+      "instruction_version": "1.1.1",
+      "logical_id": "A09",
+      "name": "A09 Oracle 与测试防范覆盖审查",
+      "output_contract": "oracle-review/1.1",
+      "remote_id": "596cc65b-0917-4e0e-a046-084bb217c29a",
+      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
+      "runtime_status": "active"
+    }
+  ],
+  "defaults": {
+    "max_concurrent_tasks": 1,
+    "mcp_config": null,
+    "permission_mode": "private",
+    "repository_access": "none",
+    "skills": []
+  },
+  "gate_policies": {
+    "G02": {
+      "allowed_actor_id": "muqj11262",
+      "allowed_multica_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+      "allowed_role": "qa_owner",
+      "approval_mode": "named_qa_owner_single_signoff",
+      "migration_target_role": "qa_reviewer",
+      "migration_trigger": "end_to_end_quality_chain_completed",
+      "policy_path": "policies/g02-review-policy.json",
+      "policy_scope": "pilot_test_design_only",
+      "production_release_authority": false,
+      "status": "opened_waiting_for_qa_owner",
+      "workflow_contract": "multica/g02-review-workflow.json"
+    }
+  },
+  "pilot_state": {
+    "accepted_a08_task_id": "346f171a-a33c-4a9a-91d9-a41ad24181d4",
+    "accepted_a09_task_id": "7fb0ceb7-ca49-4538-ba7e-b0f4cd5a960d",
+    "correction_attempt": 2,
+    "current_node": "N25",
+    "g02_approver_id": "muqj11262",
+    "g02_approver_role": "qa_owner",
+    "g02_status": "approved",
+    "human_correction": {
+      "assignee_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+      "automatic_budget_reset": false,
+      "decision_hash": "sha256:bcd9049edf1e9ee51917453825f9b28735b035858f0ad0a2b74f771daf1d5ba4",
+      "directive_count": 4,
+      "issue_id": "07ba2bb1-43c9-4a00-b9d5-e871c89d705c",
+      "issue_identifier": "QAA-19",
+      "next_node": "A08",
+      "next_node_after_approval": "A08",
+      "observed_multica_status": "done",
+      "outcome_hash": "sha256:8b2432e5a9ac6ccb368b9c79b5382dffd4d282f5a273e1d466950b1ca0b42080",
+      "request_hash": "sha256:2915ece7defea550d9db9719f607f41ce3e3030d13db542e451f7d034b2fab0e",
+      "state": "authorized",
+      "status": "done",
+      "recovery_a08_status": "accepted",
+      "rejected_recovery_issue_identifier": "QAA-20",
+      "rejected_recovery_task_id": "ef5825a9-71c1-4938-ba70-23939896fa9a",
+      "accepted_recovery_issue_identifier": "QAA-21",
+      "accepted_recovery_task_id": "346f171a-a33c-4a9a-91d9-a41ad24181d4"
+    },
+    "max_correction_attempts": 2,
+    "n04_valid": true,
+    "reason_code": "test_case_ir_correction_budget_exhausted",
+    "shadow_a08_task_id": "0198fd74-bdae-46d3-afde-f014d71d2e82",
+    "workflow_run_id": "multica-pilot-001",
+    "next_action": "G02 approved (QAA-24 done by muqj11262 at 2026-08-10T11:22:38Z); resume at N25 -> A11 -> N26 -> N15",
+    "a08_instruction_published": "1.3.0",
+    "g02_issue_identifier": "QAA-24",
+    "g02_issue_id": "9938c71b-b00a-4117-bfe7-04d05b4b3cee"
   },
   "project": {
     "id": "c2c84f1f-20af-456d-9eca-c9fbbd253840",
     "title": "QA 多 Agent 质量系统试点"
   },
-  "squad": {
-    "id": "c9195ed4-dfb0-407a-83c6-13334d2a7216",
-    "name": "BI QA 质量系统试点组",
-    "leader_id": "e7354c2e-c418-4979-8294-5ca3b5707afb"
-  },
   "runtimes": [
     {
       "id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
-      "provider": "codex",
       "model": "gpt-5.6-sol",
-      "status": "active"
+      "provider": "codex",
+      "status": "active",
+      "last_seen": "2026-08-10T11:51:39Z"
     },
     {
       "id": "c12c5f20-80df-459a-8a6f-710e878e2aad",
-      "provider": "claude",
       "model": "claude-sonnet-4-6",
-      "status": "unavailable_auth_401"
-    }
-  ],
-  "defaults": {
-    "permission_mode": "private",
-    "max_concurrent_tasks": 1,
-    "mcp_config": null,
-    "skills": [],
-    "repository_access": "none"
-  },
-  "pilot_state": {
-    "workflow_run_id": "multica-pilot-001",
-    "current_node": "human_test_design_correction",
-    "g02_status": "not_started",
-    "accepted_a08_task_id": "3e91044f-9b07-4d0c-a83c-f6ee60739d34",
-    "accepted_a09_task_id": "9aa7569d-9acd-4881-9065-3492a48c0f2b",
-    "n04_valid": false,
-    "correction_attempt": 2,
-    "max_correction_attempts": 2,
-    "reason_code": "test_case_ir_correction_budget_exhausted",
-    "shadow_a08_task_id": "0198fd74-bdae-46d3-afde-f014d71d2e82"
-  },
-  "agents": [
-    {
-      "logical_id": "LEAD",
-      "remote_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
-      "name": "QA 流程组长",
-      "output_contract": "workflow-coordination/1.0",
-      "instruction_version": "1.0.0",
-      "runtime_status": "unavailable_auth_401"
-    },
-    {
-      "logical_id": "A02",
-      "remote_id": "c67247f6-c668-4d1d-ab01-c1d7d0503d5a",
-      "name": "A02 需求分析",
-      "output_contract": "requirement-analysis/1.0",
-      "instruction_version": "1.1.0",
-      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
-    },
-    {
-      "logical_id": "A03",
-      "remote_id": "5bed44c7-d486-4664-a39f-2666409315b2",
-      "name": "A03 技术方案与可测性分析",
-      "output_contract": "technical-analysis/1.0",
-      "instruction_version": "1.1.0",
-      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
-    },
-    {
-      "logical_id": "A05",
-      "remote_id": "4864c5be-cdbe-4f92-af99-a5a0c82b7f3b",
-      "name": "A05 后端变更分析",
-      "output_contract": "change-analysis/1.0",
-      "instruction_version": "1.1.0",
-      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
-    },
-    {
-      "logical_id": "A06",
-      "remote_id": "0e2a8d5c-36b1-4458-9264-5c900075142a",
-      "name": "A06 需求与变更对齐",
-      "output_contract": "alignment-result/1.0",
-      "instruction_version": "1.0.1",
-      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
-    },
-    {
-      "logical_id": "A08",
-      "remote_id": "83c08d9f-1f32-49c9-88c7-c8de3bf51869",
-      "name": "A08 测试设计",
-      "output_contract": "test-design-ir/1.1",
-      "instruction_version": "1.2.1",
-      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
-      "runtime_status": "active"
-    },
-    {
-      "logical_id": "A09",
-      "remote_id": "596cc65b-0917-4e0e-a046-084bb217c29a",
-      "name": "A09 Oracle 与测试防范覆盖审查",
-      "output_contract": "oracle-review/1.1",
-      "instruction_version": "1.1.1",
-      "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
-      "runtime_status": "active",
-      "forbidden_inputs": [
-        "evaluation_oracle_registry"
-      ]
+      "provider": "claude",
+      "status": "active",
+      "last_seen": "2026-08-10T11:51:39Z",
+      "note": "Claude (MacBook-Pro-3.local) online; stale unavailable_auth_401 replaced after live query on 2026-08-10."
     }
   ],
   "safety": {
+    "artifact_only": true,
     "business_repositories": "read_only_external_evidence_only",
-    "fs_qa_knowledge": "read_only_external_evidence_only",
-    "oracle_registry_access": "denied",
     "external_side_effects": "denied",
-    "artifact_only": true
-  }
+    "fs_qa_knowledge": "read_only_external_evidence_only",
+    "oracle_registry_access": "denied"
+  },
+  "schema_version": "multica-qa-workspace/1.0",
+  "squad": {
+    "id": "c9195ed4-dfb0-407a-83c6-13334d2a7216",
+    "leader_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
+    "name": "BI QA 质量系统试点组"
+  },
+  "workspace": {
+    "id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
+    "issue_prefix": "QAA",
+    "name": "QA 多 Agent 质量系统",
+    "slug": "qa-multi-agent"
+  },
+  "last_checked": "2026-08-10T12:00:00Z"
 }

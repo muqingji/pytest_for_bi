@@ -4,11 +4,99 @@
     {
       "repository_id": "pytest_for_bi",
       "access_class": "approved_automation_repository",
-      "allowed_candidate_roots": ["generated/backend"],
-      "frameworks": ["pytest"],
+      "allowed_candidate_roots": [
+        "generated/backend",
+        "generated/frontend",
+        "generated/contract",
+        "generated/e2e",
+        "generated/non_functional"
+      ],
+      "frameworks": ["pytest", "playwright"],
       "languages": ["python"]
     }
   ],
+  "layer_profiles": {
+    "backend": {
+      "agent_id": "A14",
+      "generator_profile": "A14/1.0.0",
+      "review_profile": "A18-BE/1.0.0",
+      "manifest_id": "manifest-a14-backend",
+      "framework": "pytest",
+      "candidate_root": "generated/backend"
+    },
+    "frontend": {
+      "agent_id": "A13",
+      "generator_profile": "A13/1.0.0",
+      "review_profile": "A18-FE/1.0.0",
+      "manifest_id": "manifest-a13-frontend",
+      "framework": "playwright",
+      "candidate_root": "generated/frontend"
+    },
+    "contract": {
+      "agent_id": "A15",
+      "generator_profile": "A15/1.0.0",
+      "review_profile": "A18-CT/1.0.0",
+      "manifest_id": "manifest-a15-contract",
+      "framework": "pytest",
+      "candidate_root": "generated/contract"
+    },
+    "e2e": {
+      "agent_id": "A16",
+      "generator_profile": "A16/1.0.0",
+      "review_profile": "A18-E2E/1.0.0",
+      "manifest_id": "manifest-a16-e2e",
+      "framework": "playwright",
+      "candidate_root": "generated/e2e"
+    },
+    "non_functional": {
+      "agent_id": "A17-*",
+      "candidate_root": "generated/non_functional",
+      "kinds": {
+        "performance": {
+          "agent_id": "A17-PERF",
+          "generator_profile": "A17-PERF/1.0.0",
+          "review_profile": "A18-PERF/1.0.0",
+          "manifest_id": "manifest-a17-perf",
+          "framework": "pytest"
+        },
+        "security": {
+          "agent_id": "A17-SEC",
+          "generator_profile": "A17-SEC/1.0.0",
+          "review_profile": "A18-SEC/1.0.0",
+          "manifest_id": "manifest-a17-sec",
+          "framework": "pytest"
+        },
+        "accessibility": {
+          "agent_id": "A17-A11Y",
+          "generator_profile": "A17-A11Y/1.0.0",
+          "review_profile": "A18-A11Y/1.0.0",
+          "manifest_id": "manifest-a17-a11y",
+          "framework": "playwright"
+        },
+        "compatibility": {
+          "agent_id": "A17-COMPAT",
+          "generator_profile": "A17-COMPAT/1.0.0",
+          "review_profile": "A18-COMPAT/1.0.0",
+          "manifest_id": "manifest-a17-compat",
+          "framework": "playwright"
+        },
+        "resilience": {
+          "agent_id": "A17-RES",
+          "generator_profile": "A17-RES/1.0.0",
+          "review_profile": "A18-RES/1.0.0",
+          "manifest_id": "manifest-a17-res",
+          "framework": "pytest"
+        },
+        "data_consistency": {
+          "agent_id": "A17-DATA",
+          "generator_profile": "A17-DATA/1.0.0",
+          "review_profile": "A18-DATA/1.0.0",
+          "manifest_id": "manifest-a17-data",
+          "framework": "pytest"
+        }
+      }
+    }
+  },
   "command_allowlist": ["pytest"],
   "forbidden_python_imports": [
     "ctypes",

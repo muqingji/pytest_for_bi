@@ -10,10 +10,14 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .agents import (
+    AUTOMATION_PROFILES,
     AlignmentAgent,
-    BackendAutomationAgent,
-    BackendAutomationReviewAgent,
+    WorkflowRouteAdvisorAgent,
     ChangeAnalyzerAgent,
+    DomainAutomationAgent,
+    DomainAutomationReviewAgent,
+    LAYER_PROFILES,
+    NON_FUNCTIONAL_PROFILES,
     RequirementAnalyzerAgent,
     RiskAdvisorAgent,
     SplitCoverageAgent,
@@ -21,6 +25,7 @@ from .agents import (
     TestCoverageAgent,
     TestDesignerAgent,
     TestSelectionAdvisorAgent,
+    profile_for_case,
 )
 from .agents.base import AgentContext
 from .automation import AutomationPolicy, check_automation_generation
@@ -37,6 +42,72 @@ from .security import SecurityPolicy
 from .selection import compile_execution_plan, select_cases
 from .storage import ArtifactStore
 from .validation import validate_artifact, validate_test_case_ir
+
+
+WORKFLOW_TEMPLATES: dict[str, dict[str, Any]] = {
+    "new_requirement": {
+        "trigger_kinds": {"requirement", "commit_validation"},
+        "execution_depth": "L2",
+    },
+    "change_incremental": {
+        "trigger_kinds": {"mr", "commit_validation"},
+        "execution_depth": "L1",
+    },
+    "release_regression": {
+        "trigger_kinds": {"release"},
+        "execution_depth": "L3",
+    },
+    "bug_reproduction": {
+        "trigger_kinds": {"bug"},
+        "execution_depth": "L1",
+    },
+    "post_release_verification": {
+        "trigger_kinds": {"post_release"},
+        "execution_depth": "L3",
+    },
+}
+
+
+def resolve_workflow_route(workflow_input: Mapping[str, Any]) -> dict[str, Any]:
+    """N00 deterministic template selection; only ambiguity is delegated to A01."""
+
+    mode = str(workflow_input.get("workflow_mode", "") or "")
+    trigger = workflow_input.get("trigger", {})
+    trigger_kind = str(trigger.get("kind", "") or "") if isinstance(trigger, Mapping) else ""
+    unresolved: list[dict[str, Any]] = []
+    if mode not in WORKFLOW_TEMPLATES:
+        hint = str(workflow_input.get("route_hint", "") or "")
+        unresolved.append(
+            {
+                "issue_code": "workflow_mode_unknown",
+                "message": f"Workflow mode {mode!r} is not a registered template",
+                "requested_template": hint if hint in WORKFLOW_TEMPLATES else None,
+                "trigger_kind": trigger_kind,
+                "evidence": ["workflow-input.json:workflow_mode"],
+            }
+        )
+    elif trigger_kind and trigger_kind not in WORKFLOW_TEMPLATES[mode]["trigger_kinds"]:
+        matched = [
+            name
+            for name, config in WORKFLOW_TEMPLATES.items()
+            if trigger_kind in config["trigger_kinds"]
+        ]
+        unresolved.append(
+            {
+                "issue_code": "trigger_template_mismatch",
+                "message": f"Trigger kind {trigger_kind!r} does not match template {mode!r}",
+                "requested_template": matched[0] if len(matched) == 1 else None,
+                "trigger_kind": trigger_kind,
+                "evidence": ["workflow-input.json:workflow_mode", "workflow-input.json:trigger.kind"],
+            }
+        )
+    template = mode if mode in WORKFLOW_TEMPLATES else None
+    return {
+        "template": template,
+        "execution_depth": WORKFLOW_TEMPLATES[template]["execution_depth"] if template else None,
+        "unresolved_items": unresolved,
+        "route_source": "deterministic" if not unresolved else "ambiguous",
+    }
 
 
 @dataclass(frozen=True)
@@ -178,26 +249,63 @@ class PhaseOneWorkflow:
 
         try:
             applicability = workflow_input.get("component_applicability", {})
+            route_info = resolve_workflow_route(workflow_input)
+            route_mode = route_info["template"]
             route = {
                 "schema_version": "workflow-route/1.0",
-                "workflow_mode": workflow_mode,
-                "route_source": "deterministic",
+                "workflow_mode": route_mode or workflow_mode,
+                "workflow_template": route_info["template"],
+                "execution_depth": route_info["execution_depth"],
+                "route_source": route_info["route_source"],
                 "nodes": {
-                    "A01": "skipped_by_policy",
+                    "A01": "run" if route_info["unresolved_items"] else "skipped_by_policy",
                     "A04": "run" if applicability.get("frontend", {}).get("status") == "applicable" else "skipped_by_policy",
                     "A05": "run" if applicability.get("backend", {}).get("status") == "applicable" else "skipped_by_policy",
                 },
             }
             save(node_artifact("N00", "workflow-route", route))
-            save(
-                node_artifact(
-                    "A01",
-                    "workflow-route-advice",
-                    {},
-                    ArtifactStatus.SKIPPED_BY_POLICY,
-                    "route_is_deterministic",
+            if route_info["unresolved_items"]:
+                advice = save(
+                    WorkflowRouteAdvisorAgent().run(
+                        context,
+                        {
+                            "unresolved_items": route_info["unresolved_items"],
+                            "candidate_templates": sorted(WORKFLOW_TEMPLATES),
+                        },
+                        self.security,
+                        self.model_runtime,
+                    )
                 )
-            )
+                recommended = advice.payload.get("recommended_template")
+                if recommended not in WORKFLOW_TEMPLATES:
+                    return self._finish(
+                        store,
+                        workflow_run_id,
+                        workflow_mode,
+                        "needs_human",
+                        "A01",
+                        nodes,
+                        validation_issues,
+                    )
+                workflow_mode = recommended
+                route = {
+                    **route,
+                    "workflow_mode": recommended,
+                    "workflow_template": recommended,
+                    "execution_depth": WORKFLOW_TEMPLATES[recommended]["execution_depth"],
+                    "route_source": "advisor_validated",
+                }
+                save(node_artifact("N00", "workflow-route-validated", route))
+            else:
+                save(
+                    node_artifact(
+                        "A01",
+                        "workflow-route-advice",
+                        {},
+                        ArtifactStatus.SKIPPED_BY_POLICY,
+                        "route_is_deterministic",
+                    )
+                )
 
             manifest_status = ArtifactStatus.COMPLETED if source_material else ArtifactStatus.COMPLETED_WITH_GAPS
             save(
@@ -546,19 +654,23 @@ class PhaseOneWorkflow:
                 for item in plan["actions"]
                 if item["action"] in {"generate_new", "update_existing"}
             ]
-            unsupported_actions = [
-                item
-                for item in generation_actions
-                if cases_by_id[str(item["case_id"])].get("layer") != "backend"
-            ]
-            if unsupported_actions:
+            groups: dict[str, list[Mapping[str, Any]]] = {}
+            unsupported_case_ids: list[str] = []
+            for item in generation_actions:
+                case = cases_by_id[str(item["case_id"])]
+                profile = profile_for_case(case)
+                if profile is None:
+                    unsupported_case_ids.append(str(item["case_id"]))
+                    continue
+                groups.setdefault(profile.agent_id, []).append(case)
+            if unsupported_case_ids:
                 issue = {
                     "issue_code": "generation_profile_not_implemented",
                     "message": "One or more selected layers do not yet have an implemented generator Profile",
                     "path": "execution_plan.actions",
                     "route_to": "Multica",
                     "severity": "error",
-                    "case_ids": [item["case_id"] for item in unsupported_actions],
+                    "case_ids": unsupported_case_ids,
                 }
                 validation_issues.append(issue)
                 return self._finish(
@@ -571,30 +683,27 @@ class PhaseOneWorkflow:
                     validation_issues,
                 )
 
-            backend_cases = [
-                cases_by_id[str(item["case_id"])]
-                for item in generation_actions
-                if cases_by_id[str(item["case_id"])].get("layer") == "backend"
-            ]
-            if not backend_cases:
-                save(
-                    node_artifact(
-                        "A14",
-                        "backend-automation-generation",
-                        {"manifest": None, "code_candidates": []},
-                        ArtifactStatus.SKIPPED_BY_POLICY,
-                        "no_backend_generation_action",
+            target = workflow_input.get("automation_target", {})
+            if not groups:
+                for profile in [*LAYER_PROFILES.values(), *NON_FUNCTIONAL_PROFILES.values()]:
+                    save(
+                        node_artifact(
+                            profile.agent_id,
+                            profile.output_name,
+                            {"manifest": None, "code_candidates": []},
+                            ArtifactStatus.SKIPPED_BY_POLICY,
+                            "no_generation_action",
+                        )
                     )
-                )
-                save(
-                    node_artifact(
-                        "A18-BE",
-                        "backend-automation-review",
-                        {"approved": False, "issues": []},
-                        ArtifactStatus.SKIPPED_BY_POLICY,
-                        "generator_not_run",
+                    save(
+                        node_artifact(
+                            profile.review_agent_id,
+                            profile.review_output_name,
+                            {"approved": False, "issues": []},
+                            ArtifactStatus.SKIPPED_BY_POLICY,
+                            "generator_not_run",
+                        )
                     )
-                )
                 save(
                     node_artifact(
                         "N05",
@@ -623,69 +732,95 @@ class PhaseOneWorkflow:
                     validation_issues,
                 )
 
-            target = workflow_input.get("automation_target", {})
-            generation = save(
-                BackendAutomationAgent().run(
-                    context,
-                    {"cases": backend_cases, "target": target},
-                    self.security,
-                    self.model_runtime,
+            generations: list[tuple[Any, Any]] = []
+            for agent_id in sorted(groups):
+                profile = AUTOMATION_PROFILES[agent_id]
+                generation = save(
+                    DomainAutomationAgent(profile).run(
+                        context,
+                        {"cases": groups[agent_id], "target": target},
+                        self.security,
+                        self.model_runtime,
+                    )
                 )
-            )
-            if generation.status == ArtifactStatus.NOT_APPLICABLE:
+                if generation.status == ArtifactStatus.NOT_APPLICABLE:
+                    continue
+                generations.append((profile, generation))
+                automation_review = save(
+                    DomainAutomationReviewAgent(profile).run(
+                        context,
+                        {"cases": groups[agent_id], "generation": generation.payload},
+                        self.security,
+                        self.model_runtime,
+                    )
+                )
+                if not automation_review.payload.get("approved", False):
+                    review_issues = list(automation_review.payload.get("issues", []))
+                    validation_issues.extend(review_issues)
+                    save(
+                        node_artifact(
+                            "N06",
+                            "automation-repair-route",
+                            {
+                                "routes": [profile.agent_id],
+                                "issues": review_issues,
+                                "attempt": 1,
+                            },
+                            ArtifactStatus.NEEDS_HUMAN,
+                            "automation_review_failed",
+                        )
+                    )
+                    return self._finish(
+                        store,
+                        workflow_run_id,
+                        workflow_mode,
+                        "needs_human",
+                        "N06",
+                        nodes,
+                        validation_issues,
+                    )
+
+            if not generations:
                 return self._finish(
                     store,
                     workflow_run_id,
                     workflow_mode,
                     "completed_with_gaps",
-                    "A14",
-                    nodes,
-                    validation_issues,
-                )
-            automation_review = save(
-                BackendAutomationReviewAgent().run(
-                    context,
-                    {"cases": backend_cases, "generation": generation.payload},
-                    self.security,
-                    self.model_runtime,
-                )
-            )
-            if not automation_review.payload.get("approved", False):
-                review_issues = list(automation_review.payload.get("issues", []))
-                validation_issues.extend(review_issues)
-                save(
-                    node_artifact(
-                        "N06",
-                        "automation-repair-route",
-                        {"routes": ["A14"], "issues": review_issues, "attempt": 1},
-                        ArtifactStatus.NEEDS_HUMAN,
-                        "automation_review_failed",
-                    )
-                )
-                return self._finish(
-                    store,
-                    workflow_run_id,
-                    workflow_mode,
-                    "needs_human",
-                    "N06",
+                    sorted(groups)[-1],
                     nodes,
                     validation_issues,
                 )
 
-            code_check = check_automation_generation(generation.payload, self.automation_policy)
-            validation_issues.extend(code_check["issues"])
-            if code_check["passed"]:
+            code_check_issues: list[Any] = []
+            code_passed = True
+            code_fatal = False
+            repair_routes: set[str] = set()
+            for _profile, generation in generations:
+                check = check_automation_generation(generation.payload, self.automation_policy)
+                code_check_issues.extend(check["issues"])
+                code_passed = code_passed and check["passed"]
+                code_fatal = code_fatal or check["fatal_security_violation"]
+                repair_routes.update(check["repair_routes"])
+            code_check = {
+                "schema_version": "automation-code-check/1.0",
+                "passed": code_passed,
+                "fatal_security_violation": code_fatal,
+                "issues": code_check_issues,
+                "repair_routes": sorted(repair_routes),
+            }
+            validation_issues.extend(code_check_issues)
+            if code_passed:
                 check_status = ArtifactStatus.COMPLETED
                 check_reason = None
-            elif code_check["fatal_security_violation"]:
+            elif code_fatal:
                 check_status = ArtifactStatus.FAILED_FATAL
                 check_reason = "security_policy_violation"
             else:
                 check_status = ArtifactStatus.NEEDS_HUMAN
                 check_reason = "automation_code_check_failed"
             save(node_artifact("N05", "automation-code-check", code_check, check_status, check_reason))
-            if not code_check["passed"]:
-                if code_check["fatal_security_violation"]:
+            if not code_passed:
+                if code_fatal:
                     return self._finish(
                         store,
                         workflow_run_id,
@@ -700,8 +835,8 @@ class PhaseOneWorkflow:
                         "N06",
                         "automation-repair-route",
                         {
-                            "routes": code_check["repair_routes"],
-                            "issues": code_check["issues"],
+                            "routes": sorted(repair_routes),
+                            "issues": code_check_issues,
                             "attempt": 1,
                         },
                         ArtifactStatus.NEEDS_HUMAN,
@@ -718,6 +853,10 @@ class PhaseOneWorkflow:
                     validation_issues,
                 )
 
+            manifest_ids = [
+                generation.payload["manifest"]["manifest_id"]
+                for _profile, generation in generations
+            ]
             if not approve_g03:
                 save(
                     node_artifact(
@@ -725,7 +864,7 @@ class PhaseOneWorkflow:
                         "automation-code-review",
                         {
                             "decision": "pending",
-                            "manifest_id": generation.payload["manifest"]["manifest_id"],
+                            "manifest_ids": manifest_ids,
                         },
                         ArtifactStatus.NEEDS_HUMAN,
                         "human_approval_required",
@@ -746,7 +885,7 @@ class PhaseOneWorkflow:
                     "automation-code-review",
                     {
                         "decision": "approved",
-                        "manifest_id": generation.payload["manifest"]["manifest_id"],
+                        "manifest_ids": manifest_ids,
                     },
                 )
             )
@@ -759,6 +898,7 @@ class PhaseOneWorkflow:
                 nodes,
                 validation_issues,
             )
+
         except QaAgentError as error:
             save(
                 node_artifact(

@@ -198,3 +198,199 @@ def test_backend_automation_stops_at_g03_until_approved(
     approved_nodes = {item["id"]: item for item in approved.summary["nodes"]}
     assert approved.stopped_at == "G03"
     assert approved_nodes["G03"]["status"] == "completed"
+
+
+class MultiLayerDesigner:
+    def run(self, context, inputs, security, model_runtime=None):
+        source_refs = inputs["requirement_analysis"]["requirements"][0]["source_refs"]
+        base = {
+            "parent_case_id": None,
+            "intent_ids": ["INTENT-MULTI-001"],
+            "risk": "high",
+            "priority": "P1",
+            "source_refs": source_refs,
+            "preconditions": ["准备测试账号"],
+            "steps": ["执行场景"],
+            "expected": [
+                {
+                    "id": "EXP-01",
+                    "description": "结果符合预期",
+                    "oracle": {
+                        "type": "deterministic",
+                        "observation_point": "response.value",
+                        "matcher": "equals:expected",
+                        "source_ref": "REQ:test",
+                    },
+                }
+            ],
+            "cleanup": [],
+            "execution_policy": {
+                "allowed_modes": ["automated"],
+                "required_evidence": ["request_response"],
+            },
+            "automation_candidate": True,
+        }
+        parent_cases = [
+            {
+                **base,
+                "id": "CASE-MULTI-FE",
+                "title": "前端交互",
+                "layer": "scenario",
+                "required_layers": ["frontend"],
+                "test_data": {
+                    "route": "/report/detail",
+                    "locators": ["role:button[name=查询]", "testid:detail-table"],
+                },
+            },
+            {
+                **base,
+                "id": "CASE-MULTI-BE",
+                "title": "后端接口",
+                "layer": "scenario",
+                "required_layers": ["backend"],
+                "test_data": {"request": {"method": "GET", "path": "/api/report"}},
+            },
+            {
+                **base,
+                "id": "CASE-MULTI-CT",
+                "title": "契约兼容",
+                "layer": "scenario",
+                "required_layers": ["contract"],
+                "test_data": {
+                    "contract_ref": "openapi:report-service/v1",
+                    "method": "GET",
+                    "path": "/api/report/detail",
+                },
+            },
+            {
+                **base,
+                "id": "CASE-MULTI-E2E",
+                "title": "关键链路",
+                "layer": "scenario",
+                "required_layers": ["e2e"],
+                "test_data": {
+                    "journey": "用户下钻查看明细",
+                    "cross_service_evidence": True,
+                },
+            },
+            {
+                **base,
+                "id": "CASE-MULTI-NF",
+                "title": "性能基线",
+                "layer": "scenario",
+                "required_layers": ["non_functional"],
+                "non_functional_kind": "performance",
+                "test_data": {
+                    "metric": "p95_latency",
+                    "threshold": 2000,
+                    "threshold_source": "approved-standard:performance-baseline-v1",
+                },
+            },
+        ]
+        output = AgentOutput(
+            payload={
+                "schema_version": "test-design-ir/1.0",
+                "test_intents": [
+                    {
+                        "id": "INTENT-MULTI-001",
+                        "objective": "多层级自动化链路",
+                        "risk": "high",
+                        "required_layers": [
+                            "frontend",
+                            "backend",
+                            "contract",
+                            "e2e",
+                            "non_functional",
+                        ],
+                        "source_refs": source_refs,
+                    }
+                ],
+                "parent_cases": parent_cases,
+                "provider_candidate_count": 0,
+                "coverage_matrix": [
+                    {"requirement_id": item["id"], "case_ids": [case["id"]]}
+                    for item in inputs["requirement_analysis"]["requirements"]
+                    for case in parent_cases
+                ],
+            },
+            status=ArtifactStatus.COMPLETED,
+        )
+        from qa_agents.agents.base import BaseAgent
+
+        adapter = BaseAgent()
+        adapter.agent_id = "A08"
+        adapter.output_name = "test-design-ir"
+        adapter.runtime = "test-design-runtime"
+        adapter.analyze = lambda _: output
+        return adapter.run(context, inputs, security, model_runtime)
+
+
+def _multi_layer_input(tmp_path: Path) -> Path:
+    input_dir = tmp_path / "input"
+    shutil.copytree(PILOT_INPUT, input_dir)
+    workflow_input_path = input_dir / "workflow-input.json"
+    with workflow_input_path.open(encoding="utf-8") as file:
+        workflow_input = json.load(file)
+    workflow_input["component_applicability"] = {
+        "frontend": {"status": "applicable"},
+        "backend": {"status": "applicable"},
+        "contract": {"status": "applicable"},
+        "e2e": {"status": "applicable"},
+    }
+    workflow_input["automation_target"] = {
+        "repository_id": "pytest_for_bi",
+        "access_class": "approved_automation_repository",
+        "timeout_seconds": 300,
+        "network": False,
+        "secrets": [],
+    }
+    with workflow_input_path.open("w", encoding="utf-8") as file:
+        json.dump(workflow_input, file, ensure_ascii=False, indent=2)
+    return input_dir
+
+
+def test_multi_layer_automation_routes_each_profile_through_g03(
+    tmp_path: Path, monkeypatch
+) -> None:
+    input_dir = _multi_layer_input(tmp_path)
+    monkeypatch.setattr("qa_agents.workflow.TestDesignerAgent", MultiLayerDesigner)
+    result = PhaseOneWorkflow(ROOT).run(
+        input_dir,
+        tmp_path / "run",
+        run_id="multi-layer",
+        stop_after="G03",
+        approve_g01=True,
+        approve_g02=True,
+    )
+    assert result.status == "needs_human"
+    assert result.stopped_at == "G03"
+    nodes = {item["id"]: item for item in result.summary["nodes"]}
+    for agent_id in ("A13", "A14", "A15", "A16", "A17-PERF"):
+        assert nodes[agent_id]["status"] == "completed"
+    for reviewer_id in ("A18-FE", "A18-BE", "A18-CT", "A18-E2E", "A18-PERF"):
+        assert nodes[reviewer_id]["status"] == "completed"
+    assert nodes["N05"]["status"] == "completed"
+    assert nodes["G03"]["status"] == "needs_human"
+
+    approved = PhaseOneWorkflow(ROOT).run(
+        input_dir,
+        tmp_path / "approved",
+        run_id="multi-layer-approved",
+        stop_after="G03",
+        approve_g01=True,
+        approve_g02=True,
+        approve_g03=True,
+    )
+    approved_nodes = {item["id"]: item for item in approved.summary["nodes"]}
+    assert approved_nodes["G03"]["status"] == "completed"
+    with (tmp_path / "approved" / "artifacts" / "g03-automation-code-review.json").open(
+        encoding="utf-8"
+    ) as file:
+        gate = json.load(file)["payload"]
+    assert set(gate["manifest_ids"]) == {
+        "manifest-a13-frontend",
+        "manifest-a14-backend",
+        "manifest-a15-contract",
+        "manifest-a16-e2e",
+        "manifest-a17-perf",
+    }

@@ -20,13 +20,14 @@
 的生产级质量系统。
 
 本文档定义架构、职责、数据契约、门禁和验收标准。阶段 0 基础、阶段 1 主链至人工升级，
-以及阶段 2 后端自动化切片的本地参考实现位于 `qa-agents/`；阶段 1 的人工修正恢复和 G02
-尚未完成。参考实现不等于生产 Multica、模型 Runtime、完整自动化链路或发布门禁已经完成。
+以及阶段 2 后端自动化切片的本地参考实现位于 `qa-agents/`；阶段 1 的人工修正恢复协议和
+G02 Adapter 已实现，但 `pilot-001` 仍待合法 A08 恢复重跑与 G02 正式闭环。参考实现不等于
+生产 Multica、模型 Runtime、完整自动化链路或发布门禁已经完成。
 
 ## 2. 设计状态与使用规则
 
 - 当前状态：方案已冻结第一版；阶段 0 本地基础、阶段 1 至人工升级节点、阶段 2 后端参考
-  切片已实现，阶段 1 完整闭环和生产接入仍在建设。
+  切片已实现；阶段 1 真实闭环卡在人工恢复 A08 合法重跑与 G02，生产接入仍在建设。
 - 编排平台：Multica。
 - Agent 之间的主契约：版本化 JSON Artifact。
 - 测试设计主契约：Test Intent 与 Test Case IR。
@@ -63,6 +64,13 @@
 - QAA-12 是 A08 v1.2.1 的并行影子候选，只用于验证新协议。它没有进入主链，不能替换已接受
   的 QAA-11，也不能绕过 QAA-13 和第二轮 N04；影子候选如需晋升，必须经显式人工决策、
   正式入库、重新 A09 审查和 N04 校验。
+- G02 已实现以 Multica Issue 为控制面的本地确定性 Adapter：`in_review` 暂停，`done`、
+  `blocked`、`cancelled` 分别路由通过、退回和终止；请求、决定、结果、身份绑定与幂等恢复
+  已实现。当前主链 N04 仍无效，因此尚未创建真实 G02 Issue，也未完成阶段 1 实跑闭环。
+- 预算耗尽后的人工修正恢复协议已实现。`pilot-001` 的 QAA-19 已由 QA Owner 审核为 `done`
+  并生成 A08 v1.3.0 人工定向恢复输入；轮次记为 3，自动预算保持 2。QAA-20 第一次恢复候选
+  因缺绑定字段、非 text 交付和工具轨迹违规被拒收，主链仍需按 v1.3.0 重跑 A08，再经
+  A09/N04 后才能进入 G02。
 - 已实现 `fs-qa-knowledge` 固定版本能力探测和消费端 Adapter。冻结 commit
   `1ca888b645bd1c346b6d708a9a583af58d299fc8` 缺少 capability manifest，且生成流程强制
   `upload2fs`，因此状态为 `incompatible`，不得进入 A08。
@@ -74,6 +82,65 @@
 `qa-agents/runs/pilot-001/multica-run-manifest.json` 为审计主记录，建设状态以
 `qa-agents/IMPLEMENTATION_STATUS.md` 为准；两者必须引用实际 Artifact 哈希，不能仅凭任务
 标题、最新生成时间或自由文本更新主链状态。
+
+### 2.2 当前进展快照（2026-08-10 晚间交接）
+
+本节是交接快照；建设状态以 `qa-agents/IMPLEMENTATION_STATUS.md` 为准，运行时状态以
+`qa-agents/runs/pilot-001/multica-run-manifest.json` 为审计主记录。
+
+**主链真实状态（Multica 线上确认）**
+
+- G02 已真实放行：Multica Issue QAA-24 由 QA Owner `muqj11262` 置为 `done`，
+  `sync-g02-after-human-pilot` 线上查询确认 `decision=approved`、`next_node=N25`；请求与
+  结果 Artifact 已写入 `qa-agents/runs/pilot-001/g02/`（request_hash
+  `sha256:f46f883b8a1271d77ec994cdf384d8a246ce99f05901f0a484496930a5e111e0`、outcome_hash
+  `sha256:0bc6ed313f356872d86ceff46930bb44b408dd9b629f2595c5f2a6a023f4559d`，上游绑定
+  A08/A09/N04 哈希）。主链恢复点为 N25。
+- Runtime 修复：A02/A03/A05/A06 此前真实绑定离线 Runtime `6fa59d79`（Codex muqingji），
+  已重绑到在线 `5a1ecc9c`（Codex MacBook-Pro-3.local，gpt-5.6-sol），与 A08/A09 一致；
+  LEAD 绑定 `c12c5f20`（Claude 在线）。`multica/workspace-manifest.json` 已同步线上状态。
+- 已接受入库：A08 `multica-stage10`（artifact_hash
+  `sha256:edb58b4fd142c1c5a3eae40d5d575b58a810fa709b213f66fa676d5c3d4eeb7c`，13 个父 Case，
+  required_layers 覆盖 backend/contract/e2e，automation_candidate 混合）、A09
+  `multica-stage11`、N04 `multica-stage12`（`valid=true`、`correction_attempt=3`、
+  `next_node=G02`）。
+
+**代码与测试已就绪（本次会话新增，已推送远端 `qa_agent` 分支）**
+
+- 阶段 2 自动化 Profile：A13/A15/A16/A17-*/A18-* 共享生成/审查引擎与版本化 Profile
+  注册表（`src/qa_agents/agents/automation.py`）；`policies/automation-target-policy.json`
+  新增 `layer_profiles`、`playwright` 框架白名单与分层候选根目录；N05 按
+  `generator_profile` 动态回流路由，候选路径越出声明层根目录按安全违规拦截；workflow
+  按层/非功能类型分发生成与独立审查，多 Manifest 汇合到 N05/G03。
+- A01 Workflow Route Advisor：N00 以确定性模板注册表选择路由与深度（L1/L2/L3），未知模式
+  才调用 A01 建议（`advice_only`），建议不能自行创建或执行流程。
+- 阶段二真实链驱动：`src/qa_agents/stage_two_nodes.py` 新增 `run_n25_after_g02`、
+  `run_n26_after_a11`、`run_n15_after_n26`（全部内容寻址绑定校验）；`src/qa_agents/multica.py`
+  新增 A11 Profile 输出契约、`prepare_multica_split_review_input` 与 A11 语义校验（每个父
+  Case 恰好审查一次、子 Case 属于对应父、Oracle 集不变、每层恰好一次、approved 与阻塞数
+  一致、禁止访问 Oracle）。
+- CLI/Makefile：新增 `prepare-multica-split-review`、`run-n25-after-g02`、
+  `run-n26-after-a11`、`run-n15-after-n26` 命令及对应 make target。
+- 测试：新增 `tests/test_stage_two_nodes.py`（N25/N26/N15 正负向）与 A11 prepare/ingest
+  语义测试；全量测试 `137 passed`。
+
+**未完成事项（回家后继续实施）**
+
+1. A11 真实 Multica 审核：编写 `qa-agents/multica/agent-instructions/a11-v1.0.0.md`
+   （只读工具白名单、禁止 Oracle/业务仓库写、输出 JSON 契约与 `_validate_split_review_semantics`
+   一致）；用 `multica agent create --runtime-id 5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54`
+   创建 A11 Agent；登记 `qa-agents/multica/workspace-manifest.json`。
+2. 驱动真实链：`make run-n25-after-g02-pilot`（输出 `multica-stage13`）→
+   `make prepare-multica-split-review-pilot`（生成 `multica-inputs/a11-01/a11-input.json`）→
+   在 Multica 桌面端把 A11 输入交给 A11 Agent → `ingest-multica` 校验并入库
+   `multica-stage14`（需 task/issue/attachment ID）→ `make run-n26-after-a11-pilot`
+   （`multica-stage15`）→ `make run-n15-after-n26-pilot`（`multica-stage16`）。
+3. 契约版本确认：真实 A08 产物 `schema_version` 为 `test-design-ir/1.1`，N25/A11 指令与
+   校验需与既有 `prepare_multica_test_design_input`/`ingest` 的契约版本处理保持一致。
+4. A12 与执行链：A12 未实现；阶段 3-5（N07-N12/N16-N23 执行与门禁）未实现，按设计文档
+   继续建设。
+5. 文档收尾：`README.md` 与 `IMPLEMENTATION_STATUS.md` 的旧"G02 未启动"表述已随本快照
+   同步更新；后续真实 N25-N15 跑通后需回写 Artifact 哈希。
 
 ## 3. 核心架构原则
 
@@ -1042,8 +1109,9 @@ A09 必须从冻结需求、方案、契约和 ChangeSet 证据中审查 Case �
 第二轮剩余问题不是业务规则待确认，而是 Test Case IR/Oracle 的质量问题：结果集筛选的指标
 名称参数未按 `zh_CN/en` 成对定义、`CASE-CT-001/E3` 引用了不存在的数据路径、
 `CASE-CT-002` 使用无键集合匹配导致原因与文案互换仍可能通过，以及复合 Oracle 的单值
-`source_ref` 不能支撑全部精确模板。当前实现已经能可靠停在人工节点，但 QA Review Center
-中的人工修正提交、版本晋升和恢复执行仍是待实现能力；在该能力完成前不得宣称阶段 1 已闭环。
+`source_ref` 不能支撑全部精确模板。当前实现已经能可靠停在人工节点，并完成了 QAA-19
+人工授权与 A08 恢复输入生成；但 QAA-20 恢复候选未通过入库门禁，G02 正式审批和阶段 1
+实跑闭环仍未完成。在有效 N04 与 G02 完成前不得宣称阶段 1 已闭环。
 
 ## 14. Case 拆分与覆盖回查
 
@@ -1545,19 +1613,20 @@ first-parent ChangeSet 分析、对齐和测试义务召回能力。
 - 使用 `pilot-001` 验证范围识别、first-parent ChangeSet、实现偏差、Oracle 和测试义务召回。
 - 阶段末再接入 N25/A11 的层级拆分闭环；暂不实现 A01 歧义路由建议 Profile。
 
-当前阶段 1 已跑通至第二轮 N04，并正确升级到 QA 人工节点，但尚未完成：生产 Review
-Center、人工修正 Artifact 契约、人工修正后的受控恢复、G02 正式审批和阶段验收指标仍需
-建设。后续应先完成这些能力并处理 `pilot-001` 的 3 个阻塞问题，再扩展新的 Agent Profile。
+当前阶段 1 已跑通至第二轮 N04，并正确升级到 QA 人工节点；人工修正 Artifact、Multica
+控制面恢复协议和 G02 Adapter 已实现。真实试点已完成 QAA-19 授权，但 QAA-20 恢复候选被
+拒收，G02 正式审批和阶段验收指标仍未完成。后续应先按 A08 v1.3.0 重跑人工恢复并闭环
+A09/N04/G02，再扩展新的 Agent Profile。
 
 ### 阶段 2：测试选择和代码生成
 
-- 实现 N26/A12 和 A13-A18-*；A12 只处理 N26 的未知影响关系。
-- 实现 N15 执行计划编译，区分生成、更新、直接执行、人工执行和跳过。
-- 在各模式稳定后实现 A01 歧义路由建议 Profile，最终模板仍由 N00 确定。
-- 使用少量 Generator/Reviewer Runtime 的领域 Profile，在独立测试仓库生成 pytest、
-  Playwright 和契约测试 MR。
-- 自动执行代码检查和隔离试跑。
-- 代码必须人工审核后合入。
+- ✅ N25/N26/N15 代码与测试已就绪；A13-A18-* 自动化 Profile 已实现；A12 尚未实现。
+- ✅ N15 执行计划编译已实现，区分生成、更新、直接执行、人工执行和跳过。
+- ✅ A01 歧义路由建议 Profile 已实现，最终模板仍由 N00 确定。
+- ✅ 已用少量 Generator/Reviewer Runtime 的领域 Profile（A13/A14/A15/A16/A17-*/A18-*）
+  在独立测试仓库生成 pytest 与 Playwright 候选。
+- 🕐 自动执行代码检查和隔离试跑待阶段 3 建设。
+- ✅ G03 人工 Gate 参考实现已就绪；真实发布流程尚未接入。
 
 ### 阶段 3：测试环境自主执行
 
@@ -1597,12 +1666,17 @@ Center、人工修正 Artifact 契约、人工修正后的受控恢复、G02 正
 8. 实现 A06 需求、方案和 ChangeSet 对齐。
 9. 实现 N24 确定性风险策略和 A07 未知项建议 Profile。
 10. 实现 `fs-qa-knowledge` Case Provider Adapter 的影子模式。
-11. 实现 A08 测试设计和 A09 `pre_split` 覆盖审查 Profile。
-12. 实现 N04 的分类回流、自动修正预算和人工升级，验证失败不能进入 G02。
-13. 实现统一 QA Review Center、人工修正 Artifact、影子候选晋升和受控恢复；新版本重新经过
-    A09/N04 后，完成 G02 纵向测试设计闭环。
-14. 再实现 N25 Case 编译器、A11 `post_split` Profile、N26/A12 和 N15。
-15. 最后实现 A01 歧义路由建议 Profile 和自动化生成、审查、执行链路。
+11. ✅ 已实现 A08 测试设计和 A09 `pre_split` 覆盖审查 Profile；真实试点含人工恢复
+    A08 v1.3.0（QAA-21 入库 `multica-stage10`）。
+12. ✅ 已实现 N04 的分类回流、自动修正预算和人工升级；真实 N04
+    `correction_attempt=3`、`valid=true`、`next_node=G02`。
+13. ✅ 已实现 QA Review Center、人工修正 Artifact、影子候选晋升和受控恢复；QAA-24
+    置 `done` 后 G02 真实放行（`decision=approved`、`next_node=N25`），纵向测试设计闭环
+    在 N25 恢复；试点仅测试设计，无生产发布权限。
+14. 🕐 N25 Case 编译器、A11 `post_split` Profile、N26 与 N15 代码和测试已就绪；
+    A11 真实 Multica 审核待跑，A12 未实现。
+15. 🕐 A01 歧义路由建议 Profile 与自动化生成/审查 Profile（A13-A18-*）已实现；
+    真实自动化执行链路待阶段 3-5 建设。
 
 不要同时实现所有 Agent。每完成一个 Agent，都必须：
 

@@ -7,7 +7,9 @@
 ## 当前已实现
 
 - Artifact Envelope、完整状态枚举、内容哈希和路径受限的 Artifact Store。
-- N00 确定性路由、N01 只读输入采集、N02 ChangeSet 和 first-parent 基线。
+- N00 确定性模板路由（5 个模板 + L1/L2/L3 执行深度）与 A01 建议 Profile；仅规则无法判定的
+  输入才调用 A01，最终路由仍由 N00 校验决定。
+- N01 只读输入采集、N02 ChangeSet 和 first-parent 基线。
 - A02、A03、A04、A05、A06、A08、A09、A11 的本地保守 Profile。
 - N24 风险策略、A07 未知项兜底、N25 Case 编译、N26 测试选择和 A12 未知影响兜底。
 - N03/N04 契约校验、G02 人工停顿和 N15 Execution Plan。
@@ -19,7 +21,11 @@
 - 路由、需求事实、实现事实、对齐问题、开放问题和测试义务的离线评估，以及可读的
   `evaluation.txt`、`evaluation.html`。
 - Automation Manifest 契约和 A14 后端 pytest 候选生成；候选只写 Artifact。
-- A18-BE 独立审查、N05 语法/哈希/命令/权限/凭证安全检查、N06 回流和 G03 人工 Gate。
+- A13 前端 Playwright、A15 契约、A16 E2E、A17-PERF/SEC/A11Y/COMPAT/RES/DATA 六个非功能专项
+  生成 Profile，以及 A18-FE/CT/E2E 与六个非功能专项的独立审查 Profile；共享生成/审查引擎，
+  领域差异由版本化 Profile 与策略表达。
+- A18-* 独立审查、N05 语法/哈希/命令/权限/凭证/层根目录安全检查、N06 回流和 G03 人工 Gate；
+  多层级执行计划按层分发生成与审查后汇合到 N05/G03。
 - 独立 Multica 试点 Workspace、Project、私有 Squad 和首批 7 个 Agent；远端 ID 固化在
   `multica/workspace-manifest.json`，当前未绑定任何业务仓库。
 - Multica A02/A03/A05 真实 Stage 1 已使用 `pilot-001` 冻结数据运行并通过本地确定性入库
@@ -171,6 +177,69 @@ make -C qa-agents prepare-multica-test-design-correction-pilot
 `max_correction_attempts=2`、`next_node=human`；G02 仍为 `not_started`，必须先完成人工修正
 和重新校验。
 
+## G02 Multica 审核控制
+
+G02 使用 Multica Issue 作为唯一人工审核入口，不单独建设审批页面。只有 N04 输出
+`valid=true`、`blocking_issue_count=0`、`next_node=G02` 后才能生成内容寻址审核请求并创建
+分配给指定 QA Owner 的 `in_review` Issue。Multica 状态确定性映射为：
+
+- `in_review`：流程保持暂停；
+- `done`：审核通过，恢复到 N25；
+- `blocked`：退回 A08，并使其下游失效；
+- `cancelled`：拒绝并终止本次流程。
+
+审核 Issue 的 metadata 绑定 request、policy、workflow 和上游 Artifact 哈希。同步节点同时
+校验审批 member ID 和当前 N04 哈希；上游变化会使旧审批失效。决定和结果分别保存为
+`g02-review-decision.json` 与 `g02-review-outcome.json`，重复同步使用同一幂等结果，不重复
+启动下游节点。
+
+```bash
+make -C qa-agents prepare-g02-pilot
+make -C qa-agents open-g02-pilot
+make -C qa-agents sync-g02-pilot
+```
+
+G02 放行后的阶段二真实链（N25 -> A11 审核 -> N26 -> N15）：
+
+```bash
+make -C qa-agents run-n25-after-g02-pilot            # multica-stage13
+make -C qa-agents prepare-multica-split-review-pilot # multica-inputs/a11-01/a11-input.json
+# 在 Multica 桌面端把 A11 输入交给 A11 Agent，接受后 ingest-multica 入库 multica-stage14
+make -C qa-agents run-n26-after-a11-pilot            # multica-stage15
+make -C qa-agents run-n15-after-n26-pilot            # multica-stage16
+```
+
+`pilot-001` 的 G02 已真实放行：QAA-24 由 QA Owner `muqj11262` 置为 `done` 后线上确认
+`approved`/`next_node=N25`，恢复点在 N25。Multica CLI 暂未提供 Issue 状态变化 webhook，
+当前 Adapter 使用 `sync-g02-multica` 轮询；未来有原生 webhook 时只替换触发方式，不改变
+G02 契约和路由。
+
+## 人工修正恢复
+
+N04 在自动预算耗尽后生成内容寻址人工修正请求，并在 Multica 创建分配给 QA Owner 的
+`in_review` Issue。`done` 授权请求中全部定向修正并恢复到 A08；`cancelled` 终止流程；其他
+状态保持暂停。人工恢复不会重置自动预算，A08 输入使用 Profile v1.3.0，并在生成后强制重新
+经过 A09 和 N04。
+
+```bash
+make -C qa-agents prepare-human-correction-pilot
+make -C qa-agents open-human-correction-pilot
+make -C qa-agents sync-human-correction-pilot
+make -C qa-agents prepare-multica-human-correction-pilot
+```
+
+真实试点 `QAA-19` 已由 QA Owner 改为 `done` 并生成 A08 v1.3.0 人工恢复输入。`QAA-20`
+第一次恢复运行因缺少绑定字段、附件交付和工具轨迹违规被拒收，不能入库；需要先把 Multica
+A08 指令发布为 `a08-v1.3.0.md`，再重跑 A08，然后走 A09/N04（`correction_attempt=3`）。
+
+```bash
+make -C qa-agents validate-human-a08-candidate-pilot
+# 重跑并接受合法 A08 后：
+make -C qa-agents prepare-multica-oracle-review-human-pilot
+make -C qa-agents run-n04-human-correction-pilot
+make -C qa-agents prepare-g02-after-human-pilot
+```
+
 QAA-12 是 A08 v1.2.1 的并行协议影子候选。其完整消息流已归档并在运行清单标记为
 `shadow_protocol_candidate_not_current`；它不替换已经进入主链并被 QAA-13 审查的 QAA-11，
 也不能用来绕过第二轮 N04 的人工路由。
@@ -213,9 +282,9 @@ Oracle Registry 的 ACL。
 
 ## 尚未实现
 
-- Multica 试点已打通 A02/A03/A05→A06→G01→N24→A08→A09→N04→A08→A09→N04，
-  并验证修正预算耗尽后路由人工；真实审批已用试点 QA Owner 单签完成，生产 Review Center、
-  人工修正后的受控恢复、职责分离、DAG 和持久化恢复尚未完成。
+- Multica 试点已打通 A02/A03/A05→A06→G01→N24→A08→A09→N04→A08→A09→N04→人工节点；
+  QAA-19 已授权，QAA-20 恢复候选被拒，需按 A08 v1.3.0 重跑后才能进入 G02。生产职责分离、
+  DAG 和全流程触发器尚未完成。
 - Multica 模型网关的生产 Provider 绑定、Prompt 发布、影子流量和模型灰度；Runtime 契约已实现。
 - A13 前端、A15 契约、A16 E2E、A17-* 非功能生成及其对应 A18 审查 Profile。
 - 获批自动化仓库的候选代码落盘、创建 MR 和隔离试跑；当前只生成 Artifact 草稿。

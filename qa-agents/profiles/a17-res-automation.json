@@ -1,0 +1,27 @@
+{
+  "agent_id": "A17-RES",
+  "name": "resilience-automation-generator",
+  "version": "1.0.0",
+  "runtime": "automation-generation-runtime",
+  "allowed_inputs": [
+    "approved_resilience_test_case_ir",
+    "n15_execution_plan",
+    "approved_automation_target"
+  ],
+  "allowed_tools": [],
+  "repository_access": {
+    "read": [
+      "frozen_business_snapshot"
+    ],
+    "write": []
+  },
+  "write_scope": [
+    "workflow_artifact_store"
+  ],
+  "forbidden_actions": [
+    "write_business_repository",
+    "write_git_metadata",
+    "publish_candidate"
+  ],
+  "output_contract": "automation-generation/1.0"
+}

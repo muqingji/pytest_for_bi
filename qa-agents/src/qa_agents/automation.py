@@ -33,6 +33,22 @@ def _safe_candidate_path(path: str, allowed_roots: list[str]) -> bool:
     return any(pure == PurePosixPath(root) or PurePosixPath(root) in pure.parents for root in allowed_roots)
 
 
+def _generator_route(manifest: Mapping[str, Any]) -> str:
+    profile = str(manifest.get("generator_profile", ""))
+    return profile.split("/")[0] if profile else "A14"
+
+
+def _declared_candidate_root(policy: "AutomationPolicy", manifest: Mapping[str, Any]) -> str | None:
+    agent_id = _generator_route(manifest)
+    for config in policy.value.get("layer_profiles", {}).values():
+        if config.get("agent_id") == agent_id:
+            return config.get("candidate_root")
+        for kind_config in config.get("kinds", {}).values():
+            if kind_config.get("agent_id") == agent_id:
+                return kind_config.get("candidate_root") or config.get("candidate_root")
+    return None
+
+
 def check_automation_generation(
     generation: Mapping[str, Any], policy: AutomationPolicy
 ) -> dict[str, Any]:
@@ -65,7 +81,7 @@ def check_automation_generation(
                 "manifest_required_field",
                 f"Automation Manifest is missing {key}",
                 f"manifest.{key}",
-                "A14",
+                _generator_route(manifest),
             )
         )
     if manifest.get("schema_version") != "automation-manifest/1.0":
@@ -74,7 +90,7 @@ def check_automation_generation(
                 "manifest_schema_version_unsupported",
                 str(manifest.get("schema_version")),
                 "manifest.schema_version",
-                "A14",
+                _generator_route(manifest),
             )
         )
 
@@ -121,9 +137,17 @@ def check_automation_generation(
     framework = str(manifest.get("framework", ""))
     language = str(manifest.get("language", ""))
     if target and framework not in target.get("frameworks", []):
-        issues.append(ValidationIssue("framework_not_allowed", framework, "manifest.framework", "A14"))
+        issues.append(
+            ValidationIssue(
+                "framework_not_allowed", framework, "manifest.framework", _generator_route(manifest)
+            )
+        )
     if target and language not in target.get("languages", []):
-        issues.append(ValidationIssue("language_not_allowed", language, "manifest.language", "A14"))
+        issues.append(
+            ValidationIssue(
+                "language_not_allowed", language, "manifest.language", _generator_route(manifest)
+            )
+        )
 
     command = manifest.get("execution", {}).get("command", [])
     if not command or command[0] not in policy.value.get("command_allowlist", []):
@@ -165,6 +189,16 @@ def check_automation_generation(
         if target and not _safe_candidate_path(path, list(target.get("allowed_candidate_roots", []))):
             issues.append(
                 ValidationIssue("candidate_path_not_allowed", path, f"code_candidates.{path}", "SYSTEM")
+            )
+        declared_root = _declared_candidate_root(policy, manifest)
+        if declared_root and not _safe_candidate_path(path, [declared_root]):
+            issues.append(
+                ValidationIssue(
+                    "candidate_path_not_allowed",
+                    f"{path} is outside the {declared_root} candidate root",
+                    f"code_candidates.{path}",
+                    _generator_route(manifest),
+                )
             )
         content = str(candidate.get("content", ""))
         if content_hash(content) != candidate.get("content_hash") or declared.get(path) != candidate.get("content_hash"):

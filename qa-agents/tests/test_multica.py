@@ -5,17 +5,21 @@ import pytest
 
 from qa_agents.contracts import (
     ArtifactEnvelope,
+    ArtifactStatus,
+    EvidenceRef,
     Producer,
     artifact_hash_from_mapping,
     content_hash,
 )
 from qa_agents.errors import ContractError, SecurityPolicyError
+from qa_agents.case_compiler import compile_cases
 from qa_agents.multica import (
     fetch_multica_run_messages,
     ingest_multica_output,
     prepare_multica_alignment_input,
     prepare_multica_inputs,
     prepare_multica_oracle_review_input,
+    prepare_multica_split_review_input,
     prepare_multica_test_design_correction_input,
     prepare_multica_test_design_input,
 )
@@ -1058,3 +1062,231 @@ def test_ingest_a09_rejects_code_coverage_claim(tmp_path: Path) -> None:
             model_snapshot="gpt-test",
             prompt_version="1.1.0",
         )
+
+
+def test_g02_pilot_approver_policy_matches_workspace_manifest() -> None:
+    policy = read_json(ROOT / "policies" / "g02-review-policy.json")
+    workspace = read_json(ROOT / "multica" / "workspace-manifest.json")
+    workspace_policy = workspace["gate_policies"]["G02"]
+    pilot_state = workspace["pilot_state"]
+
+    assert policy["gate_id"] == "G02"
+    assert policy["approval_mode"] == "named_qa_owner_single_signoff"
+    assert policy["allowed_actor_ids"] == [workspace_policy["allowed_actor_id"]]
+    assert policy["allowed_multica_member_ids"] == [
+        workspace_policy["allowed_multica_member_id"]
+    ]
+    assert policy["allowed_roles"] == [workspace_policy["allowed_role"]]
+    assert pilot_state["g02_approver_id"] == workspace_policy["allowed_actor_id"]
+    assert pilot_state["g02_approver_role"] == workspace_policy["allowed_role"]
+    assert policy["require_n04_valid"] is True
+    assert policy["temporary_policy"] is True
+    assert policy["production_release_authority"] is False
+    assert workspace_policy["production_release_authority"] is False
+    assert policy["migration"]["target_role"] == "qa_reviewer"
+
+
+def build_a11_prepare_inputs(tmp_path: Path) -> tuple[dict, Path, Path]:
+    """Return (a11_bundle, a08_artifact_path, n25_compiled_path) from real pilot inputs."""
+    bundle = prepare_real_a08_bundle(tmp_path / "inputs")
+    a08_input_path = tmp_path / "inputs" / "a08-input.json"
+    artifact = ingest_multica_output(
+        a08_input_path,
+        json.dumps(valid_a08_output(bundle), ensure_ascii=False),
+        tmp_path / "stage4",
+        task_id="task-a08-a11",
+        issue_id="issue-a08-a11",
+        attachment_id="attachment-a08-a11",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.1.0",
+    )
+    a08_path = tmp_path / "stage4" / "artifacts" / "a08-test-design-ir.json"
+    a08 = read_json(a08_path)
+    parents = a08["payload"]["parent_cases"]
+    children = compile_cases(parents, {})
+    compiled = ArtifactEnvelope(
+        workflow_run_id=a08["workflow_run_id"],
+        workflow_mode=a08["workflow_mode"],
+        artifact_id="n25-compiled-test-cases",
+        source_snapshot_id=a08["source_snapshot_id"],
+        producer=Producer(component_id="N25", runtime="deterministic"),
+        payload={
+            "schema_version": "n25-compiled-test-cases/1.0",
+            "parent_artifact_id": "a08-test-design-ir",
+            "parent_artifact_hash": a08["artifact_hash"],
+            "compiled_cases": children,
+            "parent_count": len(parents),
+            "child_count": len(children),
+            "compile_rule_version": "n25-compiler/1.0",
+        },
+        status=ArtifactStatus.COMPLETED,
+        evidence_refs=(
+            EvidenceRef(
+                source_type="artifact",
+                source_id="a08-test-design-ir",
+                location="a08-test-design-ir.json",
+                content_hash=a08["artifact_hash"],
+            ),
+        ),
+    )
+    ArtifactStore(tmp_path / "stage13").write_artifact(compiled)
+    compiled_path = tmp_path / "stage13" / "artifacts" / "n25-compiled-test-cases.json"
+    a11_bundle = prepare_multica_split_review_input(
+        a08_path,
+        a08_input_path,
+        compiled_path,
+        ROOT / "policies" / "oracle-rule-library.json",
+        tmp_path / "a11-inputs",
+    )
+    return a11_bundle, a08_path, compiled_path
+
+
+def valid_a11_output(bundle: dict) -> dict:
+    parents = bundle["allowed_inputs"]["parent_test_cases"]
+    children = bundle["allowed_inputs"]["compiled_child_cases"]
+    return {
+        "schema_version": bundle["output_contract"],
+        "workflow_run_id": bundle["workflow_run_id"],
+        "source_snapshot_id": bundle["source_snapshot_id"],
+        "input_bundle_hash": bundle["bundle_hash"],
+        "status": "completed",
+        "approved": True,
+        "issues": [],
+        "parent_case_coverage": [
+            {
+                "parent_case_id": parent["id"],
+                "status": "covered",
+                "covered_child_ids": [
+                    child["id"] for child in children if child["parent_case_id"] == parent["id"]
+                ],
+                "source_refs": [{"type": "parent_case", "id": parent["id"]}],
+                "rationale": "children cover the parent",
+            }
+            for parent in parents
+        ],
+        "layer_coverage": [
+            {
+                "layer": layer,
+                "status": "covered",
+                "case_ids": [child["id"] for child in children if child["layer"] == layer],
+                "source_refs": [{"type": "layer", "id": layer}],
+                "rationale": "layer covered",
+            }
+            for layer in sorted({child["layer"] for child in children})
+        ],
+        "evaluation_oracle_accessed": False,
+    }
+
+
+def ingest_a11(bundle: dict, output: dict, tmp_path: Path) -> dict:
+    return ingest_multica_output(
+        tmp_path / "a11-inputs" / "a11-input.json",
+        json.dumps(output, ensure_ascii=False),
+        tmp_path / "stage14",
+        task_id="task-a11",
+        issue_id="issue-a11",
+        attachment_id="attachment-a11",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.0.0",
+    )
+
+
+def test_prepare_multica_split_review_input_binds_a08_and_n25(tmp_path: Path) -> None:
+    bundle, a08_path, compiled_path = build_a11_prepare_inputs(tmp_path)
+    a08 = read_json(a08_path)
+    compiled = read_json(compiled_path)
+
+    assert bundle["profile_id"] == "A11"
+    assert bundle["output_contract"] == "split-review/1.0"
+    assert bundle["workflow_run_id"] == a08["workflow_run_id"]
+    assert bundle["source_snapshot_id"] == a08["source_snapshot_id"]
+    assert set(bundle["allowed_inputs"]) == {
+        "parent_test_cases",
+        "compiled_child_cases",
+        "oracle_rule_library",
+    }
+    upstream = {
+        item["artifact_id"]: item["artifact_hash"] for item in bundle["upstream_artifacts"]
+    }
+    assert upstream == {
+        "a08-test-design-ir": a08["artifact_hash"],
+        "n25-compiled-test-cases": compiled["artifact_hash"],
+    }
+    assert bundle["integrity"]["evaluation_oracle_registry_included"] is False
+    assert bundle["bundle_hash"].startswith("sha256:")
+
+
+def test_prepare_and_ingest_multica_a11_input(tmp_path: Path) -> None:
+    bundle, _, _ = build_a11_prepare_inputs(tmp_path)
+    artifact = ingest_a11(bundle, valid_a11_output(bundle), tmp_path)
+
+    assert artifact["artifact_id"] == "a11-split-coverage-review"
+    assert artifact["status"] == "completed"
+    assert artifact["payload"]["approved"] is True
+    assert artifact["payload"]["input_bundle_hash"] == bundle["bundle_hash"]
+    assert artifact["producer"]["component_id"] == "A11"
+    assert artifact["producer"]["prompt_version"] == "1.0.0"
+
+
+def test_ingest_a11_rejects_evaluation_oracle_access(tmp_path: Path) -> None:
+    bundle, _, _ = build_a11_prepare_inputs(tmp_path)
+    output = valid_a11_output(bundle)
+    output["evaluation_oracle_accessed"] = True
+
+    with pytest.raises(SecurityPolicyError, match="must not access the evaluation Oracle"):
+        ingest_a11(bundle, output, tmp_path)
+
+
+def test_ingest_a11_rejects_approval_mismatch_with_blocking_issue(tmp_path: Path) -> None:
+    bundle, _, _ = build_a11_prepare_inputs(tmp_path)
+    output = valid_a11_output(bundle)
+    children = bundle["allowed_inputs"]["compiled_child_cases"]
+    output["issues"] = [
+        {
+            "id": "A11-001",
+            "issue_code": "A11-COVERAGE-GAP",
+            "severity": "blocking",
+            "category": "coverage",
+            "message": "coverage gap",
+            "path": "case",
+            "route_to": "N26",
+            "case_id": children[0]["id"],
+            "source_refs": [{"type": "compiled_case", "id": children[0]["id"]}],
+            "recommendation": "补充用例",
+        }
+    ]
+
+    with pytest.raises(ContractError, match="approval does not match"):
+        ingest_a11(bundle, output, tmp_path)
+
+
+def test_ingest_a11_rejects_skipped_parent_review(tmp_path: Path) -> None:
+    bundle, _, _ = build_a11_prepare_inputs(tmp_path)
+    output = valid_a11_output(bundle)
+    output["parent_case_coverage"].pop()
+
+    with pytest.raises(ContractError, match="every parent Case exactly once"):
+        ingest_a11(bundle, output, tmp_path)
+
+
+def test_ingest_a11_rejects_child_oracle_set_change(tmp_path: Path) -> None:
+    _, _, _ = build_a11_prepare_inputs(tmp_path)
+    bundle_path = tmp_path / "a11-inputs" / "a11-input.json"
+    bundle = read_json(bundle_path)
+    first_parent = bundle["allowed_inputs"]["parent_test_cases"][0]
+    child_id = first_parent["id"]
+    changed = False
+    for child in bundle["allowed_inputs"]["compiled_child_cases"]:
+        if child["parent_case_id"] == child_id:
+            child["expected"][0]["id"] = "CHANGED-EXPECTED"
+            changed = True
+    assert changed
+    unhashed = {key: value for key, value in bundle.items() if key != "bundle_hash"}
+    bundle["bundle_hash"] = content_hash(unhashed)
+    write_json(bundle_path, bundle)
+    output = valid_a11_output(bundle)
+
+    with pytest.raises(ContractError, match="changed the Oracle set"):
+        ingest_a11(bundle, output, tmp_path)

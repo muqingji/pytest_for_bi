@@ -21,7 +21,7 @@
     {"id": "A08", "type": "agent", "profile": "a08-test-designer.json", "depends_on": ["N24", "A07"]},
     {"id": "A09", "type": "agent_reviewer", "profile": "a09-oracle-coverage-reviewer.json", "depends_on": ["A08"]},
     {"id": "N04", "type": "deterministic", "depends_on": ["A09"]},
-    {"id": "G02", "type": "human_gate", "depends_on": ["N04"]},
+    {"id": "G02", "type": "human_gate", "depends_on": ["N04"], "control_plane": "multica_issue", "entry_guard": "N04.valid && N04.next_node == 'G02'", "waiting_status": "in_review", "decision_statuses": {"done": "approved", "blocked": "request_changes", "cancelled": "rejected"}},
     {"id": "N25", "type": "deterministic", "depends_on": ["G02"]},
     {"id": "A11", "type": "agent_reviewer", "profile": "a11-split-coverage-reviewer.json", "depends_on": ["N25"]},
     {"id": "N26", "type": "deterministic", "depends_on": ["A11", "N14"]},

@@ -20,6 +20,7 @@ from .contracts import (
 )
 from .errors import ContractError, RetryableAgentError, SecurityPolicyError
 from .gates import validate_recorded_scope_review_decision
+from .human_correction import validate_human_correction_decision
 from .security import SecurityPolicy
 from .storage import ArtifactStore
 
@@ -189,6 +190,45 @@ PROFILE_OUTPUTS = {
             },
             "requirement_coverage": {"requirement_id", "status", "case_ids"},
             "test_rule_coverage": {"rule_id", "status", "case_ids"},
+        },
+    },
+    "A11": {
+        "artifact_id": "a11-split-coverage-review",
+        "required_fields": {
+            "approved",
+            "issues",
+            "parent_case_coverage",
+            "layer_coverage",
+            "evaluation_oracle_accessed",
+        },
+        "evidence_collections": {"issues", "parent_case_coverage", "layer_coverage"},
+        "collection_item_fields": {
+            "issues": {
+                "id",
+                "issue_code",
+                "severity",
+                "category",
+                "message",
+                "path",
+                "route_to",
+                "case_id",
+                "source_refs",
+                "recommendation",
+            },
+            "parent_case_coverage": {
+                "parent_case_id",
+                "status",
+                "covered_child_ids",
+                "source_refs",
+                "rationale",
+            },
+            "layer_coverage": {
+                "layer",
+                "status",
+                "case_ids",
+                "source_refs",
+                "rationale",
+            },
         },
     },
 }
@@ -644,6 +684,9 @@ def prepare_multica_test_design_correction_input(
     n04_artifact_path: Path,
     output_dir: Path,
     *,
+    human_correction_request_path: Path | None = None,
+    human_correction_decision_path: Path | None = None,
+    human_correction_policy_path: Path | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
     """Build a hash-bound A08 correction input after an N04 route back to A08."""
@@ -695,13 +738,24 @@ def prepare_multica_test_design_correction_input(
                 f"A08 correction previous input {field_name} does not match its Artifact"
             )
 
+    recovery_paths = (
+        human_correction_request_path,
+        human_correction_decision_path,
+        human_correction_policy_path,
+    )
+    if any(recovery_paths) and not all(recovery_paths):
+        raise ContractError("A08 human recovery requires request, decision, and policy")
+    human_recovery = all(recovery_paths)
     n04_payload = n04["payload"]
+    expected_route = "human" if human_recovery else "A08"
     if (
         n04_payload.get("valid") is not False
-        or n04_payload.get("next_node") != "A08"
+        or n04_payload.get("next_node") != expected_route
         or n04_payload.get("g02_status") != "not_started"
     ):
-        raise ContractError("A08 correction requires an N04 route to A08 before G02")
+        raise ContractError(
+            "A08 correction requires the matching N04 correction route before G02"
+        )
     if n04_payload.get("test_design_artifact_hash") != design["artifact_hash"]:
         raise ContractError("A08 correction N04 does not bind the previous A08 Artifact")
     if n04_payload.get("oracle_review_artifact_hash") != review["artifact_hash"]:
@@ -710,8 +764,41 @@ def prepare_multica_test_design_correction_input(
     max_attempts = n04_payload.get("max_correction_attempts")
     if not isinstance(attempt, int) or not isinstance(max_attempts, int):
         raise ContractError("A08 correction N04 retry budget is invalid")
-    if attempt >= max_attempts:
+    if attempt >= max_attempts and not human_recovery:
         raise ContractError("A08 correction retry budget is exhausted")
+
+    human_authorization: dict[str, Any] | None = None
+    if human_recovery:
+        request = _read(human_correction_request_path)
+        decision = _read(human_correction_decision_path)
+        correction_policy = _read(human_correction_policy_path)
+        for value in (request, decision, correction_policy):
+            security.assert_no_secret_values(value)
+        validate_human_correction_decision(request, decision, correction_policy)
+        if decision.get("decision") != "directed_correction":
+            raise ContractError("A08 human recovery requires directed_correction")
+        request_upstream = {
+            str(item.get("artifact_id")): str(item.get("artifact_hash"))
+            for item in request.get("upstream_artifacts", [])
+            if isinstance(item, Mapping)
+        }
+        for artifact in (design, review, n04):
+            if request_upstream.get(artifact["artifact_id"]) != artifact["artifact_hash"]:
+                raise ContractError("A08 human correction authorization is stale")
+        if request.get("budget", {}).get("automatic_budget_reset") is not False:
+            raise SecurityPolicyError("A08 human recovery cannot reset the automatic budget")
+        if request.get("budget", {}).get("next_attempt") != attempt + 1:
+            raise ContractError("A08 human recovery attempt is invalid")
+        human_authorization = {
+            "schema_version": decision["schema_version"],
+            "request_hash": request["request_hash"],
+            "decision_hash": decision["decision_hash"],
+            "decision": decision["decision"],
+            "actor": dict(decision["actor"]),
+            "authorized_directive_ids": list(decision["authorized_directive_ids"]),
+            "automatic_budget_reset": False,
+            "required_revalidation": list(decision["required_revalidation"]),
+        }
 
     previous_inputs = previous_bundle.get("allowed_inputs")
     if not isinstance(previous_inputs, Mapping):
@@ -745,9 +832,13 @@ def prepare_multica_test_design_correction_input(
         if isinstance(item, Mapping) and item.get("route_to") == "A08"
     ]
     correction_feedback = {
-        "schema_version": "test-design-correction/1.1",
-        "correction_attempt": attempt,
+        "schema_version": (
+            "test-design-correction/1.2" if human_recovery else "test-design-correction/1.1"
+        ),
+        "correction_attempt": attempt + 1 if human_recovery else attempt,
         "max_correction_attempts": max_attempts,
+        "recovery_mode": "human_directed" if human_recovery else "automatic",
+        "automatic_budget_reset": False,
         "previous_artifact_hash": design["artifact_hash"],
         "oracle_review_artifact_hash": review["artifact_hash"],
         "n04_artifact_hash": n04["artifact_hash"],
@@ -793,13 +884,15 @@ def prepare_multica_test_design_correction_input(
             "correction_feedback": correction_feedback,
         }
     )
+    if human_authorization is not None:
+        allowed_inputs["human_correction_decision"] = human_authorization
     bundle = {
         "schema_version": "multica-agent-input/1.0",
         "workflow_run_id": workflow_run_id,
         "workflow_mode": workflow_mode,
         "source_snapshot_id": snapshot_id,
         "profile_id": "A08",
-        "profile_version": "1.2.1",
+        "profile_version": "1.3.0" if human_recovery else "1.2.1",
         "output_contract": "test-design-ir/1.1",
         "allowed_inputs": allowed_inputs,
         "upstream_artifacts": [
@@ -817,6 +910,11 @@ def prepare_multica_test_design_correction_input(
             "external_side_effects_allowed": False,
         },
     }
+    if human_authorization is not None:
+        bundle["upstream_human_decision"] = {
+            "request_hash": human_authorization["request_hash"],
+            "decision_hash": human_authorization["decision_hash"],
+        }
     security.assert_no_secret_values(bundle)
     _assert_no_forbidden_oracle_fields(bundle)
     bundle["bundle_hash"] = content_hash(bundle)
@@ -921,6 +1019,95 @@ def prepare_multica_oracle_review_input(
     bundle["bundle_hash"] = content_hash(bundle)
     ArtifactStore(output_dir).write_json("a09-input.json", bundle)
     return bundle
+
+
+def prepare_multica_split_review_input(
+    test_design_artifact_path: Path,
+    test_design_bundle_path: Path,
+    compiled_artifact_path: Path,
+    oracle_rule_library_path: Path,
+    output_dir: Path,
+    *,
+    security: SecurityPolicy | None = None,
+) -> dict[str, Any]:
+    """Compile the accepted A08 + N25 compiled cases into A11 post-split input."""
+
+    security = security or SecurityPolicy()
+    test_design = _verified_artifact(
+        test_design_artifact_path, "a08-test-design-ir", security
+    )
+    test_design_bundle = _read(test_design_bundle_path)
+    compiled = _verified_artifact(
+        compiled_artifact_path, "n25-compiled-test-cases", security
+    )
+    oracle_rules = _read(oracle_rule_library_path)
+    for value in (test_design_bundle, oracle_rules):
+        security.assert_no_secret_values(value)
+    _assert_no_forbidden_oracle_fields(oracle_rules)
+
+    expected_bundle_hash = str(test_design_bundle.get("bundle_hash", ""))
+    unhashed_bundle = {
+        key: value for key, value in test_design_bundle.items() if key != "bundle_hash"
+    }
+    if (
+        test_design_bundle.get("profile_id") != "A08"
+        or not expected_bundle_hash
+        or expected_bundle_hash != content_hash(unhashed_bundle)
+    ):
+        raise ContractError("A11 requires the valid A08 input bundle")
+    if test_design["payload"].get("input_bundle_hash") != expected_bundle_hash:
+        raise ContractError("A11 A08 Artifact does not bind the supplied A08 input")
+    if compiled["payload"].get("parent_artifact_hash") != test_design["artifact_hash"]:
+        raise ContractError("A11 N25 compiled cases do not bind the current A08 Artifact")
+    if _identity_of(test_design) != _identity_of(compiled):
+        raise ContractError("A11 A08 and N25 Artifacts belong to different runs")
+
+    workflow_run_id, workflow_mode, snapshot_id = _identity_of(test_design)
+    if oracle_rules.get("schema_version") != "oracle-rule-library/1.0":
+        raise ContractError("A11 Oracle rule library version is unsupported")
+    bundle = {
+        "schema_version": "multica-agent-input/1.0",
+        "workflow_run_id": workflow_run_id,
+        "workflow_mode": workflow_mode,
+        "source_snapshot_id": snapshot_id,
+        "profile_id": "A11",
+        "profile_version": "1.0.0",
+        "output_contract": "split-review/1.0",
+        "allowed_inputs": {
+            "parent_test_cases": test_design["payload"].get("parent_cases", []),
+            "compiled_child_cases": compiled["payload"].get("compiled_cases", []),
+            "oracle_rule_library": oracle_rules,
+        },
+        "upstream_artifacts": [
+            {
+                "artifact_id": test_design["artifact_id"],
+                "artifact_hash": test_design["artifact_hash"],
+            },
+            {
+                "artifact_id": compiled["artifact_id"],
+                "artifact_hash": compiled["artifact_hash"],
+            },
+        ],
+        "integrity": {
+            "evaluation_oracle_registry_included": False,
+            "credentials_embedded": False,
+            "business_repository_write_allowed": False,
+            "external_side_effects_allowed": False,
+        },
+    }
+    security.assert_no_secret_values(bundle)
+    _assert_no_forbidden_oracle_fields(bundle)
+    bundle["bundle_hash"] = content_hash(bundle)
+    ArtifactStore(output_dir).write_json("a11-input.json", bundle)
+    return bundle
+
+
+def _identity_of(artifact: Mapping[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(artifact.get("workflow_run_id", "")),
+        str(artifact.get("workflow_mode", "")),
+        str(artifact.get("source_snapshot_id", "")),
+    )
 
 
 def _assert_no_forbidden_oracle_fields(value: Any, path: str = "$") -> None:
@@ -1122,6 +1309,9 @@ def _validate_profile_semantics(
         return
     if profile_id == "A09":
         _validate_oracle_review_semantics(bundle, payload)
+        return
+    if profile_id == "A11":
+        _validate_split_review_semantics(bundle, payload)
         return
     if profile_id != "A05":
         return
@@ -1344,7 +1534,7 @@ def _validate_test_design_semantics(
     if set(covered_rules) != required_rule_ids or required_rule_ids != TEST_RULE_IDS:
         raise ContractError("A08 must cover every G01-approved test rule exactly once")
 
-    if bundle.get("profile_version") in {"1.2.0", "1.2.1"}:
+    if bundle.get("profile_version") in {"1.2.0", "1.2.1", "1.3.0"}:
         feedback = allowed_inputs.get("correction_feedback")
         resolutions = payload.get("correction_resolutions")
         if not isinstance(feedback, Mapping) or not isinstance(resolutions, list):
@@ -1524,6 +1714,109 @@ def _validate_oracle_review_semantics(
         raise ContractError("A09 approved output has an invalid status")
     if not approved and payload.get("status") != ArtifactStatus.NEEDS_HUMAN.value:
         raise ContractError("A09 rejected output must be needs_human")
+
+
+def _validate_split_review_semantics(
+    bundle: Mapping[str, Any], payload: Mapping[str, Any]
+) -> None:
+    allowed_inputs = bundle.get("allowed_inputs", {})
+    if not isinstance(allowed_inputs, Mapping):
+        raise ContractError("A11 input has no compiled test cases")
+    parents = allowed_inputs.get("parent_test_cases", [])
+    children = allowed_inputs.get("compiled_child_cases", [])
+    if not isinstance(parents, list) or not isinstance(children, list):
+        raise ContractError("A11 parent/child case inputs are invalid")
+    parent_ids = {str(item.get("id")) for item in parents if isinstance(item, Mapping)}
+    parent_expected = {
+        str(item.get("id")): {
+            str(expected.get("id"))
+            for expected in item.get("expected", [])
+            if isinstance(expected, Mapping)
+        }
+        for item in parents
+        if isinstance(item, Mapping)
+    }
+    child_ids = {str(item.get("id")) for item in children if isinstance(item, Mapping)}
+    child_parents = {
+        str(item.get("id")): str(item.get("parent_case_id", ""))
+        for item in children
+        if isinstance(item, Mapping)
+    }
+    child_expected = {
+        str(item.get("id")): {
+            str(expected.get("id"))
+            for expected in item.get("expected", [])
+            if isinstance(expected, Mapping)
+        }
+        for item in children
+        if isinstance(item, Mapping)
+    }
+    if not parent_ids or not child_ids:
+        raise ContractError("A11 review scope is empty")
+
+    issue_ids: list[str] = []
+    blocking_count = 0
+    allowed_routes = {"N25", "N26", "human"}
+    for index, issue in enumerate(payload.get("issues", [])):
+        issue_id = str(issue.get("id", ""))
+        issue_ids.append(issue_id)
+        case_id = str(issue.get("case_id") or "")
+        if case_id and case_id not in parent_ids | child_ids:
+            raise ContractError(f"A11 issues[{index}] references an unknown Case")
+        if issue.get("route_to") not in allowed_routes:
+            raise ContractError(f"A11 issues[{index}] has an invalid route")
+        if issue.get("severity") in {"error", "blocking"}:
+            blocking_count += 1
+    if not all(issue_ids) or len(issue_ids) != len(set(issue_ids)):
+        raise ContractError("A11 issue IDs must be non-empty and unique")
+
+    observed_parents: list[str] = []
+    for index, item in enumerate(payload.get("parent_case_coverage", [])):
+        parent_id = str(item.get("parent_case_id", ""))
+        observed_parents.append(parent_id)
+        if item.get("status") not in {"covered", "partial", "missing"}:
+            raise ContractError(f"A11 parent_case_coverage[{index}] has an invalid status")
+        covered = set(map(str, item.get("covered_child_ids", [])))
+        if not covered <= child_ids:
+            raise ContractError(
+                f"A11 parent_case_coverage[{index}] references an unknown child Case"
+            )
+        for child_id in covered:
+            if child_parents.get(child_id) != parent_id:
+                raise ContractError(
+                    f"A11 parent_case_coverage[{index}] child {child_id} has a different parent"
+                )
+            if parent_expected.get(parent_id) != child_expected.get(child_id):
+                raise ContractError(
+                    f"A11 parent_case_coverage[{index}] child {child_id} changed the Oracle set"
+                )
+    if len(observed_parents) != len(set(observed_parents)) or set(observed_parents) != parent_ids:
+        raise ContractError("A11 must review every parent Case exactly once")
+
+    layers = {str(item.get("layer")) for item in children if isinstance(item, Mapping)}
+    observed_layers: list[str] = []
+    for index, item in enumerate(payload.get("layer_coverage", [])):
+        layer = str(item.get("layer", ""))
+        observed_layers.append(layer)
+        if item.get("status") not in {"covered", "partial", "missing", "not_applicable"}:
+            raise ContractError(f"A11 layer_coverage[{index}] has an invalid status")
+        if not set(map(str, item.get("case_ids", []))) <= child_ids:
+            raise ContractError(f"A11 layer_coverage[{index}] references an unknown Case")
+    if len(observed_layers) != len(set(observed_layers)) or set(observed_layers) != layers:
+        raise ContractError("A11 must review every compiled layer exactly once")
+
+    if payload.get("evaluation_oracle_accessed") is not False:
+        raise SecurityPolicyError("A11 must not access the evaluation Oracle Registry")
+    approved = payload.get("approved")
+    if not isinstance(approved, bool) or approved != (blocking_count == 0):
+        raise ContractError("A11 approval does not match its blocking issue count")
+    if approved and payload.get("status") not in {
+        ArtifactStatus.COMPLETED.value,
+        ArtifactStatus.COMPLETED_WITH_GAPS.value,
+    }:
+        raise ContractError("A11 approved output has an invalid status")
+    if not approved and payload.get("status") != ArtifactStatus.NEEDS_HUMAN.value:
+        raise ContractError("A11 rejected output must be needs_human")
 
 
 def ingest_multica_output(

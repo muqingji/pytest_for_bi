@@ -1,0 +1,21 @@
+{
+  "agent_id": "A08",
+  "name": "test-designer-human-recovery",
+  "version": "1.3.0",
+  "runtime": "test-design-runtime",
+  "allowed_inputs": [
+    "validated_analysis",
+    "approved_scope",
+    "test_strategy",
+    "case_provider_draft",
+    "previous_test_design_ir",
+    "correction_feedback",
+    "human_correction_decision"
+  ],
+  "allowed_tools": [],
+  "repository_access": {
+    "read": [],
+    "write": []
+  },
+  "output_contract": "test-design-ir/1.1"
+}

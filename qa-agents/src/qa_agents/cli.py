@@ -6,13 +6,24 @@ import argparse
 import json
 from pathlib import Path
 import sys
+import tempfile
 
 from .evaluation import evaluate_run
-from .errors import ContractError, InputError, QaAgentError
+from .errors import ContractError, InputError, QaAgentError, SecurityPolicyError
 from .gates import (
     prepare_scope_review_request,
     record_scope_review_decision,
     scope_review_decision_template,
+)
+from .g02_review import (
+    open_multica_test_case_review,
+    prepare_test_case_review_request,
+    sync_multica_test_case_review,
+)
+from .human_correction import (
+    open_multica_human_correction,
+    prepare_human_correction_request,
+    sync_multica_human_correction,
 )
 from .multica import (
     fetch_multica_run_messages,
@@ -20,8 +31,14 @@ from .multica import (
     prepare_multica_alignment_input,
     prepare_multica_inputs,
     prepare_multica_oracle_review_input,
+    prepare_multica_split_review_input,
     prepare_multica_test_design_correction_input,
     prepare_multica_test_design_input,
+)
+from .stage_two_nodes import (
+    run_n15_after_n26,
+    run_n25_after_g02,
+    run_n26_after_a11,
 )
 from .change_set import normalize_change_set
 from .reporting import (
@@ -116,6 +133,33 @@ def build_parser() -> argparse.ArgumentParser:
     test_design_correction_parser.add_argument("--n04-artifact", type=Path, required=True)
     test_design_correction_parser.add_argument("--output", type=Path, required=True)
 
+    human_test_design_correction_parser = subparsers.add_parser(
+        "prepare-multica-human-test-design-correction",
+        help="Prepare A08 recovery input from an approved human correction decision",
+    )
+    human_test_design_correction_parser.add_argument(
+        "--previous-test-design-artifact", type=Path, required=True
+    )
+    human_test_design_correction_parser.add_argument(
+        "--previous-test-design-bundle", type=Path, required=True
+    )
+    human_test_design_correction_parser.add_argument(
+        "--oracle-review-artifact", type=Path, required=True
+    )
+    human_test_design_correction_parser.add_argument(
+        "--n04-artifact", type=Path, required=True
+    )
+    human_test_design_correction_parser.add_argument(
+        "--human-request", type=Path, required=True
+    )
+    human_test_design_correction_parser.add_argument(
+        "--human-decision", type=Path, required=True
+    )
+    human_test_design_correction_parser.add_argument(
+        "--human-policy", type=Path, required=True
+    )
+    human_test_design_correction_parser.add_argument("--output", type=Path, required=True)
+
     oracle_review_parser = subparsers.add_parser(
         "prepare-multica-oracle-review",
         help="Prepare A09 input from an accepted A08 Artifact and generic Oracle rules",
@@ -137,6 +181,29 @@ def build_parser() -> argparse.ArgumentParser:
     ingest_parser.add_argument("--model-provider", required=True)
     ingest_parser.add_argument("--model", required=True)
     ingest_parser.add_argument("--prompt-version", required=True)
+
+    validate_candidate_parser = subparsers.add_parser(
+        "validate-multica-candidate",
+        help="Validate one Multica candidate without accepting it into the main chain",
+    )
+    validate_candidate_parser.add_argument("--bundle", type=Path, required=True)
+    validate_candidate_parser.add_argument("--response", type=Path, required=True)
+    validate_candidate_parser.add_argument("--task-id", required=True)
+    validate_candidate_parser.add_argument("--issue-id", required=True)
+    validate_candidate_parser.add_argument("--attachment-id", required=True)
+    validate_candidate_parser.add_argument("--model-provider", required=True)
+    validate_candidate_parser.add_argument("--model", required=True)
+    validate_candidate_parser.add_argument("--prompt-version", required=True)
+    validate_candidate_parser.add_argument(
+        "--expect-reject",
+        action="store_true",
+        help="Exit 0 only when the candidate is rejected by contract or tool-trace gates",
+    )
+    validate_candidate_parser.add_argument(
+        "--scratch-output",
+        type=Path,
+        help="Optional temporary directory used only for a dry-run accept attempt",
+    )
 
     fetch_parser = subparsers.add_parser(
         "fetch-multica", help="Fetch one Multica task message stream into the run store"
@@ -169,6 +236,59 @@ def build_parser() -> argparse.ArgumentParser:
     g01_decision_parser.add_argument("--policy", type=Path, required=True)
     g01_decision_parser.add_argument("--output", type=Path, required=True)
 
+    g02_parser = subparsers.add_parser(
+        "prepare-g02", help="Prepare a content-addressed G02 Test Case IR review request"
+    )
+    g02_parser.add_argument("--test-design-artifact", type=Path, required=True)
+    g02_parser.add_argument("--oracle-review-artifact", type=Path, required=True)
+    g02_parser.add_argument("--n04-artifact", type=Path, required=True)
+    g02_parser.add_argument("--policy", type=Path, required=True)
+    g02_parser.add_argument("--output", type=Path, required=True)
+
+    g02_open_parser = subparsers.add_parser(
+        "open-g02-multica", help="Create and pause on a Multica G02 review issue"
+    )
+    g02_open_parser.add_argument("--request", type=Path, required=True)
+    g02_open_parser.add_argument("--policy", type=Path, required=True)
+    g02_open_parser.add_argument("--output", type=Path, required=True)
+
+    g02_sync_parser = subparsers.add_parser(
+        "sync-g02-multica", help="Compile a Multica G02 status into a workflow outcome"
+    )
+    g02_sync_parser.add_argument("--request", type=Path, required=True)
+    g02_sync_parser.add_argument("--n04-artifact", type=Path, required=True)
+    g02_sync_parser.add_argument("--policy", type=Path, required=True)
+    g02_sync_parser.add_argument("--output", type=Path, required=True)
+
+    human_correction_parser = subparsers.add_parser(
+        "prepare-human-correction",
+        help="Prepare a content-addressed human Test Case IR correction request",
+    )
+    human_correction_parser.add_argument("--test-design-artifact", type=Path, required=True)
+    human_correction_parser.add_argument("--oracle-review-artifact", type=Path, required=True)
+    human_correction_parser.add_argument("--n04-artifact", type=Path, required=True)
+    human_correction_parser.add_argument("--policy", type=Path, required=True)
+    human_correction_parser.add_argument("--output", type=Path, required=True)
+
+    human_correction_open_parser = subparsers.add_parser(
+        "open-human-correction-multica",
+        help="Create and pause on a Multica human correction Issue",
+    )
+    human_correction_open_parser.add_argument("--request", type=Path, required=True)
+    human_correction_open_parser.add_argument("--policy", type=Path, required=True)
+    human_correction_open_parser.add_argument("--output", type=Path, required=True)
+
+    human_correction_sync_parser = subparsers.add_parser(
+        "sync-human-correction-multica",
+        help="Compile a Multica human correction status into a workflow outcome",
+    )
+    human_correction_sync_parser.add_argument("--request", type=Path, required=True)
+    human_correction_sync_parser.add_argument("--n04-artifact", type=Path, required=True)
+    human_correction_sync_parser.add_argument("--policy", type=Path, required=True)
+    human_correction_sync_parser.add_argument("--output", type=Path, required=True)
+    human_correction_sync_parser.add_argument("--run-manifest", type=Path)
+    human_correction_sync_parser.add_argument("--workspace-manifest", type=Path)
+
     n24_parser = subparsers.add_parser(
         "run-n24-after-g01", help="Run deterministic N24 after a validated G01 approval"
     )
@@ -191,6 +311,44 @@ def build_parser() -> argparse.ArgumentParser:
     n04_parser.add_argument("--output", type=Path, required=True)
     n04_parser.add_argument("--correction-attempt", type=int, default=1)
     n04_parser.add_argument("--max-correction-attempts", type=int, default=2)
+
+    split_review_parser = subparsers.add_parser(
+        "prepare-multica-split-review",
+        help="Prepare A11 input from accepted A08 and N25 compiled cases",
+    )
+    split_review_parser.add_argument("--test-design-artifact", type=Path, required=True)
+    split_review_parser.add_argument("--test-design-bundle", type=Path, required=True)
+    split_review_parser.add_argument("--compiled-artifact", type=Path, required=True)
+    split_review_parser.add_argument("--oracle-rules", type=Path, required=True)
+    split_review_parser.add_argument("--output", type=Path, required=True)
+
+    n25_parser = subparsers.add_parser(
+        "run-n25-after-g02",
+        help="Run deterministic N25 compilation after a validated G02 approval",
+    )
+    n25_parser.add_argument("--a08-artifact", type=Path, required=True)
+    n25_parser.add_argument("--g02-request", type=Path, required=True)
+    n25_parser.add_argument("--g02-outcome", type=Path, required=True)
+    n25_parser.add_argument("--output", type=Path, required=True)
+
+    n26_parser = subparsers.add_parser(
+        "run-n26-after-a11",
+        help="Run deterministic N26 selection after an approved A11 review",
+    )
+    n26_parser.add_argument("--compiled-artifact", type=Path, required=True)
+    n26_parser.add_argument("--split-review-artifact", type=Path, required=True)
+    n26_parser.add_argument("--split-review-bundle", type=Path, required=True)
+    n26_parser.add_argument("--output", type=Path, required=True)
+    n26_parser.add_argument("--asset-catalog", type=Path)
+
+    n15_parser = subparsers.add_parser(
+        "run-n15-after-n26",
+        help="Run deterministic N15 execution-plan compilation after N26 selection",
+    )
+    n15_parser.add_argument("--selection-artifact", type=Path, required=True)
+    n15_parser.add_argument("--compiled-artifact", type=Path, required=True)
+    n15_parser.add_argument("--output", type=Path, required=True)
+    n15_parser.add_argument("--asset-catalog", type=Path)
     return parser
 
 
@@ -268,6 +426,20 @@ def _run(argv: list[str] | None = None) -> int:
         print(json.dumps(bundle, ensure_ascii=False, indent=2))
         return 0
 
+    if args.command == "prepare-multica-human-test-design-correction":
+        bundle = prepare_multica_test_design_correction_input(
+            args.previous_test_design_artifact,
+            args.previous_test_design_bundle,
+            args.oracle_review_artifact,
+            args.n04_artifact,
+            args.output,
+            human_correction_request_path=args.human_request,
+            human_correction_decision_path=args.human_decision,
+            human_correction_policy_path=args.human_policy,
+        )
+        print(json.dumps(bundle, ensure_ascii=False, indent=2))
+        return 0
+
     if args.command == "prepare-multica-oracle-review":
         bundle = prepare_multica_oracle_review_input(
             args.test_design_artifact,
@@ -294,6 +466,56 @@ def _run(argv: list[str] | None = None) -> int:
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
         return 0
 
+    if args.command == "validate-multica-candidate":
+        scratch = args.scratch_output
+        if scratch is None:
+            temp_dir = tempfile.TemporaryDirectory(prefix="qa-agents-candidate-")
+            scratch = Path(temp_dir.name)
+        else:
+            temp_dir = None
+            scratch.mkdir(parents=True, exist_ok=True)
+        try:
+            artifact = ingest_multica_output(
+                args.bundle,
+                args.response.read_text(encoding="utf-8"),
+                scratch,
+                task_id=args.task_id,
+                issue_id=args.issue_id,
+                attachment_id=args.attachment_id,
+                model_provider=args.model_provider,
+                model_snapshot=args.model,
+                prompt_version=args.prompt_version,
+            )
+        except (ContractError, SecurityPolicyError) as error:
+            report = {
+                "accepted": False,
+                "reason_code": error.reason_code,
+                "message": str(error),
+                "task_id": args.task_id,
+                "issue_id": args.issue_id,
+                "attachment_id": args.attachment_id,
+                "prompt_version": args.prompt_version,
+            }
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+            if temp_dir is not None:
+                temp_dir.cleanup()
+            return 0 if args.expect_reject else 2
+        report = {
+            "accepted": True,
+            "artifact_id": artifact.get("artifact_id"),
+            "artifact_hash": artifact.get("artifact_hash"),
+            "status": artifact.get("status"),
+            "task_id": args.task_id,
+            "issue_id": args.issue_id,
+            "attachment_id": args.attachment_id,
+            "prompt_version": args.prompt_version,
+            "scratch_output": str(scratch),
+        }
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        if temp_dir is not None:
+            temp_dir.cleanup()
+        return 2 if args.expect_reject else 0
+
     if args.command == "fetch-multica":
         messages = fetch_multica_run_messages(
             args.workspace_id,
@@ -317,6 +539,48 @@ def _run(argv: list[str] | None = None) -> int:
             args.output,
             correction_attempt=args.correction_attempt,
             max_correction_attempts=args.max_correction_attempts,
+        )
+        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "prepare-multica-split-review":
+        bundle = prepare_multica_split_review_input(
+            args.test_design_artifact,
+            args.test_design_bundle,
+            args.compiled_artifact,
+            args.oracle_rules,
+            args.output,
+        )
+        print(json.dumps(bundle, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-n25-after-g02":
+        artifact = run_n25_after_g02(
+            args.a08_artifact,
+            args.g02_request,
+            args.g02_outcome,
+            args.output,
+        )
+        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-n26-after-a11":
+        artifact = run_n26_after_a11(
+            args.compiled_artifact,
+            args.split_review_artifact,
+            args.split_review_bundle,
+            args.output,
+            asset_catalog_path=args.asset_catalog,
+        )
+        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-n15-after-n26":
+        artifact = run_n15_after_n26(
+            args.selection_artifact,
+            args.compiled_artifact,
+            args.output,
+            asset_catalog_path=args.asset_catalog,
         )
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
         return 0
@@ -376,6 +640,86 @@ def _run(argv: list[str] | None = None) -> int:
                 ensure_ascii=False,
             )
         )
+        return 0
+
+    if args.command == "prepare-g02":
+        request = prepare_test_case_review_request(
+            args.test_design_artifact,
+            args.oracle_review_artifact,
+            args.n04_artifact,
+            args.policy,
+            args.output,
+        )
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "status": request["status"],
+                    "request_hash": request["request_hash"],
+                    "review_key": request["review_key"],
+                    "approver": request["review_policy"]["allowed_actor_ids"][0],
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 0
+
+    if args.command == "open-g02-multica":
+        state = open_multica_test_case_review(
+            args.request, args.policy, args.output
+        )
+        print(json.dumps(state, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "sync-g02-multica":
+        result = sync_multica_test_case_review(
+            args.request,
+            args.n04_artifact,
+            args.policy,
+            args.output,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "prepare-human-correction":
+        request = prepare_human_correction_request(
+            args.test_design_artifact,
+            args.oracle_review_artifact,
+            args.n04_artifact,
+            args.policy,
+            args.output,
+        )
+        print(
+            json.dumps(
+                {
+                    "output": str(args.output),
+                    "status": request["status"],
+                    "request_hash": request["request_hash"],
+                    "directive_count": len(request["directives"]),
+                    "approver": request["policy"]["allowed_actor_ids"][0],
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 0
+
+    if args.command == "open-human-correction-multica":
+        state = open_multica_human_correction(
+            args.request, args.policy, args.output
+        )
+        print(json.dumps(state, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "sync-human-correction-multica":
+        result = sync_multica_human_correction(
+            args.request,
+            args.n04_artifact,
+            args.policy,
+            args.output,
+            run_manifest_path=args.run_manifest,
+            workspace_manifest_path=args.workspace_manifest,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "run-n24-after-g01":

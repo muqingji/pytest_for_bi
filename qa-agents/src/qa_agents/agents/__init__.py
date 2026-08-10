@@ -10,8 +10,19 @@ from .phase_one import (
     TestDesignerAgent,
     TestSelectionAdvisorAgent,
     TestCoverageAgent,
+    WorkflowRouteAdvisorAgent,
 )
-from .automation import BackendAutomationAgent, BackendAutomationReviewAgent
+from .automation import (
+    AUTOMATION_PROFILES,
+    LAYER_PROFILES,
+    NON_FUNCTIONAL_PROFILES,
+    AutomationProfile,
+    BackendAutomationAgent,
+    BackendAutomationReviewAgent,
+    DomainAutomationAgent,
+    DomainAutomationReviewAgent,
+    profile_for_case,
+)
 
 __all__ = [
     "AlignmentAgent",
@@ -23,6 +34,14 @@ __all__ = [
     "TestCoverageAgent",
     "TestDesignerAgent",
     "TestSelectionAdvisorAgent",
+    "WorkflowRouteAdvisorAgent",
+    "AutomationProfile",
     "BackendAutomationAgent",
     "BackendAutomationReviewAgent",
+    "DomainAutomationAgent",
+    "DomainAutomationReviewAgent",
+    "profile_for_case",
+    "LAYER_PROFILES",
+    "NON_FUNCTIONAL_PROFILES",
+    "AUTOMATION_PROFILES",
 ]

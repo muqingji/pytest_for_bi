@@ -98,6 +98,63 @@ def _source_ref(material: Mapping[str, Any], fallback: str) -> dict[str, str]:
     return {"type": "document", "id": fallback, "location": "unknown"}
 
 
+class WorkflowRouteAdvisorAgent(BaseAgent):
+    """A01: suggest a workflow template only when N00 cannot route by rule.
+
+    N00 remains the decision point; this Profile is advice-only and can never
+    create or execute a route on its own.
+    """
+
+    agent_id = "A01"
+    output_name = "workflow-route-advice"
+    output_contract = "workflow-route-advice/1.0"
+    runtime = "analysis-runtime"
+
+    def analyze(self, inputs: Mapping[str, Any]) -> AgentOutput:
+        unresolved = list(inputs.get("unresolved_items", []))
+        candidates = {str(item) for item in inputs.get("candidate_templates", [])}
+        items: list[dict[str, Any]] = []
+        recommended: str | None = None
+        for item in unresolved:
+            requested = str(item.get("requested_template", "") or "")
+            if not requested or requested not in candidates:
+                items.append(
+                    {
+                        **dict(item),
+                        "recommendation": "needs_human",
+                        "candidate_templates": sorted(candidates),
+                    }
+                )
+                continue
+            if recommended is None:
+                recommended = requested
+            items.append(
+                {
+                    **dict(item),
+                    "recommendation": requested,
+                    "candidate_templates": sorted(candidates),
+                }
+            )
+        agreed = {i["recommendation"] for i in items if i["recommendation"] != "needs_human"}
+        if len(agreed) > 1:
+            recommended = None
+            for item in items:
+                if item["recommendation"] != "needs_human":
+                    item["recommendation"] = "needs_human"
+                    item["reason_code"] = "conflicting_template_advice"
+        needs_human = any(i["recommendation"] == "needs_human" for i in items)
+        return AgentOutput(
+            payload={
+                "schema_version": "workflow-route-advice/1.0",
+                "recommended_template": recommended,
+                "items": items,
+                "advisor_authority": "advice_only",
+            },
+            status=ArtifactStatus.NEEDS_HUMAN if needs_human else ArtifactStatus.COMPLETED,
+            reason_code="route_ambiguity" if needs_human else None,
+        )
+
+
 class RequirementAnalyzerAgent(BaseAgent):
     agent_id = "A02"
     output_name = "requirement-analysis"
