@@ -1,0 +1,285 @@
+{
+  "artifact_hash": "sha256:c04d7075441f3ba715ced69f92bd356dc380b39e6de90ffed6396767df68237b",
+  "artifact_id": "a02-requirement-analysis",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-07T15:41:29+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:0b8ed3240e229f0b1902630c9494a955995febbdb47b40324bd50889c842e416",
+      "location": "a02-input.json",
+      "source_id": "A02",
+      "source_type": "multica_agent_input"
+    }
+  ],
+  "facts": [
+    {
+      "attachment_id": "019fdcdf-c91c-738d-86cd-29adc6f0cb01",
+      "commands": [
+        "multica issue get 77f28e69-114c-4309-89e6-e1c674ee5f29 --output json",
+        "multica attachment download 019fdcdf-c91c-738d-86cd-29adc6f0cb01",
+        "cat a02-input.json"
+      ],
+      "issue_id": "77f28e69-114c-4309-89e6-e1c674ee5f29",
+      "result": "passed",
+      "task_id": "6ada637a-02b5-423c-851d-20a3eb4c43aa",
+      "type": "multica_tool_trace_audit"
+    }
+  ],
+  "inferences": [],
+  "payload": {
+    "ambiguities": [
+      {
+        "id": "AMB-001",
+        "issue_code": "SCENARIO_PRECEDENCE_UNDEFINED",
+        "message": "同一次查看明细操作同时命中多个不支持场景时，提示优先级及是否只展示一条提示未定义。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      {
+        "id": "AMB-002",
+        "issue_code": "MULTIPLE_METRIC_NAMES_UNDEFINED",
+        "message": "数据范围内存在多个按结果集筛选的统计指标时，提示中指标名称的选择、排序和展示格式未定义。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      {
+        "id": "AMB-003",
+        "issue_code": "DYNAMIC_RELATION_SCOPE_UNCLEAR",
+        "message": "特殊 what/whatlist 场景的完整识别范围不明确：文本列举业务流程、业务流程任务、服务记录，并以工单主题举例，但未说明是否还包含其他对象、主题或动态关联类型。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      {
+        "id": "AMB-004",
+        "issue_code": "ROLE_PERMISSION_BEHAVIOR_UNSPECIFIED",
+        "message": "需求未说明不同用户角色或数据权限是否影响不支持场景判定、指标名称可见性及提示展示。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      {
+        "id": "AMB-005",
+        "issue_code": "LOCALIZATION_UNSPECIFIED",
+        "message": "需求仅提供中文提示文案，未定义其他语言环境下的翻译、回退策略及动态指标名称的本地化规则。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      {
+        "id": "AMB-006",
+        "issue_code": "MOBILE_SCOPE_UNSPECIFIED",
+        "message": "需求要求移动端与 Web 端逻辑一致，但未明确移动端包含的平台、版本范围及提示的交互承载形式。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      {
+        "id": "AMB-007",
+        "issue_code": "UNSUPPORTED_SCENARIO_EXHAUSTIVENESS_UNCLEAR",
+        "message": "预期效果使用“如”列举四类场景，未明确此次优化是否只覆盖这四类，或还要求为其他不支持查看明细的场景补充专属提示。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      }
+    ],
+    "input_bundle_hash": "sha256:0b8ed3240e229f0b1902630c9494a955995febbdb47b40324bd50889c842e416",
+    "needs_human": [
+      {
+        "id": "HUM-001",
+        "issue_code": "CONFIRM_SCENARIO_PRECEDENCE",
+        "message": "请确认多个限制条件同时命中时的提示优先级和展示数量。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      {
+        "id": "HUM-002",
+        "issue_code": "CONFIRM_METRIC_NAME_RENDERING",
+        "message": "请确认多个统计指标触发限制时，提示应展示哪个指标名称以及名称列表格式。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      {
+        "id": "HUM-003",
+        "issue_code": "CONFIRM_DYNAMIC_RELATION_SCOPE",
+        "message": "请确认特殊 what/whatlist 动态关联关系的完整对象和类型清单。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      {
+        "id": "HUM-004",
+        "issue_code": "CONFIRM_CHANGE_SCOPE",
+        "message": "请确认本次仅处理已列出的四类场景，还是需要盘点并覆盖所有其他不支持查看明细的场景。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      }
+    ],
+    "requirements": [
+      {
+        "acceptance_criteria": [
+          "当统计指标的维度或数据范围使用自定义维度字段，用户触发查看明细时，不展示明细。",
+          "提示文案为“维度或数据范围中使用了自定义维度字段，暂不支持查看明细”。"
+        ],
+        "id": "REQ-001",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ],
+        "summary": "自定义维度导致不支持查看明细时，展示对应提示并阻止查看明细。"
+      },
+      {
+        "acceptance_criteria": [
+          "当统计图数据范围使用普通指标、聚合指标、计算指标或同环比指标按结果集筛选，用户触发查看明细时，不展示明细。",
+          "提示文案由“统计图查询明细暂不支持按结果集的统计指标筛选”改为“统计图数据范围中设置了「指标名称」按结果集筛选，不支持查看明细”。",
+          "提示中的“指标名称”替换为触发限制的实际指标名称。"
+        ],
+        "id": "REQ-002",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ],
+        "summary": "统计图数据范围按结果集统计指标筛选时，展示包含指标名称的对应提示并阻止查看明细。"
+      },
+      {
+        "acceptance_criteria": [
+          "当统计指标使用多关联关系创建，用户触发查看明细时，不展示明细。",
+          "提示文案为“基于多关联关系创建的统计指标，暂不支持查看明细”。"
+        ],
+        "id": "REQ-003",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ],
+        "summary": "统计指标基于多关联关系创建时，展示对应提示并阻止查看明细。"
+      },
+      {
+        "acceptance_criteria": [
+          "当统计指标基于业务流程、业务流程任务或服务记录的特殊 what/whatlist 类型关联关系创建，用户触发查看明细时，不展示明细。",
+          "该场景包括在工单主题下基于业务流程、业务流程任务或服务记录的任意字段新建指标。",
+          "提示文案为“基于动态关联关系创建的统计指标，不支持查看明细”。"
+        ],
+        "id": "REQ-004",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ],
+        "summary": "统计指标基于特殊 what/whatlist 动态关联关系创建时，展示对应提示并阻止查看明细。"
+      },
+      {
+        "acceptance_criteria": [
+          "从统计图触发查看明细时，按实际命中的不支持场景展示对应提示。",
+          "从拼表触发查看明细时，按实际命中的不支持场景展示对应提示。"
+        ],
+        "id": "REQ-005",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ],
+        "summary": "四类不支持查看明细场景的提示逻辑覆盖统计图查看明细和拼表查看明细。"
+      },
+      {
+        "acceptance_criteria": [
+          "移动端对四类不支持查看明细场景的判定结果与 Web 端一致。",
+          "移动端展示的对应提示文案与 Web 端一致。",
+          "移动端与 Web 端均阻止进入不受支持的明细视图。"
+        ],
+        "id": "REQ-006",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ],
+        "summary": "移动端与 Web 端采用相同的不支持查看明细判定和提示逻辑。"
+      }
+    ],
+    "schema_version": "requirement-analysis/1.0",
+    "source_snapshot_id": "pilot-001-source-v1",
+    "status": "completed_with_gaps",
+    "workflow_run_id": "multica-pilot-001"
+  },
+  "producer": {
+    "component_id": "A02",
+    "component_version": "0.1.0",
+    "inference_config_hash": "sha256:ea51962525f13e8914bee10405dea4a221e78ef15be6553f423212da02833db7",
+    "model_provider": "codex",
+    "model_snapshot": "gpt-5.6-sol",
+    "profile_version": "1.0.0",
+    "prompt_version": "1.1.0",
+    "runtime": "multica",
+    "tool_bundle_version": "multica-task:6ada637a-02b5-423c-851d-20a3eb4c43aa"
+  },
+  "reason_code": null,
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed_with_gaps",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-pilot-001"
+}

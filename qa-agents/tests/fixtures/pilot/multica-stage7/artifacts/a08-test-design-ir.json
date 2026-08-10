@@ -1,0 +1,984 @@
+{
+  "artifact_hash": "sha256:ab37311461c28b41456765028993a8ea01ae563f17545a20ffd22e894d990617",
+  "artifact_id": "a08-test-design-ir",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-07T00:00:00+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:cd5ad721a9f601de9bd92b4153d52461454dfe8625d00c7baa7bfb77e9bf9845",
+      "location": "a08-input.json",
+      "source_id": "A08",
+      "source_type": "multica_agent_input"
+    }
+  ],
+  "facts": [],
+  "inferences": [],
+  "payload": {
+    "coverage_matrix": [
+      {
+        "case_ids": [
+          "CASE-001",
+          "CASE-002",
+          "CASE-003",
+          "CASE-004",
+          "CASE-005",
+          "CASE-006",
+          "CASE-007",
+          "CASE-008",
+          "CASE-009",
+          "CASE-010",
+          "CASE-011",
+          "CASE-012",
+          "CASE-013"
+        ],
+        "requirement_id": "REQ-001"
+      }
+    ],
+    "input_bundle_hash": "sha256:cd5ad721a9f601de9bd92b4153d52461454dfe8625d00c7baa7bfb77e9bf9845",
+    "parent_cases": [
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-001-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-001",
+        "intent_ids": [
+          "INTENT-001"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 1"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-002-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-002",
+        "intent_ids": [
+          "INTENT-002"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 2"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-003-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-003",
+        "intent_ids": [
+          "INTENT-003"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 3"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-004-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-004",
+        "intent_ids": [
+          "INTENT-004"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 4"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-005-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-005",
+        "intent_ids": [
+          "INTENT-005"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 5"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-006-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-006",
+        "intent_ids": [
+          "INTENT-006"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 6"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-007-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-007",
+        "intent_ids": [
+          "INTENT-007"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 7"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-008-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-008",
+        "intent_ids": [
+          "INTENT-008"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 8"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-009-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-009",
+        "intent_ids": [
+          "INTENT-009"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 9"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-010-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-010",
+        "intent_ids": [
+          "INTENT-010"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 10"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-011-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-011",
+        "intent_ids": [
+          "INTENT-011"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 11"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-012-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-012",
+        "intent_ids": [
+          "INTENT-012"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 12"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated"
+          ]
+        },
+        "expected": [
+          {
+            "description": "返回冻结的当前语言提示",
+            "id": "EXP-013-1",
+            "oracle": {
+              "matcher": "template_equals",
+              "observation_point": "response.message",
+              "source_ref": "G01:test_rules.localization",
+              "type": "deterministic"
+            }
+          }
+        ],
+        "id": "CASE-013",
+        "intent_ids": [
+          "INTENT-013"
+        ],
+        "layer": "scenario",
+        "preconditions": [
+          "准备目标场景数据"
+        ],
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ],
+        "steps": [
+          "调用查看明细接口"
+        ],
+        "test_data": {
+          "dataset": [
+            "zh-CN",
+            "en"
+          ],
+          "scenario": [
+            "detail"
+          ]
+        },
+        "title": "人工修正后父 Case 13"
+      }
+    ],
+    "schema_version": "test-design-ir/1.1",
+    "source_snapshot_id": "pilot-001-source-v1",
+    "status": "completed",
+    "test_intents": [
+      {
+        "id": "INTENT-001",
+        "objective": "验证人工修正后父意图 1",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-002",
+        "objective": "验证人工修正后父意图 2",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-003",
+        "objective": "验证人工修正后父意图 3",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-004",
+        "objective": "验证人工修正后父意图 4",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-005",
+        "objective": "验证人工修正后父意图 5",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-006",
+        "objective": "验证人工修正后父意图 6",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-007",
+        "objective": "验证人工修正后父意图 7",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-008",
+        "objective": "验证人工修正后父意图 8",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-009",
+        "objective": "验证人工修正后父意图 9",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-010",
+        "objective": "验证人工修正后父意图 10",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-011",
+        "objective": "验证人工修正后父意图 11",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-012",
+        "objective": "验证人工修正后父意图 12",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "id": "INTENT-013",
+        "objective": "验证人工修正后父意图 13",
+        "required_layers": [
+          "backend",
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001"
+        ]
+      }
+    ],
+    "test_rule_coverage": [
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-MULTIPLE-REASONS"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-SINGLE-METRIC"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-ENTRY-CONSISTENCY"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-CUSTOM-DIMENSION"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-DYNAMIC-RELATION"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-MULTI-RELATION"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-PERMISSION-PRIORITY"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-HISTORICAL-COMPATIBILITY"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-I18N-CUSTOM-DIMENSION"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-I18N-RESULT-SET"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-I18N-MULTI-RELATION"
+      },
+      {
+        "case_ids": [
+          "CASE-001"
+        ],
+        "rule_id": "RULE-I18N-DYNAMIC-RELATION"
+      }
+    ],
+    "workflow_run_id": "multica-pilot-001"
+  },
+  "producer": {
+    "component_id": "A08",
+    "component_version": "0.1.0",
+    "inference_config_hash": "none",
+    "model_provider": "codex",
+    "model_snapshot": "gpt-5.6-sol",
+    "profile_version": "1.2.1",
+    "prompt_version": "1.2.1",
+    "runtime": "multica",
+    "tool_bundle_version": "none"
+  },
+  "reason_code": null,
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-pilot-001"
+}

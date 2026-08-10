@@ -1,0 +1,115 @@
+{
+  "budget": {
+    "automatic_budget_reset": false,
+    "correction_attempt": 2,
+    "max_correction_attempts": 2,
+    "next_attempt": 3
+  },
+  "created_at": "2026-08-10T15:03:13+00:00",
+  "decision": "pending",
+  "decision_contract": "human-test-design-correction-decision/1.0",
+  "directives": [
+    {
+      "case_id": "CASE-003",
+      "directive_id": "A09-R001",
+      "expected_id": "EXP-003-1",
+      "issue_code": "RESULT_SET_METRIC_PARAM_LOCALE",
+      "message": "结果集筛选的中英文指标名参数未按 locale 配对。",
+      "recommendation": "按 locale 配对 zh_CN/en 指标名参数。",
+      "route_to": "A08",
+      "severity": "error",
+      "source_refs": [
+        "REQ-001"
+      ]
+    },
+    {
+      "case_id": "CASE-005",
+      "directive_id": "A09-R002",
+      "expected_id": "EXP-005-1",
+      "issue_code": "UNRESOLVED_EXPECTATION_REFERENCE",
+      "message": "期望引用不可解析。",
+      "recommendation": "将期望引用指向冻结证据中的精确位置。",
+      "route_to": "A08",
+      "severity": "error",
+      "source_refs": [
+        "REQ-001"
+      ]
+    },
+    {
+      "case_id": "CASE-007",
+      "directive_id": "A09-R003",
+      "expected_id": "EXP-007-1",
+      "issue_code": "KEYLESS_LOCALIZED_SET_MATCH",
+      "message": "无键本地化集合匹配不可判定。",
+      "recommendation": "为本地化集合匹配补充固定 key。",
+      "route_to": "A08",
+      "severity": "error",
+      "source_refs": [
+        "REQ-001"
+      ]
+    },
+    {
+      "case_id": "CASE-009",
+      "directive_id": "A09-R004",
+      "expected_id": "EXP-009-1",
+      "issue_code": "COMPOSITE_ORACLE_SOURCE_SCOPE",
+      "message": "复合 Oracle 来源范围过大。",
+      "recommendation": "收窄复合 Oracle 的来源范围。",
+      "route_to": "A08",
+      "severity": "warning",
+      "source_refs": [
+        "REQ-001"
+      ]
+    }
+  ],
+  "multica_control": {
+    "assignee_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "decision_statuses": {
+      "cancelled": "terminate",
+      "done": "directed_correction"
+    },
+    "identity_evidence_mode": "assigned_member_pilot",
+    "initial_status": "in_review",
+    "project_id": "c2c84f1f-20af-456d-9eca-c9fbbd253840",
+    "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46"
+  },
+  "node_id": "human_test_design_correction",
+  "outcome_contract": "human-test-design-correction-outcome/1.0",
+  "policy": {
+    "allowed_actor_ids": [
+      "muqj11262"
+    ],
+    "allowed_multica_member_ids": [
+      "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54"
+    ],
+    "allowed_roles": [
+      "qa_owner"
+    ],
+    "policy_hash": "sha256:21cf9346ebd32cb3db5566c67b81082b58ca21fe0728515ccf36451a374db869",
+    "production_release_authority": false,
+    "required_revalidation": [
+      "A09",
+      "N04"
+    ]
+  },
+  "request_hash": "sha256:ff8da34d7d796a7f726fb030288260ffe06e6bce4ff063bccac3dcb5c50d2cd8",
+  "schema_version": "human-test-design-correction-request/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "needs_human",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:ab37311461c28b41456765028993a8ea01ae563f17545a20ffd22e894d990617",
+      "artifact_id": "a08-test-design-ir"
+    },
+    {
+      "artifact_hash": "sha256:6d43f7ee6df90db28e25a535df9747316cda04ba51f8fd15b37b437623d09ef6",
+      "artifact_id": "a09-oracle-coverage-review"
+    },
+    {
+      "artifact_hash": "sha256:8057ca2fba398a528e1d01af812fc62c2ef5e613fd2e146769579e496d59ee95",
+      "artifact_id": "n04-test-case-ir-validation"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-pilot-001"
+}

@@ -6,7 +6,7 @@ from qa_agents.test_case_gate import run_n04_after_a09
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PILOT_RUN = ROOT / "runs" / "pilot-001"
+PILOT_RUN = ROOT / "tests" / "fixtures" / "pilot"
 
 
 def rejected_a09_output(bundle: dict) -> dict:

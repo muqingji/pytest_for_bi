@@ -17,7 +17,7 @@ from qa_agents.multica import prepare_multica_test_design_correction_input
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PILOT = ROOT / "runs" / "pilot-001"
+PILOT = ROOT / "tests" / "fixtures" / "pilot"
 POLICY = ROOT / "policies" / "human-correction-policy.json"
 WORKSPACE_ID = "457d700f-6c27-4a59-871d-c2c56bca9f46"
 PROJECT_ID = "c2c84f1f-20af-456d-9eca-c9fbbd253840"

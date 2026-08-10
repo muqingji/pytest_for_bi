@@ -1,0 +1,123 @@
+{
+  "artifact_hash": "sha256:8057ca2fba398a528e1d01af812fc62c2ef5e613fd2e146769579e496d59ee95",
+  "artifact_id": "n04-test-case-ir-validation",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-07T00:00:00+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:ab37311461c28b41456765028993a8ea01ae563f17545a20ffd22e894d990617",
+      "location": "a08-test-design-ir.json",
+      "source_id": "a08-test-design-ir",
+      "source_type": "artifact"
+    },
+    {
+      "content_hash": "sha256:6d43f7ee6df90db28e25a535df9747316cda04ba51f8fd15b37b437623d09ef6",
+      "location": "a09-oracle-coverage-review.json",
+      "source_id": "a09-oracle-coverage-review",
+      "source_type": "artifact"
+    }
+  ],
+  "facts": [],
+  "inferences": [],
+  "payload": {
+    "blocking_issue_count": 3,
+    "correction_attempt": 2,
+    "g02_status": "not_started",
+    "issue_count": 4,
+    "issues": [
+      {
+        "case_id": "CASE-003",
+        "category": "oracle",
+        "expected_id": "EXP-003-1",
+        "id": "A09-R001",
+        "issue_code": "RESULT_SET_METRIC_PARAM_LOCALE",
+        "message": "结果集筛选的中英文指标名参数未按 locale 配对。",
+        "origin": "A09",
+        "path": "parent_cases[2].test_data.dataset",
+        "recommendation": "按 locale 配对 zh_CN/en 指标名参数。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-005",
+        "category": "oracle",
+        "expected_id": "EXP-005-1",
+        "id": "A09-R002",
+        "issue_code": "UNRESOLVED_EXPECTATION_REFERENCE",
+        "message": "期望引用不可解析。",
+        "origin": "A09",
+        "path": "parent_cases[4].expected[0].source_ref",
+        "recommendation": "将期望引用指向冻结证据中的精确位置。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-007",
+        "category": "oracle",
+        "expected_id": "EXP-007-1",
+        "id": "A09-R003",
+        "issue_code": "KEYLESS_LOCALIZED_SET_MATCH",
+        "message": "无键本地化集合匹配不可判定。",
+        "origin": "A09",
+        "path": "parent_cases[6].expected[0].oracle.matcher",
+        "recommendation": "为本地化集合匹配补充固定 key。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-009",
+        "category": "oracle",
+        "expected_id": "EXP-009-1",
+        "id": "A09-R004",
+        "issue_code": "COMPOSITE_ORACLE_SOURCE_SCOPE",
+        "message": "复合 Oracle 来源范围过大。",
+        "origin": "A09",
+        "path": "parent_cases[8].expected[0].oracle.source_ref",
+        "recommendation": "收窄复合 Oracle 的来源范围。",
+        "route_to": "A08",
+        "severity": "warning",
+        "source_refs": [
+          "REQ-001"
+        ]
+      }
+    ],
+    "max_correction_attempts": 2,
+    "next_node": "human",
+    "oracle_review_artifact_hash": "sha256:6d43f7ee6df90db28e25a535df9747316cda04ba51f8fd15b37b437623d09ef6",
+    "oracle_review_artifact_id": "a09-oracle-coverage-review",
+    "route_summary": {
+      "A08": 4
+    },
+    "schema_version": "test-case-ir-validation/1.0",
+    "test_design_artifact_hash": "sha256:ab37311461c28b41456765028993a8ea01ae563f17545a20ffd22e894d990617",
+    "test_design_artifact_id": "a08-test-design-ir",
+    "valid": false
+  },
+  "producer": {
+    "component_id": "N04",
+    "component_version": "0.1.0",
+    "inference_config_hash": "none",
+    "model_provider": "none",
+    "model_snapshot": "deterministic",
+    "profile_version": "1.0.0",
+    "prompt_version": "none",
+    "runtime": "deterministic",
+    "tool_bundle_version": "none"
+  },
+  "reason_code": "test_case_ir_correction_budget_exhausted",
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "needs_human",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-pilot-001"
+}

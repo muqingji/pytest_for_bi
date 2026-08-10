@@ -39,7 +39,7 @@ from .model_runtime import StructuredModelRuntime
 from .reporting import render_html, render_text
 from .risk import RiskPolicyEngine
 from .security import SecurityPolicy
-from .selection import compile_execution_plan, select_cases
+from .selection import apply_selection_advice, compile_execution_plan, select_cases
 from .storage import ArtifactStore
 from .validation import validate_artifact, validate_test_case_ir
 
@@ -139,6 +139,9 @@ class PhaseOneWorkflow:
         )
         self.automation_policy = AutomationPolicy.from_file(
             self.project_root / "policies" / "automation-target-policy.json"
+        )
+        self.selection_policy = self._read_json(
+            self.project_root / "policies" / "selection-policy.json"
         )
 
     @staticmethod
@@ -596,7 +599,11 @@ class PhaseOneWorkflow:
             if not split_review.payload["approved"]:
                 return self._finish(store, workflow_run_id, workflow_mode, "needs_human", "A11", nodes, validation_issues)
 
-            selection = select_cases(child_cases, asset_catalog)
+            selection = select_cases(
+                child_cases,
+                asset_catalog,
+                selection_policy=self.selection_policy,
+            )
             save(
                 node_artifact(
                     "N26",
@@ -608,23 +615,56 @@ class PhaseOneWorkflow:
                 )
             )
             if selection["unresolved_items"]:
+                advice_artifact = TestSelectionAdvisorAgent().run(
+                    context,
+                    {
+                        "unresolved_items": selection["unresolved_items"],
+                        "compiled_case_index": {
+                            str(case.get("id", "")): {
+                                "layer": case.get("layer"),
+                                "required_layers": case.get("required_layers", []),
+                                "evidence_modules": case.get("evidence_modules", []),
+                                "automation_candidate": case.get("automation_candidate", False),
+                            }
+                            for case in child_cases
+                            if isinstance(case, Mapping) and case.get("id")
+                        },
+                        "asset_evidence": {
+                            "impact_evidence": asset_catalog.get("impact_evidence", {}),
+                            "impact_index": asset_catalog.get("impact_index", {}),
+                        },
+                    },
+                    self.security,
+                    self.model_runtime,
+                )
+                save(advice_artifact)
+                selection = apply_selection_advice(
+                    selection,
+                    advice_artifact.payload,
+                    child_cases,
+                    selection_policy=self.selection_policy,
+                )
                 save(
-                    TestSelectionAdvisorAgent().run(
-                        context,
-                        {"unresolved_items": selection["unresolved_items"]},
-                        self.security,
-                        self.model_runtime,
+                    node_artifact(
+                        "N26",
+                        "test-selection",
+                        selection,
+                        ArtifactStatus.NEEDS_HUMAN
+                        if selection["unresolved_items"]
+                        else ArtifactStatus.COMPLETED,
+                        "selection_advice_folded",
                     )
                 )
-                return self._finish(
-                    store,
-                    workflow_run_id,
-                    workflow_mode,
-                    "needs_human",
-                    "A12",
-                    nodes,
-                    validation_issues,
-                )
+                if selection["unresolved_items"]:
+                    return self._finish(
+                        store,
+                        workflow_run_id,
+                        workflow_mode,
+                        "needs_human",
+                        "A12",
+                        nodes,
+                        validation_issues,
+                    )
             else:
                 save(
                     node_artifact(

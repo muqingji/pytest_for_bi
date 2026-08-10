@@ -14,6 +14,7 @@ class ArtifactStatus(str, Enum):
     COMPLETED = "completed"
     COMPLETED_WITH_GAPS = "completed_with_gaps"
     NEEDS_HUMAN = "needs_human"
+    BLOCKED = "blocked"
     BLOCKED_INPUT = "blocked_input"
     NOT_APPLICABLE = "not_applicable"
     SKIPPED_BY_POLICY = "skipped_by_policy"

@@ -1,16 +1,6 @@
 {
   "agents": [
     {
-      "instruction_version": "1.0.0",
-      "logical_id": "LEAD",
-      "name": "QA 流程组长",
-      "output_contract": "workflow-coordination/1.0",
-      "remote_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
-      "runtime_status": "active",
-      "last_checked": "2026-08-10T12:00:00Z",
-      "note": "Runtime c12c5f20 (Claude MacBook-Pro-3.local) online; stale unavailable_auth_401 replaced after live query on 2026-08-10."
-    },
-    {
       "instruction_version": "1.1.0",
       "logical_id": "A02",
       "name": "A02 需求分析",
@@ -68,6 +58,30 @@
       "remote_id": "596cc65b-0917-4e0e-a046-084bb217c29a",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active"
+    },
+    {
+      "instruction_version": "1.0.0",
+      "logical_id": "A11",
+      "name": "A11 拆分覆盖审查",
+      "output_contract": "split-review/1.0",
+      "remote_id": "1e794e8e-65da-4b55-9c28-a53c0f8ca33c",
+      "runtime_id": "6fa59d79-9eda-445d-bd36-4b93ea98917d",
+      "runtime_status": "active",
+      "instruction_path": "qa-agents/multica/agent-instructions/a11-v1.0.0.md",
+      "note": "A11 real Multica split-coverage review; compact review-scope input to bound context.",
+      "published_instruction_version": "1.0.0",
+      "published_at": "2026-08-10T15:54:00Z",
+      "published_from": "qa-agents/multica/agent-instructions/a11-v1.0.0.md"
+    },
+    {
+      "instruction_version": "1.0.0",
+      "logical_id": "LEAD",
+      "name": "QA 流程组长",
+      "output_contract": "workflow-coordination/1.0",
+      "remote_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
+      "runtime_status": "active",
+      "last_checked": "2026-08-10T12:00:00Z",
+      "note": "Runtime c12c5f20 (Claude MacBook-Pro-3.local) online; stale unavailable_auth_401 replaced after live query on 2026-08-10."
     }
   ],
   "defaults": {
@@ -96,7 +110,7 @@
     "accepted_a08_task_id": "346f171a-a33c-4a9a-91d9-a41ad24181d4",
     "accepted_a09_task_id": "7fb0ceb7-ca49-4538-ba7e-b0f4cd5a960d",
     "correction_attempt": 2,
-    "current_node": "N25",
+    "current_node": "N15",
     "g02_approver_id": "muqj11262",
     "g02_approver_role": "qa_owner",
     "g02_status": "approved",
@@ -125,10 +139,21 @@
     "reason_code": "test_case_ir_correction_budget_exhausted",
     "shadow_a08_task_id": "0198fd74-bdae-46d3-afde-f014d71d2e82",
     "workflow_run_id": "multica-pilot-001",
-    "next_action": "G02 approved (QAA-24 done by muqj11262 at 2026-08-10T11:22:38Z); resume at N25 -> A11 -> N26 -> N15",
+    "next_action": "Stage-1/2 real chain closed through N15 (execution plan stage16). A11 (QAA-26) completed_with_gaps/approved; CASE-CT-005 layer-narrowing warning routed to N25. Next: stage 3 env precheck (N07) per design.",
     "a08_instruction_published": "1.3.0",
     "g02_issue_identifier": "QAA-24",
-    "g02_issue_id": "9938c71b-b00a-4117-bfe7-04d05b4b3cee"
+    "g02_issue_id": "9938c71b-b00a-4117-bfe7-04d05b4b3cee",
+    "n15_execution_plan": "multica-stage16",
+    "a11": {
+      "issue_identifier": "QAA-26",
+      "task_id": "8ec9538d-046b-49f0-9826-2ef3bc04418d",
+      "status": "completed",
+      "approved": true,
+      "artifact_hash": "sha256:b6e37ba37eb67bbe3a9fb9a5adba3d347eb59a01c000cf03e0273508e6270cbc",
+      "warning": "CASE-CT-005 children do not narrow layer responsibility (route N25)",
+      "input_compact": true
+    },
+    "a11_instruction_published": "1.0.0"
   },
   "project": {
     "id": "c2c84f1f-20af-456d-9eca-c9fbbd253840",
@@ -170,5 +195,5 @@
     "name": "QA 多 Agent 质量系统",
     "slug": "qa-multi-agent"
   },
-  "last_checked": "2026-08-10T12:00:00Z"
+  "last_checked": "2026-08-10T16:00:00Z"
 }

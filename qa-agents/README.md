@@ -11,7 +11,7 @@
   输入才调用 A01，最终路由仍由 N00 校验决定。
 - N01 只读输入采集、N02 ChangeSet 和 first-parent 基线。
 - A02、A03、A04、A05、A06、A08、A09、A11 的本地保守 Profile。
-- N24 风险策略、A07 未知项兜底、N25 Case 编译、N26 测试选择和 A12 未知影响兜底。
+- N24 风险策略、A07 未知项兜底、N25 Case 编译、N26 测试选择（策略强制/跳过/影响置信度）和 A12 测试选择建议（仅 N26 无法判定时触发，建议经 N26 校验折叠，只能扩大或升级范围）。
 - N03/N04 契约校验、G02 人工停顿和 N15 Execution Plan。
 - `fs-qa-knowledge` Case Provider 的固定版本能力探测、契约校验和无副作用消费端 Adapter；
   当前冻结版本不兼容，未实际调用其生成流程。
@@ -204,10 +204,26 @@ G02 放行后的阶段二真实链（N25 -> A11 审核 -> N26 -> N15）：
 ```bash
 make -C qa-agents run-n25-after-g02-pilot            # multica-stage13
 make -C qa-agents prepare-multica-split-review-pilot # multica-inputs/a11-01/a11-input.json
-# 在 Multica 桌面端把 A11 输入交给 A11 Agent，接受后 ingest-multica 入库 multica-stage14
+# 把 a11-input.json 作为唯一附件分配给 A11 Agent（QAA-26），接受后：
+#   fetch-multica 保存消息流 -> ingest-multica 校验并入库 multica-stage14
 make -C qa-agents run-n26-after-a11-pilot            # multica-stage15
 make -C qa-agents run-n15-after-n26-pilot            # multica-stage16
 ```
+
+阶段 3 执行门禁（设计文档 §17）：N07 在正式 Case 执行前记录环境指纹并检查部署/依赖/
+账号/Flag/租户/数据/运行时/命名空间/资源锁；失败即 `blocked` 路由 N16，N16 修复计划必须
+覆盖全部失败项且动作满足幂等键、有状态变化并记录补偿清理：
+
+```bash
+make -C qa-agents run-n07-env-precheck-pilot        # multica-stage17（需 env/target.json 与 observed.json）
+make -C qa-agents run-n16-env-fix-pilot             # multica-stage18（需 env/fix-plan.json）
+```
+
+A11 输入是紧凑审查范围而不是完整 Test Case IR：N25 子 Case 与父 Case 内容相同，完整
+重复载荷会把 Agent 上下文推到 Codex Runtime `semantic_inactivity_timeout=10m` 的生成
+窗口之外（真实运行曾连续两次 `codex_semantic_inactivity` 超时）。`prepare-multica-split-review`
+只下发审查必需字段（id/expected/layer/parent 绑定/继承一致性标志等），并保留 `inherits_parent`
+确定性核对结果；A11 指令要求最终 JSON ≤ 10KB、rationale ≤ 60 字。
 
 `pilot-001` 的 G02 已真实放行：QAA-24 由 QA Owner `muqj11262` 置为 `done` 后线上确认
 `approved`/`next_node=N25`，恢复点在 N25。Multica CLI 暂未提供 Issue 状态变化 webhook，

@@ -1,6 +1,6 @@
 # Implementation Status
 
-更新时间：2026-08-10 晚间（G02 已放行，阶段二驱动就绪，交接待办见文末）
+更新时间：2026-08-11（A11/N26/N15 真实闭环，N07/N16 执行门禁已实现）
 
 | 范围 | 状态 | 说明 |
 | --- | --- | --- |
@@ -16,7 +16,7 @@
 | N24/A07 | 真实 N24 已完成 | 风险为 `critical`，必测 `backend/contract/e2e`；规则优先，未知项才调用 A07 |
 | A08/A09/N04/G02 | 人工恢复已闭环 | QAA-21 A08 v1.3.0 入库 `multica-stage10`（13 个父 Case）；QAA-23 A09 通过入库 `multica-stage11`；N04 `correction_attempt=3`、`valid=true`、`next_node=G02`（`multica-stage12`）；G02 QAA-24 放行至 N25 |
 | QA 人工修正恢复 | 代码与协议已实现；试点恢复待重跑 | 已实现请求/决定/结果、Multica Issue、身份与哈希绑定、A08 v1.3.0 人工恢复输入和不重置预算规则；QAA-19 已 `done/authorized`；QAA-20 因缺绑定字段、附件交付和工具轨迹违规被拒，不得入库 |
-| N25/A11/N26/A12/N15 | 代码与测试就绪；A11 真实审核待跑 | `stage_two_nodes.py` 实现 N25/N26/N15 内容寻址驱动与绑定校验；`multica.py` 实现 A11 Profile/输入准备/语义校验；CLI 与 Makefile 新增 4 个命令；A12 未实现 |
+| N25/A11/N26/A12/N15 | 真实闭环 | 主链 N25（stage13）→ A11（stage14，QAA-26 已入库）→ N26（stage15，无 unresolved）→ N15（stage16，3 generate_new + 11 manual_run）全部真实跑通；A12 建议折叠规则与测试就绪；N25 按 `expected[].layers` 注解做确定性分层收窄 `stage_two_nodes.py` 实现 N25/N26/N15 内容寻址驱动与绑定校验；`multica.py` 实现 A11/A12 Profile/输入准备/语义校验；A12 已实现：N26 策略强制/跳过/影响置信度规则、A12 建议折叠（只能扩大或升级、不得缩小或降级强制 Case）；CLI 与 Makefile 新增命令 |
 | A14/A18-BE/N05/N06/G03 | 已实现后端参考切片 | Artifact-only pytest 候选、独立审查、安全检查、精确回流和人工 Gate |
 | Oracle 离线评估 | 已实现参考版 | 路由、事实、对齐、开放问题、Gate 决策和测试义务；确定性规则、一对一义务匹配、文本/HTML 报告 |
 | Multica 试点空间 | 已配置基础资源 | 独立 Workspace、Project、私有 Squad、组长和 A02/A03/A05/A06/A08/A09；无仓库绑定；A02/A03/A05/A06 已从离线 Runtime `6fa59d79` 重绑到在线 `5a1ecc9c` |
@@ -25,7 +25,8 @@
 | fs-qa-knowledge Provider | 消费端完成，上游阻塞 | 冻结版本缺少 capability manifest，且强制 `upload2fs`；状态为 `incompatible`，禁止进入 A08 |
 | A13/A15/A16/A17-*/A18-* 自动化链路 | 已实现本地参考 Profile | 前端 Playwright、契约、E2E 与六个非功能专项的 artifact-only 生成和独立审查 Profile；共享生成/审查引擎 + 版本化 Profile，策略按层路由候选根目录与框架白名单；N05/G03 多 Manifest 汇合 |
 | A01 歧义路由建议 Profile | 已实现 | N00 注册 5 个确定性模板，仅未知模式/触发不匹配时调用 A01 建议，N00 校验后生效；建议不能自行创建或执行流程 |
-| N07-N12/N16-N23 执行与门禁 | 未实现 | 按阶段 3-5 建设 |
+| N07/N16 环境与数据门禁 | 已实现 | 确定性节点 + 15 项测试：N07 环境指纹、8 类检查、指纹节流、失败即 blocked 路由 N16；N16 幂等键/无状态变化拒绝/未覆盖失败项拒绝/补偿清理；CLI 与 Makefile 命令就绪 |
+| N08-N12/N17-N23 执行与门禁 | 未实现 | 按阶段 3-5 建设 |
 
 本地保守 Profile 可以通过显式开发审批开关模拟运行到 G03；这不是生产审批，也不是当前
 真实 Multica 链路的状态。真实试点已完成 G01 与 N24，也完成一轮 A08 自动修正和 A09
@@ -112,5 +113,46 @@ A09 第一轮提出的工单主题限制。QAA-12 仅作为 A08 v1.2.1 协议影
      `multica-stage14` → `make run-n26-after-a11-pilot`（stage15）→
      `make run-n15-after-n26-pilot`（stage16）。
   3. 核对真实 A08 产物 `test-design-ir/1.1` 与 N25/A11 契约版本一致。
-  4. A12 与阶段 3-5（N07-N12/N16-N23 执行与门禁）未实现，按设计文档继续建设。
+  4. 阶段 3-5（N07-N12/N16-N23 执行与门禁）未实现，按设计文档继续建设；A12 已实现并带独立评估测试。
   5. 本次改动已推送远端 `qa_agent` 分支（未 merge main）。
+
+### 2026-08-10 深夜实跑更新（A11 真实运行与上下文超限修复）
+
+- 主链本地产物已从 Multica 线上恢复并逐哈希核对：`multica-stage10`（A08，QAA-21，
+  `edb58b4f…`）、`multica-stage11`（A09，QAA-23，`9cafab64…`）、`multica-stage12`
+  （N04 `valid=true`，`35e954e5…`）、G02 请求/结果（request `f46f883b…`、outcome
+  `0bc6ed31…`）全部与 QAA-24 线上绑定哈希一致；N25 已真实编译 stage13（13 父 → 14 子）。
+- A11 Multica Agent 已创建（QAA-25/QAA-26，runtime 绑定在线 Codex `6fa59d79`）并登记
+  `multica/workspace-manifest.json`；指令发布为 `multica/agent-instructions/a11-v1.0.0.md`。
+- 真实运行发现并修复缺陷：A11 输入把完整父/子 Test Case IR 都发给 Agent（磁盘 175KB、
+  每轮约 48K tokens），模型在读取全部输入后进入长时间静默生成，两次被 Codex Runtime
+  `semantic_inactivity_timeout=10m` 看门狗终止（`codex_semantic_inactivity`）。修复：
+  `prepare_multica_split_review_input` 改为紧凑审查范围（保留 id/expected/layer/parent
+  绑定/继承一致性标志，去掉重复的 test_data/steps/cleanup/oracle 大字段），磁盘降至约
+  57KB；A11 指令明确最终 JSON ≤ 10KB、rationale ≤ 60 字、只输出真实问题。新增
+  `test_a11_input_is_compact_review_scope`。
+- 当前进展：QAA-26 携带紧凑输入的真实 A11 审核运行中；完成后 `ingest-multica` 入库
+  `multica-stage14`，再 `make run-n26-after-a11-pilot`（stage15）与
+  `make run-n15-after-n26-pilot`（stage16）。
+
+
+### 2026-08-11 更新（A11/N26/N15 真实闭环与 N07/N16 执行门禁）
+
+- 主链阶段二真实闭环：`run-n25-after-g02-pilot` 产出 stage13（13 父 → 14 子，N25
+  `e8505b16…`）；A11 Agent（QAA-26）真实运行 3m01s 后 `ingest-multica` 入库 stage14
+  （`b6e37ba3…`，`completed_with_gaps`/`approved=true`）；`run-n26-after-a11-pilot` 产出
+  stage15（`64bd7dcb…`，无 unresolved）；`run-n15-after-n26-pilot` 产出 stage16
+  （`89764afd…`，执行计划 3 `generate_new` + 11 `manual_run`）。
+- N25 分层收窄（A11-ISSUE-001，warning 升级为 N25 修复）：`case_compiler.py` 新增
+  `_narrow_expected_for_layer`，按 `expected[].layers` 注解确定性收窄子 Case 期望，空子
+  Case 保护（未注解时全量继承，向后兼容）；新增 3 项测试。真实 A08 尚未在 expected 上
+  标注 `layers`，收窄对当前产物不生效，记为 A08 指令后续改进项。
+- N07/N16 实现（设计文档 §17）：`env_precheck.py` 提供 `run_n07_env_precheck`（部署
+  commit/依赖健康/测试账号/Flag/租户/测试数据/运行时/命名空间/资源锁 8 类检查、环境指纹
+  与内容哈希、同指纹无原因重检节流、失败即 blocked 路由 N16）与 `run_n16_env_fix`
+  （期望态/执行前态/结果/补偿/幂等键；幂等键不符、`performed` 而无状态变化、未覆盖全部
+  失败项均拒绝；动作失败则 blocked 转人工）。修复 `ArtifactStatus` 缺失 `blocked` 成员。
+- 接线：CLI 新增 `run-n07-env-precheck`/`run-n16-env-fix`，Makefile 新增
+  `run-n07-env-precheck-pilot`/`run-n16-env-fix-pilot`；`tests/test_env_precheck.py`
+  15 项覆盖正/负向（含节流、无状态变化拒绝、未覆盖失败项、CLI 端到端）。
+- 全量回归：`pytest tests -q` → `181 passed`（上轮 163 + N25 3 项 + N07/N16 15 项）。

@@ -1,0 +1,20 @@
+{
+  "action": "resume_with_human_direction",
+  "automatic_budget_reset": false,
+  "decision": "directed_correction",
+  "decision_hash": "sha256:f6fa4e7a25343623d0700d3fac60c754d0f7f96533993739d0168c49a6c8708f",
+  "idempotency_key": "sha256:9f5f5b16e7cb8cc9f135d5407cfc2c9ac0da9be39448e3ceadd2ad455428e0fc",
+  "next_correction_attempt": 3,
+  "next_node": "A08",
+  "node_id": "human_test_design_correction",
+  "outcome_hash": "sha256:5194f3f414137cb24767514d923a4d7fe12804116dd661508a7affafb2bced7d",
+  "request_hash": "sha256:ff8da34d7d796a7f726fb030288260ffe06e6bce4ff063bccac3dcb5c50d2cd8",
+  "required_revalidation": [
+    "A09",
+    "N04"
+  ],
+  "schema_version": "human-test-design-correction-outcome/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed",
+  "workflow_run_id": "multica-pilot-001"
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "n16-environment-fix/1.0",
+  "title": "N16 Environment Fix Artifact Payload",
+  "description": "N16 executes explicit recoverable fix actions for a blocked N07 precheck. Every action records expected state, pre state, result, compensation cleanup and idempotency key.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workflow_run_id",
+    "source_snapshot_id",
+    "precheck_hash",
+    "environment_fingerprint",
+    "addressed_checks",
+    "summary",
+    "actions",
+    "decision",
+    "next_node",
+    "status"
+  ],
+  "properties": {
+    "schema_version": {"const": "n16-environment-fix/1.0"},
+    "workflow_run_id": {"type": "string"},
+    "source_snapshot_id": {"type": "string"},
+    "precheck_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "environment_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "addressed_checks": {"type": "array", "items": {"type": "string"}},
+    "summary": {
+      "type": "object",
+      "required": ["actions", "performed", "not_required", "failed"],
+      "properties": {
+        "actions": {"type": "integer", "minimum": 0},
+        "performed": {"type": "integer", "minimum": 0},
+        "not_required": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "target_check",
+          "result",
+          "expected_state",
+          "pre_state",
+          "compensation",
+          "idempotency_key"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "target_check": {"type": "string", "minLength": 1},
+          "result": {"enum": ["performed", "not_required", "failed"]},
+          "expected_state": {"type": "object"},
+          "pre_state": {"type": "object"},
+          "compensation": {"type": "object"},
+          "idempotency_key": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "decision": {"enum": ["fixed", "blocked"]},
+    "next_node": {"enum": ["N07", "human"]},
+    "status": {"enum": ["completed", "blocked"]}
+  },
+  "additionalProperties": true
+}

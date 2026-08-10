@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "n07-environment-precheck/1.0",
+  "title": "N07 Environment Precheck Artifact Payload",
+  "description": "N07 records an environment fingerprint and per-category check results before Case execution. Any failed check blocks execution and routes to N16.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workflow_run_id",
+    "source_snapshot_id",
+    "environment_fingerprint",
+    "target_hash",
+    "observed_hash",
+    "throttled",
+    "checks",
+    "summary",
+    "decision",
+    "next_node"
+  ],
+  "properties": {
+    "schema_version": {"const": "n07-environment-precheck/1.0"},
+    "workflow_run_id": {"type": "string"},
+    "source_snapshot_id": {"type": "string"},
+    "environment_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "target_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "observed_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "throttled": {"type": "boolean"},
+    "throttle_reason": {"type": "string"},
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "name", "status", "message", "evidence"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "category": {
+            "enum": [
+              "deployment_commit",
+              "dependency_health",
+              "test_account",
+              "feature_flag",
+              "test_data",
+              "runtime_environment",
+              "test_namespace",
+              "resource_lock"
+            ]
+          },
+          "name": {"type": "string"},
+          "status": {"enum": ["passed", "warning", "failed", "not_applicable"]},
+          "message": {"type": "string"},
+          "evidence": {"type": "array"},
+          "source_refs": {"type": "array"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["passed", "warning", "failed", "not_applicable"],
+      "properties": {
+        "passed": {"type": "integer", "minimum": 0},
+        "warning": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "not_applicable": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": true
+    },
+    "decision": {"enum": ["passed", "passed_with_warnings", "blocked"]},
+    "next_node": {"enum": ["N08", "N16"]}
+  },
+  "additionalProperties": true
+}

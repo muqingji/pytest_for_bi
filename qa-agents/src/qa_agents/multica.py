@@ -231,6 +231,22 @@ PROFILE_OUTPUTS = {
             },
         },
     },
+    "A12": {
+        "artifact_id": "a12-test-selection-advice",
+        "required_fields": {"advice_items", "uncertainty_notes"},
+        "evidence_collections": {"advice_items"},
+        "collection_item_fields": {
+            "advice_items": {
+                "id",
+                "case_id",
+                "advisory_topic",
+                "recommendation",
+                "evidence",
+                "uncertainty",
+                "source_refs",
+            },
+        },
+    },
 }
 
 
@@ -1065,6 +1081,20 @@ def prepare_multica_split_review_input(
     workflow_run_id, workflow_mode, snapshot_id = _identity_of(test_design)
     if oracle_rules.get("schema_version") != "oracle-rule-library/1.0":
         raise ContractError("A11 Oracle rule library version is unsupported")
+    parents = [
+        item for item in test_design["payload"].get("parent_cases", [])
+        if isinstance(item, Mapping)
+    ]
+    children = [
+        item for item in compiled["payload"].get("compiled_cases", [])
+        if isinstance(item, Mapping)
+    ]
+    parent_index = {str(item.get("id")): item for item in parents}
+    parent_cases = [_compact_a11_review_case(item) for item in parents]
+    compiled_child_cases = [
+        _compact_a11_review_case(item, parent=parent_index.get(str(item.get("parent_case_id"))))
+        for item in children
+    ]
     bundle = {
         "schema_version": "multica-agent-input/1.0",
         "workflow_run_id": workflow_run_id,
@@ -1074,8 +1104,8 @@ def prepare_multica_split_review_input(
         "profile_version": "1.0.0",
         "output_contract": "split-review/1.0",
         "allowed_inputs": {
-            "parent_test_cases": test_design["payload"].get("parent_cases", []),
-            "compiled_child_cases": compiled["payload"].get("compiled_cases", []),
+            "parent_test_cases": parent_cases,
+            "compiled_child_cases": compiled_child_cases,
             "oracle_rule_library": oracle_rules,
         },
         "upstream_artifacts": [
@@ -1099,6 +1129,183 @@ def prepare_multica_split_review_input(
     _assert_no_forbidden_oracle_fields(bundle)
     bundle["bundle_hash"] = content_hash(bundle)
     ArtifactStore(output_dir).write_json("a11-input.json", bundle)
+    return bundle
+
+
+def _compact_a11_review_case(
+    case: Mapping[str, Any], *, parent: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
+    """Compress one case into the A11 review scope without losing audit fields.
+
+    N25 only copies or narrows execution responsibility, so child cases repeat the
+    parent content. A11 reviews the split, not the full payloads; keeping the full
+    duplicated test_data/steps/oracle bodies in the Agent input inflates the context
+    and can exceed the runtime semantic-inactivity watchdog during final generation.
+    """
+
+    policy = case.get("execution_policy")
+    allowed_modes = (
+        list(policy.get("allowed_modes", [])) if isinstance(policy, Mapping) else []
+    )
+    expected = []
+    for item in case.get("expected", []):
+        if not isinstance(item, Mapping):
+            continue
+        oracle = item.get("oracle")
+        expected.append(
+            {
+                "id": item.get("id"),
+                "description": item.get("description"),
+                "type": oracle.get("type") if isinstance(oracle, Mapping) else None,
+                "matcher": oracle.get("matcher") if isinstance(oracle, Mapping) else None,
+                "source_ref": (
+                    oracle.get("source_ref") if isinstance(oracle, Mapping) else None
+                ),
+            }
+        )
+    compact: dict[str, Any] = {
+        "id": case.get("id"),
+        "title": case.get("title"),
+        "layer": case.get("layer"),
+        "required_layers": list(case.get("required_layers", [])),
+        "risk": case.get("risk"),
+        "priority": case.get("priority"),
+        "source_refs": list(case.get("source_refs", [])),
+        "intent_ids": list(case.get("intent_ids", [])),
+        "expected": expected,
+        "execution_policy": {"allowed_modes": allowed_modes},
+        "test_data_present": isinstance(case.get("test_data"), Mapping),
+        "cleanup_present": bool(case.get("cleanup")),
+        "cleanup_oracle_present": isinstance(case.get("cleanup_oracle"), Mapping),
+        "steps_count": len(case.get("steps", [])) if isinstance(case.get("steps"), list) else 0,
+        "preconditions_count": (
+            len(case.get("preconditions", [])) if isinstance(case.get("preconditions"), list) else 0
+        ),
+    }
+    if parent is not None:
+        compact["parent_case_id"] = case.get("parent_case_id")
+        compact["inherits_parent"] = {
+            field: _a11_field_equal(parent, case, field)
+            for field in (
+                "test_data",
+                "cleanup",
+                "cleanup_oracle",
+                "source_refs",
+                "execution_policy",
+                "preconditions",
+            )
+        }
+        compact["inherits_parent"]["expected_oracle_ids"] = _a11_field_equal(
+            parent, case, "expected", key="id"
+        )
+    return compact
+
+
+def _a11_field_equal(
+    parent: Mapping[str, Any], child: Mapping[str, Any], field: str, *, key: str | None = None
+) -> bool:
+    left = parent.get(field)
+    right = child.get(field)
+    if key is not None:
+        left = [item.get(key) for item in left] if isinstance(left, list) else left
+        right = [item.get(key) for item in right] if isinstance(right, list) else right
+    return left == right
+
+
+def prepare_multica_selection_advice_input(
+    selection_artifact_path: Path,
+    compiled_artifact_path: Path,
+    output_dir: Path,
+    *,
+    change_set_path: Path | None = None,
+    asset_catalog_path: Path | None = None,
+    selection_policy_path: Path | None = None,
+    security: SecurityPolicy | None = None,
+) -> dict[str, Any]:
+    """Compile N26 unresolved items + ChangeSet + asset evidence into A12 input.
+
+    A12 only runs when N26 has unresolved impact relationships; it returns
+    advice-only suggestions that N26 validates before folding.  The input is
+    hash-bound to the N26 selection and N25 compiled Artifacts.
+    """
+
+    security = security or SecurityPolicy()
+    selection = _verified_artifact(
+        selection_artifact_path, "n26-test-selection", security
+    )
+    compiled = _verified_artifact(
+        compiled_artifact_path, "n25-compiled-test-cases", security
+    )
+    unresolved = selection["payload"].get("unresolved_items")
+    if not isinstance(unresolved, list) or not unresolved:
+        raise ContractError("A12 requires N26 unresolved selection items")
+    if selection["payload"].get("compiled_artifact_hash") != compiled["artifact_hash"]:
+        raise ContractError("A12 N26 selection does not bind the compiled Artifact")
+    if _identity_of(selection) != _identity_of(compiled):
+        raise ContractError("A12 N26 and N25 Artifacts belong to different runs")
+    workflow_run_id, workflow_mode, snapshot_id = _identity_of(selection)
+
+    compiled_cases = compiled["payload"].get("compiled_cases")
+    if not isinstance(compiled_cases, list) or not all(
+        isinstance(item, Mapping) for item in compiled_cases
+    ):
+        raise ContractError("A12 compiled child cases are invalid")
+    case_index = {
+        str(case.get("id", "")): {
+            "layer": case.get("layer"),
+            "required_layers": case.get("required_layers", []),
+            "evidence_modules": case.get("evidence_modules", []),
+            "automation_candidate": case.get("automation_candidate", False),
+        }
+        for case in compiled_cases
+        if isinstance(case, Mapping) and case.get("id")
+    }
+
+    change_set = _read(change_set_path) if change_set_path is not None else {}
+    asset_catalog = _read(asset_catalog_path) if asset_catalog_path is not None else {}
+    selection_policy = (
+        _read(selection_policy_path) if selection_policy_path is not None else {}
+    )
+    for value in (change_set, asset_catalog, selection_policy):
+        security.assert_no_secret_values(value)
+    _assert_no_forbidden_oracle_fields(selection_policy)
+
+    bundle = {
+        "schema_version": "multica-agent-input/1.0",
+        "workflow_run_id": workflow_run_id,
+        "workflow_mode": workflow_mode,
+        "source_snapshot_id": snapshot_id,
+        "profile_id": "A12",
+        "profile_version": "1.0.0",
+        "output_contract": "test-selection-advice/1.0",
+        "allowed_inputs": {
+            "unresolved_items": unresolved,
+            "compiled_case_index": case_index,
+            "change_set": change_set,
+            "asset_evidence": asset_catalog,
+            "selection_policy": selection_policy,
+        },
+        "upstream_artifacts": [
+            {
+                "artifact_id": selection["artifact_id"],
+                "artifact_hash": selection["artifact_hash"],
+            },
+            {
+                "artifact_id": compiled["artifact_id"],
+                "artifact_hash": compiled["artifact_hash"],
+            },
+        ],
+        "integrity": {
+            "evaluation_oracle_registry_included": False,
+            "credentials_embedded": False,
+            "business_repository_write_allowed": False,
+            "external_side_effects_allowed": False,
+        },
+    }
+    security.assert_no_secret_values(bundle)
+    _assert_no_forbidden_oracle_fields(bundle)
+    bundle["bundle_hash"] = content_hash(bundle)
+    ArtifactStore(output_dir).write_json("a12-input.json", bundle)
     return bundle
 
 
@@ -1312,6 +1519,9 @@ def _validate_profile_semantics(
         return
     if profile_id == "A11":
         _validate_split_review_semantics(bundle, payload)
+        return
+    if profile_id == "A12":
+        _validate_selection_advice_semantics(bundle, payload)
         return
     if profile_id != "A05":
         return
@@ -1817,6 +2027,97 @@ def _validate_split_review_semantics(
         raise ContractError("A11 approved output has an invalid status")
     if not approved and payload.get("status") != ArtifactStatus.NEEDS_HUMAN.value:
         raise ContractError("A11 rejected output must be needs_human")
+
+
+def _validate_selection_advice_semantics(
+    bundle: Mapping[str, Any], payload: Mapping[str, Any]
+) -> None:
+    allowed_inputs = bundle.get("allowed_inputs", {})
+    if not isinstance(allowed_inputs, Mapping):
+        raise ContractError("A12 input has no N26 unresolved items")
+    unresolved = allowed_inputs.get("unresolved_items", [])
+    case_index = allowed_inputs.get("compiled_case_index", {})
+    selection_policy = allowed_inputs.get("selection_policy", {})
+    if not isinstance(unresolved, list) or not unresolved:
+        raise ContractError("A12 input has no unresolved selection items")
+    if not isinstance(case_index, Mapping) or not case_index:
+        raise ContractError("A12 input has no compiled case index")
+
+    unresolved_ids = {
+        str(item.get("id"))
+        for item in unresolved
+        if isinstance(item, Mapping) and item.get("id")
+    }
+    unresolved_keys = {
+        (str(item.get("case_id")), str(item.get("advisory_topic")))
+        for item in unresolved
+        if isinstance(item, Mapping)
+    }
+    known_case_ids = set(map(str, case_index))
+    advice = payload.get("advice_items")
+    if not isinstance(advice, list) or not advice:
+        raise ContractError("A12 output advice_items is empty")
+    seen_ids: list[str] = []
+    allowed_recommendations = {
+        "expand_selection",
+        "keep_must_run",
+        "request_human",
+    }
+    for index, item in enumerate(advice):
+        if not isinstance(item, Mapping):
+            raise ContractError(f"A12 advice_items[{index}] must be an object")
+        item_id = str(item.get("id", ""))
+        seen_ids.append(item_id)
+        recommendation = item.get("recommendation")
+        if recommendation not in allowed_recommendations:
+            raise ContractError(f"A12 advice_items[{index}] has an invalid recommendation")
+        if item.get("unresolved_item_id"):
+            target_ok = str(item.get("unresolved_item_id", "")) in unresolved_ids
+        else:
+            target_ok = (
+                str(item.get("case_id", "")),
+                str(item.get("advisory_topic", "")),
+            ) in unresolved_keys
+        if not target_ok:
+            raise ContractError(
+                f"A12 advice_items[{index}] references an unknown unresolved item"
+            )
+        if not isinstance(item.get("evidence"), list) or not item["evidence"]:
+            raise ContractError(f"A12 advice_items[{index}] evidence must be non-empty")
+        if not isinstance(item.get("source_refs"), list) or not item["source_refs"]:
+            raise ContractError(f"A12 advice_items[{index}] source_refs must be non-empty")
+        if not str(item.get("uncertainty", "")).strip():
+            raise ContractError(f"A12 advice_items[{index}] uncertainty must be non-empty")
+        suggested = set(map(str, item.get("suggested_case_ids", [])))
+        if not suggested <= known_case_ids:
+            raise ContractError(f"A12 advice_items[{index}] suggests an unknown Case")
+        if recommendation == "request_human":
+            target_case_id = str(item.get("case_id", ""))
+            target_layer = (
+                str(case_index.get(target_case_id, {}).get("layer", ""))
+                if isinstance(case_index.get(target_case_id), Mapping)
+                else ""
+            )
+            forced = [
+                rule
+                for rule in selection_policy.get("forced_selection", [])
+                if isinstance(rule, Mapping)
+                and rule.get("selection") == "must_run"
+                and (
+                    str(rule.get("scope", "")) == "all"
+                    or target_case_id
+                    in {str(cid) for cid in rule.get("case_ids", [])}
+                    or target_layer in {str(layer) for layer in rule.get("layers", [])}
+                )
+            ]
+            if forced:
+                raise SecurityPolicyError(
+                    "A12 cannot downgrade a policy-forced Case to human"
+                )
+    if not all(seen_ids) or len(seen_ids) != len(set(seen_ids)):
+        raise ContractError("A12 advice item IDs must be non-empty and unique")
+    if payload.get("evaluation_oracle_accessed") is not False:
+        raise SecurityPolicyError("A12 must not access the evaluation Oracle Registry")
 
 
 def ingest_multica_output(

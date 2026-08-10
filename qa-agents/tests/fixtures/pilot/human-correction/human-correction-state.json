@@ -1,0 +1,14 @@
+{
+  "decision_hash": "sha256:f6fa4e7a25343623d0700d3fac60c754d0f7f96533993739d0168c49a6c8708f",
+  "issue_id": "human-correction-issue-1",
+  "next_node": "A08",
+  "node_id": "human_test_design_correction",
+  "observed_multica_status": "done",
+  "outcome_hash": "sha256:5194f3f414137cb24767514d923a4d7fe12804116dd661508a7affafb2bced7d",
+  "processed_event_id": "sha256:cfdd0e082ff66d45d886476fda8b4459eefc68231a57b38d497853aa89c377cc",
+  "request_hash": "sha256:ff8da34d7d796a7f726fb030288260ffe06e6bce4ff063bccac3dcb5c50d2cd8",
+  "schema_version": "human-test-design-correction-state/1.0",
+  "state": "authorized",
+  "state_hash": "sha256:0226ba3920bc164cc01fcaaad26c8a1fc567b8947be31887dbd77fdba85cbf5d",
+  "workflow_run_id": "multica-pilot-001"
+}

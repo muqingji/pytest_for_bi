@@ -5,7 +5,7 @@ PILOT_INPUT := eval/workflows/pilot-001-detail-drill-message-i18n/input
 PILOT_ORACLE := eval/workflows/pilot-001-detail-drill-message-i18n/oracle
 PILOT_RUN := runs/pilot-001
 
-.PHONY: test pilot pilot-full pilot-automation collect-pilot evaluate-pilot prepare-multica-pilot prepare-multica-alignment-pilot report-multica-alignment-pilot prepare-g01-pilot record-g01-pilot run-n24-pilot prepare-multica-test-design-pilot prepare-multica-oracle-review-pilot run-n04-pilot prepare-multica-test-design-correction-pilot prepare-multica-oracle-review-correction-pilot run-n04-correction-pilot prepare-human-correction-pilot open-human-correction-pilot sync-human-correction-pilot prepare-multica-human-correction-pilot prepare-g02-pilot open-g02-pilot sync-g02-pilot
+.PHONY: test pilot pilot-full pilot-automation collect-pilot evaluate-pilot prepare-multica-pilot prepare-multica-alignment-pilot report-multica-alignment-pilot prepare-g01-pilot record-g01-pilot run-n24-pilot prepare-multica-test-design-pilot prepare-multica-oracle-review-pilot run-n04-pilot prepare-multica-test-design-correction-pilot prepare-multica-oracle-review-correction-pilot run-n04-correction-pilot run-n25-after-g02-pilot prepare-multica-split-review-pilot run-n26-after-a11-pilot run-n15-after-n26-pilot run-n07-env-precheck-pilot run-n16-env-fix-pilot prepare-multica-selection-advice-pilot prepare-human-correction-pilot open-human-correction-pilot sync-human-correction-pilot prepare-multica-human-correction-pilot prepare-g02-pilot open-g02-pilot sync-g02-pilot
 
 G01_DIR := $(PILOT_RUN)/g01
 G01_DECISION_INPUT ?= $(G01_DIR)/g01-decision-input.json
@@ -134,7 +134,26 @@ prepare-multica-split-review-pilot:
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-multica-split-review --test-design-artifact $(HUMAN_A08_STAGE)/artifacts/a08-test-design-ir.json --test-design-bundle $(PILOT_RUN)/multica-inputs/a08-human-correction-01/a08-input.json --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --oracle-rules policies/oracle-rule-library.json --output $(HUMAN_A11_INPUT)
 
 run-n26-after-a11-pilot:
-	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n26-after-a11 --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --split-review-artifact $(HUMAN_A11_STAGE)/artifacts/a11-split-coverage-review.json --split-review-bundle $(HUMAN_A11_INPUT)/a11-input.json --output $(HUMAN_N26_STAGE)
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n26-after-a11 --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --split-review-artifact $(HUMAN_A11_STAGE)/artifacts/a11-split-coverage-review.json --split-review-bundle $(HUMAN_A11_INPUT)/a11-input.json --output $(HUMAN_N26_STAGE) --selection-policy policies/selection-policy.json
+
+prepare-multica-selection-advice-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-multica-selection-advice --selection-artifact $(HUMAN_N26_STAGE)/artifacts/n26-test-selection.json --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --output $(PILOT_RUN)/multica-inputs/a12-input --selection-policy policies/selection-policy.json
 
 run-n15-after-n26-pilot:
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n15-after-n26 --selection-artifact $(HUMAN_N26_STAGE)/artifacts/n26-test-selection.json --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --output $(HUMAN_N15_STAGE)
+
+
+# Execution-phase environment gates (design doc section 17): N07 precheck runs
+# before any formal Case execution; a blocked precheck is routed to N16, whose
+# fix plan must address every failed check before N07 is re-run.
+N07_ENV_TARGET := $(PILOT_RUN)/env/target.json
+N07_ENV_OBSERVED := $(PILOT_RUN)/env/observed.json
+N07_ENV_FIX_PLAN := $(PILOT_RUN)/env/fix-plan.json
+N07_STAGE := $(PILOT_RUN)/multica-stage17
+N16_STAGE := $(PILOT_RUN)/multica-stage18
+
+run-n07-env-precheck-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n07-env-precheck --target $(N07_ENV_TARGET) --observed $(N07_ENV_OBSERVED) --output $(N07_STAGE) --workflow-run-id pilot-001 --source-snapshot-id snapshot-v1
+
+run-n16-env-fix-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n16-env-fix --precheck $(N07_STAGE)/artifacts/n07-environment-precheck.json --fix-plan $(N07_ENV_FIX_PLAN) --output $(N16_STAGE)

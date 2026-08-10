@@ -9,6 +9,7 @@ import sys
 import tempfile
 
 from .evaluation import evaluate_run
+from .env_precheck import run_n07_env_precheck, run_n16_env_fix
 from .errors import ContractError, InputError, QaAgentError, SecurityPolicyError
 from .gates import (
     prepare_scope_review_request,
@@ -31,6 +32,7 @@ from .multica import (
     prepare_multica_alignment_input,
     prepare_multica_inputs,
     prepare_multica_oracle_review_input,
+    prepare_multica_selection_advice_input,
     prepare_multica_split_review_input,
     prepare_multica_test_design_correction_input,
     prepare_multica_test_design_input,
@@ -322,6 +324,17 @@ def build_parser() -> argparse.ArgumentParser:
     split_review_parser.add_argument("--oracle-rules", type=Path, required=True)
     split_review_parser.add_argument("--output", type=Path, required=True)
 
+    selection_advice_parser = subparsers.add_parser(
+        "prepare-multica-selection-advice",
+        help="Prepare A12 input from N26 unresolved items and N25 compiled cases",
+    )
+    selection_advice_parser.add_argument("--selection-artifact", type=Path, required=True)
+    selection_advice_parser.add_argument("--compiled-artifact", type=Path, required=True)
+    selection_advice_parser.add_argument("--output", type=Path, required=True)
+    selection_advice_parser.add_argument("--change-set", type=Path)
+    selection_advice_parser.add_argument("--asset-catalog", type=Path)
+    selection_advice_parser.add_argument("--selection-policy", type=Path)
+
     n25_parser = subparsers.add_parser(
         "run-n25-after-g02",
         help="Run deterministic N25 compilation after a validated G02 approval",
@@ -340,6 +353,8 @@ def build_parser() -> argparse.ArgumentParser:
     n26_parser.add_argument("--split-review-bundle", type=Path, required=True)
     n26_parser.add_argument("--output", type=Path, required=True)
     n26_parser.add_argument("--asset-catalog", type=Path)
+    n26_parser.add_argument("--selection-policy", type=Path)
+    n26_parser.add_argument("--selection-advice", type=Path)
 
     n15_parser = subparsers.add_parser(
         "run-n15-after-n26",
@@ -349,6 +364,26 @@ def build_parser() -> argparse.ArgumentParser:
     n15_parser.add_argument("--compiled-artifact", type=Path, required=True)
     n15_parser.add_argument("--output", type=Path, required=True)
     n15_parser.add_argument("--asset-catalog", type=Path)
+
+    n07_parser = subparsers.add_parser(
+        "run-n07-env-precheck",
+        help="Run deterministic N07 environment/data/resource precheck before Case execution",
+    )
+    n07_parser.add_argument("--target", type=Path, required=True)
+    n07_parser.add_argument("--observed", type=Path, required=True)
+    n07_parser.add_argument("--output", type=Path, required=True)
+    n07_parser.add_argument("--workflow-run-id", required=True)
+    n07_parser.add_argument("--source-snapshot-id", required=True)
+    n07_parser.add_argument("--previous-fingerprint", default="")
+    n07_parser.add_argument("--throttle-reason", default="")
+
+    n16_parser = subparsers.add_parser(
+        "run-n16-env-fix",
+        help="Run deterministic N16 environment fix gate against a blocked N07 precheck",
+    )
+    n16_parser.add_argument("--precheck", type=Path, required=True)
+    n16_parser.add_argument("--fix-plan", type=Path, required=True)
+    n16_parser.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -554,6 +589,18 @@ def _run(argv: list[str] | None = None) -> int:
         print(json.dumps(bundle, ensure_ascii=False, indent=2))
         return 0
 
+    if args.command == "prepare-multica-selection-advice":
+        bundle = prepare_multica_selection_advice_input(
+            args.selection_artifact,
+            args.compiled_artifact,
+            args.output,
+            change_set_path=args.change_set,
+            asset_catalog_path=args.asset_catalog,
+            selection_policy_path=args.selection_policy,
+        )
+        print(json.dumps(bundle, ensure_ascii=False, indent=2))
+        return 0
+
     if args.command == "run-n25-after-g02":
         artifact = run_n25_after_g02(
             args.a08_artifact,
@@ -571,6 +618,8 @@ def _run(argv: list[str] | None = None) -> int:
             args.split_review_bundle,
             args.output,
             asset_catalog_path=args.asset_catalog,
+            selection_policy_path=args.selection_policy,
+            selection_advice_path=args.selection_advice,
         )
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
         return 0
@@ -581,6 +630,28 @@ def _run(argv: list[str] | None = None) -> int:
             args.compiled_artifact,
             args.output,
             asset_catalog_path=args.asset_catalog,
+        )
+        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-n07-env-precheck":
+        artifact = run_n07_env_precheck(
+            args.target,
+            args.observed,
+            args.output,
+            workflow_run_id=args.workflow_run_id,
+            source_snapshot_id=args.source_snapshot_id,
+            previous_fingerprint=args.previous_fingerprint,
+            throttle_reason=args.throttle_reason,
+        )
+        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-n16-env-fix":
+        artifact = run_n16_env_fix(
+            args.precheck,
+            args.fix_plan,
+            args.output,
         )
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
         return 0

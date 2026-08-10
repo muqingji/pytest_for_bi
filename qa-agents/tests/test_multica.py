@@ -28,7 +28,7 @@ from qa_agents.storage import ArtifactStore
 
 ROOT = Path(__file__).resolve().parents[1]
 PILOT_INPUT = ROOT / "eval" / "workflows" / "pilot-001-detail-drill-message-i18n" / "input"
-PILOT_RUN = ROOT / "runs" / "pilot-001"
+PILOT_RUN = ROOT / "tests" / "fixtures" / "pilot"
 
 
 def read_json(path: Path) -> dict:
@@ -1216,6 +1216,64 @@ def test_prepare_multica_split_review_input_binds_a08_and_n25(tmp_path: Path) ->
     }
     assert bundle["integrity"]["evaluation_oracle_registry_included"] is False
     assert bundle["bundle_hash"].startswith("sha256:")
+
+
+def test_a11_input_is_compact_review_scope(tmp_path: Path) -> None:
+    """A11 input must stay a compact review scope, not the full duplicated payloads.
+
+    N25 children copy the parent content; shipping both full payloads to the Agent
+    inflates the context and can exceed the runtime semantic-inactivity watchdog.
+    """
+
+    bundle, a08_path, compiled_path = build_a11_prepare_inputs(tmp_path)
+    a08 = read_json(a08_path)
+    compiled = read_json(compiled_path)
+    parents = bundle["allowed_inputs"]["parent_test_cases"]
+    children = bundle["allowed_inputs"]["compiled_child_cases"]
+
+    assert parents and children
+    assert set(parents[0]) <= {
+        "id",
+        "title",
+        "layer",
+        "required_layers",
+        "risk",
+        "priority",
+        "source_refs",
+        "intent_ids",
+        "expected",
+        "execution_policy",
+        "test_data_present",
+        "cleanup_present",
+        "cleanup_oracle_present",
+        "steps_count",
+        "preconditions_count",
+    }
+    assert "test_data" not in parents[0] and "steps" not in parents[0]
+    expected = parents[0]["expected"][0]
+    assert set(expected) <= {"id", "description", "type", "matcher", "source_ref"}
+    assert set(children[0]) <= set(parents[0]) | {"parent_case_id", "inherits_parent"}
+    assert children[0]["parent_case_id"] == parents[0]["id"]
+    assert children[0]["inherits_parent"]["expected_oracle_ids"] is True
+
+    full_parents = a08["payload"]["parent_cases"]
+    full_children = compiled["payload"]["compiled_cases"]
+    heavy_fields = {
+        "test_data",
+        "steps",
+        "cleanup",
+        "cleanup_oracle",
+        "preconditions",
+    }
+    for case in parents + children:
+        assert not (heavy_fields & set(case))
+        for item in case["expected"]:
+            assert "expected_value" not in item and "observation_point" not in item
+    for full in full_parents + full_children:
+        assert full["id"] in {case["id"] for case in parents + children}
+    assert {child["id"] for child in children} == {
+        child["id"] for child in full_children
+    }
 
 
 def test_prepare_and_ingest_multica_a11_input(tmp_path: Path) -> None:

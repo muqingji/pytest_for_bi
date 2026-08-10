@@ -1,0 +1,86 @@
+{
+  "artifact_hash": "sha256:039d74b3b5268ea65fb7cad1f87271c3d63fb2f4b712848a8380068d11549c4c",
+  "artifact_id": "n24-test-strategy",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-07T16:55:18+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:b6cc049a565f0f8ef79714552c12cf18daedf44f8ae6d12498ced819f5e5561f",
+      "location": "payload",
+      "source_id": "a06-alignment-result",
+      "source_type": "artifact"
+    },
+    {
+      "content_hash": "sha256:d3f7a31ca5e260e12e69cf3574dd7564fed86e917abcf14b2b6e849220430ef6",
+      "location": "g01-review-decision.json",
+      "source_id": "G01",
+      "source_type": "human_gate_decision"
+    }
+  ],
+  "facts": [
+    {
+      "actor": {
+        "id": "muqj11262@fxiaoke.com",
+        "role": "qa_owner",
+        "type": "human"
+      },
+      "decision_hash": "sha256:d3f7a31ca5e260e12e69cf3574dd7564fed86e917abcf14b2b6e849220430ef6",
+      "gate_id": "G01",
+      "request_hash": "sha256:b37a9742dbf9300b38e472e5bf21e136bf5264755a5e8a3ed9c682ac378d250d",
+      "review_policy": {
+        "approval_mode": "qa_owner_single_signoff",
+        "policy_hash": "sha256:416a8050c9c5a0733cd003dfdcc0c0661752f5d1a5dd0318ae2afd1b1e2ca191",
+        "policy_scope": "pilot_test_design_only",
+        "production_release_authority": false,
+        "schema_version": "g01-review-policy/1.1",
+        "temporary_policy": true
+      }
+    }
+  ],
+  "inferences": [],
+  "payload": {
+    "human_gates": {
+      "automation_review": "required",
+      "test_case_ir_review": "required"
+    },
+    "policy_version": "risk-policy/1.0",
+    "reasons": [
+      {
+        "rule_id": "high_findings",
+        "score": 32
+      },
+      {
+        "rule_id": "medium_findings",
+        "score": 4
+      }
+    ],
+    "required_layers": [
+      "backend",
+      "contract",
+      "e2e"
+    ],
+    "required_non_functional": [],
+    "risk_level": "critical",
+    "risk_score": 36,
+    "schema_version": "test-strategy/1.0",
+    "unresolved_items": []
+  },
+  "producer": {
+    "component_id": "N24",
+    "component_version": "0.1.0",
+    "inference_config_hash": "none",
+    "model_provider": "none",
+    "model_snapshot": "deterministic",
+    "profile_version": "risk-policy/1.0",
+    "prompt_version": "none",
+    "runtime": "qa-agents-deterministic",
+    "tool_bundle_version": "g01-approved-risk-policy"
+  },
+  "reason_code": null,
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-pilot-001"
+}

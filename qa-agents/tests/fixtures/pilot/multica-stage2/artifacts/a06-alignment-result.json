@@ -1,0 +1,462 @@
+{
+  "artifact_hash": "sha256:b6cc049a565f0f8ef79714552c12cf18daedf44f8ae6d12498ced819f5e5561f",
+  "artifact_id": "a06-alignment-result",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-07T16:00:51+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:3bac6db7e76c0e611cb3d7309bad3da14cc30aa8ae58e9d5bfb9a54c3b92ad9b",
+      "location": "a06-input.json",
+      "source_id": "A06",
+      "source_type": "multica_agent_input"
+    }
+  ],
+  "facts": [
+    {
+      "attachment_id": "019fdcf0-2740-73aa-bb47-c41ff993c42e",
+      "commands": [
+        "multica issue get fa341420-3a79-4b12-aae6-319aadf7445a --output json",
+        "multica attachment download 019fdcf0-2740-73aa-bb47-c41ff993c42e --output-dir .",
+        "jq '{schema_version,profile_id,output_contract,workflow_run_id,source_snapshot_id,input_bundle_hash,integrity,allowed_inputs,keys:(keys)}' a06-input.json",
+        "jq '{schema_version,profile_id,output_contract,workflow_run_id,source_snapshot_id,bundle_hash,integrity,allowed_input_keys:(.allowed_inputs|keys),upstream_artifacts}' a06-input.json",
+        "jq '.allowed_inputs.requirement_analysis' a06-input.json",
+        "jq '.allowed_inputs.technical_analysis | {input_bundle_hash,status,technical_facts,risks,open_questions,assumptions,needs_human,testability_gaps}' a06-input.json",
+        "jq '.allowed_inputs.technical_analysis | keys' a06-input.json",
+        "jq '.allowed_inputs.technical_analysis.blocking_items' a06-input.json",
+        "jq '.allowed_inputs.backend_change_analysis | keys' a06-input.json"
+      ],
+      "issue_id": "fa341420-3a79-4b12-aae6-319aadf7445a",
+      "result": "passed",
+      "task_id": "bdd96bda-07e8-4098-8397-1a2e2dc3a67f",
+      "type": "multica_tool_trace_audit"
+    }
+  ],
+  "inferences": [],
+  "payload": {
+    "findings": [
+      {
+        "id": "FIND-001",
+        "implementation_ids": [
+          "backend-fact-001",
+          "backend-fact-003"
+        ],
+        "requirement_ids": [
+          "REQ-001"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-001",
+          "TF-004",
+          "TF-008",
+          "backend-fact-001",
+          "backend-fact-003",
+          "BI-001",
+          "BI-005"
+        ],
+        "summary": "自定义维度原判定条件和专用错误码替换已有业务源码证据，但错误码平台最终中英文模板及文案口径未完成确认；现有判定还包含下钻字段，超出冻结需求明确列出的维度和数据范围。",
+        "technical_fact_ids": [
+          "TF-003",
+          "TF-004",
+          "TF-008"
+        ],
+        "type": "partial_implementation"
+      },
+      {
+        "id": "FIND-002",
+        "implementation_ids": [
+          "backend-fact-001",
+          "backend-fact-002"
+        ],
+        "requirement_ids": [
+          "REQ-002"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-002",
+          "TF-006",
+          "TF-007",
+          "TF-008",
+          "backend-fact-002",
+          "BI-004",
+          "BI-005"
+        ],
+        "summary": "结果集筛选分支已切换专用错误码并传入筛选字段名，但未发现技术方案要求的字段元数据和动态多语名称回退链、空名称时降级旧错误码，以及参数占位符联调的实现证据。",
+        "technical_fact_ids": [
+          "TF-005",
+          "TF-006",
+          "TF-007",
+          "TF-008"
+        ],
+        "type": "partial_implementation"
+      },
+      {
+        "id": "FIND-003",
+        "implementation_ids": [
+          "backend-fact-002"
+        ],
+        "requirement_ids": [
+          "REQ-002"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-002",
+          "TF-006",
+          "backend-fact-002",
+          "AMB-002",
+          "HUM-002"
+        ],
+        "summary": "冻结需求未定义多个结果集筛选指标同时触发时应选择、排序或展示哪些名称；当前业务源码事实只证明单个筛选字段名被传入，无法判定其满足多指标场景。",
+        "technical_fact_ids": [
+          "TF-006"
+        ],
+        "type": "needs_confirmation"
+      },
+      {
+        "id": "FIND-004",
+        "implementation_ids": [
+          "backend-fact-004",
+          "backend-fact-005",
+          "backend-fact-006"
+        ],
+        "requirement_ids": [
+          "REQ-003",
+          "REQ-004"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "TF-009",
+          "TF-010",
+          "TF-011",
+          "TF-014",
+          "backend-fact-004",
+          "backend-fact-005",
+          "backend-fact-006"
+        ],
+        "summary": "技术方案要求通过包含完整指标配置、稳定对象或字段标识及关系元数据的原因解析器识别动态关联和多关联，并限制异常替换位置；业务源码事实则显示在多个转换器中按对象或节点数量以及关系查询失败后的 What/WhatList 元数据直接判定，未证明设计中的统一解析、动态优先级和异常边界已实现。",
+        "technical_fact_ids": [
+          "TF-009",
+          "TF-010",
+          "TF-011",
+          "TF-014"
+        ],
+        "type": "conflict"
+      },
+      {
+        "id": "FIND-005",
+        "implementation_ids": [
+          "backend-fact-006"
+        ],
+        "requirement_ids": [
+          "REQ-004"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-004",
+          "TF-009",
+          "TF-010",
+          "backend-fact-006",
+          "AMB-003",
+          "HUM-003"
+        ],
+        "summary": "特殊动态关联需求的完整对象范围未冻结，而实现事实表明常规关系查询全部失败后，任意命中的 What 或 WhatList 字段均会使用动态关联专用错误码；该范围是否包含需求列举之外的对象或主题需人工确认。",
+        "technical_fact_ids": [
+          "TF-009",
+          "TF-010"
+        ],
+        "type": "needs_confirmation"
+      },
+      {
+        "id": "FIND-006",
+        "implementation_ids": [
+          "backend-fact-002",
+          "backend-fact-003",
+          "backend-fact-004",
+          "backend-fact-005",
+          "backend-fact-006"
+        ],
+        "requirement_ids": [
+          "REQ-005"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-005",
+          "TF-002",
+          "TF-012",
+          "TF-015",
+          "backend-fact-002",
+          "backend-fact-006"
+        ],
+        "summary": "技术方案声明统计图和拼表复用后端判定并要求验证拼表入参与异常透传，但 ChangeSet 业务源码事实未证明两个入口均到达相同判定，也未提供 dev-platform 透传实现证据。",
+        "technical_fact_ids": [
+          "TF-002",
+          "TF-012",
+          "TF-015"
+        ],
+        "type": "omission"
+      },
+      {
+        "id": "FIND-007",
+        "implementation_ids": [
+          "backend-fact-002",
+          "backend-fact-003",
+          "backend-fact-004",
+          "backend-fact-005",
+          "backend-fact-006"
+        ],
+        "requirement_ids": [
+          "REQ-006"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-006",
+          "TF-012",
+          "TF-015",
+          "backend-fact-002",
+          "backend-fact-006",
+          "AMB-006"
+        ],
+        "summary": "技术方案声明 Web 和移动端复用同一后端判定，但业务源码事实没有证明两端均透传并展示相同专用错误，也没有证明两端均阻止进入不受支持的明细视图。",
+        "technical_fact_ids": [
+          "TF-012",
+          "TF-015"
+        ],
+        "type": "omission"
+      },
+      {
+        "id": "FIND-008",
+        "implementation_ids": [
+          "backend-fact-001"
+        ],
+        "requirement_ids": [
+          "REQ-001",
+          "REQ-002",
+          "REQ-003",
+          "REQ-004"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "TF-003",
+          "TF-007",
+          "TF-008",
+          "backend-fact-001",
+          "BI-005"
+        ],
+        "summary": "四个专用错误定义已进入业务源码，但错误码平台配置、中英文模板及结果集指标名占位符联调没有实现证据，因此最终用户可见文案尚不能完整对齐。",
+        "technical_fact_ids": [
+          "TF-003",
+          "TF-007",
+          "TF-008"
+        ],
+        "type": "omission"
+      },
+      {
+        "id": "FIND-009",
+        "implementation_ids": [
+          "backend-fact-007"
+        ],
+        "requirement_ids": [],
+        "severity": "medium",
+        "source_refs": [
+          "backend-fact-007"
+        ],
+        "summary": "员工或部门主题特殊兜底分支的异常消息被改为空字符串，但该变化不对应任何冻结需求，也没有专用提示需求依据。",
+        "technical_fact_ids": [],
+        "type": "out_of_scope_change"
+      },
+      {
+        "id": "FIND-010",
+        "implementation_ids": [],
+        "requirement_ids": [
+          "REQ-001",
+          "REQ-002",
+          "REQ-003",
+          "REQ-004"
+        ],
+        "severity": "medium",
+        "source_refs": [
+          "AMB-001",
+          "HUM-001",
+          "TF-014",
+          "BI-003"
+        ],
+        "summary": "多个限制条件同时命中时的提示优先级尚未形成冻结验收口径；技术方案给出的顺序仍待产品确认，业务源码事实也未证明该顺序。",
+        "technical_fact_ids": [
+          "TF-014"
+        ],
+        "type": "needs_confirmation"
+      }
+    ],
+    "input_bundle_hash": "sha256:3bac6db7e76c0e611cb3d7309bad3da14cc30aa8ae58e9d5bfb9a54c3b92ad9b",
+    "mappings": [
+      {
+        "change_fact_ids": [
+          "backend-fact-001",
+          "backend-fact-003"
+        ],
+        "requirement_id": "REQ-001",
+        "source_refs": [
+          "REQ-001",
+          "TF-004",
+          "backend-fact-001",
+          "backend-fact-003",
+          "BI-001"
+        ],
+        "status": "partially_aligned",
+        "technical_fact_ids": [
+          "TF-001",
+          "TF-003",
+          "TF-004",
+          "TF-007",
+          "TF-008"
+        ]
+      },
+      {
+        "change_fact_ids": [
+          "backend-fact-001",
+          "backend-fact-002"
+        ],
+        "requirement_id": "REQ-002",
+        "source_refs": [
+          "REQ-002",
+          "TF-005",
+          "TF-006",
+          "TF-007",
+          "backend-fact-001",
+          "backend-fact-002",
+          "BI-002",
+          "BI-004"
+        ],
+        "status": "partially_aligned",
+        "technical_fact_ids": [
+          "TF-001",
+          "TF-003",
+          "TF-005",
+          "TF-006",
+          "TF-007",
+          "TF-008"
+        ]
+      },
+      {
+        "change_fact_ids": [
+          "backend-fact-001",
+          "backend-fact-004",
+          "backend-fact-005"
+        ],
+        "requirement_id": "REQ-003",
+        "source_refs": [
+          "REQ-003",
+          "TF-001",
+          "TF-003",
+          "backend-fact-001",
+          "backend-fact-004",
+          "backend-fact-005"
+        ],
+        "status": "aligned",
+        "technical_fact_ids": [
+          "TF-001",
+          "TF-003",
+          "TF-009",
+          "TF-011",
+          "TF-013"
+        ]
+      },
+      {
+        "change_fact_ids": [
+          "backend-fact-001",
+          "backend-fact-006"
+        ],
+        "requirement_id": "REQ-004",
+        "source_refs": [
+          "REQ-004",
+          "TF-009",
+          "TF-010",
+          "TF-011",
+          "backend-fact-001",
+          "backend-fact-006",
+          "AMB-003",
+          "HUM-003"
+        ],
+        "status": "needs_human",
+        "technical_fact_ids": [
+          "TF-001",
+          "TF-003",
+          "TF-009",
+          "TF-010",
+          "TF-011",
+          "TF-013"
+        ]
+      },
+      {
+        "change_fact_ids": [
+          "backend-fact-002",
+          "backend-fact-003",
+          "backend-fact-004",
+          "backend-fact-005",
+          "backend-fact-006"
+        ],
+        "requirement_id": "REQ-005",
+        "source_refs": [
+          "REQ-005",
+          "TF-002",
+          "TF-012",
+          "TF-015",
+          "backend-fact-002",
+          "backend-fact-006"
+        ],
+        "status": "implementation_not_evidenced",
+        "technical_fact_ids": [
+          "TF-002",
+          "TF-012",
+          "TF-013",
+          "TF-015"
+        ]
+      },
+      {
+        "change_fact_ids": [
+          "backend-fact-002",
+          "backend-fact-003",
+          "backend-fact-004",
+          "backend-fact-005",
+          "backend-fact-006"
+        ],
+        "requirement_id": "REQ-006",
+        "source_refs": [
+          "REQ-006",
+          "TF-012",
+          "TF-015",
+          "backend-fact-002",
+          "backend-fact-006",
+          "AMB-006"
+        ],
+        "status": "implementation_not_evidenced",
+        "technical_fact_ids": [
+          "TF-012",
+          "TF-013",
+          "TF-015"
+        ]
+      }
+    ],
+    "schema_version": "alignment-result/1.0",
+    "source_snapshot_id": "pilot-001-source-v1",
+    "status": "needs_human",
+    "workflow_run_id": "multica-pilot-001"
+  },
+  "producer": {
+    "component_id": "A06",
+    "component_version": "0.1.0",
+    "inference_config_hash": "sha256:ea51962525f13e8914bee10405dea4a221e78ef15be6553f423212da02833db7",
+    "model_provider": "codex",
+    "model_snapshot": "gpt-5.6-sol",
+    "profile_version": "1.0.0",
+    "prompt_version": "1.0.1",
+    "runtime": "multica",
+    "tool_bundle_version": "multica-task:bdd96bda-07e8-4098-8397-1a2e2dc3a67f"
+  },
+  "reason_code": null,
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "needs_human",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-pilot-001"
+}

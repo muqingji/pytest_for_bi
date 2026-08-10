@@ -1,0 +1,24 @@
+{
+  "schema_version": "test-selection-policy/1.0",
+  "policy_version": "selection-policy-v1",
+  "forced_selection": [
+    {
+      "rule_id": "policy-smoke-must-run",
+      "selection": "must_run",
+      "layers": ["smoke"],
+      "reason": "P0 冒烟 Case 不可跳过，A12 不得降级。"
+    },
+    {
+      "rule_id": "policy-auth-must-run",
+      "selection": "must_run",
+      "layers": ["auth", "permission"],
+      "reason": "认证、权限和公共基础能力按策略强制执行。"
+    }
+  ],
+  "skip_selection": [],
+  "rules": {
+    "impact_confidence_high": "受影响 Case 有高置信度影响证据时保持 must_run 并标记需要更新自动化。",
+    "impact_confidence_low": "缺少调用关系证据时保守保持 must_run，并交给 A12 建议是否扩大范围。",
+    "unresolved_must_not_shrink": "无法解析影响范围时宁可扩大测试范围，不可静默缩小。"
+  }
+}

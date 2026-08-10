@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "environment-target/1.0",
+  "title": "N07 Environment Target",
+  "description": "Frozen expected environment state that N07 checks before formal Case execution. Any failed check blocks execution and routes to N16.",
+  "type": "object",
+  "required": ["schema_version", "expected"],
+  "properties": {
+    "schema_version": {"const": "environment-target/1.0"},
+    "expected": {
+      "type": "object",
+      "required": ["runtime", "namespace_policy"],
+      "properties": {
+        "deployment_commits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["component", "commit"],
+            "properties": {
+              "component": {"type": "string", "minLength": 1},
+              "commit": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": true
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {"type": "string", "minLength": 1},
+              "health_required": {"type": "string", "default": "ready"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "test_accounts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["account"],
+            "properties": {
+              "account": {"type": "string", "minLength": 1},
+              "permissions": {"type": "array", "items": {"type": "string"}}
+            },
+            "additionalProperties": true
+          }
+        },
+        "feature_flags": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["flag", "expected"],
+            "properties": {
+              "flag": {"type": "string", "minLength": 1},
+              "expected": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "tenant_configs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["tenant", "value"],
+            "properties": {
+              "tenant": {"type": "string", "minLength": 1},
+              "field": {"type": "string", "default": "language"},
+              "value": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "test_data_requirements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key"],
+            "properties": {
+              "key": {"type": "string", "minLength": 1},
+              "expected_state": {"type": "string", "default": "ready"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "runtime": {
+          "type": "object",
+          "required": ["timezone", "language"],
+          "properties": {
+            "timezone": {"type": "string", "minLength": 1},
+            "language": {"type": "string", "minLength": 1}
+          },
+          "additionalProperties": true
+        },
+        "namespace_policy": {
+          "type": "object",
+          "required": ["prefix"],
+          "properties": {
+            "prefix": {"type": "string", "minLength": 1},
+            "cleanup": {"type": "object"}
+          },
+          "additionalProperties": true
+        },
+        "required_locks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["resource", "mode"],
+            "properties": {
+              "resource": {"type": "string", "minLength": 1},
+              "mode": {"enum": ["exclusive", "shared"]},
+              "reason": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "test-selection-advice/1.0",
+  "title": "A12 Test Selection Advice",
+  "description": "Advice-only suggestions from A12 for N26 unresolved impact relationships. A12 can expand scope or escalate to a human, but never skips, removes or downgrades a policy-forced Case; the final collection is always computed by N26.",
+  "type": "object",
+  "required": ["schema_version", "advice_items", "uncertainty_notes"],
+  "properties": {
+    "schema_version": {"const": "test-selection-advice/1.0"},
+    "workflow_run_id": {"type": "string"},
+    "source_snapshot_id": {"type": "string"},
+    "input_bundle_hash": {"type": "string"},
+    "status": {"type": "string"},
+    "advice_items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "case_id",
+          "advisory_topic",
+          "recommendation",
+          "evidence",
+          "uncertainty",
+          "source_refs"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "unresolved_item_id": {"type": "string"},
+          "case_id": {"type": "string", "minLength": 1},
+          "advisory_topic": {
+            "enum": [
+              "missing_call_graph",
+              "cross_repo_impact_conflict",
+              "uncertain_asset_mapping",
+              "invalid_asset_mapping"
+            ]
+          },
+          "recommendation": {
+            "enum": ["expand_selection", "keep_must_run", "request_human"]
+          },
+          "suggested_case_ids": {"type": "array", "items": {"type": "string"}},
+          "evidence": {"type": "array", "minItems": 1},
+          "uncertainty": {"type": "string", "minLength": 1},
+          "source_refs": {"type": "array", "minItems": 1}
+        },
+        "additionalProperties": true
+      }
+    },
+    "uncertainty_notes": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "additionalProperties": true
+}

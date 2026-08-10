@@ -1,0 +1,550 @@
+{
+  "decision": "pending",
+  "decision_contract": "scope-review-decision/1.0",
+  "gate_id": "G01",
+  "issue_count": 20,
+  "issues": [
+    {
+      "detail": {
+        "id": "AMB-001",
+        "issue_code": "SCENARIO_PRECEDENCE_UNDEFINED",
+        "message": "同一次查看明细操作同时命中多个不支持场景时，提示优先级及是否只展示一条提示未定义。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      "issue_code": "SCENARIO_PRECEDENCE_UNDEFINED",
+      "issue_id": "A02:AMB-001",
+      "route_to": "A02",
+      "severity": "high",
+      "source": "A02"
+    },
+    {
+      "detail": {
+        "id": "AMB-002",
+        "issue_code": "MULTIPLE_METRIC_NAMES_UNDEFINED",
+        "message": "数据范围内存在多个按结果集筛选的统计指标时，提示中指标名称的选择、排序和展示格式未定义。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      "issue_code": "MULTIPLE_METRIC_NAMES_UNDEFINED",
+      "issue_id": "A02:AMB-002",
+      "route_to": "A02",
+      "severity": "high",
+      "source": "A02"
+    },
+    {
+      "detail": {
+        "id": "AMB-003",
+        "issue_code": "DYNAMIC_RELATION_SCOPE_UNCLEAR",
+        "message": "特殊 what/whatlist 场景的完整识别范围不明确：文本列举业务流程、业务流程任务、服务记录，并以工单主题举例，但未说明是否还包含其他对象、主题或动态关联类型。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      "issue_code": "DYNAMIC_RELATION_SCOPE_UNCLEAR",
+      "issue_id": "A02:AMB-003",
+      "route_to": "A02",
+      "severity": "high",
+      "source": "A02"
+    },
+    {
+      "detail": {
+        "id": "AMB-004",
+        "issue_code": "ROLE_PERMISSION_BEHAVIOR_UNSPECIFIED",
+        "message": "需求未说明不同用户角色或数据权限是否影响不支持场景判定、指标名称可见性及提示展示。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      "issue_code": "ROLE_PERMISSION_BEHAVIOR_UNSPECIFIED",
+      "issue_id": "A02:AMB-004",
+      "route_to": "A02",
+      "severity": "high",
+      "source": "A02"
+    },
+    {
+      "detail": {
+        "id": "AMB-005",
+        "issue_code": "LOCALIZATION_UNSPECIFIED",
+        "message": "需求仅提供中文提示文案，未定义其他语言环境下的翻译、回退策略及动态指标名称的本地化规则。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      "issue_code": "LOCALIZATION_UNSPECIFIED",
+      "issue_id": "A02:AMB-005",
+      "route_to": "A02",
+      "severity": "high",
+      "source": "A02"
+    },
+    {
+      "detail": {
+        "id": "AMB-006",
+        "issue_code": "MOBILE_SCOPE_UNSPECIFIED",
+        "message": "需求要求移动端与 Web 端逻辑一致，但未明确移动端包含的平台、版本范围及提示的交互承载形式。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      "issue_code": "MOBILE_SCOPE_UNSPECIFIED",
+      "issue_id": "A02:AMB-006",
+      "route_to": "A02",
+      "severity": "high",
+      "source": "A02"
+    },
+    {
+      "detail": {
+        "id": "AMB-007",
+        "issue_code": "UNSUPPORTED_SCENARIO_EXHAUSTIVENESS_UNCLEAR",
+        "message": "预期效果使用“如”列举四类场景，未明确此次优化是否只覆盖这四类，或还要求为其他不支持查看明细的场景补充专属提示。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+            "location": "lines:159-172",
+            "type": "requirement"
+          }
+        ]
+      },
+      "issue_code": "UNSUPPORTED_SCENARIO_EXHAUSTIVENESS_UNCLEAR",
+      "issue_id": "A02:AMB-007",
+      "route_to": "A02",
+      "severity": "high",
+      "source": "A02"
+    },
+    {
+      "detail": {
+        "id": "BI-001",
+        "issue_code": "CUSTOM_DIMENSION_COPY_CONFIRMATION",
+        "owner": "产品",
+        "recommendation": "采用“维度、下钻字段或数据范围中使用了自定义维度字段，暂不支持查看明细”并确认对应英文。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+            "location": "whole_file",
+            "type": "technical_design"
+          }
+        ],
+        "start_condition": "开发前确认最终中英文文案。",
+        "summary": "自定义维度校验实际包含下钻字段，但当前 PRD 文案只写维度或数据范围，最终中英文口径未确认。"
+      },
+      "issue_code": "CUSTOM_DIMENSION_COPY_CONFIRMATION",
+      "issue_id": "A03:BI-001",
+      "route_to": "A03",
+      "severity": "high",
+      "source": "A03"
+    },
+    {
+      "detail": {
+        "id": "BI-002",
+        "issue_code": "RESULT_SET_COPY_CONFIRMATION",
+        "owner": "产品",
+        "recommendation": "采用端无关文案“数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细”并确认对应英文。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+            "location": "whole_file",
+            "type": "technical_design"
+          }
+        ],
+        "start_condition": "开发前确认最终中英文文案。",
+        "summary": "结果集筛选提示固定写“统计图”，但需求同时覆盖拼表，最终中英文口径未确认。"
+      },
+      "issue_code": "RESULT_SET_COPY_CONFIRMATION",
+      "issue_id": "A03:BI-002",
+      "route_to": "A03",
+      "severity": "high",
+      "source": "A03"
+    },
+    {
+      "detail": {
+        "id": "BI-003",
+        "issue_code": "MULTI_REASON_PRIORITY_CONFIRMATION",
+        "owner": "产品",
+        "recommendation": "按自定义维度、结果集指标筛选、特殊动态关联、多关联关系、原对象关系异常的顺序处理。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+            "location": "whole_file",
+            "type": "technical_design"
+          }
+        ],
+        "start_condition": "验收前确认提示优先级。",
+        "summary": "同一图表同时命中多个不支持条件时的提示优先级尚未形成产品验收口径。"
+      },
+      "issue_code": "MULTI_REASON_PRIORITY_CONFIRMATION",
+      "issue_id": "A03:BI-003",
+      "route_to": "A03",
+      "severity": "high",
+      "source": "A03"
+    },
+    {
+      "detail": {
+        "id": "BI-004",
+        "issue_code": "UNRESOLVED_MEASURE_NAME_FALLBACK_CONFIRMATION",
+        "owner": "产品/测试",
+        "recommendation": "降级为原 s307051518 固定提示，禁止返回带空指标名的新文案。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+            "location": "whole_file",
+            "type": "technical_design"
+          }
+        ],
+        "start_condition": "可按建议实现，验收前确认降级行为。",
+        "summary": "Filter.fieldName 和字段元数据均无法解析指标名时的最终提示策略尚待确认。"
+      },
+      "issue_code": "UNRESOLVED_MEASURE_NAME_FALLBACK_CONFIRMATION",
+      "issue_id": "A03:BI-004",
+      "route_to": "A03",
+      "severity": "high",
+      "source": "A03"
+    },
+    {
+      "detail": {
+        "id": "BI-005",
+        "issue_code": "DEDICATED_ERROR_CODES_PENDING",
+        "owner": "错误码平台/后端，具体负责人 not_evidenced",
+        "recommendation": "申请四个专用错误码，同步配置中英文模板，并以 BIBizException(errorCode, List<String>) 验证 {0} 参数替换。",
+        "source_refs": [
+          {
+            "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+            "location": "whole_file",
+            "type": "technical_design"
+          }
+        ],
+        "start_condition": "开发前完成错误码申请；上线前完成模板占位符联调。",
+        "summary": "四类目标原因的专用错误码尚未申请，错误码平台中英文模板及参数占位符也未完成联调确认。"
+      },
+      "issue_code": "DEDICATED_ERROR_CODES_PENDING",
+      "issue_id": "A03:BI-005",
+      "route_to": "A03",
+      "severity": "high",
+      "source": "A03"
+    },
+    {
+      "detail": {
+        "id": "FIND-001",
+        "implementation_ids": [
+          "backend-fact-001",
+          "backend-fact-003"
+        ],
+        "requirement_ids": [
+          "REQ-001"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-001",
+          "TF-004",
+          "TF-008",
+          "backend-fact-001",
+          "backend-fact-003",
+          "BI-001",
+          "BI-005"
+        ],
+        "summary": "自定义维度原判定条件和专用错误码替换已有业务源码证据，但错误码平台最终中英文模板及文案口径未完成确认；现有判定还包含下钻字段，超出冻结需求明确列出的维度和数据范围。",
+        "technical_fact_ids": [
+          "TF-003",
+          "TF-004",
+          "TF-008"
+        ],
+        "type": "partial_implementation"
+      },
+      "issue_code": "partial_implementation",
+      "issue_id": "A06:FIND-001",
+      "route_to": "A06",
+      "severity": "high",
+      "source": "A06"
+    },
+    {
+      "detail": {
+        "id": "FIND-002",
+        "implementation_ids": [
+          "backend-fact-001",
+          "backend-fact-002"
+        ],
+        "requirement_ids": [
+          "REQ-002"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-002",
+          "TF-006",
+          "TF-007",
+          "TF-008",
+          "backend-fact-002",
+          "BI-004",
+          "BI-005"
+        ],
+        "summary": "结果集筛选分支已切换专用错误码并传入筛选字段名，但未发现技术方案要求的字段元数据和动态多语名称回退链、空名称时降级旧错误码，以及参数占位符联调的实现证据。",
+        "technical_fact_ids": [
+          "TF-005",
+          "TF-006",
+          "TF-007",
+          "TF-008"
+        ],
+        "type": "partial_implementation"
+      },
+      "issue_code": "partial_implementation",
+      "issue_id": "A06:FIND-002",
+      "route_to": "A06",
+      "severity": "high",
+      "source": "A06"
+    },
+    {
+      "detail": {
+        "id": "FIND-003",
+        "implementation_ids": [
+          "backend-fact-002"
+        ],
+        "requirement_ids": [
+          "REQ-002"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-002",
+          "TF-006",
+          "backend-fact-002",
+          "AMB-002",
+          "HUM-002"
+        ],
+        "summary": "冻结需求未定义多个结果集筛选指标同时触发时应选择、排序或展示哪些名称；当前业务源码事实只证明单个筛选字段名被传入，无法判定其满足多指标场景。",
+        "technical_fact_ids": [
+          "TF-006"
+        ],
+        "type": "needs_confirmation"
+      },
+      "issue_code": "needs_confirmation",
+      "issue_id": "A06:FIND-003",
+      "route_to": "A06",
+      "severity": "high",
+      "source": "A06"
+    },
+    {
+      "detail": {
+        "id": "FIND-004",
+        "implementation_ids": [
+          "backend-fact-004",
+          "backend-fact-005",
+          "backend-fact-006"
+        ],
+        "requirement_ids": [
+          "REQ-003",
+          "REQ-004"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "TF-009",
+          "TF-010",
+          "TF-011",
+          "TF-014",
+          "backend-fact-004",
+          "backend-fact-005",
+          "backend-fact-006"
+        ],
+        "summary": "技术方案要求通过包含完整指标配置、稳定对象或字段标识及关系元数据的原因解析器识别动态关联和多关联，并限制异常替换位置；业务源码事实则显示在多个转换器中按对象或节点数量以及关系查询失败后的 What/WhatList 元数据直接判定，未证明设计中的统一解析、动态优先级和异常边界已实现。",
+        "technical_fact_ids": [
+          "TF-009",
+          "TF-010",
+          "TF-011",
+          "TF-014"
+        ],
+        "type": "conflict"
+      },
+      "issue_code": "conflict",
+      "issue_id": "A06:FIND-004",
+      "route_to": "A06",
+      "severity": "high",
+      "source": "A06"
+    },
+    {
+      "detail": {
+        "id": "FIND-005",
+        "implementation_ids": [
+          "backend-fact-006"
+        ],
+        "requirement_ids": [
+          "REQ-004"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-004",
+          "TF-009",
+          "TF-010",
+          "backend-fact-006",
+          "AMB-003",
+          "HUM-003"
+        ],
+        "summary": "特殊动态关联需求的完整对象范围未冻结，而实现事实表明常规关系查询全部失败后，任意命中的 What 或 WhatList 字段均会使用动态关联专用错误码；该范围是否包含需求列举之外的对象或主题需人工确认。",
+        "technical_fact_ids": [
+          "TF-009",
+          "TF-010"
+        ],
+        "type": "needs_confirmation"
+      },
+      "issue_code": "needs_confirmation",
+      "issue_id": "A06:FIND-005",
+      "route_to": "A06",
+      "severity": "high",
+      "source": "A06"
+    },
+    {
+      "detail": {
+        "id": "FIND-006",
+        "implementation_ids": [
+          "backend-fact-002",
+          "backend-fact-003",
+          "backend-fact-004",
+          "backend-fact-005",
+          "backend-fact-006"
+        ],
+        "requirement_ids": [
+          "REQ-005"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-005",
+          "TF-002",
+          "TF-012",
+          "TF-015",
+          "backend-fact-002",
+          "backend-fact-006"
+        ],
+        "summary": "技术方案声明统计图和拼表复用后端判定并要求验证拼表入参与异常透传，但 ChangeSet 业务源码事实未证明两个入口均到达相同判定，也未提供 dev-platform 透传实现证据。",
+        "technical_fact_ids": [
+          "TF-002",
+          "TF-012",
+          "TF-015"
+        ],
+        "type": "omission"
+      },
+      "issue_code": "omission",
+      "issue_id": "A06:FIND-006",
+      "route_to": "A06",
+      "severity": "high",
+      "source": "A06"
+    },
+    {
+      "detail": {
+        "id": "FIND-007",
+        "implementation_ids": [
+          "backend-fact-002",
+          "backend-fact-003",
+          "backend-fact-004",
+          "backend-fact-005",
+          "backend-fact-006"
+        ],
+        "requirement_ids": [
+          "REQ-006"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "REQ-006",
+          "TF-012",
+          "TF-015",
+          "backend-fact-002",
+          "backend-fact-006",
+          "AMB-006"
+        ],
+        "summary": "技术方案声明 Web 和移动端复用同一后端判定，但业务源码事实没有证明两端均透传并展示相同专用错误，也没有证明两端均阻止进入不受支持的明细视图。",
+        "technical_fact_ids": [
+          "TF-012",
+          "TF-015"
+        ],
+        "type": "omission"
+      },
+      "issue_code": "omission",
+      "issue_id": "A06:FIND-007",
+      "route_to": "A06",
+      "severity": "high",
+      "source": "A06"
+    },
+    {
+      "detail": {
+        "id": "FIND-008",
+        "implementation_ids": [
+          "backend-fact-001"
+        ],
+        "requirement_ids": [
+          "REQ-001",
+          "REQ-002",
+          "REQ-003",
+          "REQ-004"
+        ],
+        "severity": "high",
+        "source_refs": [
+          "TF-003",
+          "TF-007",
+          "TF-008",
+          "backend-fact-001",
+          "BI-005"
+        ],
+        "summary": "四个专用错误定义已进入业务源码，但错误码平台配置、中英文模板及结果集指标名占位符联调没有实现证据，因此最终用户可见文案尚不能完整对齐。",
+        "technical_fact_ids": [
+          "TF-003",
+          "TF-007",
+          "TF-008"
+        ],
+        "type": "omission"
+      },
+      "issue_code": "omission",
+      "issue_id": "A06:FIND-008",
+      "route_to": "A06",
+      "severity": "high",
+      "source": "A06"
+    }
+  ],
+  "request_hash": "sha256:b37a9742dbf9300b38e472e5bf21e136bf5264755a5e8a3ed9c682ac378d250d",
+  "review_policy": {
+    "approval_mode": "qa_owner_single_signoff",
+    "policy_hash": "sha256:416a8050c9c5a0733cd003dfdcc0c0661752f5d1a5dd0318ae2afd1b1e2ca191",
+    "policy_scope": "pilot_test_design_only",
+    "production_release_authority": false,
+    "schema_version": "g01-review-policy/1.1",
+    "temporary_policy": true
+  },
+  "schema_version": "scope-review-request/1.1",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "needs_human",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:c04d7075441f3ba715ced69f92bd356dc380b39e6de90ffed6396767df68237b",
+      "artifact_id": "a02-requirement-analysis"
+    },
+    {
+      "artifact_hash": "sha256:78bbe022d3150ec1efee4fb00cddda9840e825792cafb8d1a2096a1839357544",
+      "artifact_id": "a03-technical-testability-analysis"
+    },
+    {
+      "artifact_hash": "sha256:b6cc049a565f0f8ef79714552c12cf18daedf44f8ae6d12498ced819f5e5561f",
+      "artifact_id": "a06-alignment-result"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-pilot-001"
+}

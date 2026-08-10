@@ -1,0 +1,392 @@
+{
+  "actor": {
+    "id": "muqj11262@fxiaoke.com",
+    "role": "qa_owner",
+    "type": "human"
+  },
+  "decided_at": "2026-08-08T00:53:41+08:00",
+  "decision": "approved",
+  "decision_hash": "sha256:d3f7a31ca5e260e12e69cf3574dd7564fed86e917abcf14b2b6e849220430ef6",
+  "gate_id": "G01",
+  "reason": "QA Owner 已授权所有待确认项默认按是处理，并按设计文档继续跑通后续测试设计流程；本批准仅适用于 pilot_test_design_only，不授予生产发布权限。",
+  "request_hash": "sha256:b37a9742dbf9300b38e472e5bf21e136bf5264755a5e8a3ed9c682ac378d250d",
+  "resolutions": [
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-001",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "同次操作只展示一条有效提示，不拼接业务原因、不冻结业务原因优先级；权限错误保持优先。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-002",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "多个结果集指标按稳定筛选配置顺序取首个实际触发指标；名称不可解析时降级旧固定提示。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-003",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "所有 what/what-list 均按动态关联覆盖，不限制工单主题或特定对象。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-004",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "沿用既有角色、数据权限和指标名可见性检查；权限错误先于业务不支持原因且不得被替换。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-005",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "冻结 zh_CN/en 模板；动态指标名使用当前语言展示名，失败时按平台默认语言及旧错误行为降级。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-006",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "当前受支持的 Web 和移动端统计图、拼表入口均纳入一致性验证，承载形式沿用各端现有错误提示组件。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-007",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "本次变更范围仅限 PRD 列出的四类场景，其他不支持场景保持既有行为。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-001",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "采用包含下钻字段的端无关中英文文案，并覆盖维度、下钻字段和数据范围。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-002",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "采用不限定统计图或拼表的端无关结果集筛选中英文文案。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-003",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "只要求单条有效业务提示，不冻结业务原因固定优先级；权限异常仍必须先返回。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-004",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "fieldName 与元数据均不可解析时降级为 s307051518，禁止向用户返回空指标名模板。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-005",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "确认使用 s307011534 至 s307011537、对应 key、冻结双语模板，并验证 {0} 与 List<String> 参数联调。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FIND-001",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "接受现有三类自定义维度判定并将下钻字段纳入冻结口径；错误码及双语文案必须按测试规则取证。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FIND-002",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "允许进入测试设计，但字段名回退链、空名降级、当前语言参数和占位符均作为必测证据。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FIND-003",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "多指标场景取稳定筛选配置顺序中的首个实际触发指标，并验证顺序稳定性。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FIND-004",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "暂时接受多个 Converter 中的分散判断；必须证明原因、错误码、参数、权限优先级和异常边界在各入口一致，无法证明时再实现统一解析器。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FIND-005",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "冻结为所有 what/what-list 动态关联，不限制工单主题或特定对象，并按该范围生成正反例。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FIND-006",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "统计图和拼表都必须提供到达相同后端判定、入参及错误码参数无损透传的实现或自动化证据。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FIND-007",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "Web 和移动端都必须提供相同错误码、当前语言文案和阻止进入明细视图的实现或自动化证据。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262@fxiaoke.com",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FIND-008",
+      "owner": "muqj11262@fxiaoke.com",
+      "rationale": "四个专用错误码、双语模板、{0} 占位符及当前语言指标名参数全部列为契约和端到端必测证据。"
+    }
+  ],
+  "schema_version": "scope-review-decision/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "test_rules": {
+    "compatibility": {
+      "distributed_reason_implementation": "accepted_conditionally",
+      "failure_response_shape": "unchanged",
+      "historical_charts_and_tables": "evaluate_in_place_without_migration",
+      "non_target_error_codes": "unchanged",
+      "success_response": "unchanged",
+      "unified_resolver_required_when": "cross_entry_consistency_or_exception_boundary_cannot_be_proven"
+    },
+    "custom_dimension": {
+      "covered_locations": [
+        "dimension",
+        "drill_field",
+        "data_range"
+      ],
+      "error_key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+      "preserve_existing_detection_order": true
+    },
+    "dynamic_relation": {
+      "error_key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+      "replace_only_existing_object_relation_unsupported_failures": true,
+      "scope": "all_what_and_what_list_dynamic_relations_without_ticket_theme_or_specific_object_restrictions"
+    },
+    "entry_consistency": {
+      "assertions": [
+        "same_backend_reason",
+        "same_error_code",
+        "same_locale_message",
+        "same_metric_parameter",
+        "unsupported_detail_view_is_blocked"
+      ],
+      "implementation_evidence_required": true,
+      "required_entries": [
+        "web_chart",
+        "mobile_chart",
+        "web_joined_table",
+        "mobile_joined_table"
+      ]
+    },
+    "localization": {
+      "errors": [
+        {
+          "code": "s307011534",
+          "en": "A custom dimension field is used in a dimension, drill field, or data range. Viewing details is temporarily unavailable.",
+          "key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+          "parameters": [],
+          "zh_CN": "维度、下钻字段或数据范围中使用了自定义维度字段，暂不支持查看明细"
+        },
+        {
+          "code": "s307011535",
+          "en": "The data range uses result-set filtering for \"{0}\". Viewing details is unavailable.",
+          "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+          "parameters": [
+            "current_locale_metric_display_name"
+          ],
+          "zh_CN": "数据范围中设置了「{0}」按结果集筛选，不支持查看明细"
+        },
+        {
+          "code": "s307011536",
+          "en": "This metric is based on multiple relationships. Viewing details is temporarily unavailable.",
+          "key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+          "parameters": [],
+          "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细"
+        },
+        {
+          "code": "s307011537",
+          "en": "This metric is based on dynamic relationships. Viewing details is unavailable.",
+          "key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+          "parameters": [],
+          "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细"
+        }
+      ],
+      "fallback": "platform_default_locale_then_legacy_error_behavior",
+      "locale_source": "request_current_locale",
+      "parameter_placeholder": "{0}",
+      "parameter_transport": "BIBizException_errorCode_and_List_of_String"
+    },
+    "metric_name": {
+      "multiple_metrics": "use_the_first_triggering_metric_in_stable_filter_configuration_order",
+      "resolution_order": [
+        "non_empty_Filter.fieldName",
+        "field_metadata_by_fieldId",
+        "current_locale_dynamic_display_name"
+      ],
+      "unresolved_name": "fall_back_to_legacy_s307051518_without_an_empty_parameter"
+    },
+    "multi_relation": {
+      "error_key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+      "replace_only_existing_object_relation_unsupported_failures": true,
+      "successful_existing_relation_resolution": "must_remain_successful"
+    },
+    "multiple_reasons": {
+      "concatenate": false,
+      "fixed_business_reason_priority": false,
+      "message_count": 1,
+      "permission_errors": "must_remain_first_and_must_not_be_replaced",
+      "selection": "return_the_single_valid_prompt_from_the_existing_execution_path"
+    },
+    "permission": {
+      "behavior": "preserve_existing_permission_and_data_visibility_checks",
+      "metric_name_visibility": "must_not_bypass_existing_permissions",
+      "priority": "before_business_unsupported_reason_mapping"
+    },
+    "scope": {
+      "exhaustive_for_this_change": true,
+      "other_unsupported_scenarios": "preserve_existing_behavior",
+      "unsupported_scenarios": [
+        "custom_dimension",
+        "result_set_filter",
+        "multi_relation",
+        "dynamic_relation"
+      ]
+    }
+  },
+  "workflow_run_id": "multica-pilot-001"
+}

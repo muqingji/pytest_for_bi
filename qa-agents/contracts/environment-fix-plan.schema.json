@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "environment-fix-plan/1.0",
+  "title": "N16 Environment Fix Plan",
+  "description": "Recoverable fix actions for failed N07 checks. Every action records expected state, pre state, result, compensation cleanup and an idempotency key over all other fields.",
+  "type": "object",
+  "required": ["schema_version", "actions"],
+  "properties": {
+    "schema_version": {"const": "environment-fix-plan/1.0"},
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "target_check",
+          "result",
+          "expected_state",
+          "pre_state",
+          "compensation",
+          "idempotency_key"
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "target_check": {"type": "string", "minLength": 1},
+          "result": {"enum": ["performed", "not_required", "failed"]},
+          "expected_state": {"type": "object"},
+          "pre_state": {"type": "object"},
+          "compensation": {"type": "object"},
+          "idempotency_key": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

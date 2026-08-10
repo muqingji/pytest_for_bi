@@ -1,0 +1,130 @@
+[
+  {
+    "created_at": "2026-08-07T15:40:53.242442Z",
+    "input": {
+      "command": "/bin/zsh -lc 'multica issue get d0a9f669-9676-481d-baa0-701cdecbea42 --output json'"
+    },
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "seq": 1,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-07T15:40:53.245431Z",
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "output": "{\n  \"assignee_id\": \"5bed44c7-d486-4664-a39f-2666409315b2\",\n  \"assignee_type\": \"agent\",\n  \"attachments\": [\n    {\n      \"chat_message_id\": null,\n      \"chat_session_id\": null,\n      \"comment_id\": null,\n      \"content_type\": \"application/json\",\n      \"created_at\": \"2026-08-07T15:38:02Z\",\n      \"download_url\": \"/api/attachments/019fdcdf-cc53-74f5-802b-667a47eeb8e0/download\",\n      \"filename\": \"a03-input.json\",\n      \"id\": \"019fdcdf-cc53-74f5-802b-667a47eeb8e0\",\n      \"issue_id\": \"d0a9f669-9676-481d-baa0-701cdecbea42\",\n      \"markdown_url\": \"https://api-coding.firstshare.cn/api/attachments/019fdcdf-cc53-74f5-802b-667a47eeb8e0/download\",\n      \"size_bytes\": 16922,\n      \"uploader_id\": \"c2c6b9c6-4fb9-4439-a4a5-de4e93784c54\",\n      \"uploader_type\": \"member\",\n      \"url\": \"/uploads/workspaces/457d700f-6c27-4a59-871d-c2c56bca9f46/019fdcdf-cc53-74f5-802b-667a47eeb8e0.json\",\n      \"workspace_id\": \"457d700f-6c27-4a59-871d-c2c56bca9f46\"\n    }\n  ],\n  \"created_at\": \"2026-08-07T15:38:02Z\",\n  \"creator_id\": \"c2c6b9c6-4fb9-4439-a4a5-de4e93784c54\",\n  \"creator_type\": \"member\",\n  \"description\": \"执行 multica-pilot-001 的 A03。仅处理唯一附件，输出 technical-analysis/1.0 原始 JSON。\",\n  \"due_date\": null,\n  \"id\": \"d0a9f669-9676-481d-baa0-701cdecbea42\",\n  \"identifier\": \"QAA-15\",\n  \"labels\": [],\n  \"metadata\": {},\n  \"number\": 15,\n  \"parent_issue_id\": null,\n  \"position\": -15,\n  \"priority\": \"high\",\n  \"project_id\": \"c2c84f1f-20af-456d-9eca-c9fbbd253840\",\n  \"properties\": {},\n  \"stage\": null,\n  \"start_date\": null,\n  \"status\": \"todo\",\n  \"title\": \"[迁移实跑 2026-08-07] A03 技术与可测性分析\",\n  \"updated_at\": \"2026-08-07T15:38:02Z\",\n  \"workspace_id\": \"457d700f-6c27-4a59-871d-c2c56bca9f46\"\n}\n",
+    "seq": 2,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-07T15:41:09.742071Z",
+    "input": {
+      "command": "/bin/zsh -lc 'multica attachment --help'"
+    },
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "seq": 3,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-07T15:41:09.743234Z",
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "output": "Work with attachments\n\nUSAGE\n  multica attachment <command> [flags]\n\nCOMMANDS\n  download:  Download an attachment to a local file\n  upload:    Upload a file to attach to your chat reply\n\n\nFLAGS\n  -h, --help   help for attachment\n\nINHERITED FLAGS\n  --help   Show help for command\n\nLEARN MORE\n  Use `multica attachment <command> --help` for more information about a command.\n",
+    "seq": 4,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-07T15:41:32.242855Z",
+    "input": {
+      "command": "/bin/zsh -lc 'multica attachment download --help'"
+    },
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "seq": 5,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-07T15:41:32.244423Z",
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "output": "Download an attachment by its ID to a local file.\n\nUSAGE\n  multica attachment download <attachment-id> [flags]\n\nFLAGS\n  -h, --help                help for download\n  -o, --output-dir string   Directory to save the downloaded file (default \".\")\n\nINHERITED FLAGS\n  --help   Show help for command\n\nEXAMPLES\n  # Download an image attachment to the current directory\n  $ multica attachment download abc123\n\n  # Download to a directory inside the working directory (keep agent\n  # downloads out of /tmp and other machine-shared paths, MUL-4252)\n  $ multica attachment download abc123 -o ./attachments\n\nLEARN MORE\n  Use `multica <command> <subcommand> --help` for more information about a command.\n",
+    "seq": 6,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-07T15:41:52.243386Z",
+    "input": {
+      "command": "/bin/zsh -lc 'multica attachment download 019fdcdf-cc53-74f5-802b-667a47eeb8e0 -o .'"
+    },
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "seq": 7,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-07T15:41:52.244393Z",
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "output": "Downloaded: /Users/muqingji/multica_workspaces/457d700f-6c27-4a59-871d-c2c56bca9f46/c3075689/workdir/a03-input.json\n{\n  \"filename\": \"a03-input.json\",\n  \"id\": \"019fdcdf-cc53-74f5-802b-667a47eeb8e0\",\n  \"path\": \"/Users/muqingji/multica_workspaces/457d700f-6c27-4a59-871d-c2c56bca9f46/c3075689/workdir/a03-input.json\",\n  \"size\": \"16922\"\n}\n",
+    "seq": 8,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-07T15:42:06.243978Z",
+    "input": {
+      "command": "/bin/zsh -lc 'cat a03-input.json'"
+    },
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "seq": 9,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-07T15:42:06.249228Z",
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "output": "{\n  \"allowed_inputs\": {\n    \"frozen_technical_design\": {\n      \"content\": \"# 后端技术评审 - 下钻查看明细提示文案优化\\n\\n## 结论\\n\\n有条件可行。\\n\\n四类场景的现有“不支持查看明细”触发时机保持不变，但不能在共用错误码上直接替换文案，也不能在对象关系转换失败后仅凭对象名和关联字段推测失败原因。\\n\\n修正后的方案为：\\n\\n1. 为四类目标原因分配专用错误码和多语模板，不修改已被其他场景复用的现有错误码文案。\\n2. 结果集指标名称通过 `BIBizException(errorCode, List<String>)` 传参，由错误码平台完成多语模板渲染。\\n3. 多关联和特殊动态关联在仍持有 `AggRuleDOEXT` 和指标字段元数据的上层预先识别原因，但仅在原对象关系转换已经失败时替换提示，不新增禁用条件。\\n4. 统计图、拼表、Web 和移动端复用同一后端判定；`fs-bi-dev-platform` 只负责入参和异常透传回归。\\n\\n开发前仍需产品确认两处提示口径，见“待确认项”。\\n\\n## 后端范围\\n\\n| 场景 | 现有行为 | 本次改造 | 目标提示 |\\n|---|---|---|---|\\n| 自定义维度作为图维度、数据范围或下钻字段 | 报通用不支持提示 | 保留原判定，改抛专用错误码 | 待产品确认；PRD 当前为“维度或数据范围中使用了自定义维度字段，暂不支持查看明细” |\\n| 数据范围使用指标按结果集筛选 | 报固定提示 | 保留原判定，返回带指标展示名的参数化错误 | 待产品确认；PRD 当前为“统计图数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细” |\\n| 指标基于多关联关系创建 | 对象关系转换失败后报通用关系异常 | 上层预判原因，原转换失败时切换专用错误 | “基于多关联关系创建的统计指标，暂不支持查看明细” |\\n| 指标基于 PRD 指定的特殊 what/whatList 动态关联创建 | 对象关系转换失败后报通用关系异常 | 上层预判原因，原转换失败时切换专用错误 | “基于动态关联关系创建的统计指标，不支持查看明细” |\\n| 时分筛选、下游复杂虚拟指标、普通对象关系异常 | 各自报错 | 不属于本需求，必须保持原提示 | 不变 |\\n| 正常查看明细 | 正常查询 | 查询参数、SQL、分页和结果结构不变 | - |\\n\\n## 相关仓库与基线\\n\\n| 标识 | 仓库 | 说明 |\\n|---|---|---|\\n| `fs-bi` | `git.firstshare.cn/bi/fs-bi` | 统计图查看明细判定、错误码枚举、国际化 |\\n| `dev-platform` | `git.firstshare.cn/bi/fs-bi-dev-platform` | 拼表查看明细入参组装与错误透传回归 |\\n\\n实现以 `fs-bi` 的 `release/202610-i18n` 为基线。该基线已引入 `I18NErrorCodeEnum`，新增面向用户的业务错误应同时维护错误码、国际化 key 和默认中文。\\n\\n## 现有链路与约束\\n\\n### 1. 自定义维度\\n\\n`fs-bi:fs-bi-stat/src/main/java/com/facishare/bi/stat/service/StatDetailQueryService.java` 的 `validateCustomDimension(...)` 已覆盖数据范围、原始图维度和下钻字段三类来源。\\n\\n同文件的 `validateHourAndMinuteFilter(...)` 与自定义维度当前共用 `s307051519`。因此不能直接修改 `s307051519` 的错误码平台文案，否则时分筛选会被误提示为自定义维度。\\n\\n### 2. 结果集指标筛选\\n\\n`fs-bi:fs-bi-stat/src/main/java/com/facishare/bi/easy/stat/core/common/element/OperateMenuElement.java` 的 `dealDetailUnSupportByFilter(...)` 遍历筛选器，在 `filterGroupType` 为聚合后/结果集筛选时抛出 `s307051518`。\\n\\n`DownStreamAggDetailQueryService#verifyDownStreamDetailQuery(...)` 也复用了 `s307051518`，但该分支校验的是“下游复杂虚拟指标”，不是数据范围的结果集筛选。两个入口不能共用新的参数化文案。\\n\\n### 3. 异常与占位符机制\\n\\n`BIBizException(String errorCode, String thisArgDoesNotWork)` 的第二个参数不参与返回文案构造。不得使用下列形式试图保留错误码并替换文案：\\n\\n```java\\n// 错误：message 参数会被忽略\\nthrow new BIBizException(errorCode, message);\\n```\\n\\n本需求统一走错误码平台国际化链路：\\n\\n- 无参错误：通过专用 `I18NErrorCodeEnum` 取错误码，返回平台配置的当前语言文案。\\n- 带参错误：仓库 `BIBizException` 的 Javadoc 以 `规则-{0}-不存在` 示例说明了 `BIBizException(errorCode, List<String>)` 参数传递约定；上线前需与错误码平台联调确认实际模板占位符。\\n- `I18NMsgEnum#getI18nLabel(..., args)` 内部使用 `String.format`，其本地模板占位符是 `%s`。本方案不使用该链路构造业务异常，避免两套占位符混用。\\n\\n### 4. 多关联和动态关联\\n\\n`ObjectRelationTransConverter#queryObjRelationship(...)` 只接收两个对象名和 `relatedFieldName`，不持有 `AggRuleDOEXT`、`whatFieldType` 和完整的指标字段元数据。\\n\\n关系查询失败只能证明当前转换无法完成，不能单独证明是“多关联”或“特殊动态关联”。原因必须在上层根据指标配置和元数据判定。\\n\\n### 5. 拼表\\n\\n`dev-platform:fs-bi-dev-web/src/main/java/com/facishare/bi/dev/web/service/StatService.java` 组装并传递统计图查看明细参数。拼表不重复实现四类原因判定，但需通过集成用例证明业务错误码和参数没有被包装或丢失。\\n\\n## 修正后的后端方案\\n\\n### 1. 专用错误定义\\n\\n在 `I18NErrorCodeEnum` 新增四个语义独立的错误定义，错误码由错误码平台申请：\\n\\n| 建议枚举 | 错误码 | 国际化 key | 默认中文 | 参数 |\\n|---|---|---|---|---|\\n| `CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED` | 待申请 | `CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED` | 维度或数据范围中使用了自定义维度字段，暂不支持查看明细 | 无 |\\n| `RESULT_SET_FILTER_DETAIL_UNSUPPORTED` | 待申请 | `RESULT_SET_FILTER_DETAIL_UNSUPPORTED` | 统计图数据范围中设置了「{0}」按结果集筛选，不支持查看明细 | 指标展示名 |\\n| `MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED` | 待申请 | `MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED` | 基于多关联关系创建的统计指标，暂不支持查看明细 | 无 |\\n| `DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED` | 待申请 | `DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED` | 基于动态关联关系创建的统计指标，不支持查看明细 | 无 |\\n\\n新增错误码的原因：\\n\\n- `s307051519` 同时被时分筛选复用；\\n- `s307051518` 同时被下游复杂虚拟指标复用；\\n- 对象关系原错误码覆盖多种元数据和模型异常。\\n\\n如复用上述错误码并直接改模板，会导致非目标场景出现错误原因或缺少占位参数。\\n\\n### 2. 自定义维度\\n\\n修改 `StatDetailQueryService#validateCustomDimension`：\\n\\n- 保留现有三类判定及触发顺序；\\n- 命中后抛出 `CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED`；\\n- `validateHourAndMinuteFilter` 保留现有错误码和提示，本需求不修改；\\n- 不修改通用提示或 `s307051519` 的平台模板。\\n\\n### 3. 结果集指标筛选\\n\\n仅修改 `OperateMenuElement#dealDetailUnSupportByFilter(...)` 的结果集筛选分支。`DownStreamAggDetailQueryService` 保持原行为，不复用新文案构造方法。\\n\\n指标名称解析顺序：\\n\\n1. 优先使用当前筛选器中非空的 `Filter.fieldName`。\\n2. `fieldName` 为空时，使用 `fieldId` 查询统计字段元数据。\\n3. 存在指标动态多语名称时，按当前语言获取展示名。\\n4. 仍无法得到可识别名称时，继续抛原 `s307051518` 固定提示，不返回带空指标名的文案。\\n\\n参数化异常示例：\\n\\n```java\\nthrow new BIBizException(\\n    I18NErrorCodeEnum.RESULT_SET_FILTER_DETAIL_UNSUPPORTED.getErrorCode(),\\n    Lists.newArrayList(measureDisplayName)\\n);\\n```\\n\\n按仓库当前约定，错误码的中英文模板先按 `{0}` 配置并使用同一指标名参数位；实际占位符须通过错误码平台联调验证。\\n\\n### 4. 关联原因识别\\n\\n新增一个小型无状态原因解",
+    "seq": 10,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-07T15:42:41.245282Z",
+    "input": {
+      "command": "/bin/zsh -lc \"jq '{schema_version,profile_id,output_contract,integrity,allowed_input_keys:(.allowed_inputs|keys),bindings:{workflow_run_id,source_snapshot_id,bundle_hash},valid:(.schema_version==\\\"multica-agent-input/1.0\\\" and .profile_id==\\\"A03\\\" and .output_contract==\\\"technical-analysis/1.0\\\" and ([.integrity[]]|all(.==false)) and ((.allowed_inputs|keys)==[\\\"frozen_technical_design\\\",\\\"test_tool_capabilities\\\"]))}' a03-input.json\""
+    },
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "seq": 11,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-07T15:42:41.247095Z",
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "output": "{\n  \"schema_version\": \"multica-agent-input/1.0\",\n  \"profile_id\": \"A03\",\n  \"output_contract\": \"technical-analysis/1.0\",\n  \"integrity\": {\n    \"business_repository_write_allowed\": false,\n    \"credentials_embedded\": false,\n    \"external_side_effects_allowed\": false,\n    \"oracle_included_in_agent_input\": false\n  },\n  \"allowed_input_keys\": [\n    \"frozen_technical_design\",\n    \"test_tool_capabilities\"\n  ],\n  \"bindings\": {\n    \"workflow_run_id\": \"multica-pilot-001\",\n    \"source_snapshot_id\": \"pilot-001-source-v1\",\n    \"bundle_hash\": \"sha256:66dfc6a57294faf0425ca6ebbf1737e189399c23e57a7f1fc263282a13cc9ef5\"\n  },\n  \"valid\": true\n}\n",
+    "seq": 12,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "content": "{\n  \"schema_version\": \"technical-analysis/1.0\",\n  \"workflow_run_id\": \"multica-pilot-001\",\n  \"source_snapshot_id\": \"pilot-001-source-v1\",\n  \"input_bundle_hash\": \"sha256:66dfc6a57294faf0425ca6ebbf1737e189399c23e57a7f1fc263282a13cc9ef5\",\n  \"status\": \"needs_human\",\n  \"technical_facts\": [\n    {\n      \"id\": \"TF-001\",\n      \"summary\": \"改造覆盖自定义维度、结果集指标筛选、多关联指标和指定特殊动态关联指标四类既有不支持场景；触发时机保持不变，不新增禁用条件。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-002\",\n      \"summary\": \"fs-bi 是查看明细判定、错误码枚举和国际化的主要实现仓库，基线为 release/202610-i18n；fs-bi-dev-platform 仅负责拼表入参与异常透传回归。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-003\",\n      \"summary\": \"I18NErrorCodeEnum 需新增四个语义独立的错误定义，并同步维护错误码平台配置、国际化 key 和默认中文；四个实际错误码均待申请。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-004\",\n      \"summary\": \"StatDetailQueryService.validateCustomDimension 已覆盖数据范围、原始图维度和下钻字段，改造仅替换其错误码；validateHourAndMinuteFilter 继续使用原 s307051519。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-005\",\n      \"summary\": \"结果集筛选只修改 OperateMenuElement.dealDetailUnSupportByFilter 分支；DownStreamAggDetailQueryService 对下游复杂虚拟指标的 s307051518 行为保持不变。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-006\",\n      \"summary\": \"结果集筛选的指标展示名依次取非空 Filter.fieldName、按 fieldId 查询的字段元数据和当前语言动态多语名称；仍无法解析时降级为原 s307051518，禁止返回空指标名。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-007\",\n      \"summary\": \"参数化业务异常必须使用 BIBizException(errorCode, List<String>)；BIBizException(errorCode, String) 的第二个参数不会参与返回文案构造。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-008\",\n      \"summary\": \"错误码平台模板暂按 {0} 配置，而 I18NMsgEnum 本地链路使用 %s；本方案不使用 I18NMsgEnum 构造业务异常，且上线前必须联调确认平台占位符。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-009\",\n      \"summary\": \"DetailUnsupportedReasonResolver 是无状态原因解析器，基于 AggRuleDOEXT、MeasureFieldDto、稳定对象或字段 ID、whatFieldType 及关系元数据输出 DYNAMIC_RELATION、MULTI_RELATION 或 NONE；动态关联优先于多关联。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-010\",\n      \"summary\": \"ObjectRelationTransConverter.queryObjRelationship 缺少完整指标配置和字段元数据，关系查询失败不能单独证明多关联或特殊动态关联；关键元数据不足时必须返回 NONE 并保留原异常。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-011\",\n      \"summary\": \"候选关联原因只在 BusinessObjectTransConverter.queryBusinessCorrelation 原本抛出已知对象关系不支持错误码时替换提示；权限、参数、超时和元数据服务异常不得被拦截或改写。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-012\",\n      \"summary\": \"统计图、拼表、Web 和移动端复用同一后端判定；dev-platform 不重复实现原因解析，只验证查看明细入参、专用错误码和指标名参数未被包装、改写或丢失。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-013\",\n      \"summary\": \"成功响应、失败响应结构、查询参数、SQL、分页、结果结构及历史图表均保持兼容；目标场景切换为新错误码，非目标场景错误码不变。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-014\",\n      \"summary\": \"多条件同时命中时的拟定顺序为自定义维度、结果集指标筛选、特殊动态关联、多关联关系、原对象关系异常，但该顺序尚待产品确认。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"TF-015\",\n      \"summary\": \"设计明确了单元测试和集成回归矩阵，包括正向成功、四类目标错误、旧场景兼容、中英文、长指标名、多原因优先级以及 Web/移动端和统计图/拼表一致性。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    }\n  ],\n  \"testability\": [],\n  \"testability_gaps\": [\n    {\n      \"capability\": \"unit_test_runner\",\n      \"status\": \"not_evidenced\"\n    },\n    {\n      \"capability\": \"integration_test_harness\",\n      \"status\": \"not_evidenced\"\n    },\n    {\n      \"capability\": \"error_code_platform_integration_environment\",\n      \"status\": \"not_evidenced\"\n    },\n    {\n      \"capability\": \"multilingual_test_environment\",\n      \"status\": \"not_evidenced\"\n    },\n    {\n      \"capability\": \"web_and_mobile_ui_validation\",\n      \"status\": \"not_evidenced\"\n    },\n    {\n      \"capability\": \"test_data_preparation_and_fixtures\",\n      \"status\": \"not_evidenced\"\n    },\n    {\n      \"capability\": \"test_data_cleanup\",\n      \"status\": \"not_evidenced\"\n    },\n    {\n      \"capability\": \"test_isolation\",\n      \"status\": \"not_evidenced\"\n    },\n    {\n      \"capability\": \"dependency_fault_injection\",\n      \"status\": \"not_evidenced\"\n    },\n    {\n      \"capability\": \"error_code_parameter_observation\",\n      \"status\": \"not_evidenced\"\n    },\n    {\n      \"capability\": \"reproducible_desensitized_chart_configurations\",\n      \"status\": \"not_evidenced\"\n    }\n  ],\n  \"blocking_items\": [\n    {\n      \"id\": \"BI-001\",\n      \"issue_code\": \"CUSTOM_DIMENSION_COPY_CONFIRMATION\",\n      \"summary\": \"自定义维度校验实际包含下钻字段，但当前 PRD 文案只写维度或数据范围，最终中英文口径未确认。\",\n      \"recommendation\": \"采用“维度、下钻字段或数据范围中使用了自定义维度字段，暂不支持查看明细”并确认对应英文。\",\n      \"owner\": \"产品\",\n      \"start_condition\": \"开发前确认最终中英文文案。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"BI-002\",\n      \"issue_code\": \"RESULT_SET_COPY_CONFIRMATION\",\n      \"summary\": \"结果集筛选提示固定写“统计图”，但需求同时覆盖拼表，最终中英文口径未确认。\",\n      \"recommendation\": \"采用端无关文案“数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细”并确认对应英文。\",\n      \"owner\": \"产品\",\n      \"start_condition\": \"开发前确认最终中英文文案。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"BI-003\",\n      \"issue_code\": \"MULTI_REASON_PRIORITY_CONFIRMATION\",\n      \"summary\": \"同一图表同时命中多个不支持条件时的提示优先级尚未形成产品验收口径。\",\n      \"recommendation\": \"按自定义维度、结果集指标筛选、特殊动态关联、多关联关系、原对象关系异常的顺序处理。\",\n      \"owner\": \"产品\",\n      \"start_condition\": \"验收前确认提示优先级。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"BI-004\",\n      \"issue_code\": \"UNRESOLVED_MEASURE_NAME_FALLBACK_CONFIRMATION\",\n      \"summary\": \"Filter.fieldName 和字段元数据均无法解析指标名时的最终提示策略尚待确认。\",\n      \"recommendation\": \"降级为原 s307051518 固定提示，禁止返回带空指标名的新文案。\",\n      \"owner\": \"产品/测试\",\n      \"start_condition\": \"可按建议实现，验收前确认降级行为。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    },\n    {\n      \"id\": \"BI-005\",\n      \"issue_code\": \"DEDICATED_ERROR_CODES_PENDING\",\n      \"summary\": \"四类目标原因的专用错误码尚未申请，错误码平台中英文模板及参数占位符也未完成联调确认。\",\n      \"recommendation\": \"申请四个专用错误码，同步配置中英文模板，并以 BIBizException(errorCode, List<String>) 验证 {0} 参数替换。\",\n      \"owner\": \"错误码平台/后端，具体负责人 not_evidenced\",\n      \"start_condition\": \"开发前完成错误码申请；上线前完成模板占位符联调。\",\n      \"source_refs\": [\n        {\n          \"id\": \"stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md\",\n          \"location\": \"whole_file\",\n          \"type\": \"technical_design\"\n        }\n      ]\n    }\n  ]\n}",
+    "created_at": "2026-08-07T15:44:38.158192Z",
+    "issue_id": "d0a9f669-9676-481d-baa0-701cdecbea42",
+    "seq": 13,
+    "task_id": "c3075689-f4ea-48aa-ac9b-e3052e917aa5",
+    "type": "text"
+  }
+]

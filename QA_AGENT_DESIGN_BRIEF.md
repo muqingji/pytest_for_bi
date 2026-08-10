@@ -248,7 +248,7 @@ Artifact-only 参考切片。Multica 真实试点已运行首批 7 个 Agent，�
 | A07 | 风险策略建议 Agent | 只对 N24 无法按规则判断的风险项提供证据化建议；最终策略由 N24 生成 | 风险建议 Artifact |
 | A08 | 测试设计 Agent | 汇总证据和 Case Provider 草稿，生成 Test Intent、父级 Test Case IR 和覆盖矩阵；不直接生成测试代码 | 测试设计 Artifact |
 | A09 | Oracle 与测试防范覆盖审查 Agent | 检查预期是否有证据、可判定，需求/异常/边界/权限等是否覆盖；不审查代码覆盖率，也不能读取评估 Oracle Registry | Oracle 与覆盖审查 Artifact |
-| A11 | 拆分覆盖回查 Agent | 审查 N25 编译结果是否遗漏、重复、层级错误或改变父 Case 语义 | 拆分审查 Artifact |
+| A11 |拆分覆盖回查 Agent | 审查 N25 编译结果是 否遗漏、重复、层级错误或改变父 Case 语义 | 拆分审查 Artifact |
 | A12 | 测试选择建议 Agent | 只解释 N26 无法确定的跨仓影响和 Case 关联；最终选择由 N26 生成 | 测试选择建议 Artifact |
 | A13 | 前端自动化 Agent | 根据审核后的前端 Case 生成单元、组件或 Playwright UI 自动化及 Manifest | 前端测试代码和 Manifest |
 | A14 | 后端自动化 Agent | 根据审核后的后端 Case 生成单元、服务、API 或数据自动化及 Manifest | 后端测试代码和 Manifest |

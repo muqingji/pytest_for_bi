@@ -146,7 +146,7 @@ def test_prepare_g02_is_content_addressed_and_idempotent(tmp_path: Path) -> None
 
 
 def test_prepare_g02_rejects_current_invalid_pilot_n04(tmp_path: Path) -> None:
-    pilot = ROOT / "runs" / "pilot-001"
+    pilot = ROOT / "tests" / "fixtures" / "pilot"
     with pytest.raises(ContractError, match="cannot start before N04"):
         prepare_test_case_review_request(
             pilot / "multica-stage7" / "artifacts" / "a08-test-design-ir.json",

@@ -1,0 +1,25 @@
+{
+  "bundles": [
+    {
+      "bundle_hash": "sha256:0b8ed3240e229f0b1902630c9494a955995febbdb47b40324bd50889c842e416",
+      "file": "a02-input.json",
+      "output_contract": "requirement-analysis/1.0",
+      "profile_id": "A02"
+    },
+    {
+      "bundle_hash": "sha256:66dfc6a57294faf0425ca6ebbf1737e189399c23e57a7f1fc263282a13cc9ef5",
+      "file": "a03-input.json",
+      "output_contract": "technical-analysis/1.0",
+      "profile_id": "A03"
+    },
+    {
+      "bundle_hash": "sha256:8d1b51a19ce6e210be2f00f422bb7bbc84aa19f9df13d7bfd7294aaa1a0eb828",
+      "file": "a05-input.json",
+      "output_contract": "change-analysis/1.0",
+      "profile_id": "A05"
+    }
+  ],
+  "schema_version": "multica-input-manifest/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "workflow_run_id": "multica-pilot-001"
+}

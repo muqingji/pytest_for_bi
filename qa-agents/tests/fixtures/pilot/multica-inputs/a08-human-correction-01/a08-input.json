@@ -1,0 +1,2330 @@
+{
+  "allowed_inputs": {
+    "approved_scope": {
+      "decision": "approved",
+      "decision_hash": "sha256:d3f7a31ca5e260e12e69cf3574dd7564fed86e917abcf14b2b6e849220430ef6",
+      "gate_id": "G01",
+      "request_hash": "sha256:b37a9742dbf9300b38e472e5bf21e136bf5264755a5e8a3ed9c682ac378d250d",
+      "review_policy": {
+        "approval_mode": "qa_owner_single_signoff",
+        "policy_hash": "sha256:416a8050c9c5a0733cd003dfdcc0c0661752f5d1a5dd0318ae2afd1b1e2ca191",
+        "policy_scope": "pilot_test_design_only",
+        "production_release_authority": false,
+        "schema_version": "g01-review-policy/1.1",
+        "temporary_policy": true
+      },
+      "status": "approved",
+      "test_rule_obligations": [
+        {
+          "definition": {
+            "concatenate": false,
+            "fixed_business_reason_priority": false,
+            "message_count": 1,
+            "permission_errors": "must_remain_first_and_must_not_be_replaced",
+            "selection": "return_the_single_valid_prompt_from_the_existing_execution_path"
+          },
+          "id": "RULE-MULTIPLE-REASONS"
+        },
+        {
+          "definition": {
+            "multiple_metrics": "use_the_first_triggering_metric_in_stable_filter_configuration_order",
+            "resolution_order": [
+              "non_empty_Filter.fieldName",
+              "field_metadata_by_fieldId",
+              "current_locale_dynamic_display_name"
+            ],
+            "unresolved_name": "fall_back_to_legacy_s307051518_without_an_empty_parameter"
+          },
+          "id": "RULE-SINGLE-METRIC"
+        },
+        {
+          "definition": {
+            "assertions": [
+              "same_backend_reason",
+              "same_error_code",
+              "same_locale_message",
+              "same_metric_parameter",
+              "unsupported_detail_view_is_blocked"
+            ],
+            "implementation_evidence_required": true,
+            "required_entries": [
+              "web_chart",
+              "mobile_chart",
+              "web_joined_table",
+              "mobile_joined_table"
+            ]
+          },
+          "id": "RULE-ENTRY-CONSISTENCY"
+        },
+        {
+          "definition": {
+            "covered_locations": [
+              "dimension",
+              "drill_field",
+              "data_range"
+            ],
+            "error_key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+            "preserve_existing_detection_order": true
+          },
+          "id": "RULE-CUSTOM-DIMENSION"
+        },
+        {
+          "definition": {
+            "error_key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+            "replace_only_existing_object_relation_unsupported_failures": true,
+            "scope": "all_what_and_what_list_dynamic_relations_without_ticket_theme_or_specific_object_restrictions"
+          },
+          "id": "RULE-DYNAMIC-RELATION"
+        },
+        {
+          "definition": {
+            "error_key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+            "replace_only_existing_object_relation_unsupported_failures": true,
+            "successful_existing_relation_resolution": "must_remain_successful"
+          },
+          "id": "RULE-MULTI-RELATION"
+        },
+        {
+          "definition": {
+            "behavior": "preserve_existing_permission_and_data_visibility_checks",
+            "metric_name_visibility": "must_not_bypass_existing_permissions",
+            "priority": "before_business_unsupported_reason_mapping"
+          },
+          "id": "RULE-PERMISSION-PRIORITY"
+        },
+        {
+          "definition": {
+            "distributed_reason_implementation": "accepted_conditionally",
+            "failure_response_shape": "unchanged",
+            "historical_charts_and_tables": "evaluate_in_place_without_migration",
+            "non_target_error_codes": "unchanged",
+            "success_response": "unchanged",
+            "unified_resolver_required_when": "cross_entry_consistency_or_exception_boundary_cannot_be_proven"
+          },
+          "id": "RULE-HISTORICAL-COMPATIBILITY"
+        },
+        {
+          "definition": {
+            "code": "s307011534",
+            "en": "A custom dimension field is used in a dimension, drill field, or data range. Viewing details is temporarily unavailable.",
+            "key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+            "parameters": [],
+            "zh_CN": "维度、下钻字段或数据范围中使用了自定义维度字段，暂不支持查看明细"
+          },
+          "id": "RULE-I18N-CUSTOM-DIMENSION"
+        },
+        {
+          "definition": {
+            "code": "s307011535",
+            "en": "The data range uses result-set filtering for \"{0}\". Viewing details is unavailable.",
+            "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+            "parameters": [
+              "current_locale_metric_display_name"
+            ],
+            "zh_CN": "数据范围中设置了「{0}」按结果集筛选，不支持查看明细"
+          },
+          "id": "RULE-I18N-RESULT-SET"
+        },
+        {
+          "definition": {
+            "code": "s307011536",
+            "en": "This metric is based on multiple relationships. Viewing details is temporarily unavailable.",
+            "key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+            "parameters": [],
+            "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细"
+          },
+          "id": "RULE-I18N-MULTI-RELATION"
+        },
+        {
+          "definition": {
+            "code": "s307011537",
+            "en": "This metric is based on dynamic relationships. Viewing details is unavailable.",
+            "key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+            "parameters": [],
+            "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细"
+          },
+          "id": "RULE-I18N-DYNAMIC-RELATION"
+        }
+      ],
+      "test_rules": {
+        "compatibility": {
+          "distributed_reason_implementation": "accepted_conditionally",
+          "failure_response_shape": "unchanged",
+          "historical_charts_and_tables": "evaluate_in_place_without_migration",
+          "non_target_error_codes": "unchanged",
+          "success_response": "unchanged",
+          "unified_resolver_required_when": "cross_entry_consistency_or_exception_boundary_cannot_be_proven"
+        },
+        "custom_dimension": {
+          "covered_locations": [
+            "dimension",
+            "drill_field",
+            "data_range"
+          ],
+          "error_key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+          "preserve_existing_detection_order": true
+        },
+        "dynamic_relation": {
+          "error_key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+          "replace_only_existing_object_relation_unsupported_failures": true,
+          "scope": "all_what_and_what_list_dynamic_relations_without_ticket_theme_or_specific_object_restrictions"
+        },
+        "entry_consistency": {
+          "assertions": [
+            "same_backend_reason",
+            "same_error_code",
+            "same_locale_message",
+            "same_metric_parameter",
+            "unsupported_detail_view_is_blocked"
+          ],
+          "implementation_evidence_required": true,
+          "required_entries": [
+            "web_chart",
+            "mobile_chart",
+            "web_joined_table",
+            "mobile_joined_table"
+          ]
+        },
+        "localization": {
+          "errors": [
+            {
+              "code": "s307011534",
+              "en": "A custom dimension field is used in a dimension, drill field, or data range. Viewing details is temporarily unavailable.",
+              "key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+              "parameters": [],
+              "zh_CN": "维度、下钻字段或数据范围中使用了自定义维度字段，暂不支持查看明细"
+            },
+            {
+              "code": "s307011535",
+              "en": "The data range uses result-set filtering for \"{0}\". Viewing details is unavailable.",
+              "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+              "parameters": [
+                "current_locale_metric_display_name"
+              ],
+              "zh_CN": "数据范围中设置了「{0}」按结果集筛选，不支持查看明细"
+            },
+            {
+              "code": "s307011536",
+              "en": "This metric is based on multiple relationships. Viewing details is temporarily unavailable.",
+              "key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+              "parameters": [],
+              "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细"
+            },
+            {
+              "code": "s307011537",
+              "en": "This metric is based on dynamic relationships. Viewing details is unavailable.",
+              "key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+              "parameters": [],
+              "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细"
+            }
+          ],
+          "fallback": "platform_default_locale_then_legacy_error_behavior",
+          "locale_source": "request_current_locale",
+          "parameter_placeholder": "{0}",
+          "parameter_transport": "BIBizException_errorCode_and_List_of_String"
+        },
+        "metric_name": {
+          "multiple_metrics": "use_the_first_triggering_metric_in_stable_filter_configuration_order",
+          "resolution_order": [
+            "non_empty_Filter.fieldName",
+            "field_metadata_by_fieldId",
+            "current_locale_dynamic_display_name"
+          ],
+          "unresolved_name": "fall_back_to_legacy_s307051518_without_an_empty_parameter"
+        },
+        "multi_relation": {
+          "error_key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+          "replace_only_existing_object_relation_unsupported_failures": true,
+          "successful_existing_relation_resolution": "must_remain_successful"
+        },
+        "multiple_reasons": {
+          "concatenate": false,
+          "fixed_business_reason_priority": false,
+          "message_count": 1,
+          "permission_errors": "must_remain_first_and_must_not_be_replaced",
+          "selection": "return_the_single_valid_prompt_from_the_existing_execution_path"
+        },
+        "permission": {
+          "behavior": "preserve_existing_permission_and_data_visibility_checks",
+          "metric_name_visibility": "must_not_bypass_existing_permissions",
+          "priority": "before_business_unsupported_reason_mapping"
+        },
+        "scope": {
+          "exhaustive_for_this_change": true,
+          "other_unsupported_scenarios": "preserve_existing_behavior",
+          "unsupported_scenarios": [
+            "custom_dimension",
+            "result_set_filter",
+            "multi_relation",
+            "dynamic_relation"
+          ]
+        }
+      }
+    },
+    "case_provider_draft": {
+      "candidate_count": 0,
+      "candidates": [],
+      "provider_status": "incompatible",
+      "reason": "Frozen fs-qa-knowledge provider has no artifact-only capability"
+    },
+    "correction_feedback": {
+      "a09_issues": [
+        {
+          "case_id": "CASE-003",
+          "category": "oracle",
+          "expected_id": "EXP-003-1",
+          "id": "A09-R001",
+          "issue_code": "RESULT_SET_METRIC_PARAM_LOCALE",
+          "message": "结果集筛选的中英文指标名参数未按 locale 配对。",
+          "path": "parent_cases[2].test_data.dataset",
+          "recommendation": "按 locale 配对 zh_CN/en 指标名参数。",
+          "route_to": "A08",
+          "severity": "error",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "case_id": "CASE-005",
+          "category": "oracle",
+          "expected_id": "EXP-005-1",
+          "id": "A09-R002",
+          "issue_code": "UNRESOLVED_EXPECTATION_REFERENCE",
+          "message": "期望引用不可解析。",
+          "path": "parent_cases[4].expected[0].source_ref",
+          "recommendation": "将期望引用指向冻结证据中的精确位置。",
+          "route_to": "A08",
+          "severity": "error",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "case_id": "CASE-007",
+          "category": "oracle",
+          "expected_id": "EXP-007-1",
+          "id": "A09-R003",
+          "issue_code": "KEYLESS_LOCALIZED_SET_MATCH",
+          "message": "无键本地化集合匹配不可判定。",
+          "path": "parent_cases[6].expected[0].oracle.matcher",
+          "recommendation": "为本地化集合匹配补充固定 key。",
+          "route_to": "A08",
+          "severity": "error",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "case_id": "CASE-009",
+          "category": "oracle",
+          "expected_id": "EXP-009-1",
+          "id": "A09-R004",
+          "issue_code": "COMPOSITE_ORACLE_SOURCE_SCOPE",
+          "message": "复合 Oracle 来源范围过大。",
+          "path": "parent_cases[8].expected[0].oracle.source_ref",
+          "recommendation": "收窄复合 Oracle 的来源范围。",
+          "route_to": "A08",
+          "severity": "warning",
+          "source_refs": [
+            "REQ-001"
+          ]
+        }
+      ],
+      "automatic_budget_reset": false,
+      "correction_attempt": 3,
+      "max_correction_attempts": 2,
+      "n04_artifact_hash": "sha256:8057ca2fba398a528e1d01af812fc62c2ef5e613fd2e146769579e496d59ee95",
+      "n04_schema_issue_groups": [],
+      "oracle_review_artifact_hash": "sha256:6d43f7ee6df90db28e25a535df9747316cda04ba51f8fd15b37b437623d09ef6",
+      "previous_artifact_hash": "sha256:ab37311461c28b41456765028993a8ea01ae563f17545a20ffd22e894d990617",
+      "recovery_mode": "human_directed",
+      "required_outcome": {
+        "g02_must_remain_blocked_until_n04_valid": true,
+        "preserve_previous_artifact": true,
+        "record_every_feedback_disposition": true,
+        "route": "A09_then_N04"
+      },
+      "schema_version": "test-design-correction/1.2"
+    },
+    "human_correction_decision": {
+      "actor": {
+        "id": "muqj11262",
+        "multica_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+        "role": "qa_owner",
+        "type": "human"
+      },
+      "authorized_directive_ids": [
+        "A09-R001",
+        "A09-R002",
+        "A09-R003",
+        "A09-R004"
+      ],
+      "automatic_budget_reset": false,
+      "decision": "directed_correction",
+      "decision_hash": "sha256:f6fa4e7a25343623d0700d3fac60c754d0f7f96533993739d0168c49a6c8708f",
+      "request_hash": "sha256:ff8da34d7d796a7f726fb030288260ffe06e6bce4ff063bccac3dcb5c50d2cd8",
+      "required_revalidation": [
+        "A09",
+        "N04"
+      ],
+      "schema_version": "human-test-design-correction-decision/1.0"
+    },
+    "previous_test_design_ir": {
+      "coverage_matrix": [
+        {
+          "case_ids": [
+            "CASE-001",
+            "CASE-002",
+            "CASE-003",
+            "CASE-004",
+            "CASE-005",
+            "CASE-006",
+            "CASE-007",
+            "CASE-008",
+            "CASE-009",
+            "CASE-010",
+            "CASE-011",
+            "CASE-012",
+            "CASE-013"
+          ],
+          "requirement_id": "REQ-001"
+        }
+      ],
+      "parent_cases": [
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-001-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-001",
+          "intent_ids": [
+            "INTENT-001"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 1"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-002-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-002",
+          "intent_ids": [
+            "INTENT-002"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 2"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-003-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-003",
+          "intent_ids": [
+            "INTENT-003"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 3"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-004-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-004",
+          "intent_ids": [
+            "INTENT-004"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 4"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-005-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-005",
+          "intent_ids": [
+            "INTENT-005"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 5"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-006-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-006",
+          "intent_ids": [
+            "INTENT-006"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 6"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-007-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-007",
+          "intent_ids": [
+            "INTENT-007"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 7"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-008-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-008",
+          "intent_ids": [
+            "INTENT-008"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 8"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-009-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-009",
+          "intent_ids": [
+            "INTENT-009"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 9"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-010-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-010",
+          "intent_ids": [
+            "INTENT-010"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 10"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-011-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-011",
+          "intent_ids": [
+            "INTENT-011"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 11"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-012-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-012",
+          "intent_ids": [
+            "INTENT-012"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 12"
+        },
+        {
+          "automation_candidate": true,
+          "cleanup": [],
+          "execution_policy": {
+            "allowed_modes": [
+              "automated"
+            ]
+          },
+          "expected": [
+            {
+              "description": "返回冻结的当前语言提示",
+              "id": "EXP-013-1",
+              "oracle": {
+                "matcher": "template_equals",
+                "observation_point": "response.message",
+                "source_ref": "G01:test_rules.localization",
+                "type": "deterministic"
+              }
+            }
+          ],
+          "id": "CASE-013",
+          "intent_ids": [
+            "INTENT-013"
+          ],
+          "layer": "scenario",
+          "preconditions": [
+            "准备目标场景数据"
+          ],
+          "priority": "P0",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ],
+          "steps": [
+            "调用查看明细接口"
+          ],
+          "test_data": {
+            "dataset": [
+              "zh-CN",
+              "en"
+            ],
+            "scenario": [
+              "detail"
+            ]
+          },
+          "title": "人工修正后父 Case 13"
+        }
+      ],
+      "test_intents": [
+        {
+          "id": "INTENT-001",
+          "objective": "验证人工修正后父意图 1",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-002",
+          "objective": "验证人工修正后父意图 2",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-003",
+          "objective": "验证人工修正后父意图 3",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-004",
+          "objective": "验证人工修正后父意图 4",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-005",
+          "objective": "验证人工修正后父意图 5",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-006",
+          "objective": "验证人工修正后父意图 6",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-007",
+          "objective": "验证人工修正后父意图 7",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-008",
+          "objective": "验证人工修正后父意图 8",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-009",
+          "objective": "验证人工修正后父意图 9",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-010",
+          "objective": "验证人工修正后父意图 10",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-011",
+          "objective": "验证人工修正后父意图 11",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-012",
+          "objective": "验证人工修正后父意图 12",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        },
+        {
+          "id": "INTENT-013",
+          "objective": "验证人工修正后父意图 13",
+          "required_layers": [
+            "backend",
+            "contract",
+            "e2e"
+          ],
+          "risk": "critical",
+          "source_refs": [
+            "REQ-001"
+          ]
+        }
+      ],
+      "test_rule_coverage": [
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-MULTIPLE-REASONS"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-SINGLE-METRIC"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-ENTRY-CONSISTENCY"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-CUSTOM-DIMENSION"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-DYNAMIC-RELATION"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-MULTI-RELATION"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-PERMISSION-PRIORITY"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-HISTORICAL-COMPATIBILITY"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-I18N-CUSTOM-DIMENSION"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-I18N-RESULT-SET"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-I18N-MULTI-RELATION"
+        },
+        {
+          "case_ids": [
+            "CASE-001"
+          ],
+          "rule_id": "RULE-I18N-DYNAMIC-RELATION"
+        }
+      ]
+    },
+    "test_strategy": {
+      "human_gates": {
+        "automation_review": "required",
+        "test_case_ir_review": "required"
+      },
+      "policy_version": "risk-policy/1.0",
+      "reasons": [
+        {
+          "rule_id": "high_findings",
+          "score": 32
+        },
+        {
+          "rule_id": "medium_findings",
+          "score": 4
+        }
+      ],
+      "required_layers": [
+        "backend",
+        "contract",
+        "e2e"
+      ],
+      "required_non_functional": [],
+      "risk_level": "critical",
+      "risk_score": 36,
+      "schema_version": "test-strategy/1.0",
+      "unresolved_items": []
+    },
+    "validated_analysis": {
+      "alignment": {
+        "findings": [
+          {
+            "id": "FIND-001",
+            "implementation_ids": [
+              "backend-fact-001",
+              "backend-fact-003"
+            ],
+            "requirement_ids": [
+              "REQ-001"
+            ],
+            "severity": "high",
+            "source_refs": [
+              "REQ-001",
+              "TF-004",
+              "TF-008",
+              "backend-fact-001",
+              "backend-fact-003",
+              "BI-001",
+              "BI-005"
+            ],
+            "summary": "自定义维度原判定条件和专用错误码替换已有业务源码证据，但错误码平台最终中英文模板及文案口径未完成确认；现有判定还包含下钻字段，超出冻结需求明确列出的维度和数据范围。",
+            "technical_fact_ids": [
+              "TF-003",
+              "TF-004",
+              "TF-008"
+            ],
+            "type": "partial_implementation"
+          },
+          {
+            "id": "FIND-002",
+            "implementation_ids": [
+              "backend-fact-001",
+              "backend-fact-002"
+            ],
+            "requirement_ids": [
+              "REQ-002"
+            ],
+            "severity": "high",
+            "source_refs": [
+              "REQ-002",
+              "TF-006",
+              "TF-007",
+              "TF-008",
+              "backend-fact-002",
+              "BI-004",
+              "BI-005"
+            ],
+            "summary": "结果集筛选分支已切换专用错误码并传入筛选字段名，但未发现技术方案要求的字段元数据和动态多语名称回退链、空名称时降级旧错误码，以及参数占位符联调的实现证据。",
+            "technical_fact_ids": [
+              "TF-005",
+              "TF-006",
+              "TF-007",
+              "TF-008"
+            ],
+            "type": "partial_implementation"
+          },
+          {
+            "id": "FIND-003",
+            "implementation_ids": [
+              "backend-fact-002"
+            ],
+            "requirement_ids": [
+              "REQ-002"
+            ],
+            "severity": "high",
+            "source_refs": [
+              "REQ-002",
+              "TF-006",
+              "backend-fact-002",
+              "AMB-002",
+              "HUM-002"
+            ],
+            "summary": "冻结需求未定义多个结果集筛选指标同时触发时应选择、排序或展示哪些名称；当前业务源码事实只证明单个筛选字段名被传入，无法判定其满足多指标场景。",
+            "technical_fact_ids": [
+              "TF-006"
+            ],
+            "type": "needs_confirmation"
+          },
+          {
+            "id": "FIND-004",
+            "implementation_ids": [
+              "backend-fact-004",
+              "backend-fact-005",
+              "backend-fact-006"
+            ],
+            "requirement_ids": [
+              "REQ-003",
+              "REQ-004"
+            ],
+            "severity": "high",
+            "source_refs": [
+              "TF-009",
+              "TF-010",
+              "TF-011",
+              "TF-014",
+              "backend-fact-004",
+              "backend-fact-005",
+              "backend-fact-006"
+            ],
+            "summary": "技术方案要求通过包含完整指标配置、稳定对象或字段标识及关系元数据的原因解析器识别动态关联和多关联，并限制异常替换位置；业务源码事实则显示在多个转换器中按对象或节点数量以及关系查询失败后的 What/WhatList 元数据直接判定，未证明设计中的统一解析、动态优先级和异常边界已实现。",
+            "technical_fact_ids": [
+              "TF-009",
+              "TF-010",
+              "TF-011",
+              "TF-014"
+            ],
+            "type": "conflict"
+          },
+          {
+            "id": "FIND-005",
+            "implementation_ids": [
+              "backend-fact-006"
+            ],
+            "requirement_ids": [
+              "REQ-004"
+            ],
+            "severity": "high",
+            "source_refs": [
+              "REQ-004",
+              "TF-009",
+              "TF-010",
+              "backend-fact-006",
+              "AMB-003",
+              "HUM-003"
+            ],
+            "summary": "特殊动态关联需求的完整对象范围未冻结，而实现事实表明常规关系查询全部失败后，任意命中的 What 或 WhatList 字段均会使用动态关联专用错误码；该范围是否包含需求列举之外的对象或主题需人工确认。",
+            "technical_fact_ids": [
+              "TF-009",
+              "TF-010"
+            ],
+            "type": "needs_confirmation"
+          },
+          {
+            "id": "FIND-006",
+            "implementation_ids": [
+              "backend-fact-002",
+              "backend-fact-003",
+              "backend-fact-004",
+              "backend-fact-005",
+              "backend-fact-006"
+            ],
+            "requirement_ids": [
+              "REQ-005"
+            ],
+            "severity": "high",
+            "source_refs": [
+              "REQ-005",
+              "TF-002",
+              "TF-012",
+              "TF-015",
+              "backend-fact-002",
+              "backend-fact-006"
+            ],
+            "summary": "技术方案声明统计图和拼表复用后端判定并要求验证拼表入参与异常透传，但 ChangeSet 业务源码事实未证明两个入口均到达相同判定，也未提供 dev-platform 透传实现证据。",
+            "technical_fact_ids": [
+              "TF-002",
+              "TF-012",
+              "TF-015"
+            ],
+            "type": "omission"
+          },
+          {
+            "id": "FIND-007",
+            "implementation_ids": [
+              "backend-fact-002",
+              "backend-fact-003",
+              "backend-fact-004",
+              "backend-fact-005",
+              "backend-fact-006"
+            ],
+            "requirement_ids": [
+              "REQ-006"
+            ],
+            "severity": "high",
+            "source_refs": [
+              "REQ-006",
+              "TF-012",
+              "TF-015",
+              "backend-fact-002",
+              "backend-fact-006",
+              "AMB-006"
+            ],
+            "summary": "技术方案声明 Web 和移动端复用同一后端判定，但业务源码事实没有证明两端均透传并展示相同专用错误，也没有证明两端均阻止进入不受支持的明细视图。",
+            "technical_fact_ids": [
+              "TF-012",
+              "TF-015"
+            ],
+            "type": "omission"
+          },
+          {
+            "id": "FIND-008",
+            "implementation_ids": [
+              "backend-fact-001"
+            ],
+            "requirement_ids": [
+              "REQ-001",
+              "REQ-002",
+              "REQ-003",
+              "REQ-004"
+            ],
+            "severity": "high",
+            "source_refs": [
+              "TF-003",
+              "TF-007",
+              "TF-008",
+              "backend-fact-001",
+              "BI-005"
+            ],
+            "summary": "四个专用错误定义已进入业务源码，但错误码平台配置、中英文模板及结果集指标名占位符联调没有实现证据，因此最终用户可见文案尚不能完整对齐。",
+            "technical_fact_ids": [
+              "TF-003",
+              "TF-007",
+              "TF-008"
+            ],
+            "type": "omission"
+          },
+          {
+            "id": "FIND-009",
+            "implementation_ids": [
+              "backend-fact-007"
+            ],
+            "requirement_ids": [],
+            "severity": "medium",
+            "source_refs": [
+              "backend-fact-007"
+            ],
+            "summary": "员工或部门主题特殊兜底分支的异常消息被改为空字符串，但该变化不对应任何冻结需求，也没有专用提示需求依据。",
+            "technical_fact_ids": [],
+            "type": "out_of_scope_change"
+          },
+          {
+            "id": "FIND-010",
+            "implementation_ids": [],
+            "requirement_ids": [
+              "REQ-001",
+              "REQ-002",
+              "REQ-003",
+              "REQ-004"
+            ],
+            "severity": "medium",
+            "source_refs": [
+              "AMB-001",
+              "HUM-001",
+              "TF-014",
+              "BI-003"
+            ],
+            "summary": "多个限制条件同时命中时的提示优先级尚未形成冻结验收口径；技术方案给出的顺序仍待产品确认，业务源码事实也未证明该顺序。",
+            "technical_fact_ids": [
+              "TF-014"
+            ],
+            "type": "needs_confirmation"
+          }
+        ],
+        "input_bundle_hash": "sha256:3bac6db7e76c0e611cb3d7309bad3da14cc30aa8ae58e9d5bfb9a54c3b92ad9b",
+        "mappings": [
+          {
+            "change_fact_ids": [
+              "backend-fact-001",
+              "backend-fact-003"
+            ],
+            "requirement_id": "REQ-001",
+            "source_refs": [
+              "REQ-001",
+              "TF-004",
+              "backend-fact-001",
+              "backend-fact-003",
+              "BI-001"
+            ],
+            "status": "partially_aligned",
+            "technical_fact_ids": [
+              "TF-001",
+              "TF-003",
+              "TF-004",
+              "TF-007",
+              "TF-008"
+            ]
+          },
+          {
+            "change_fact_ids": [
+              "backend-fact-001",
+              "backend-fact-002"
+            ],
+            "requirement_id": "REQ-002",
+            "source_refs": [
+              "REQ-002",
+              "TF-005",
+              "TF-006",
+              "TF-007",
+              "backend-fact-001",
+              "backend-fact-002",
+              "BI-002",
+              "BI-004"
+            ],
+            "status": "partially_aligned",
+            "technical_fact_ids": [
+              "TF-001",
+              "TF-003",
+              "TF-005",
+              "TF-006",
+              "TF-007",
+              "TF-008"
+            ]
+          },
+          {
+            "change_fact_ids": [
+              "backend-fact-001",
+              "backend-fact-004",
+              "backend-fact-005"
+            ],
+            "requirement_id": "REQ-003",
+            "source_refs": [
+              "REQ-003",
+              "TF-001",
+              "TF-003",
+              "backend-fact-001",
+              "backend-fact-004",
+              "backend-fact-005"
+            ],
+            "status": "aligned",
+            "technical_fact_ids": [
+              "TF-001",
+              "TF-003",
+              "TF-009",
+              "TF-011",
+              "TF-013"
+            ]
+          },
+          {
+            "change_fact_ids": [
+              "backend-fact-001",
+              "backend-fact-006"
+            ],
+            "requirement_id": "REQ-004",
+            "source_refs": [
+              "REQ-004",
+              "TF-009",
+              "TF-010",
+              "TF-011",
+              "backend-fact-001",
+              "backend-fact-006",
+              "AMB-003",
+              "HUM-003"
+            ],
+            "status": "needs_human",
+            "technical_fact_ids": [
+              "TF-001",
+              "TF-003",
+              "TF-009",
+              "TF-010",
+              "TF-011",
+              "TF-013"
+            ]
+          },
+          {
+            "change_fact_ids": [
+              "backend-fact-002",
+              "backend-fact-003",
+              "backend-fact-004",
+              "backend-fact-005",
+              "backend-fact-006"
+            ],
+            "requirement_id": "REQ-005",
+            "source_refs": [
+              "REQ-005",
+              "TF-002",
+              "TF-012",
+              "TF-015",
+              "backend-fact-002",
+              "backend-fact-006"
+            ],
+            "status": "implementation_not_evidenced",
+            "technical_fact_ids": [
+              "TF-002",
+              "TF-012",
+              "TF-013",
+              "TF-015"
+            ]
+          },
+          {
+            "change_fact_ids": [
+              "backend-fact-002",
+              "backend-fact-003",
+              "backend-fact-004",
+              "backend-fact-005",
+              "backend-fact-006"
+            ],
+            "requirement_id": "REQ-006",
+            "source_refs": [
+              "REQ-006",
+              "TF-012",
+              "TF-015",
+              "backend-fact-002",
+              "backend-fact-006",
+              "AMB-006"
+            ],
+            "status": "implementation_not_evidenced",
+            "technical_fact_ids": [
+              "TF-012",
+              "TF-013",
+              "TF-015"
+            ]
+          }
+        ],
+        "schema_version": "alignment-result/1.0",
+        "source_snapshot_id": "pilot-001-source-v1",
+        "status": "needs_human",
+        "workflow_run_id": "multica-pilot-001"
+      },
+      "requirement_analysis": {
+        "ambiguities": [
+          {
+            "id": "AMB-001",
+            "issue_code": "SCENARIO_PRECEDENCE_UNDEFINED",
+            "message": "同一次查看明细操作同时命中多个不支持场景时，提示优先级及是否只展示一条提示未定义。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          },
+          {
+            "id": "AMB-002",
+            "issue_code": "MULTIPLE_METRIC_NAMES_UNDEFINED",
+            "message": "数据范围内存在多个按结果集筛选的统计指标时，提示中指标名称的选择、排序和展示格式未定义。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          },
+          {
+            "id": "AMB-003",
+            "issue_code": "DYNAMIC_RELATION_SCOPE_UNCLEAR",
+            "message": "特殊 what/whatlist 场景的完整识别范围不明确：文本列举业务流程、业务流程任务、服务记录，并以工单主题举例，但未说明是否还包含其他对象、主题或动态关联类型。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          },
+          {
+            "id": "AMB-004",
+            "issue_code": "ROLE_PERMISSION_BEHAVIOR_UNSPECIFIED",
+            "message": "需求未说明不同用户角色或数据权限是否影响不支持场景判定、指标名称可见性及提示展示。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          },
+          {
+            "id": "AMB-005",
+            "issue_code": "LOCALIZATION_UNSPECIFIED",
+            "message": "需求仅提供中文提示文案，未定义其他语言环境下的翻译、回退策略及动态指标名称的本地化规则。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          },
+          {
+            "id": "AMB-006",
+            "issue_code": "MOBILE_SCOPE_UNSPECIFIED",
+            "message": "需求要求移动端与 Web 端逻辑一致，但未明确移动端包含的平台、版本范围及提示的交互承载形式。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          },
+          {
+            "id": "AMB-007",
+            "issue_code": "UNSUPPORTED_SCENARIO_EXHAUSTIVENESS_UNCLEAR",
+            "message": "预期效果使用“如”列举四类场景，未明确此次优化是否只覆盖这四类，或还要求为其他不支持查看明细的场景补充专属提示。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          }
+        ],
+        "input_bundle_hash": "sha256:0b8ed3240e229f0b1902630c9494a955995febbdb47b40324bd50889c842e416",
+        "needs_human": [
+          {
+            "id": "HUM-001",
+            "issue_code": "CONFIRM_SCENARIO_PRECEDENCE",
+            "message": "请确认多个限制条件同时命中时的提示优先级和展示数量。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          },
+          {
+            "id": "HUM-002",
+            "issue_code": "CONFIRM_METRIC_NAME_RENDERING",
+            "message": "请确认多个统计指标触发限制时，提示应展示哪个指标名称以及名称列表格式。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          },
+          {
+            "id": "HUM-003",
+            "issue_code": "CONFIRM_DYNAMIC_RELATION_SCOPE",
+            "message": "请确认特殊 what/whatlist 动态关联关系的完整对象和类型清单。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          },
+          {
+            "id": "HUM-004",
+            "issue_code": "CONFIRM_CHANGE_SCOPE",
+            "message": "请确认本次仅处理已列出的四类场景，还是需要盘点并覆盖所有其他不支持查看明细的场景。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ]
+          }
+        ],
+        "requirements": [
+          {
+            "acceptance_criteria": [
+              "当统计指标的维度或数据范围使用自定义维度字段，用户触发查看明细时，不展示明细。",
+              "提示文案为“维度或数据范围中使用了自定义维度字段，暂不支持查看明细”。"
+            ],
+            "id": "REQ-001",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ],
+            "summary": "自定义维度导致不支持查看明细时，展示对应提示并阻止查看明细。"
+          },
+          {
+            "acceptance_criteria": [
+              "当统计图数据范围使用普通指标、聚合指标、计算指标或同环比指标按结果集筛选，用户触发查看明细时，不展示明细。",
+              "提示文案由“统计图查询明细暂不支持按结果集的统计指标筛选”改为“统计图数据范围中设置了「指标名称」按结果集筛选，不支持查看明细”。",
+              "提示中的“指标名称”替换为触发限制的实际指标名称。"
+            ],
+            "id": "REQ-002",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ],
+            "summary": "统计图数据范围按结果集统计指标筛选时，展示包含指标名称的对应提示并阻止查看明细。"
+          },
+          {
+            "acceptance_criteria": [
+              "当统计指标使用多关联关系创建，用户触发查看明细时，不展示明细。",
+              "提示文案为“基于多关联关系创建的统计指标，暂不支持查看明细”。"
+            ],
+            "id": "REQ-003",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ],
+            "summary": "统计指标基于多关联关系创建时，展示对应提示并阻止查看明细。"
+          },
+          {
+            "acceptance_criteria": [
+              "当统计指标基于业务流程、业务流程任务或服务记录的特殊 what/whatlist 类型关联关系创建，用户触发查看明细时，不展示明细。",
+              "该场景包括在工单主题下基于业务流程、业务流程任务或服务记录的任意字段新建指标。",
+              "提示文案为“基于动态关联关系创建的统计指标，不支持查看明细”。"
+            ],
+            "id": "REQ-004",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ],
+            "summary": "统计指标基于特殊 what/whatlist 动态关联关系创建时，展示对应提示并阻止查看明细。"
+          },
+          {
+            "acceptance_criteria": [
+              "从统计图触发查看明细时，按实际命中的不支持场景展示对应提示。",
+              "从拼表触发查看明细时，按实际命中的不支持场景展示对应提示。"
+            ],
+            "id": "REQ-005",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ],
+            "summary": "四类不支持查看明细场景的提示逻辑覆盖统计图查看明细和拼表查看明细。"
+          },
+          {
+            "acceptance_criteria": [
+              "移动端对四类不支持查看明细场景的判定结果与 Web 端一致。",
+              "移动端展示的对应提示文案与 Web 端一致。",
+              "移动端与 Web 端均阻止进入不受支持的明细视图。"
+            ],
+            "id": "REQ-006",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+                "location": "lines:159-172",
+                "type": "requirement"
+              }
+            ],
+            "summary": "移动端与 Web 端采用相同的不支持查看明细判定和提示逻辑。"
+          }
+        ],
+        "schema_version": "requirement-analysis/1.0",
+        "source_snapshot_id": "pilot-001-source-v1",
+        "status": "completed_with_gaps",
+        "workflow_run_id": "multica-pilot-001"
+      },
+      "technical_analysis": {
+        "blocking_items": [
+          {
+            "id": "BI-001",
+            "issue_code": "CUSTOM_DIMENSION_COPY_CONFIRMATION",
+            "owner": "产品",
+            "recommendation": "采用“维度、下钻字段或数据范围中使用了自定义维度字段，暂不支持查看明细”并确认对应英文。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "start_condition": "开发前确认最终中英文文案。",
+            "summary": "自定义维度校验实际包含下钻字段，但当前 PRD 文案只写维度或数据范围，最终中英文口径未确认。"
+          },
+          {
+            "id": "BI-002",
+            "issue_code": "RESULT_SET_COPY_CONFIRMATION",
+            "owner": "产品",
+            "recommendation": "采用端无关文案“数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细”并确认对应英文。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "start_condition": "开发前确认最终中英文文案。",
+            "summary": "结果集筛选提示固定写“统计图”，但需求同时覆盖拼表，最终中英文口径未确认。"
+          },
+          {
+            "id": "BI-003",
+            "issue_code": "MULTI_REASON_PRIORITY_CONFIRMATION",
+            "owner": "产品",
+            "recommendation": "按自定义维度、结果集指标筛选、特殊动态关联、多关联关系、原对象关系异常的顺序处理。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "start_condition": "验收前确认提示优先级。",
+            "summary": "同一图表同时命中多个不支持条件时的提示优先级尚未形成产品验收口径。"
+          },
+          {
+            "id": "BI-004",
+            "issue_code": "UNRESOLVED_MEASURE_NAME_FALLBACK_CONFIRMATION",
+            "owner": "产品/测试",
+            "recommendation": "降级为原 s307051518 固定提示，禁止返回带空指标名的新文案。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "start_condition": "可按建议实现，验收前确认降级行为。",
+            "summary": "Filter.fieldName 和字段元数据均无法解析指标名时的最终提示策略尚待确认。"
+          },
+          {
+            "id": "BI-005",
+            "issue_code": "DEDICATED_ERROR_CODES_PENDING",
+            "owner": "错误码平台/后端，具体负责人 not_evidenced",
+            "recommendation": "申请四个专用错误码，同步配置中英文模板，并以 BIBizException(errorCode, List<String>) 验证 {0} 参数替换。",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "start_condition": "开发前完成错误码申请；上线前完成模板占位符联调。",
+            "summary": "四类目标原因的专用错误码尚未申请，错误码平台中英文模板及参数占位符也未完成联调确认。"
+          }
+        ],
+        "input_bundle_hash": "sha256:66dfc6a57294faf0425ca6ebbf1737e189399c23e57a7f1fc263282a13cc9ef5",
+        "schema_version": "technical-analysis/1.0",
+        "source_snapshot_id": "pilot-001-source-v1",
+        "status": "needs_human",
+        "technical_facts": [
+          {
+            "id": "TF-001",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "改造覆盖自定义维度、结果集指标筛选、多关联指标和指定特殊动态关联指标四类既有不支持场景；触发时机保持不变，不新增禁用条件。"
+          },
+          {
+            "id": "TF-002",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "fs-bi 是查看明细判定、错误码枚举和国际化的主要实现仓库，基线为 release/202610-i18n；fs-bi-dev-platform 仅负责拼表入参与异常透传回归。"
+          },
+          {
+            "id": "TF-003",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "I18NErrorCodeEnum 需新增四个语义独立的错误定义，并同步维护错误码平台配置、国际化 key 和默认中文；四个实际错误码均待申请。"
+          },
+          {
+            "id": "TF-004",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "StatDetailQueryService.validateCustomDimension 已覆盖数据范围、原始图维度和下钻字段，改造仅替换其错误码；validateHourAndMinuteFilter 继续使用原 s307051519。"
+          },
+          {
+            "id": "TF-005",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "结果集筛选只修改 OperateMenuElement.dealDetailUnSupportByFilter 分支；DownStreamAggDetailQueryService 对下游复杂虚拟指标的 s307051518 行为保持不变。"
+          },
+          {
+            "id": "TF-006",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "结果集筛选的指标展示名依次取非空 Filter.fieldName、按 fieldId 查询的字段元数据和当前语言动态多语名称；仍无法解析时降级为原 s307051518，禁止返回空指标名。"
+          },
+          {
+            "id": "TF-007",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "参数化业务异常必须使用 BIBizException(errorCode, List<String>)；BIBizException(errorCode, String) 的第二个参数不会参与返回文案构造。"
+          },
+          {
+            "id": "TF-008",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "错误码平台模板暂按 {0} 配置，而 I18NMsgEnum 本地链路使用 %s；本方案不使用 I18NMsgEnum 构造业务异常，且上线前必须联调确认平台占位符。"
+          },
+          {
+            "id": "TF-009",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "DetailUnsupportedReasonResolver 是无状态原因解析器，基于 AggRuleDOEXT、MeasureFieldDto、稳定对象或字段 ID、whatFieldType 及关系元数据输出 DYNAMIC_RELATION、MULTI_RELATION 或 NONE；动态关联优先于多关联。"
+          },
+          {
+            "id": "TF-010",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "ObjectRelationTransConverter.queryObjRelationship 缺少完整指标配置和字段元数据，关系查询失败不能单独证明多关联或特殊动态关联；关键元数据不足时必须返回 NONE 并保留原异常。"
+          },
+          {
+            "id": "TF-011",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "候选关联原因只在 BusinessObjectTransConverter.queryBusinessCorrelation 原本抛出已知对象关系不支持错误码时替换提示；权限、参数、超时和元数据服务异常不得被拦截或改写。"
+          },
+          {
+            "id": "TF-012",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "统计图、拼表、Web 和移动端复用同一后端判定；dev-platform 不重复实现原因解析，只验证查看明细入参、专用错误码和指标名参数未被包装、改写或丢失。"
+          },
+          {
+            "id": "TF-013",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "成功响应、失败响应结构、查询参数、SQL、分页、结果结构及历史图表均保持兼容；目标场景切换为新错误码，非目标场景错误码不变。"
+          },
+          {
+            "id": "TF-014",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "多条件同时命中时的拟定顺序为自定义维度、结果集指标筛选、特殊动态关联、多关联关系、原对象关系异常，但该顺序尚待产品确认。"
+          },
+          {
+            "id": "TF-015",
+            "source_refs": [
+              {
+                "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md",
+                "location": "whole_file",
+                "type": "technical_design"
+              }
+            ],
+            "summary": "设计明确了单元测试和集成回归矩阵，包括正向成功、四类目标错误、旧场景兼容、中英文、长指标名、多原因优先级以及 Web/移动端和统计图/拼表一致性。"
+          }
+        ],
+        "testability": [],
+        "testability_gaps": [
+          {
+            "capability": "unit_test_runner",
+            "status": "not_evidenced"
+          },
+          {
+            "capability": "integration_test_harness",
+            "status": "not_evidenced"
+          },
+          {
+            "capability": "error_code_platform_integration_environment",
+            "status": "not_evidenced"
+          },
+          {
+            "capability": "multilingual_test_environment",
+            "status": "not_evidenced"
+          },
+          {
+            "capability": "web_and_mobile_ui_validation",
+            "status": "not_evidenced"
+          },
+          {
+            "capability": "test_data_preparation_and_fixtures",
+            "status": "not_evidenced"
+          },
+          {
+            "capability": "test_data_cleanup",
+            "status": "not_evidenced"
+          },
+          {
+            "capability": "test_isolation",
+            "status": "not_evidenced"
+          },
+          {
+            "capability": "dependency_fault_injection",
+            "status": "not_evidenced"
+          },
+          {
+            "capability": "error_code_parameter_observation",
+            "status": "not_evidenced"
+          },
+          {
+            "capability": "reproducible_desensitized_chart_configurations",
+            "status": "not_evidenced"
+          }
+        ],
+        "workflow_run_id": "multica-pilot-001"
+      }
+    }
+  },
+  "bundle_hash": "sha256:ee90021327f71e1e025e85fdd783531769377c83e0352163ff89c97d8de54906",
+  "integrity": {
+    "business_repository_write_allowed": false,
+    "credentials_embedded": false,
+    "evaluation_oracle_included_in_agent_input": false,
+    "external_side_effects_allowed": false
+  },
+  "output_contract": "test-design-ir/1.1",
+  "profile_id": "A08",
+  "profile_version": "1.3.0",
+  "schema_version": "multica-agent-input/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:ab37311461c28b41456765028993a8ea01ae563f17545a20ffd22e894d990617",
+      "artifact_id": "a08-test-design-ir"
+    },
+    {
+      "artifact_hash": "sha256:6d43f7ee6df90db28e25a535df9747316cda04ba51f8fd15b37b437623d09ef6",
+      "artifact_id": "a09-oracle-coverage-review"
+    },
+    {
+      "artifact_hash": "sha256:8057ca2fba398a528e1d01af812fc62c2ef5e613fd2e146769579e496d59ee95",
+      "artifact_id": "n04-test-case-ir-validation"
+    }
+  ],
+  "upstream_gate": {
+    "decision_hash": "sha256:d3f7a31ca5e260e12e69cf3574dd7564fed86e917abcf14b2b6e849220430ef6",
+    "gate_id": "G01",
+    "policy_hash": "sha256:416a8050c9c5a0733cd003dfdcc0c0661752f5d1a5dd0318ae2afd1b1e2ca191",
+    "request_hash": "sha256:b37a9742dbf9300b38e472e5bf21e136bf5264755a5e8a3ed9c682ac378d250d"
+  },
+  "upstream_human_decision": {
+    "decision_hash": "sha256:f6fa4e7a25343623d0700d3fac60c754d0f7f96533993739d0168c49a6c8708f",
+    "request_hash": "sha256:ff8da34d7d796a7f726fb030288260ffe06e6bce4ff063bccac3dcb5c50d2cd8"
+  },
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-pilot-001"
+}

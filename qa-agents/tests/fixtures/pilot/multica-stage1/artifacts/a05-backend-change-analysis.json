@@ -1,0 +1,203 @@
+{
+  "artifact_hash": "sha256:c39b05698dce6bae18b66279187b40e727adab6e7a12ebf7b7919e06d164ca00",
+  "artifact_id": "a05-backend-change-analysis",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-07T15:54:14+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:8d1b51a19ce6e210be2f00f422bb7bbc84aa19f9df13d7bfd7294aaa1a0eb828",
+      "location": "a05-input.json",
+      "source_id": "A05",
+      "source_type": "multica_agent_input"
+    }
+  ],
+  "facts": [
+    {
+      "attachment_id": "019fdcdf-cf65-711d-98b7-f073c7692a80",
+      "commands": [
+        "multica issue get f9574cd3-f92e-4dfa-83fb-976f7c2ba3aa --output json",
+        "multica attachment --help",
+        "multica attachment download --help",
+        "multica attachment download 019fdcdf-cf65-711d-98b7-f073c7692a80 -o .",
+        "jq '{schema_version,profile_id,profile_version,output_contract,workflow_run_id,source_snapshot_id,input_bundle_hash,allowed_inputs,integrity,change_set:(.backend_change_set.change_set // null),top_keys:(keys)}' a05-input.json",
+        "jq '{schema_version,profile_id,profile_version,output_contract,workflow_run_id,source_snapshot_id,bundle_hash,workflow_mode,allowed_input_keys:(.allowed_inputs|keys),read_only_source_snapshot:.allowed_inputs.read_only_source_snapshot,integrity,change_set:.allowed_inputs.backend_change_set.change_set}' a05-input.json",
+        "jq -r '.allowed_inputs.backend_change_set.implementation_diff.content | split(\"diff --git \")[] | select(test(\"^a/fs-bi-stat/src/main/java/com/facishare/bi/(easy/stat/core/common/element/OperateMenuElement|stat/service/StatDetailQueryService)\\\\.java\")) | \"diff --git \" + .' a05-input.json",
+        "jq -r '.allowed_inputs.backend_change_set.implementation_diff.content | split(\"diff --git \")[] | select(test(\"^a/fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/(BusinessObjectTransConverter|ObjectRelationTransConverter)\\\\.java\")) | \"diff --git \" + .' a05-input.json",
+        "jq -r '.allowed_inputs.backend_change_set.implementation_diff.content | split(\"diff --git \")[] | select(test(\"^a/fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ch/StatDetailRptDwService\\\\.java\")) | \"diff --git \" + .' a05-input.json",
+        "jq -r '.allowed_inputs.backend_change_set.implementation_diff.content | split(\"diff --git \")[] | select(test(\"^a/fs-bi-stat/src/test/java/\")) | \"diff --git \" + .' a05-input.json"
+      ],
+      "issue_id": "f9574cd3-f92e-4dfa-83fb-976f7c2ba3aa",
+      "result": "passed",
+      "task_id": "d5f0a5e1-9617-4d99-8221-4011770ead19",
+      "type": "multica_tool_trace_audit"
+    }
+  ],
+  "inferences": [],
+  "payload": {
+    "change_set_id": "changeset-fs-bi-c6b785344c69",
+    "changed_file_count": 10,
+    "domain": "backend",
+    "facts": [
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "backend-fact-001",
+        "path": "fs-bi-i18n/src/main/java/com/facishare/bi/i18n/i18nEnum/I18NErrorCodeEnum.java",
+        "source_refs": [
+          "fs-bi-i18n/src/main/java/com/facishare/bi/i18n/i18nEnum/I18NErrorCodeEnum.java"
+        ],
+        "summary": "新增四个面向查看明细失败场景的国际化错误定义：自定义维度原因不支持 s307011534、结果集筛选不支持 s307011535、多关联关系指标不支持 s307011536、动态关联关系指标不支持 s307011537；均包含语义化 internationalCode 和中文默认模板。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "backend-fact-002",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/easy/stat/core/common/element/OperateMenuElement.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/easy/stat/core/common/element/OperateMenuElement.java"
+        ],
+        "summary": "结果集指标聚合后筛选分支改为抛出 RESULT_SET_FILTER_DETAIL_UNSUPPORTED，并把筛选字段名作为格式化参数传入；原 EasyStatBIBizExceptionEnum.UN_SUPPORT_DETAIL_GROUP_FILTER 错误码及消息不再使用。灰度开关、空集合、多维目标字段和空配置分支保持不变。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "backend-fact-003",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/StatDetailQueryService.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/StatDetailQueryService.java"
+        ],
+        "summary": "validateCustomDimension 在数据范围、原始维度或钻取维度命中自定义维度时，改为抛出 CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED，并传入空消息；原 CUSTOM_DIMENSION_DETAIL_UNSUPPORTED 与运行时翻译文案被替换，判定条件未变。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "backend-fact-004",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/BusinessObjectTransConverter.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/BusinessObjectTransConverter.java"
+        ],
+        "summary": "checkBusinessObjects 对业务对象数量大于 3 的分支改为抛出 MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED，仍使用状态值 403，但消息参数由已翻译的通用模型不支持文案变为空字符串；其余三对象关系分支未修改。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "backend-fact-005",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ch/StatDetailRptDwService.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ch/StatDetailRptDwService.java"
+        ],
+        "summary": "validateNodeRelation 对拓扑节点数大于 3 的分支改为抛出 MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED，仍使用状态值 403，并将异常消息改为空字符串；重复起点或终点时抛出 StatDetailDegradeException 的分支未变。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "backend-fact-006",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverter.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverter.java"
+        ],
+        "summary": "常规对象关系查询全部失败后，新增按关联字段名先查询指标对象、再查询主题对象字段元数据的分支；字段为 What 或 WhatList 类型时抛出 DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED（403、空消息），非动态关联字段或字段缺失时继续抛出原 STAT_DETAIL_UNSUPPORTED 和原翻译文案。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "backend-fact-007",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverter.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverter.java"
+        ],
+        "summary": "员工或部门主题的特殊兜底分支在关联字段元数据缺失时仍抛出 METRIC_OBJECT_RELATION_DETAIL_UNSUPPORTED 和状态值 403，但异常消息从运行时翻译文案改为空字符串；成功构造 Relation 的逻辑未变。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": false,
+        "evidence_class": "test_source",
+        "id": "backend-fact-008",
+        "path": "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/BusinessObjectTransConverterTest.java",
+        "source_refs": [
+          "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/BusinessObjectTransConverterTest.java"
+        ],
+        "summary": "新增单元测试，验证四个业务对象会抛出 MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": false,
+        "evidence_class": "test_source",
+        "id": "backend-fact-009",
+        "path": "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverterTest.java",
+        "source_refs": [
+          "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverterTest.java"
+        ],
+        "summary": "新增四个单元测试，覆盖 What 字段、WhatList 字段使用动态关联错误码，以及非 What 字段和关联字段缺失继续使用通用错误码的回退行为。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": false,
+        "evidence_class": "test_source",
+        "id": "backend-fact-010",
+        "path": "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ch/AggRuleCovertServiceTest.java",
+        "source_refs": [
+          "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ch/AggRuleCovertServiceTest.java"
+        ],
+        "summary": "扩展现有测试，验证拓扑节点数大于 3 时 validateNodeRelation 抛出 MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": false,
+        "evidence_class": "test_source",
+        "id": "backend-fact-011",
+        "path": "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverterTest.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/easy/stat/core/common/element/OperateMenuElement.java",
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/StatDetailQueryService.java",
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverter.java",
+          "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/BusinessObjectTransConverterTest.java",
+          "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverterTest.java",
+          "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ch/AggRuleCovertServiceTest.java"
+        ],
+        "summary": "ChangeSet 中未增加针对 RESULT_SET_FILTER_DETAIL_UNSUPPORTED、自定义维度专用错误码以及员工或部门主题空消息变化的测试；新增测试仅覆盖多关联关系和常规对象动态关联分支，因此测试覆盖存在缺口。"
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": false,
+        "evidence_class": "untrusted_documentation",
+        "id": "backend-fact-012",
+        "path": "AGENTS.md",
+        "source_refs": [
+          "AGENTS.md"
+        ],
+        "summary": "文档新增中文与国际化迁移规范，涉及生产代码中文、LegacyMatchConstantEnum、I18NErrorCodeEnum、日志、SQL/JSON、测试和兼容性约束；该内容属于不可信文档证据，不能用于业务需求实现对齐。"
+      }
+    ],
+    "input_bundle_hash": "sha256:8d1b51a19ce6e210be2f00f422bb7bbc84aa19f9df13d7bfd7294aaa1a0eb828",
+    "schema_version": "change-analysis/1.0",
+    "source_snapshot_id": "pilot-001-source-v1",
+    "status": "completed_with_gaps",
+    "workflow_run_id": "multica-pilot-001"
+  },
+  "producer": {
+    "component_id": "A05",
+    "component_version": "0.1.0",
+    "inference_config_hash": "sha256:ea51962525f13e8914bee10405dea4a221e78ef15be6553f423212da02833db7",
+    "model_provider": "codex",
+    "model_snapshot": "gpt-5.6-sol",
+    "profile_version": "1.1.0",
+    "prompt_version": "1.1.0",
+    "runtime": "multica",
+    "tool_bundle_version": "multica-task:d5f0a5e1-9617-4d99-8221-4011770ead19"
+  },
+  "reason_code": null,
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed_with_gaps",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-pilot-001"
+}

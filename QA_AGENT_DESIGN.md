@@ -137,10 +137,38 @@ G02 Adapter 已实现，但 `pilot-001` 仍待合法 A08 恢复重跑与 G02 正
    （`multica-stage15`）→ `make run-n15-after-n26-pilot`（`multica-stage16`）。
 3. 契约版本确认：真实 A08 产物 `schema_version` 为 `test-design-ir/1.1`，N25/A11 指令与
    校验需与既有 `prepare_multica_test_design_input`/`ingest` 的契约版本处理保持一致。
-4. A12 与执行链：A12 未实现；阶段 3-5（N07-N12/N16-N23 执行与门禁）未实现，按设计文档
-   继续建设。
+4. A12 与执行链：A12 已实现（N26 无法判定的影响关系才触发，建议只能扩大或升级范围，
+   经 N26 校验折叠）；阶段 3-5 执行与门禁已先落地 N07/N16（§17：环境指纹、8 类预检、
+   指纹节流、N16 幂等修复门禁），N08-N12/N17-N23 按设计文档继续建设。
 5. 文档收尾：`README.md` 与 `IMPLEMENTATION_STATUS.md` 的旧"G02 未启动"表述已随本快照
    同步更新；后续真实 N25-N15 跑通后需回写 Artifact 哈希。
+
+### 2.3 当前进展快照（2026-08-10 深夜实跑闭环）
+
+本节是实跑闭环快照；建设状态以 `qa-agents/IMPLEMENTATION_STATUS.md` 为准，运行时状态以
+`qa-agents/runs/pilot-001/multica-run-manifest.json` 为审计主记录。
+
+**阶段一/阶段二真实链已闭环（N25 → A11 → N26 → N15）**
+
+- 主链本地产物从 Multica 线上恢复并逐哈希核对一致：A08 `multica-stage10`
+  （`edb58b4f…`，13 个父 Case）、A09 `multica-stage11`（`9cafab64…`）、N04
+  `multica-stage12`（`valid=true`，`35e954e5…`）、G02（request `f46f883b…`、outcome
+  `0bc6ed31…`，QAA-24 放行至 N25）。
+- N25 `multica-stage13` 真实编译：13 父 → 14 子（`e8505b16…`）。
+- A11 Multica Agent 已创建（QAA-25/QAA-26，绑定在线 Codex Runtime `6fa59d79`）并登记
+  workspace-manifest；指令为 `multica/agent-instructions/a11-v1.0.0.md`。
+- 真实运行发现并修复缺陷：A11 完整载荷输入（磁盘 175KB）导致模型在最终生成阶段静默超过
+  Codex Runtime `semantic_inactivity_timeout=10m`，连续两次
+  `codex_semantic_inactivity` 超时。修复为紧凑审查范围输入（约 57KB，保留
+  id/expected/layer/parent 绑定/`inherits_parent` 一致性标志），并约束最终 JSON ≤ 10KB、
+  rationale ≤ 60 字。修复后 QAA-26 真实审核 3 分钟完成，`ingest-multica` 校验通过入库
+  `multica-stage14`（`b6e37ba3…`）。
+- A11 真实审查结论 `completed_with_gaps`/`approved=true`：13 个父 Case 全部回查；发现
+  `CASE-CT-005` 的 backend/contract 子 Case 未按层收窄执行责任（warning，路由 N25），
+  属 N25 编译器的后续改进项，不阻塞本次流程。
+- N26 `multica-stage15`（`64bd7dcb…`）无 unresolved，A12 按设计不触发；N15
+  `multica-stage16`（`89764afd…`）执行计划 14 条：3 条 `generate_new`、11 条 `manual_run`
+  （试点无自动化资产，按策略路由）。
 
 ## 3. 核心架构原则
 
@@ -1620,7 +1648,8 @@ A09/N04/G02，再扩展新的 Agent Profile。
 
 ### 阶段 2：测试选择和代码生成
 
-- ✅ N25/N26/N15 代码与测试已就绪；A13-A18-* 自动化 Profile 已实现；A12 尚未实现。
+- ✅ N25/N26/N15 代码与测试已就绪；A13-A18-* 自动化 Profile 已实现；A12 已实现（N26
+  未解析影响关系时触发建议，N26 校验后折叠；可扩大或升级，不可缩小、跳过或降级强制 Case）。
 - ✅ N15 执行计划编译已实现，区分生成、更新、直接执行、人工执行和跳过。
 - ✅ A01 歧义路由建议 Profile 已实现，最终模板仍由 N00 确定。
 - ✅ 已用少量 Generator/Reviewer Runtime 的领域 Profile（A13/A14/A15/A16/A17-*/A18-*）

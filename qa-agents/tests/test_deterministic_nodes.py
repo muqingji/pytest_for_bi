@@ -5,7 +5,7 @@ import pytest
 
 from qa_agents.case_compiler import compile_cases
 from qa_agents.change_set import normalize_change_set
-from qa_agents.errors import InputError
+from qa_agents.errors import ContractError, InputError
 from qa_agents.risk import RiskPolicyEngine
 from qa_agents.selection import compile_execution_plan, select_cases
 from qa_agents.validation import validate_test_case_ir
@@ -108,15 +108,70 @@ def test_case_compiler_preserves_oracle_and_selection_has_one_action() -> None:
     assert len({item["case_id"] for item in plan["actions"]}) == len(children)
 
 
+def test_case_compiler_narrows_expected_by_layer_annotation() -> None:
+    """N25 narrows per-expectation layers when A08 annotates them."""
+
+    parent = parent_case()
+    parent["expected"] = [
+        {
+            "id": "EXP-01",
+            "description": "后端判定返回错误码",
+            "layers": ["backend"],
+            "oracle": {
+                "type": "deterministic",
+                "observation_point": "response.error_code",
+                "matcher": "equals:s307011534",
+                "source_ref": "REQ-1:section-1",
+            },
+        },
+        {
+            "id": "EXP-02",
+            "description": "契约层透传错误码与消息",
+            "layers": ["backend", "contract"],
+            "oracle": {
+                "type": "deterministic",
+                "observation_point": "response.body.error_code",
+                "matcher": "equals:s307011534",
+                "source_ref": "REQ-1:section-2",
+            },
+        },
+    ]
+    children = compile_cases([parent], {})
+    by_layer = {case["layer"]: case for case in children}
+    assert set(by_layer) == {"backend", "contract"}
+    assert {item["id"] for item in by_layer["backend"]["expected"]} == {
+        "EXP-01",
+        "EXP-02",
+    }
+    assert {item["id"] for item in by_layer["contract"]["expected"]} == {"EXP-02"}
+
+
+def test_case_compiler_rejects_layer_annotation_leaving_empty_child() -> None:
+    parent = parent_case()
+    parent["expected"][0]["layers"] = ["contract"]
+    with pytest.raises(ContractError, match="no expectations after narrowing"):
+        compile_cases([parent], {})
+
+
+def test_case_compiler_rejects_invalid_layers_annotation() -> None:
+    parent = parent_case()
+    parent["expected"][0]["layers"] = "backend"
+    with pytest.raises(ContractError, match="invalid layers annotation"):
+        compile_cases([parent], {})
+
+
 def test_invalid_asset_mapping_is_not_silently_selected() -> None:
     children = compile_cases([parent_case()], {"required_layers": ["backend"]})
     assets = {"automation_assets": {children[0]["id"]: "invalid"}}
     selection = select_cases(children, assets)
     selected = {item["case_id"]: item for item in selection["selected_cases"]}
     assert selected[children[0]["id"]]["selection"] == "needs_human"
-    assert selection["unresolved_items"] == [
-        {"case_id": children[0]["id"], "reason_code": "invalid_asset_mapping"}
-    ]
+    unresolved = selection["unresolved_items"]
+    assert len(unresolved) == 1
+    assert unresolved[0]["case_id"] == children[0]["id"]
+    assert unresolved[0]["reason_code"] == "invalid_asset_mapping"
+    assert unresolved[0]["advisory_topic"] == "invalid_asset_mapping"
+    assert unresolved[0]["id"].startswith("N26-U")
 
 
 def test_manual_oracle_requires_manual_execution_mode() -> None:

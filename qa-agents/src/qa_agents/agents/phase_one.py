@@ -608,11 +608,90 @@ class TestSelectionAdvisorAgent(BaseAgent):
 
     def analyze(self, inputs: Mapping[str, Any]) -> AgentOutput:
         unresolved = inputs.get("unresolved_items", [])
+        case_index = inputs.get("compiled_case_index", {})
+        asset_evidence = inputs.get("asset_evidence", {})
+        if not isinstance(unresolved, list) or not unresolved:
+            return AgentOutput(
+                payload={
+                    "schema_version": "test-selection-advice/1.0",
+                    "advice_items": [],
+                    "uncertainty_notes": ["N26 选择已确定，无需 A12 建议。"],
+                },
+                status=ArtifactStatus.NOT_APPLICABLE,
+                reason_code="selection_is_deterministic",
+            )
+        items: list[dict[str, Any]] = []
+        notes: list[str] = []
+        for index, item in enumerate(unresolved, 1):
+            if not isinstance(item, Mapping):
+                continue
+            topic = str(item.get("advisory_topic", ""))
+            case_id = str(item.get("case_id", ""))
+            if topic in {"missing_call_graph", "cross_repo_impact_conflict"}:
+                related = self._related_cases(case_id, case_index, asset_evidence)
+                if related:
+                    recommendation = "expand_selection"
+                    notes.append(
+                        f"{case_id} 影响关系不确定，保守扩大到 {', '.join(related)}。"
+                    )
+                else:
+                    recommendation = "request_human"
+                    notes.append(f"{case_id} 影响关系不确定且无相关 Case，升级人工。")
+            else:
+                recommendation = "request_human"
+                notes.append(f"{case_id} 资产映射不确定，升级人工确认。")
+            items.append(
+                {
+                    "id": f"A12-{index:03d}",
+                    "unresolved_item_id": str(item.get("id", "")),
+                    "case_id": case_id,
+                    "advisory_topic": topic,
+                    "recommendation": recommendation,
+                    "suggested_case_ids": related if recommendation == "expand_selection" else [],
+                    "evidence": list(item.get("evidence", [])),
+                    "uncertainty": str(item.get("uncertainty", "")),
+                    "source_refs": [f"unresolved:{item.get('id', '')}"],
+                }
+            )
         return AgentOutput(
             payload={
                 "schema_version": "test-selection-advice/1.0",
-                "items": [{**dict(item), "recommendation": "needs_human"} for item in unresolved],
+                "advice_items": items,
+                "uncertainty_notes": notes,
             },
-            status=ArtifactStatus.NEEDS_HUMAN if unresolved else ArtifactStatus.NOT_APPLICABLE,
-            reason_code="selection_impact_unknown" if unresolved else "selection_is_deterministic",
+            status=ArtifactStatus.COMPLETED if items else ArtifactStatus.NOT_APPLICABLE,
+            reason_code="selection_advice_provided" if items else "selection_is_deterministic",
         )
+
+    @staticmethod
+    def _related_cases(
+        case_id: str,
+        case_index: Mapping[str, Any],
+        asset_evidence: Mapping[str, Any],
+    ) -> list[str]:
+        if not isinstance(case_index, Mapping):
+            return []
+        current = case_index.get(case_id, {})
+        current_layer = str(current.get("layer", "")) if isinstance(current, Mapping) else ""
+        impact_index = asset_evidence.get("impact_index", {})
+        if isinstance(impact_index, Mapping):
+            by_module: list[str] = []
+            current_modules = (
+                set(current.get("evidence_modules", []))
+                if isinstance(current, Mapping)
+                else set()
+            )
+            for module, case_ids in impact_index.items():
+                if current_modules and module not in current_modules:
+                    continue
+                if isinstance(case_ids, list):
+                    by_module.extend(str(cid) for cid in case_ids if str(cid) != case_id)
+            if by_module:
+                return sorted(set(by_module))
+        related: list[str] = []
+        for candidate_id, candidate in case_index.items():
+            if str(candidate_id) == case_id:
+                continue
+            if isinstance(candidate, Mapping) and str(candidate.get("layer", "")) == current_layer:
+                related.append(str(candidate_id))
+        return sorted(related)

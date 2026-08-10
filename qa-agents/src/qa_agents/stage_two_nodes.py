@@ -23,7 +23,7 @@ from .contracts import (
 )
 from .errors import ContractError
 from .security import SecurityPolicy
-from .selection import compile_execution_plan, select_cases
+from .selection import apply_selection_advice, compile_execution_plan, select_cases
 from .storage import ArtifactStore
 
 
@@ -148,6 +148,8 @@ def run_n26_after_a11(
     output_dir: Path,
     *,
     asset_catalog_path: Path | None = None,
+    selection_policy_path: Path | None = None,
+    selection_advice_path: Path | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
     """Select the final test set from A11-approved compiled cases."""
@@ -187,12 +189,29 @@ def run_n26_after_a11(
     asset_catalog = (
         _read_object(asset_catalog_path) if asset_catalog_path is not None else {}
     )
+    selection_policy = (
+        _read_object(selection_policy_path) if selection_policy_path is not None else {}
+    )
     child_cases = compiled["payload"].get("compiled_cases")
     if not isinstance(child_cases, list) or not all(
         isinstance(item, Mapping) for item in child_cases
     ):
         raise ContractError("N26 N25 compiled_cases are invalid")
-    selection = select_cases(child_cases, asset_catalog)
+    selection = select_cases(
+        child_cases,
+        asset_catalog,
+        selection_policy=selection_policy,
+    )
+    if selection_advice_path is not None:
+        advice = _verified_artifact(
+            selection_advice_path, "a12-test-selection-advice", security
+        )
+        if _identity(advice) != _identity(compiled):
+            raise ContractError("N26 A12 advice belongs to a different run")
+        selection = apply_selection_advice(
+            selection, advice["payload"], child_cases,
+            selection_policy=selection_policy,
+        )
     workflow_run_id, workflow_mode, snapshot_id = _identity(compiled)
     payload = {
         "schema_version": "test-selection/1.0",

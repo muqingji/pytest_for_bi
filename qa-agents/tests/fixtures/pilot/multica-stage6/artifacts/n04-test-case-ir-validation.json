@@ -1,0 +1,1339 @@
+{
+  "artifact_hash": "sha256:6926c058a24ea02cfd1400d9fd3cf1bd6dc7ec486dc0230f8357356eec8822ef",
+  "artifact_id": "n04-test-case-ir-validation",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-07T00:00:00+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:5ab61849c960db62be1d3dbe21c03b24e1af4ff259bb8e8efa39f9022515bde9",
+      "location": "a08-test-design-ir.json",
+      "source_id": "a08-test-design-ir",
+      "source_type": "artifact"
+    },
+    {
+      "content_hash": "sha256:a856f3edbe7cb4ae175aa6b469fa39c62424fc9574fb95e51efb88b6dc8c2a78",
+      "location": "a09-oracle-coverage-review.json",
+      "source_id": "a09-oracle-coverage-review",
+      "source_type": "artifact"
+    }
+  ],
+  "facts": [],
+  "inferences": [],
+  "payload": {
+    "blocking_issue_count": 80,
+    "correction_attempt": 1,
+    "g02_status": "not_started",
+    "issue_count": 80,
+    "issues": [
+      {
+        "case_id": "CASE-001",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0001",
+        "issue_code": "invalid_test_data_type",
+        "message": "Case test_data must be an object",
+        "origin": "N04",
+        "path": "cases[0].test_data",
+        "recommendation": "将 test_data 改为结构化对象，并保留数据集和变体字段。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-001",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0002",
+        "issue_code": "missing_execution_modes",
+        "message": "Case execution_policy.allowed_modes must be a non-empty list",
+        "origin": "N04",
+        "path": "cases[0].execution_policy.allowed_modes",
+        "recommendation": "在 execution_policy.allowed_modes 中声明 automated 或 manual。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-001",
+        "category": "oracle",
+        "expected_id": "EXP-001-1",
+        "id": "N04-0003",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing matcher",
+        "origin": "N04",
+        "path": "cases[0].expected[0].oracle.matcher",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-001",
+        "category": "oracle",
+        "expected_id": "EXP-001-1",
+        "id": "N04-0004",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[0].expected[0].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-001",
+        "category": "oracle",
+        "expected_id": "EXP-001-1",
+        "id": "N04-0005",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[0].expected[0].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-001",
+        "category": "oracle",
+        "expected_id": "EXP-001-2",
+        "id": "N04-0006",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[0].expected[1].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-001",
+        "category": "oracle",
+        "expected_id": "EXP-001-2",
+        "id": "N04-0007",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[0].expected[1].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-001",
+        "category": "oracle",
+        "expected_id": "EXP-001-2",
+        "id": "N04-0008",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing type",
+        "origin": "N04",
+        "path": "cases[0].expected[1].oracle.type",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-002",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0009",
+        "issue_code": "invalid_test_data_type",
+        "message": "Case test_data must be an object",
+        "origin": "N04",
+        "path": "cases[1].test_data",
+        "recommendation": "将 test_data 改为结构化对象，并保留数据集和变体字段。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-002",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0010",
+        "issue_code": "missing_execution_modes",
+        "message": "Case execution_policy.allowed_modes must be a non-empty list",
+        "origin": "N04",
+        "path": "cases[1].execution_policy.allowed_modes",
+        "recommendation": "在 execution_policy.allowed_modes 中声明 automated 或 manual。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-002",
+        "category": "oracle",
+        "expected_id": "EXP-002-1",
+        "id": "N04-0011",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing matcher",
+        "origin": "N04",
+        "path": "cases[1].expected[0].oracle.matcher",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-002",
+        "category": "oracle",
+        "expected_id": "EXP-002-1",
+        "id": "N04-0012",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[1].expected[0].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-002",
+        "category": "oracle",
+        "expected_id": "EXP-002-1",
+        "id": "N04-0013",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[1].expected[0].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-002",
+        "category": "oracle",
+        "expected_id": "EXP-002-2",
+        "id": "N04-0014",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[1].expected[1].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-002",
+        "category": "oracle",
+        "expected_id": "EXP-002-2",
+        "id": "N04-0015",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[1].expected[1].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-002",
+        "category": "oracle",
+        "expected_id": "EXP-002-2",
+        "id": "N04-0016",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing type",
+        "origin": "N04",
+        "path": "cases[1].expected[1].oracle.type",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-003",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0017",
+        "issue_code": "invalid_test_data_type",
+        "message": "Case test_data must be an object",
+        "origin": "N04",
+        "path": "cases[2].test_data",
+        "recommendation": "将 test_data 改为结构化对象，并保留数据集和变体字段。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-003",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0018",
+        "issue_code": "missing_execution_modes",
+        "message": "Case execution_policy.allowed_modes must be a non-empty list",
+        "origin": "N04",
+        "path": "cases[2].execution_policy.allowed_modes",
+        "recommendation": "在 execution_policy.allowed_modes 中声明 automated 或 manual。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-003",
+        "category": "oracle",
+        "expected_id": "EXP-003-1",
+        "id": "N04-0019",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing matcher",
+        "origin": "N04",
+        "path": "cases[2].expected[0].oracle.matcher",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-003",
+        "category": "oracle",
+        "expected_id": "EXP-003-1",
+        "id": "N04-0020",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[2].expected[0].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-003",
+        "category": "oracle",
+        "expected_id": "EXP-003-1",
+        "id": "N04-0021",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[2].expected[0].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-003",
+        "category": "oracle",
+        "expected_id": "EXP-003-2",
+        "id": "N04-0022",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[2].expected[1].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-003",
+        "category": "oracle",
+        "expected_id": "EXP-003-2",
+        "id": "N04-0023",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[2].expected[1].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-003",
+        "category": "oracle",
+        "expected_id": "EXP-003-2",
+        "id": "N04-0024",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing type",
+        "origin": "N04",
+        "path": "cases[2].expected[1].oracle.type",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-004",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0025",
+        "issue_code": "invalid_test_data_type",
+        "message": "Case test_data must be an object",
+        "origin": "N04",
+        "path": "cases[3].test_data",
+        "recommendation": "将 test_data 改为结构化对象，并保留数据集和变体字段。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-004",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0026",
+        "issue_code": "missing_execution_modes",
+        "message": "Case execution_policy.allowed_modes must be a non-empty list",
+        "origin": "N04",
+        "path": "cases[3].execution_policy.allowed_modes",
+        "recommendation": "在 execution_policy.allowed_modes 中声明 automated 或 manual。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-004",
+        "category": "oracle",
+        "expected_id": "EXP-004-1",
+        "id": "N04-0027",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing matcher",
+        "origin": "N04",
+        "path": "cases[3].expected[0].oracle.matcher",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-004",
+        "category": "oracle",
+        "expected_id": "EXP-004-1",
+        "id": "N04-0028",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[3].expected[0].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-004",
+        "category": "oracle",
+        "expected_id": "EXP-004-1",
+        "id": "N04-0029",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[3].expected[0].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-004",
+        "category": "oracle",
+        "expected_id": "EXP-004-2",
+        "id": "N04-0030",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[3].expected[1].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-004",
+        "category": "oracle",
+        "expected_id": "EXP-004-2",
+        "id": "N04-0031",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[3].expected[1].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-004",
+        "category": "oracle",
+        "expected_id": "EXP-004-2",
+        "id": "N04-0032",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing type",
+        "origin": "N04",
+        "path": "cases[3].expected[1].oracle.type",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-005",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0033",
+        "issue_code": "invalid_test_data_type",
+        "message": "Case test_data must be an object",
+        "origin": "N04",
+        "path": "cases[4].test_data",
+        "recommendation": "将 test_data 改为结构化对象，并保留数据集和变体字段。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-005",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0034",
+        "issue_code": "missing_execution_modes",
+        "message": "Case execution_policy.allowed_modes must be a non-empty list",
+        "origin": "N04",
+        "path": "cases[4].execution_policy.allowed_modes",
+        "recommendation": "在 execution_policy.allowed_modes 中声明 automated 或 manual。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-005",
+        "category": "oracle",
+        "expected_id": "EXP-005-1",
+        "id": "N04-0035",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing matcher",
+        "origin": "N04",
+        "path": "cases[4].expected[0].oracle.matcher",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-005",
+        "category": "oracle",
+        "expected_id": "EXP-005-1",
+        "id": "N04-0036",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[4].expected[0].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-005",
+        "category": "oracle",
+        "expected_id": "EXP-005-1",
+        "id": "N04-0037",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[4].expected[0].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-005",
+        "category": "oracle",
+        "expected_id": "EXP-005-2",
+        "id": "N04-0038",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[4].expected[1].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-005",
+        "category": "oracle",
+        "expected_id": "EXP-005-2",
+        "id": "N04-0039",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[4].expected[1].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-005",
+        "category": "oracle",
+        "expected_id": "EXP-005-2",
+        "id": "N04-0040",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing type",
+        "origin": "N04",
+        "path": "cases[4].expected[1].oracle.type",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-006",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0041",
+        "issue_code": "invalid_test_data_type",
+        "message": "Case test_data must be an object",
+        "origin": "N04",
+        "path": "cases[5].test_data",
+        "recommendation": "将 test_data 改为结构化对象，并保留数据集和变体字段。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-006",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0042",
+        "issue_code": "missing_execution_modes",
+        "message": "Case execution_policy.allowed_modes must be a non-empty list",
+        "origin": "N04",
+        "path": "cases[5].execution_policy.allowed_modes",
+        "recommendation": "在 execution_policy.allowed_modes 中声明 automated 或 manual。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-006",
+        "category": "oracle",
+        "expected_id": "EXP-006-1",
+        "id": "N04-0043",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing matcher",
+        "origin": "N04",
+        "path": "cases[5].expected[0].oracle.matcher",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-006",
+        "category": "oracle",
+        "expected_id": "EXP-006-1",
+        "id": "N04-0044",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[5].expected[0].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-006",
+        "category": "oracle",
+        "expected_id": "EXP-006-1",
+        "id": "N04-0045",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[5].expected[0].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-006",
+        "category": "oracle",
+        "expected_id": "EXP-006-2",
+        "id": "N04-0046",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[5].expected[1].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-006",
+        "category": "oracle",
+        "expected_id": "EXP-006-2",
+        "id": "N04-0047",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[5].expected[1].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-006",
+        "category": "oracle",
+        "expected_id": "EXP-006-2",
+        "id": "N04-0048",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing type",
+        "origin": "N04",
+        "path": "cases[5].expected[1].oracle.type",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-007",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0049",
+        "issue_code": "invalid_test_data_type",
+        "message": "Case test_data must be an object",
+        "origin": "N04",
+        "path": "cases[6].test_data",
+        "recommendation": "将 test_data 改为结构化对象，并保留数据集和变体字段。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-007",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0050",
+        "issue_code": "missing_execution_modes",
+        "message": "Case execution_policy.allowed_modes must be a non-empty list",
+        "origin": "N04",
+        "path": "cases[6].execution_policy.allowed_modes",
+        "recommendation": "在 execution_policy.allowed_modes 中声明 automated 或 manual。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-007",
+        "category": "oracle",
+        "expected_id": "EXP-007-1",
+        "id": "N04-0051",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing matcher",
+        "origin": "N04",
+        "path": "cases[6].expected[0].oracle.matcher",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-007",
+        "category": "oracle",
+        "expected_id": "EXP-007-1",
+        "id": "N04-0052",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[6].expected[0].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-007",
+        "category": "oracle",
+        "expected_id": "EXP-007-1",
+        "id": "N04-0053",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[6].expected[0].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-007",
+        "category": "oracle",
+        "expected_id": "EXP-007-2",
+        "id": "N04-0054",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[6].expected[1].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-007",
+        "category": "oracle",
+        "expected_id": "EXP-007-2",
+        "id": "N04-0055",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[6].expected[1].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-007",
+        "category": "oracle",
+        "expected_id": "EXP-007-2",
+        "id": "N04-0056",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing type",
+        "origin": "N04",
+        "path": "cases[6].expected[1].oracle.type",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-008",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0057",
+        "issue_code": "invalid_test_data_type",
+        "message": "Case test_data must be an object",
+        "origin": "N04",
+        "path": "cases[7].test_data",
+        "recommendation": "将 test_data 改为结构化对象，并保留数据集和变体字段。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-008",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0058",
+        "issue_code": "missing_execution_modes",
+        "message": "Case execution_policy.allowed_modes must be a non-empty list",
+        "origin": "N04",
+        "path": "cases[7].execution_policy.allowed_modes",
+        "recommendation": "在 execution_policy.allowed_modes 中声明 automated 或 manual。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-008",
+        "category": "oracle",
+        "expected_id": "EXP-008-1",
+        "id": "N04-0059",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing matcher",
+        "origin": "N04",
+        "path": "cases[7].expected[0].oracle.matcher",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-008",
+        "category": "oracle",
+        "expected_id": "EXP-008-1",
+        "id": "N04-0060",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[7].expected[0].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-008",
+        "category": "oracle",
+        "expected_id": "EXP-008-1",
+        "id": "N04-0061",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[7].expected[0].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-008",
+        "category": "oracle",
+        "expected_id": "EXP-008-2",
+        "id": "N04-0062",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[7].expected[1].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-008",
+        "category": "oracle",
+        "expected_id": "EXP-008-2",
+        "id": "N04-0063",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[7].expected[1].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-008",
+        "category": "oracle",
+        "expected_id": "EXP-008-2",
+        "id": "N04-0064",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing type",
+        "origin": "N04",
+        "path": "cases[7].expected[1].oracle.type",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-009",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0065",
+        "issue_code": "invalid_test_data_type",
+        "message": "Case test_data must be an object",
+        "origin": "N04",
+        "path": "cases[8].test_data",
+        "recommendation": "将 test_data 改为结构化对象，并保留数据集和变体字段。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-009",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0066",
+        "issue_code": "missing_execution_modes",
+        "message": "Case execution_policy.allowed_modes must be a non-empty list",
+        "origin": "N04",
+        "path": "cases[8].execution_policy.allowed_modes",
+        "recommendation": "在 execution_policy.allowed_modes 中声明 automated 或 manual。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-009",
+        "category": "oracle",
+        "expected_id": "EXP-009-1",
+        "id": "N04-0067",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing matcher",
+        "origin": "N04",
+        "path": "cases[8].expected[0].oracle.matcher",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-009",
+        "category": "oracle",
+        "expected_id": "EXP-009-1",
+        "id": "N04-0068",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[8].expected[0].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-009",
+        "category": "oracle",
+        "expected_id": "EXP-009-1",
+        "id": "N04-0069",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[8].expected[0].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-009",
+        "category": "oracle",
+        "expected_id": "EXP-009-2",
+        "id": "N04-0070",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[8].expected[1].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-009",
+        "category": "oracle",
+        "expected_id": "EXP-009-2",
+        "id": "N04-0071",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[8].expected[1].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-009",
+        "category": "oracle",
+        "expected_id": "EXP-009-2",
+        "id": "N04-0072",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing type",
+        "origin": "N04",
+        "path": "cases[8].expected[1].oracle.type",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-010",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0073",
+        "issue_code": "invalid_test_data_type",
+        "message": "Case test_data must be an object",
+        "origin": "N04",
+        "path": "cases[9].test_data",
+        "recommendation": "将 test_data 改为结构化对象，并保留数据集和变体字段。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-010",
+        "category": "schema",
+        "expected_id": null,
+        "id": "N04-0074",
+        "issue_code": "missing_execution_modes",
+        "message": "Case execution_policy.allowed_modes must be a non-empty list",
+        "origin": "N04",
+        "path": "cases[9].execution_policy.allowed_modes",
+        "recommendation": "在 execution_policy.allowed_modes 中声明 automated 或 manual。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-010",
+        "category": "oracle",
+        "expected_id": "EXP-010-1",
+        "id": "N04-0075",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing matcher",
+        "origin": "N04",
+        "path": "cases[9].expected[0].oracle.matcher",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-010",
+        "category": "oracle",
+        "expected_id": "EXP-010-1",
+        "id": "N04-0076",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[9].expected[0].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-010",
+        "category": "oracle",
+        "expected_id": "EXP-010-1",
+        "id": "N04-0077",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[9].expected[0].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-010",
+        "category": "oracle",
+        "expected_id": "EXP-010-2",
+        "id": "N04-0078",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing observation_point",
+        "origin": "N04",
+        "path": "cases[9].expected[1].oracle.observation_point",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-010",
+        "category": "oracle",
+        "expected_id": "EXP-010-2",
+        "id": "N04-0079",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing source_ref",
+        "origin": "N04",
+        "path": "cases[9].expected[1].oracle.source_ref",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      },
+      {
+        "case_id": "CASE-010",
+        "category": "oracle",
+        "expected_id": "EXP-010-2",
+        "id": "N04-0080",
+        "issue_code": "oracle_required_field",
+        "message": "Oracle missing type",
+        "origin": "N04",
+        "path": "cases[9].expected[1].oracle.type",
+        "recommendation": "补齐 Oracle 的 type、observation_point、matcher 和单值 source_ref。",
+        "route_to": "A08",
+        "severity": "error",
+        "source_refs": [
+          "REQ-001"
+        ]
+      }
+    ],
+    "max_correction_attempts": 2,
+    "next_node": "A08",
+    "oracle_review_artifact_hash": "sha256:a856f3edbe7cb4ae175aa6b469fa39c62424fc9574fb95e51efb88b6dc8c2a78",
+    "oracle_review_artifact_id": "a09-oracle-coverage-review",
+    "route_summary": {
+      "A08": 80
+    },
+    "schema_version": "test-case-ir-validation/1.0",
+    "test_design_artifact_hash": "sha256:5ab61849c960db62be1d3dbe21c03b24e1af4ff259bb8e8efa39f9022515bde9",
+    "test_design_artifact_id": "a08-test-design-ir",
+    "valid": false
+  },
+  "producer": {
+    "component_id": "N04",
+    "component_version": "0.1.0",
+    "inference_config_hash": "none",
+    "model_provider": "none",
+    "model_snapshot": "deterministic",
+    "profile_version": "1.0.0",
+    "prompt_version": "none",
+    "runtime": "deterministic",
+    "tool_bundle_version": "none"
+  },
+  "reason_code": "test_case_ir_requires_correction",
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "needs_human",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-pilot-001"
+}
