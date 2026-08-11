@@ -61,12 +61,39 @@ def _identity(artifact: Mapping[str, Any]) -> tuple[str, str, str]:
     )
 
 
+def _update_run_manifest(
+    path: Path | None,
+    workflow_run_id: str,
+    current_node: str,
+    stage_update: Mapping[str, Any],
+    root_update: Mapping[str, Any] | None = None,
+) -> None:
+    if path is None:
+        return
+    manifest = _read_object(path)
+    if manifest.get("workflow_run_id") != workflow_run_id:
+        raise ContractError("Stage-two checkpoint belongs to another workflow run")
+    stage_two = dict(manifest.get("stage_two", {}))
+    stage_two.update(stage_update)
+    manifest["stage_two"] = stage_two
+    for key, value in (root_update or {}).items():
+        if isinstance(value, Mapping) and isinstance(manifest.get(key), Mapping):
+            merged = dict(manifest[key])
+            merged.update(value)
+            manifest[key] = merged
+        else:
+            manifest[key] = value
+    manifest["current_node"] = current_node
+    ArtifactStore(path.parent).write_json(path.name, manifest)
+
+
 def run_n25_after_g02(
     a08_artifact_path: Path,
     g02_request_path: Path,
     g02_outcome_path: Path,
     output_dir: Path,
     *,
+    run_manifest_path: Path | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
     """Compile parent Test Case IR into layered child cases after G02 approval."""
@@ -138,6 +165,35 @@ def run_n25_after_g02(
     artifact_dict = artifact.to_dict()
     security.assert_no_secret_values(artifact_dict)
     ArtifactStore(output_dir).write_artifact(artifact)
+    _update_run_manifest(
+        run_manifest_path,
+        workflow_run_id,
+        "N25",
+        {
+            "status": "in_progress",
+            "n25": {
+                "artifact_path": str(output_dir / "artifacts/n25-compiled-test-cases.json"),
+                "artifact_hash": artifact_dict["artifact_hash"],
+                "parent_count": payload["parent_count"],
+                "child_count": payload["child_count"],
+            },
+            "next_node": "A11",
+        },
+        {
+            "gate_status": "approved",
+            "next_gate": "G03",
+            "g02": {
+                "decision": "approved",
+                "decision_hash": outcome.get("decision_hash"),
+                "request_hash": request.get("request_hash"),
+                "outcome_hash": outcome.get("outcome_hash"),
+                "state": "approved",
+                "observed_multica_status": "done",
+                "next_node": "N25",
+            },
+            "a08_a09_n04_cycle": {"g02_status": "approved"},
+        },
+    )
     return artifact_dict
 
 
@@ -150,6 +206,7 @@ def run_n26_after_a11(
     asset_catalog_path: Path | None = None,
     selection_policy_path: Path | None = None,
     selection_advice_path: Path | None = None,
+    run_manifest_path: Path | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
     """Select the final test set from A11-approved compiled cases."""
@@ -244,6 +301,26 @@ def run_n26_after_a11(
     artifact_dict = artifact.to_dict()
     security.assert_no_secret_values(artifact_dict)
     ArtifactStore(output_dir).write_artifact(artifact)
+    _update_run_manifest(
+        run_manifest_path,
+        workflow_run_id,
+        "N26",
+        {
+            "status": "in_progress",
+            "a11": {
+                "artifact_path": str(split_review_artifact_path),
+                "artifact_hash": review["artifact_hash"],
+                "approved": True,
+                "status": review["status"],
+            },
+            "n26": {
+                "artifact_path": str(output_dir / "artifacts/n26-test-selection.json"),
+                "artifact_hash": artifact_dict["artifact_hash"],
+                "unresolved_count": len(selection["unresolved_items"]),
+            },
+            "next_node": "A12" if selection["unresolved_items"] else "N15",
+        },
+    )
     return artifact_dict
 
 
@@ -253,6 +330,8 @@ def run_n15_after_n26(
     output_dir: Path,
     *,
     asset_catalog_path: Path | None = None,
+    run_manifest_path: Path | None = None,
+    deferred_layers: set[str] | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
     """Compile the deterministic execution plan from the N26 selection."""
@@ -275,7 +354,10 @@ def run_n15_after_n26(
     if not isinstance(child_cases, list):
         raise ContractError("N15 N25 compiled_cases are invalid")
     plan = compile_execution_plan(
-        selection_artifact["payload"], child_cases, asset_catalog
+        selection_artifact["payload"],
+        child_cases,
+        asset_catalog,
+        deferred_layers=deferred_layers,
     )
     workflow_run_id, workflow_mode, snapshot_id = _identity(compiled)
     artifact = ArtifactEnvelope(
@@ -303,4 +385,25 @@ def run_n15_after_n26(
     artifact_dict = artifact.to_dict()
     security.assert_no_secret_values(artifact_dict)
     ArtifactStore(output_dir).write_artifact(artifact)
+    action_counts = {
+        name: sum(item.get("action") == name for item in plan["actions"])
+        for name in (
+            "generate_new", "update_existing", "run_existing", "manual_run", "skip",
+            "deferred_frontend", "deferred_by_policy",
+        )
+    }
+    _update_run_manifest(
+        run_manifest_path,
+        workflow_run_id,
+        "N15",
+        {
+            "status": "completed",
+            "n15": {
+                "artifact_path": str(output_dir / "artifacts/n15-execution-plan.json"),
+                "artifact_hash": artifact_dict["artifact_hash"],
+                "action_counts": action_counts,
+            },
+            "next_node": "N07",
+        },
+    )
     return artifact_dict

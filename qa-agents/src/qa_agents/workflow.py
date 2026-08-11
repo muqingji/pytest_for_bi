@@ -835,14 +835,23 @@ class PhaseOneWorkflow:
             code_passed = True
             code_fatal = False
             repair_routes: set[str] = set()
+            input_bindings: list[dict[str, Any]] = []
             for _profile, generation in generations:
                 check = check_automation_generation(generation.payload, self.automation_policy)
                 code_check_issues.extend(check["issues"])
                 code_passed = code_passed and check["passed"]
                 code_fatal = code_fatal or check["fatal_security_violation"]
                 repair_routes.update(check["repair_routes"])
+                input_bindings.append(
+                    {
+                        "generation_hash": check["generation_hash"],
+                        "manifest_hash": check["manifest_hash"],
+                        "candidate_hashes": check["candidate_hashes"],
+                    }
+                )
             code_check = {
                 "schema_version": "automation-code-check/1.0",
+                "input_bindings": input_bindings,
                 "passed": code_passed,
                 "fatal_security_violation": code_fatal,
                 "issues": code_check_issues,

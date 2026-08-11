@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "n29-candidate-landing/1.0",
+  "title": "N29 Candidate Landing",
+  "description": "Isolated workspace landing receipt for approved automation candidates. Never writes business repositories or opens MRs by itself.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workflow_run_id",
+    "source_snapshot_id",
+    "landing_root",
+    "write_mode",
+    "input_bindings",
+    "landed_files",
+    "file_count",
+    "mr_disposition",
+    "business_repository_write",
+    "next_node"
+  ],
+  "properties": {
+    "schema_version": {"const": "n29-candidate-landing/1.0"},
+    "workflow_run_id": {"type": "string", "minLength": 1},
+    "source_snapshot_id": {"type": "string", "minLength": 1},
+    "landing_root": {"type": "string", "minLength": 1},
+    "write_mode": {"const": "isolated_workspace_landing"},
+    "input_bindings": {"type": "object"},
+    "landed_files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "content_hash"],
+        "properties": {
+          "path": {"type": "string"},
+          "content_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "file_count": {"type": "integer", "minimum": 0},
+    "mr_disposition": {"enum": ["not_requested", "draft_only", "created"]},
+    "business_repository_write": {"const": false},
+    "next_node": {"const": "N08"}
+  },
+  "additionalProperties": true
+}

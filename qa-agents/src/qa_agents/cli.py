@@ -8,14 +8,21 @@ from pathlib import Path
 import sys
 import tempfile
 
+from .autopilot import initialize_autopilot, reconcile_autopilot
+from .contract_binding import bind_frozen_contract_refs
 from .evaluation import evaluate_run
 from .env_precheck import run_n07_env_precheck, run_n16_env_fix
+from .candidate_landing import land_automation_candidates
+from .execution import run_n08_automation
+from .quality_pipeline import run_server_quality_tail
+from .server_automation import prepare_server_automation
 from .errors import ContractError, InputError, QaAgentError, SecurityPolicyError
 from .gates import (
     prepare_scope_review_request,
     record_scope_review_decision,
     scope_review_decision_template,
 )
+from .g01_review import open_multica_scope_review, sync_multica_scope_review
 from .g02_review import (
     open_multica_test_case_review,
     prepare_test_case_review_request,
@@ -26,6 +33,7 @@ from .human_correction import (
     prepare_human_correction_request,
     sync_multica_human_correction,
 )
+from .issue_cards import sync_multica_issue_card
 from .multica import (
     fetch_multica_run_messages,
     ingest_multica_output,
@@ -54,7 +62,13 @@ from .risk import run_risk_strategy_after_g01
 from .source_collector import ReadOnlyGitCollector, RepositoryRegistry
 from .storage import ArtifactStore
 from .test_case_gate import run_n04_after_a09
+from .test_data import prepare_test_data_plan
 from .workflow import PhaseOneWorkflow
+from .workflow_center import (
+    build_workflow_projection,
+    render_workflow_center_markdown,
+    sync_multica_workflow_center,
+)
 
 
 def _load_json_input(path: Path, label: str) -> object:
@@ -183,6 +197,53 @@ def build_parser() -> argparse.ArgumentParser:
     ingest_parser.add_argument("--model-provider", required=True)
     ingest_parser.add_argument("--model", required=True)
     ingest_parser.add_argument("--prompt-version", required=True)
+    ingest_parser.add_argument(
+        "--sync-issue-card",
+        action="store_true",
+        help="After acceptance, publish the Artifact result to its bound Multica Issue",
+    )
+
+    issue_card_parser = subparsers.add_parser(
+        "sync-multica-issue-card",
+        help="Publish an accepted Artifact summary and mark its bound Issue done",
+    )
+    issue_card_parser.add_argument("--bundle", type=Path, required=True)
+    issue_card_parser.add_argument("--artifact", type=Path, required=True)
+    issue_card_parser.add_argument("--issue-id", required=True)
+
+    workflow_center_compile_parser = subparsers.add_parser(
+        "compile-workflow-center",
+        help="Compile one requirement workflow into a user-facing projection",
+    )
+    workflow_center_compile_parser.add_argument("--spec", type=Path, required=True)
+    workflow_center_compile_parser.add_argument("--output", type=Path, required=True)
+
+    workflow_center_sync_parser = subparsers.add_parser(
+        "sync-workflow-center",
+        help="Publish one requirement workflow projection to Multica",
+    )
+    workflow_center_sync_parser.add_argument("--spec", type=Path, required=True)
+    workflow_center_sync_parser.add_argument("--config", type=Path, required=True)
+    workflow_center_sync_parser.add_argument("--output", type=Path, required=True)
+
+    autopilot_init_parser = subparsers.add_parser(
+        "init-autopilot",
+        help="Create or reuse one requirement parent and initialize a server QA Run",
+    )
+    autopilot_init_parser.add_argument("--request", type=Path, required=True)
+    autopilot_init_parser.add_argument("--config", type=Path, required=True)
+    autopilot_init_parser.add_argument("--registry", type=Path, required=True)
+    autopilot_init_parser.add_argument("--output", type=Path, required=True)
+
+    autopilot_reconcile_parser = subparsers.add_parser(
+        "reconcile-autopilot",
+        help="Derive one Autopilot workflow Spec from accepted Artifacts",
+    )
+    autopilot_reconcile_parser.add_argument("--spec", type=Path, required=True)
+    autopilot_reconcile_parser.add_argument(
+        "--artifact-root", type=Path, action="append", required=True
+    )
+    autopilot_reconcile_parser.add_argument("--output", type=Path, required=True)
 
     validate_candidate_parser = subparsers.add_parser(
         "validate-multica-candidate",
@@ -237,6 +298,23 @@ def build_parser() -> argparse.ArgumentParser:
     g01_decision_parser.add_argument("--decision", type=Path, required=True)
     g01_decision_parser.add_argument("--policy", type=Path, required=True)
     g01_decision_parser.add_argument("--output", type=Path, required=True)
+
+    g01_open_parser = subparsers.add_parser(
+        "open-g01-multica", help="Create or bind a Multica G01 comment review issue"
+    )
+    g01_open_parser.add_argument("--request", type=Path, required=True)
+    g01_open_parser.add_argument("--policy", type=Path, required=True)
+    g01_open_parser.add_argument("--adapter-policy", type=Path, required=True)
+    g01_open_parser.add_argument("--output", type=Path, required=True)
+    g01_open_parser.add_argument("--issue-id")
+
+    g01_sync_parser = subparsers.add_parser(
+        "sync-g01-multica", help="Compile an authorized Multica G01 comment into an outcome"
+    )
+    g01_sync_parser.add_argument("--request", type=Path, required=True)
+    g01_sync_parser.add_argument("--policy", type=Path, required=True)
+    g01_sync_parser.add_argument("--adapter-policy", type=Path, required=True)
+    g01_sync_parser.add_argument("--output", type=Path, required=True)
 
     g02_parser = subparsers.add_parser(
         "prepare-g02", help="Prepare a content-addressed G02 Test Case IR review request"
@@ -343,6 +421,7 @@ def build_parser() -> argparse.ArgumentParser:
     n25_parser.add_argument("--g02-request", type=Path, required=True)
     n25_parser.add_argument("--g02-outcome", type=Path, required=True)
     n25_parser.add_argument("--output", type=Path, required=True)
+    n25_parser.add_argument("--run-manifest", type=Path)
 
     n26_parser = subparsers.add_parser(
         "run-n26-after-a11",
@@ -355,6 +434,7 @@ def build_parser() -> argparse.ArgumentParser:
     n26_parser.add_argument("--asset-catalog", type=Path)
     n26_parser.add_argument("--selection-policy", type=Path)
     n26_parser.add_argument("--selection-advice", type=Path)
+    n26_parser.add_argument("--run-manifest", type=Path)
 
     n15_parser = subparsers.add_parser(
         "run-n15-after-n26",
@@ -364,6 +444,8 @@ def build_parser() -> argparse.ArgumentParser:
     n15_parser.add_argument("--compiled-artifact", type=Path, required=True)
     n15_parser.add_argument("--output", type=Path, required=True)
     n15_parser.add_argument("--asset-catalog", type=Path)
+    n15_parser.add_argument("--run-manifest", type=Path)
+    n15_parser.add_argument("--defer-layer", action="append", default=[])
 
     n07_parser = subparsers.add_parser(
         "run-n07-env-precheck",
@@ -374,8 +456,10 @@ def build_parser() -> argparse.ArgumentParser:
     n07_parser.add_argument("--output", type=Path, required=True)
     n07_parser.add_argument("--workflow-run-id", required=True)
     n07_parser.add_argument("--source-snapshot-id", required=True)
+    n07_parser.add_argument("--workflow-mode", default="environment_precheck")
     n07_parser.add_argument("--previous-fingerprint", default="")
     n07_parser.add_argument("--throttle-reason", default="")
+    n07_parser.add_argument("--test-data-validation", type=Path)
 
     n16_parser = subparsers.add_parser(
         "run-n16-env-fix",
@@ -384,6 +468,87 @@ def build_parser() -> argparse.ArgumentParser:
     n16_parser.add_argument("--precheck", type=Path, required=True)
     n16_parser.add_argument("--fix-plan", type=Path, required=True)
     n16_parser.add_argument("--output", type=Path, required=True)
+
+    server_automation_parser = subparsers.add_parser(
+        "prepare-server-automation",
+        help="Prepare A14/A15, independent A18 review and aggregate N05 from N15",
+    )
+    server_automation_parser.add_argument("--execution-plan", type=Path, required=True)
+    server_automation_parser.add_argument("--compiled-cases", type=Path, required=True)
+    server_automation_parser.add_argument("--automation-policy", type=Path, required=True)
+    server_automation_parser.add_argument("--target", type=Path, required=True)
+    server_automation_parser.add_argument("--output", type=Path, required=True)
+    server_automation_parser.add_argument("--test-data-validation", type=Path)
+
+    test_data_parser = subparsers.add_parser(
+        "prepare-test-data",
+        help="Run autonomous A22/N28 planning and N27 validation for 112 test data",
+    )
+    test_data_parser.add_argument("--compiled-cases", type=Path, required=True)
+    test_data_parser.add_argument("--policy", type=Path, required=True)
+    test_data_parser.add_argument("--environment", default="112")
+    test_data_parser.add_argument("--namespace", required=True)
+    test_data_parser.add_argument("--output", type=Path, required=True)
+    test_data_parser.add_argument("--knowledge-sources", type=Path)
+    test_data_parser.add_argument("--capability-catalog", type=Path)
+    test_data_parser.add_argument("--skip-by-policy", action="store_true")
+    test_data_parser.add_argument("--existing-data-case-id", action="append", default=[])
+    test_data_parser.add_argument("--deferred-frontend-case-id", action="append", default=[])
+
+    contract_binding_parser = subparsers.add_parser(
+        "bind-contract-refs",
+        help="Bind compiled contract Cases to a frozen OpenAPI operation",
+    )
+    contract_binding_parser.add_argument("--compiled-cases", type=Path, required=True)
+    contract_binding_parser.add_argument("--openapi", type=Path, required=True)
+    contract_binding_parser.add_argument("--bindings", type=Path, required=True)
+    contract_binding_parser.add_argument("--output", type=Path, required=True)
+
+    n08_parser = subparsers.add_parser(
+        "run-n08-automation",
+        help="Run hash-bound reviewed automation after a passed N07 precheck",
+    )
+    n08_parser.add_argument("--generation", type=Path, required=True)
+    n08_parser.add_argument("--review", type=Path, required=True)
+    n08_parser.add_argument("--code-check", type=Path, required=True)
+    n08_parser.add_argument("--environment-precheck", type=Path, required=True)
+    n08_parser.add_argument("--automation-policy", type=Path, required=True)
+    n08_parser.add_argument("--execution-policy", type=Path, required=True)
+    n08_parser.add_argument("--output", type=Path, required=True)
+
+    land_parser = subparsers.add_parser(
+        "land-automation-candidates",
+        help="Materialize approved automation candidates into an isolated workspace",
+    )
+    land_parser.add_argument("--generation", type=Path, required=True)
+    land_parser.add_argument("--review", type=Path, required=True)
+    land_parser.add_argument("--code-check", type=Path, required=True)
+    land_parser.add_argument("--automation-policy", type=Path, required=True)
+    land_parser.add_argument("--output", type=Path, required=True)
+    land_parser.add_argument(
+        "--landing-root",
+        type=Path,
+        help="Optional workspace root confined under --output",
+    )
+
+    server_quality_parser = subparsers.add_parser(
+        "run-server-quality",
+        help="Run the deterministic N10/N17/N18/N09/N20/N11/N12 server quality tail",
+    )
+    server_quality_parser.add_argument("--test-data-validation", type=Path)
+    server_quality_parser.add_argument("--execution-plan", type=Path, required=True)
+    server_quality_parser.add_argument("--compiled-cases", type=Path, required=True)
+    server_quality_parser.add_argument("--environment-precheck", type=Path, required=True)
+    server_quality_parser.add_argument(
+        "--automation-execution", type=Path, action="append", default=[]
+    )
+    server_quality_parser.add_argument("--manual-results", type=Path)
+    server_quality_parser.add_argument("--bug-history", type=Path)
+    server_quality_parser.add_argument("--flaky-quarantine", type=Path)
+    server_quality_parser.add_argument("--quality-policy", type=Path, required=True)
+    server_quality_parser.add_argument("--retry-attempt", type=int, default=0)
+    server_quality_parser.add_argument("--run-manifest", type=Path)
+    server_quality_parser.add_argument("--output", type=Path, required=True)
     return parser
 
 
@@ -498,7 +663,57 @@ def _run(argv: list[str] | None = None) -> int:
             model_snapshot=args.model,
             prompt_version=args.prompt_version,
         )
-        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        if args.sync_issue_card:
+            artifact_path = args.output / "artifacts" / f"{artifact['artifact_id']}.json"
+            issue_card = sync_multica_issue_card(
+                args.bundle, artifact_path, args.issue_id
+            )
+            print(
+                json.dumps(
+                    {"artifact": artifact, "issue_card": issue_card},
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+        else:
+            print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "sync-multica-issue-card":
+        result = sync_multica_issue_card(args.bundle, args.artifact, args.issue_id)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "compile-workflow-center":
+        spec = _load_json_input(args.spec, "requirement_workflow_spec")
+        if not isinstance(spec, dict):
+            raise ContractError("Requirement workflow spec must be a JSON object")
+        projection = build_workflow_projection(spec)
+        store = ArtifactStore(args.output)
+        store.write_json("workflow-projection.json", projection)
+        store.write_text(
+            "workflow-center.md", render_workflow_center_markdown(projection)
+        )
+        print(json.dumps(projection, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "sync-workflow-center":
+        result = sync_multica_workflow_center(args.spec, args.config, args.output)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "init-autopilot":
+        result = initialize_autopilot(
+            args.request, args.config, args.registry, args.output
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "reconcile-autopilot":
+        result = reconcile_autopilot(
+            args.spec, args.artifact_root, args.output
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "validate-multica-candidate":
@@ -607,6 +822,7 @@ def _run(argv: list[str] | None = None) -> int:
             args.g02_request,
             args.g02_outcome,
             args.output,
+            run_manifest_path=args.run_manifest,
         )
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
         return 0
@@ -620,6 +836,7 @@ def _run(argv: list[str] | None = None) -> int:
             asset_catalog_path=args.asset_catalog,
             selection_policy_path=args.selection_policy,
             selection_advice_path=args.selection_advice,
+            run_manifest_path=args.run_manifest,
         )
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
         return 0
@@ -630,6 +847,8 @@ def _run(argv: list[str] | None = None) -> int:
             args.compiled_artifact,
             args.output,
             asset_catalog_path=args.asset_catalog,
+            run_manifest_path=args.run_manifest,
+            deferred_layers=set(args.defer_layer),
         )
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
         return 0
@@ -641,8 +860,10 @@ def _run(argv: list[str] | None = None) -> int:
             args.output,
             workflow_run_id=args.workflow_run_id,
             source_snapshot_id=args.source_snapshot_id,
+            workflow_mode=args.workflow_mode,
             previous_fingerprint=args.previous_fingerprint,
             throttle_reason=args.throttle_reason,
+            test_data_validation_path=args.test_data_validation,
         )
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
         return 0
@@ -654,6 +875,87 @@ def _run(argv: list[str] | None = None) -> int:
             args.output,
         )
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "land-automation-candidates":
+        artifact = land_automation_candidates(
+            args.generation,
+            args.review,
+            args.code_check,
+            args.automation_policy,
+            args.output,
+            landing_root=args.landing_root,
+        )
+        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-n08-automation":
+        artifact = run_n08_automation(
+            args.generation,
+            args.review,
+            args.code_check,
+            args.environment_precheck,
+            args.automation_policy,
+            args.execution_policy,
+            args.output,
+        )
+        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "prepare-server-automation":
+        result = prepare_server_automation(
+            args.execution_plan,
+            args.compiled_cases,
+            args.automation_policy,
+            args.target,
+            args.output,
+            test_data_validation_path=args.test_data_validation,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "prepare-test-data":
+        result = prepare_test_data_plan(
+            args.compiled_cases,
+            args.policy,
+            args.output,
+            environment=args.environment,
+            namespace=args.namespace,
+            knowledge_sources_path=args.knowledge_sources,
+            capability_catalog_path=args.capability_catalog,
+            skip_by_policy=args.skip_by_policy,
+            existing_data_case_ids=set(args.existing_data_case_id),
+            deferred_frontend_case_ids=set(args.deferred_frontend_case_id),
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "bind-contract-refs":
+        result = bind_frozen_contract_refs(
+            args.compiled_cases,
+            args.openapi,
+            args.bindings,
+            args.output,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "run-server-quality":
+        result = run_server_quality_tail(
+            args.execution_plan,
+            args.compiled_cases,
+            args.environment_precheck,
+            args.output,
+            test_data_validation_path=args.test_data_validation,
+            automation_execution_paths=args.automation_execution,
+            manual_results_path=args.manual_results,
+            bug_history_path=args.bug_history,
+            flaky_quarantine_path=args.flaky_quarantine,
+            quality_policy_path=args.quality_policy,
+            retry_attempt=args.retry_attempt,
+            run_manifest_path=args.run_manifest,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "report-multica-alignment":
@@ -711,6 +1013,27 @@ def _run(argv: list[str] | None = None) -> int:
                 ensure_ascii=False,
             )
         )
+        return 0
+
+    if args.command == "open-g01-multica":
+        state = open_multica_scope_review(
+            args.request,
+            args.policy,
+            args.adapter_policy,
+            args.output,
+            issue_id=args.issue_id,
+        )
+        print(json.dumps(state, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "sync-g01-multica":
+        result = sync_multica_scope_review(
+            args.request,
+            args.policy,
+            args.adapter_policy,
+            args.output,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "prepare-g02":

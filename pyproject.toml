@@ -22,7 +22,7 @@ dev = ["pytest>=8.0.0", "pytest-xdist>=3.5.0"]
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
-pythonpath = ["src", "."]
+pythonpath = ["src", "qa-agents/src", "."]
 markers = [
   "smoke: smoke test cases",
   "regression: regression test cases",

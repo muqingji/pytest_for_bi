@@ -355,29 +355,45 @@ def compile_execution_plan(
     selection: Mapping[str, Any],
     cases: list[Mapping[str, Any]],
     asset_catalog: Mapping[str, Any] | None = None,
+    *,
+    deferred_layers: set[str] | None = None,
 ) -> dict[str, Any]:
     assets = (asset_catalog or {}).get("automation_assets", {})
     cases_by_id = {str(case["id"]): case for case in cases}
     actions: list[dict[str, Any]] = []
+    deferred = set(deferred_layers or ())
     for item in selection.get("selected_cases", []):
         case_id = str(item["case_id"])
         case = cases_by_id[case_id]
         asset = assets.get(case_id)
-        if item["selection"] == "skip":
+        test_level = str(case.get("test_level", "") or "").strip().lower()
+        layer = str(case.get("layer", "")).strip().lower()
+        if layer in deferred:
+            action = "deferred_frontend" if layer in {"frontend", "e2e"} else "deferred_by_policy"
+            reason_code = f"{layer}_scope_deferred_by_policy"
+        elif test_level in {"unit", "unit_test", "单元", "单元测试"}:
             action = "skip"
+            reason_code = "paused_existing_developer_unit_coverage"
+        elif item["selection"] == "skip":
+            action = "skip"
+            reason_code = item["reason_code"]
         elif item["selection"] == "needs_human":
             action = "manual_run"
+            reason_code = item["reason_code"]
         elif asset is None:
             action = "generate_new" if case.get("automation_candidate") else "manual_run"
+            reason_code = item["reason_code"]
         elif asset.get("status") == "active" and not asset.get("impacted", False):
             action = "run_existing"
+            reason_code = item["reason_code"]
         else:
             action = "update_existing"
+            reason_code = item["reason_code"]
         actions.append(
             {
                 "case_id": case_id,
                 "action": action,
-                "reason_code": item["reason_code"],
+                "reason_code": reason_code,
                 "automation_ref": asset.get("commit") if isinstance(asset, Mapping) else None,
             }
         )

@@ -20,14 +20,15 @@
 的生产级质量系统。
 
 本文档定义架构、职责、数据契约、门禁和验收标准。阶段 0 基础、阶段 1 主链至人工升级，
-以及阶段 2 后端自动化切片的本地参考实现位于 `qa-agents/`；阶段 1 的人工修正恢复协议和
-G02 Adapter 已实现，但 `pilot-001` 仍待合法 A08 恢复重跑与 G02 正式闭环。参考实现不等于
-生产 Multica、模型 Runtime、完整自动化链路或发布门禁已经完成。
+以及阶段 2 后端自动化切片的本地参考实现位于 `qa-agents/`；`pilot-001` 已完成人工恢复、G02
+与阶段二 N25/A11/N26/N15 真实闭环。独立置信运行 `multica-confidence-20260811-01` 已过 G01/
+N24/A08/A09/N04 双轮自动修正，现停在 human（预算耗尽）。参考实现不等于生产 Multica、模型
+Runtime、完整自动化链路或发布门禁已经完成。
 
 ## 2. 设计状态与使用规则
 
 - 当前状态：方案已冻结第一版；阶段 0 本地基础、阶段 1 至人工升级节点、阶段 2 后端参考
-  切片已实现；阶段 1 真实闭环卡在人工恢复 A08 合法重跑与 G02，生产接入仍在建设。
+  切片已实现；`pilot-001` 主链已闭环到 N15；独立置信运行已推至 N04 human 升级，生产接入仍在建设。
 - 编排平台：Multica。
 - Agent 之间的主契约：版本化 JSON Artifact。
 - 测试设计主契约：Test Intent 与 Test Case IR。
@@ -98,7 +99,8 @@ G02 Adapter 已实现，但 `pilot-001` 仍待合法 A08 恢复重跑与 G02 正
   A08/A09/N04 哈希）。主链恢复点为 N25。
 - Runtime 修复：A02/A03/A05/A06 此前真实绑定离线 Runtime `6fa59d79`（Codex muqingji），
   已重绑到在线 `5a1ecc9c`（Codex MacBook-Pro-3.local，gpt-5.6-sol），与 A08/A09 一致；
-  LEAD 绑定 `c12c5f20`（Claude 在线）。`multica/workspace-manifest.json` 已同步线上状态。
+  LEAD 原绑定 `c12c5f20` 的 Claude Runtime，Autopilot 首次运行实测 401 后已切换到在线
+  `5a1ecc9c`（Codex / gpt-5.6-sol）。`multica/workspace-manifest.json` 已同步线上状态。
 - 已接受入库：A08 `multica-stage10`（artifact_hash
   `sha256:edb58b4fd142c1c5a3eae40d5d575b58a810fa709b213f66fa676d5c3d4eeb7c`，13 个父 Case，
   required_layers 覆盖 backend/contract/e2e，automation_candidate 混合）、A09
@@ -139,7 +141,8 @@ G02 Adapter 已实现，但 `pilot-001` 仍待合法 A08 恢复重跑与 G02 正
    校验需与既有 `prepare_multica_test_design_input`/`ingest` 的契约版本处理保持一致。
 4. A12 与执行链：A12 已实现（N26 无法判定的影响关系才触发，建议只能扩大或升级范围，
    经 N26 校验折叠）；阶段 3-5 执行与门禁已先落地 N07/N16（§17：环境指纹、8 类预检、
-   指纹节流、N16 幂等修复门禁），N08-N12/N17-N23 按设计文档继续建设。
+   指纹节流、N16 幂等修复门禁）；N08 受控执行和 N09-N12/N17-N23 确定性质量尾链已实现
+   本地 reference 版本，生产隔离与外部发布 Adapter 继续建设。
 5. 文档收尾：`README.md` 与 `IMPLEMENTATION_STATUS.md` 的旧"G02 未启动"表述已随本快照
    同步更新；后续真实 N25-N15 跑通后需回写 Artifact 哈希。
 
@@ -169,6 +172,89 @@ G02 Adapter 已实现，但 `pilot-001` 仍待合法 A08 恢复重跑与 G02 正
 - N26 `multica-stage15`（`64bd7dcb…`）无 unresolved，A12 按设计不触发；N15
   `multica-stage16`（`89764afd…`）执行计划 14 条：3 条 `generate_new`、11 条 `manual_run`
   （试点无自动化资产，按策略路由）。
+
+### 2.4 当前进展快照（2026-08-11 N08 与 Multica 复跑）
+
+- 已从 QAA-26 线上消息流重新构建 stage13-16，四个 Artifact 哈希与 2.3 完全一致；修复
+  `multica-run-manifest.json` 停在 G02 的陈旧 checkpoint，N25/N26/N15 后续会原子更新阶段二
+  checkpoint，审计主记录与 workspace manifest 现统一指向 N15，下一节点为 N07。
+- N08 受控自动化执行参考切片已实现：认证 N07/A18/N05 producer 与 payload contract，
+  强制绑定已通过的 N07、独立 A18 审查、N05 检查、
+  generation/manifest/candidate 哈希；无 shell 分片执行，保留脱敏日志和原始 JUnit，业务失败
+  进入 N09，只有超时或基础设施错误进入 N10。当前本地 Runner 非生产隔离且硬拒绝网络和
+  Secret，生产隔离 Runner Adapter 仍待接入。
+- A18 与 N05 新增 generation、manifest 和逐候选哈希绑定；修复空 `secrets: []` 被脱敏为
+  字符串导致 Manifest 失真的问题，以及 Envelope Schema 漏列 `blocked` 的问题。
+- 实际 Multica 复跑发现 A11 仍绑定离线 Runtime `6fa59d79`，已重绑在线同模型 Runtime
+  `5a1ecc9c`。新 task `2cdb00fd-c20d-482c-a626-9d62a2b1c611` 运行 2 分 05 秒完成，但对
+  不可变输入将 `CASE-CT-005` 判为完全覆盖，与主链 warning 相反。该影子结果
+  `fc24e6c1…` 未晋升；新增确定性语义门禁后以
+  `unscoped cross-layer responsibilities` 拒收，主链仍保留 `b6e37ba3…`。
+- 当前剩余关键路径：生产隔离 Runner、真实 staging/人工执行证据、自动化 Case 的有效契约
+  引用，以及 MR/Bug/发布系统 Adapter。N09 聚类、N10 重试预算、N17 汇合、N18 信号、
+  N20 去重和 N11/N12 决策报告已完成确定性 reference 实现。
+
+### 2.5 当前进展快照（2026-08-11 独立置信实跑）
+
+- 新建独立运行 `multica-confidence-20260811-01`，Multica 父 Issue 为 QAA-27。该运行不复用
+  `pilot-001` 的 G01/G02 决策，从冻结来源重新编译 Stage 1 输入并真实运行 A02/A03/A05。
+- A02 首次通过；A03 首次因把不存在的输入 `input_bundle_hash` 复制为 `null` 被契约门禁
+  拒收；A05 首次因读取 Issue comment/metadata、调用写文件工具并通过 comment 交付被权限
+  门禁拒收。A03/A05 指令升级并真实发布为 v1.1.1 后，第二次运行均通过完整消息流审计和
+  正式 ingest。被拒 Task 不得作为下游输入。
+- 使用三份新接受 Artifact 编译 A06 输入并在 QAA-31 真实运行。A06 Task
+  `5ed169eb-c5c4-4f7b-bd29-6c5e51b6647c` 的工具轨迹、Schema、输入哈希和语义门禁均通过；
+  Artifact 哈希为 `sha256:6da70bda7715d4766d80511eab978af0dcc5b6bd8f50162b960650200a84842d`，
+  结论为 `needs_human`，包含 9 个对齐 finding。
+- **G01 已签署，不再 pending**：request hash
+  `sha256:90b67080e7916b208a2601d5badecc2dda77993040a6ef0655060f114a1b01e8`（15 项）由
+  QA Owner `muqj11262` 在 QAA-32 提交结构化评论后，确定性 Adapter 生成 decision
+  `sha256:8f0393d7b10ea5aa84499dd3ee6b270ee6136bdfc0b0a0594b2a64c1fbbb8997` 与 outcome
+  `sha256:d91f9bc2e30094ab38b29bea7ce5ab1691f31c5ce709cb754f2de22d1b0999d1`，
+  `decision=approved`、`next_node=N24`、`policy_scope=pilot_test_design_only`（无生产发布
+  权限）。Issue 列状态单独变更仍 fail-closed，不能代替评论协议。冻结口径包括：多限制任意
+  一条提示、多指标展示全部名称、文案端点无关、仅四类不支持场景、中英文案冻结；错误码平台
+  证据/稳定动态关联 ID/空字段加固本轮延后。
+- **N24 已完成**（`multica-stage3`）：
+  `sha256:052204851f780c290abdf204902b4c6e3aa232bfb75af8e16610f2f24c04b703`，
+  `risk_level=critical`，必测 `backend/contract/e2e`。
+- **测试设计修正回流已真实跑满自动预算（max=2）**：
+  1. A08 QAA-33 接受 `sha256:c1ae5fc9...` → stage4（7 父 Case；指令经 `a08-v1.1.1` 加固
+     `allowed_modes` / `test_data` object / oracle `type`+`source_ref`）。
+  2. A09 QAA-34 `needs_human`（4 blocking）`sha256:3834bbdf...` → stage5。
+  3. N04 stage6：`valid=false`，`next=A08`，attempt **0/2**，blocking=4，
+     `sha256:7acdd7c1...`。
+  4. A08 corr#1 QAA-35 接受 `sha256:fab2c2fc...` → stage7（指令 `a08-v1.2.1`：强制
+     top-level `status`）。
+  5. A09 QAA-36（5 blocking）`sha256:cda51041...` → stage8。
+  6. N04 stage9：`valid=false`，`next=A08`，attempt **1/2**，blocking=5，
+     `sha256:0295cdb3...`。
+  7. A08 corr#2 QAA-37 接受 `sha256:bccd074c...` → stage10（`correction_resolutions` 必须
+     恰好覆盖当前 A09 id 005–009）。
+  8. A09 QAA-38 接受 `sha256:7885579d...` → stage11（剩余 ISSUE-010/011/012）。
+  9. N04 stage12：`valid=false`，`next_node=human`，attempt **2/2**，blocking=3，
+     `sha256:c61f8f1aa7de5de5eada2034f408a286b47c9859c2a6f7c688656519737c85e3`。
+- **本运行当前可信边界**：`A02/A03/A05 -> A06 -> G01(approved) -> N24 -> A08/A09/N04×3
+  -> human`。**不是** G02/N25 完成，也**不是**生产端到端完成。剩余 3 个阻塞围绕 PC-002
+  四类指标实际名称 Oracle、PC-003-E02 多关联成功路径与“>3 不支持”冻结冲突、PC-004-E02
+  动态关联成功路径与 What/WhatList 冻结冲突。下一步是 human correction Issue → 定向 A08
+  恢复 → 再 A09/N04；仅 N04 `valid=true` 后才允许为本运行打开 G02。
+- 运行时审计：`qa-agents/runs/confidence-20260811-01/audit-summary.{json,md}`。建设状态以
+  `qa-agents/IMPLEMENTATION_STATUS.md` 为准。已创建一需求一 Autopilot `8f26a3bf...`；生产
+  隔离 Runner、事件驱动触发器和外部发布 Adapter 仍未完成。
+
+### 2.6 当前进展快照（2026-08-11 候选落盘与受控执行）
+
+- N29 候选落盘参考实现已完成：仅在工作流 Artifact 输出目录物化 A18/N05 通过后的候选，
+  内容寻址绑定 generation/review/code-check，默认 `mr_disposition=not_requested`，禁止业务仓
+  写入。
+- N08 增加 `controlled_env_reference`：在版本化 `execution-policy.controlled_environment` 与
+  N07 `environment_class` 同时授权时，可为注册非生产环境开放网络和 Secret env 名注入；生产或
+  `production_isolation=true` 仍强制拒绝。本地 `local_process_reference` 行为保持不变。
+- 质量尾链增强：A19 本地保守失败归因、N18 读取覆盖率信号、Flaky 隔离清单使关键 Case 隔离时
+  N11 输出 `blocked`。生产隔离 Runner、正式 MR/Bug/发布 Adapter 仍是后续关键路径；独立置信
+  运行的 G01 已签署，当前阻塞在 human correction（N04 预算耗尽），不是 G01 待审。
+
 
 ## 3. 核心架构原则
 
@@ -218,6 +304,23 @@ Test Case IR，审核通过后才能生成 Automation Manifest 和自动化代�
 自动化代码只允许写入权限策略中明确登记的独立测试仓库和本次工作流 Artifact 目录。
 如果某类单元测试必须与业务代码同仓，Agent 只能生成独立的候选补丁 Artifact，交由仓库
 维护者在系统外人工处理；Agent 和 Multica 均不得把补丁应用、提交或推送到业务仓库。
+
+### 3.9 一个需求对应一个稳定工作流
+
+用户管理边界是需求，不是 Agent Task。每个 `requirement_id` 对应一个稳定的 `workflow_id` 和
+一张需求父卡；同一需求重新触发、输入版本变化或失败重跑时创建新的 `workflow_run_id`，并把
+旧 Run 纳入历史，不新增第二张用户侧需求卡。多个需求可以并行运行，但状态、节点、人工事项和
+历史只能聚合到各自父卡，禁止跨需求串联或覆盖。
+
+Multica 分为两个项目：`QA 需求工作流中心` 只展示需求父卡，`QA 内部执行与审计` 保存 Run、
+节点执行、重跑、影子候选、人工 Gate 技术卡和历史证据。父卡状态从节点和人工 Action
+确定性投影，优先级为 `blocked > needs_action > running > queued > completed > cancelled`。
+只有开放的人工 Action 才产生用户待办；Agent Review 属于内部执行。父卡必须直接汇总节点状态、
+完成情况、结果摘要、当前 Action 和历史 Run，不能只显示运行 ID 或哈希。
+
+父卡、内部卡和 Artifact 通过 `workflow_id`、`workflow_run_id`、`requirement_id`、节点 ID 及
+Projection hash 绑定。同一 Projection 的重复同步必须幂等；任何人工 Gate 仍以独立审核卡和
+正式 Decision Artifact 为准，父卡的“待我处理”只是聚合入口，不能替代审批或扩大权限。
 
 ## 4. 工作流模式
 
@@ -435,7 +538,7 @@ flowchart TD
 | A11 | Split Coverage Auditor | 回查遗漏、重复和层级错误 | `split_coverage_review.json` |
 | A12 | Test Selection Advisor | 只解释 N26 无法确定的代码影响和 Case 关联 | `test_selection_advice.json` |
 | A13 | Frontend Automation | 生成前端单元、组件或 UI 自动化 | 代码变更和 Manifest |
-| A14 | Backend Automation | 生成后端单元、服务、API 或数据自动化 | 代码变更和 Manifest |
+| A14 | Server Integration & Functional Automation | 生成服务端 API、集成和功能自动化；不生成研发单元测试 | 代码变更和 Manifest |
 | A15 | Contract Automation | 生成接口契约测试 | 代码变更和 Manifest |
 | A16 | E2E Automation | 生成关键链路测试 | 代码变更和 Manifest |
 | A17-PERF | Performance Automation | 生成性能测试 | 性能测试代码或执行计划 |
@@ -456,6 +559,7 @@ flowchart TD
 | A18-DATA | Data Consistency Reviewer | 审查数据一致性测试 | `automation_review.json` |
 | A19 | Failure Triage | 对 N09 无法确定归因的失败簇做语义归因 | `failure_triage.json` |
 | A20 | Quality Narrative | 解释已确定的覆盖、风险和结果，不计算结论 | `quality_narrative.md/json` |
+| A22 | Test Data Intent Agent | 从 Case、需求和变更证据提取 112 所需业务状态，不要求用户提供接口链路 | `test_data_intent.json` |
 
 `A10` 已由确定性的 `N25 Case Compiler` 替代，编号保留但不再作为 Agent 使用；`A21`
 职责已并入 A03。历史 Artifact 和审计记录中的编号不复用。
@@ -491,6 +595,17 @@ flowchart TD
 | N24 | 确定性风险策略引擎 | 按版本化规则计算风险、必测层级和 Gate，仅把未知项交给 A07 |
 | N25 | 确定性 Case 编译器 | 按已审核 Test Case IR 和层级规则生成父子 Case，不改变业务预期 |
 | N26 | 确定性测试选择引擎 | 根据 ChangeSet、资产关系和强制策略选择 Case，仅把未知影响交给 A12 |
+| N27 | 测试数据计划校验 | 校验 112 白名单、namespace、创建/删除配对、资源 ID、就绪检查和 Secret 边界 |
+| N28 | 测试数据资源计划编译 | 根据版本化 BI 能力目录将 A22 数据意图确定性展开为资源依赖 DAG 和 setup/readiness/cleanup |
+
+N27 不是“禁止向环境写入”的校验器。它允许执行 Runner 在 112 的 `setup` 阶段创建 Case
+所需测试资源，并要求在 `cleanup` 阶段按创建时提取的资源 ID 删除；仅 `readiness` 阶段
+限定为只读回查。A22 负责生成计划而不直接持有环境凭证，实际写入和补偿清理由 Runner
+执行并留存证据。对象、字段、主题、指标、报表、统计图、拼表、交叉表、驾驶舱、目标和
+首页布局都属于允许规划的测试资源；每类资源只有在创建/删除接口已冻结为可追溯契约并加入
+操作对清单后才可自动执行。用户不提供资源链路；A22 从 Case 提取语义目标，N28 负责选择
+有官方手册、冻结源码/契约和 112 探针共同佐证的能力模板。无法匹配的目标进入
+`capability_adapter_backlog`，属于系统能力建设项，不得自动变成用户逐 Case 人工待办。
 
 ### 6.3 Agent 输入输出依赖
 
@@ -511,13 +626,15 @@ flowchart TD
 | A11 | N25 生成的父子 Test Case IR、覆盖矩阵和编译规则 | 遗漏、重复、层级错误及拆分审查结论 | N25、N26 |
 | A12 | N26 无法判定的影响关系、ChangeSet 和 N14 资产证据 | 选择建议、证据和不确定性说明 | N26 |
 | A13 | 前端 Test Case IR、前端仓库快照、测试框架约定 | Playwright 代码、Case 映射和 Automation Manifest | A18-FE |
-| A14 | 后端 Test Case IR、后端测试仓库快照、API 契约和框架约定 | API/数据测试代码、Case 映射和 Automation Manifest | A18-BE |
+| A14 | 服务端集成/功能 Test Case IR、测试仓库快照、API 契约和框架约定 | API/集成/功能测试代码、Case 映射和 Automation Manifest | A18-BE |
 | A15 | 契约 Test Case IR、OpenAPI 和消费者契约 | 契约测试代码、兼容性基线和 Automation Manifest | A18-CT |
 | A16 | E2E Test Case IR、关键链路、环境能力和跨服务证据点 | E2E 代码、链路映射和 Automation Manifest | A18-E2E |
 | A17-* | 对应非功能 Test Case IR、已批准阈值、环境容量和专用工具约束 | 对应专项测试代码或执行计划、Automation Manifest | 对应的 A18 专项审查 Agent |
 | A18-* | 对应 Test Case IR、Automation Manifest、生成代码和安全规则 | 审查结论、缺陷清单、问题类型和可审查修复建议 | N05、G03、N06 |
 | A19 | 预检结果、标准化执行证据、环境、数据和历史失败指纹 | 失败聚类、归因、证据充分度和建议动作 | G04、N16、N20、N11、A20 |
 | A20 | Test Case IR、执行计划、覆盖数据、自动化/人工结果、归因与去重结果、豁免记录和 N11 决策 | 面向人的可选解释性摘要 | N12 |
+| A22 | N25 Case、需求/变更证据、BI 业务知识来源 | 业务状态、数据集、资源目标和证据 | N28 |
+| N28 | A22 数据意图、固定 API Catalog、112 环境 Profile 和版本化能力目录 | 资源依赖 DAG、setup、readiness、cleanup、变量和 namespace | N27、N07、N08 |
 
 ### 6.4 逻辑 Agent 与部署 Runtime
 
@@ -1427,6 +1544,13 @@ Center，按 `gate_type`、风险、角色和 Artifact Schema 渲染不同视图
 属于同一审批人的 Gate 可以合并成一个待办，但每个 Gate 的结论、证据和审计记录仍独立
 保存，不能因合并界面而绕过职责分离。
 
+当前 G01 Multica Adapter 采用内容寻址的评论审批协议。Issue 正文必须直接展示全部待审问题、
+来源证据、允许处置以及逐项填写表；哈希只用于绑定，不能替代审核内容。有效评论必须由策略
+绑定的成员提交，并同时包含当前 request hash、总体决策、总体理由、测试规则以及每项问题的
+处置、理由和负责人。Adapter 经 G01 决策校验器复核后才生成 decision/outcome Artifact 并改变
+Issue 状态。仅把 Issue 改为 `done/blocked/cancelled` 不构成决策，无合法评论时必须保持或恢复
+`in_review`。重复同步按评论事件和决策哈希幂等，不得重复恢复下游。
+
 以下场景始终保留人工确认：
 
 - 生产环境和不可逆操作。
@@ -1656,13 +1780,24 @@ A09/N04/G02，再扩展新的 Agent Profile。
   在独立测试仓库生成 pytest 与 Playwright 候选。
 - 🕐 自动执行代码检查和隔离试跑待阶段 3 建设。
 - ✅ G03 人工 Gate 参考实现已就绪；真实发布流程尚未接入。
+- ✅ 明确暂停单元测试生成：`test_level=unit` 在 N15 以
+  `paused_existing_developer_unit_coverage` 跳过；A14 只接受 API、集成、功能、服务和组件级 Case。
 
 ### 阶段 3：测试环境自主执行
 
-- 实现环境、数据、资源锁和证据标准化节点。
-- 实现环境修复动作、人工/探索测试、代码覆盖率和 Flaky 治理。
-- 实现失败聚类与归因。
-- 接入跨运行 Bug 去重。
+- ✅ A22/N28/N27 已实现 Case 语义到 112 资源计划的自主纵向切片与安全校验；CaseRunner 已实现
+  `setup -> readiness -> test -> finally cleanup` 和脱敏生命周期证据。
+- ✅ 官方 BI 帮助手册、8 个业务代码仓库、冻结 fs-bi 契约、112 环境和真实探针已登记为
+  可追溯知识来源；产品白皮书因 WPS 登录要求明确记录为未采集。
+- ✅ 112 真实实跑已完成聚合指标创建、回查、查看明细断言、删除和独立无残留回查。
+- 🕐 CRM 对象/字段、报表、统计图、拼表、交叉表、驾驶舱、目标和首页布局仍需逐域接入
+  创建/删除 Adapter 后加入白名单；不能在缺少回收接口时伪装为已支持。
+- ✅ 环境修复动作（N16）、人工/探索任务（N17）、代码覆盖率信号（N18）和 Flaky 隔离治理已实现
+  参考版；覆盖率仍依赖执行侧实际产出，缺失时记 gap。
+- ✅ 失败聚类（N09）与 A19 本地保守归因已实现参考版；语义不足时仍 `needs_human`。
+- ✅ 跨运行 Bug 去重（N20）已实现参考版。
+- ✅ 候选隔离落盘（N29）与注册非生产环境受控执行（N08 controlled_env_reference）已实现；
+  生产隔离 Runner 与正式 MR 仍待接入。
 - 自动运行低风险测试，高风险仍保留 Gate。
 
 ### 阶段 4：确定性质量门禁
@@ -1702,10 +1837,10 @@ A09/N04/G02，再扩展新的 Agent Profile。
 13. ✅ 已实现 QA Review Center、人工修正 Artifact、影子候选晋升和受控恢复；QAA-24
     置 `done` 后 G02 真实放行（`decision=approved`、`next_node=N25`），纵向测试设计闭环
     在 N25 恢复；试点仅测试设计，无生产发布权限。
-14. 🕐 N25 Case 编译器、A11 `post_split` Profile、N26 与 N15 代码和测试已就绪；
-    A11 真实 Multica 审核待跑，A12 未实现。
-15. 🕐 A01 歧义路由建议 Profile 与自动化生成/审查 Profile（A13-A18-*）已实现；
-    真实自动化执行链路待阶段 3-5 建设。
+14. ✅ N25 Case 编译器、A11 `post_split` Profile、N26/A12/N15 已实现并完成真实 Multica
+    闭环；阶段二 checkpoint 使用内容寻址 Artifact 自动更新。
+15. ✅ A01、A13-A18-*、N07/N16/N08 和 N09-N12/N17-N23 的本地 reference 链已实现；
+    🕐 生产隔离执行、真实环境证据和外部发布 Adapter 仍待阶段 3-5 接入。
 
 不要同时实现所有 Agent。每完成一个 Agent，都必须：
 

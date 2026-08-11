@@ -1,0 +1,29 @@
+{
+  "schema_version": "official-manual-snapshot/1.0",
+  "source": "https://help.fxiaoke.com/5df3",
+  "captured_at": "2026-08-11",
+  "title": "智能分析平台（BI）",
+  "categories": [
+    {"title": "智能分析平台概述", "path": "/5df3/5db8"},
+    {"title": "报表", "path": "/5df3/5df2"},
+    {"title": "统计图", "path": "/5df3/dfdb"},
+    {"title": "拼表", "path": "/5df3/28c6"},
+    {"title": "数据驾驶舱", "path": "/5df3/bcb4"},
+    {"title": "BI组件", "path": "/5df3/6669"},
+    {"title": "多维度目标管理", "path": "/5df3/c2dc"},
+    {"title": "订阅管理", "path": "/5df3/dc57"},
+    {"title": "互联场景下的数据分析", "path": "/5df3/c3b1"},
+    {"title": "分析Agent", "path": "/5df3/2ea7"},
+    {"title": "BI权限管理", "path": "/5df3/02d2"},
+    {"title": "BI国际化能力", "path": "/5df3/6f2b"},
+    {"title": "运营数据分析", "path": "/5df3/8dae"},
+    {"title": "行业模板资源分析", "path": "/5df3/2bc6"},
+    {"title": "客开及函数介绍", "path": "/5df3/a88a"},
+    {"title": "动态与公告", "path": "/5df3/7a83"}
+  ],
+  "chart_create_path": {
+    "title": "创建及查看统计图",
+    "path": "/5df3/dfdb/ab25/39f6",
+    "breadcrumbs": ["智能分析平台（BI）", "统计图", "创建及查看统计图"]
+  }
+}

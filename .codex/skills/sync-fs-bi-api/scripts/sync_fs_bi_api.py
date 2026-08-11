@@ -22,6 +22,7 @@ def run(command: list[str], *, cwd: Path, capture: bool = False) -> str:
         check=True,
         text=True,
         stdout=subprocess.PIPE if capture else None,
+        stderr=subprocess.PIPE if capture else None,
     )
     return result.stdout.strip() if capture else ""
 
@@ -94,7 +95,17 @@ def main() -> int:
         source = Path(temporary) / "fs-bi"
         source.mkdir()
         extract_snapshot(root, mirror, commit, source)
-        run([sys.executable, "scripts/sync_fs_bi_http_api.py", "--source", str(source)], cwd=root)
+        run(
+            [
+                sys.executable,
+                "scripts/sync_fs_bi_http_api.py",
+                "--source",
+                str(source),
+                "--source-ref",
+                commit,
+            ],
+            cwd=root,
+        )
 
     run([sys.executable, "-m", "compileall", "-q", "src/framework/api/generated/fs_bi", "scripts/sync_fs_bi_http_api.py"], cwd=root)
     endpoint_count = verify_routes(root)

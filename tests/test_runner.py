@@ -66,6 +66,124 @@ def test_runner_resolves_variables_extracts_values_and_runs_rpc() -> None:
     assert context["response"] == {"id": "10001", "active": True}
 
 
+class LifecycleHttpClient:
+    def __init__(self) -> None:
+        self.calls = []
+
+    def request(self, method, path, **kwargs):
+        self.calls.append((method, path, kwargs.get("json_body")))
+        if path == "/resources":
+            return ApiResponse(
+                status_code=200,
+                body={"Value": {"id": "resource-1", "name": kwargs["json_body"]["name"]}},
+            )
+        if path == "/resources/resource-1" and method == "GET":
+            return ApiResponse(status_code=200, body={"Value": {"ready": True}})
+        if path == "/resources/resource-1" and method == "DELETE":
+            return ApiResponse(status_code=200, body={"deleted": True})
+        if path == "/verify":
+            return ApiResponse(status_code=200, body={"Result": {"FailureCode": 9001}})
+        raise AssertionError(f"unexpected request: {method} {path}")
+
+
+def _lifecycle_case() -> dict:
+    return {
+        "id": "detail-integration",
+        "environment": "112",
+        "namespace": "qa-run-detail",
+        "variables": {"namespace": "qa-run-detail"},
+        "setup": [
+            {
+                "name": "create resource",
+                "request": {
+                    "method": "POST",
+                    "path": "/resources",
+                    "json": {"name": "{{ namespace }}-chart"},
+                },
+                "extract": {"resource_id": "Value.id"},
+                "expect": {"status_code": 200},
+            }
+        ],
+        "readiness": [
+            {
+                "name": "wait for resource",
+                "request": {"method": "GET", "path": "/resources/{{ resource_id }}"},
+                "expect": {"json_path": {"Value.ready": True}},
+            }
+        ],
+        "steps": [
+            {
+                "name": "verify behavior",
+                "request": {"method": "POST", "path": "/verify", "json": {}},
+                "expect": {"json_path": {"Result.FailureCode": 9001}},
+            }
+        ],
+        "cleanup": [
+            {
+                "name": "delete resource",
+                "when_variable": "resource_id",
+                "request": {"method": "DELETE", "path": "/resources/{{ resource_id }}"},
+                "expect": {"status_code": 200},
+            }
+        ],
+    }
+
+
+def test_runner_executes_setup_readiness_test_and_finally_cleanup() -> None:
+    http = LifecycleHttpClient()
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        http,
+        FakeRpcClient(),
+        FakeDatabaseClient(),
+    )
+
+    context = runner.execute(_lifecycle_case())
+
+    assert [path for _, path, _ in http.calls] == [
+        "/resources",
+        "/resources/resource-1",
+        "/verify",
+        "/resources/resource-1",
+    ]
+    assert context["resource_id"] == "resource-1"
+    assert context["__lifecycle__"]["cleanup"][0]["status"] == "completed"
+    assert "response_hash" in context["__lifecycle__"]["setup"][0]
+
+
+def test_runner_cleans_up_after_test_assertion_failure() -> None:
+    http = LifecycleHttpClient()
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        http,
+        FakeRpcClient(),
+        FakeDatabaseClient(),
+    )
+    case = _lifecycle_case()
+    case["steps"][0]["expect"]["json_path"]["Result.FailureCode"] = 0
+
+    with pytest.raises(AssertionError, match="expected 0"):
+        runner.run(case)
+
+    assert http.calls[-1][:2] == ("DELETE", "/resources/resource-1")
+
+
+def test_runner_rejects_cross_environment_case_before_setup() -> None:
+    http = LifecycleHttpClient()
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        http,
+        FakeRpcClient(),
+        FakeDatabaseClient(),
+    )
+    case = _lifecycle_case()
+    case["environment"] = "online"
+
+    with pytest.raises(ValueError, match="requires environment 'online'"):
+        runner.run(case)
+    assert http.calls == []
+
+
 class FakeAuthenticatedHttpClient:
     def __init__(self) -> None:
         self.cookies = {"fs_token": "session-token"}

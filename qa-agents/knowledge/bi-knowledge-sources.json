@@ -1,0 +1,119 @@
+{
+  "schema_version": "bi-knowledge-sources/1.0",
+  "captured_at": "2026-08-11",
+  "sources": [
+    {
+      "id": "fxiaoke-help-bi",
+      "kind": "official_product_manual",
+      "location": "https://help.fxiaoke.com/5df3",
+      "access_status": "available",
+      "snapshot_ref": "knowledge/snapshots/fxiaoke-bi-manual-20260811.json",
+      "content_hash": "sha256:80be4b89e5fbdcad8980d0d573d335a69949d97702b7b33d84e1fedd94836161",
+      "scope": [
+        "overview",
+        "report",
+        "chart",
+        "joined_report",
+        "dashboard",
+        "bi_component",
+        "goal",
+        "subscription",
+        "permission",
+        "internationalization"
+      ]
+    },
+    {
+      "id": "fxiaoke-help-chart-create",
+      "kind": "official_product_manual",
+      "location": "https://help.fxiaoke.com/5df3/dfdb/ab25/39f6",
+      "access_status": "available",
+      "snapshot_ref": "knowledge/snapshots/fxiaoke-bi-manual-20260811.json#chart_create_path",
+      "content_hash": "sha256:80be4b89e5fbdcad8980d0d573d335a69949d97702b7b33d84e1fedd94836161",
+      "scope": ["chart_create", "chart_view"]
+    },
+    {
+      "id": "bi-product-whitepaper",
+      "kind": "official_product_whitepaper",
+      "location": "https://365.kdocs.cn/l/cfO2un8c7Mz6",
+      "access_status": "authentication_required",
+      "scope": ["product_boundary", "business_model"]
+    },
+    {
+      "id": "fs-bi-contract-c6b7853",
+      "kind": "frozen_api_contract",
+      "location": "fs-bi@c6b785344c6973b6d6fc5bb108c45b3971f36c64",
+      "access_status": "available",
+      "scope": ["stat_schema", "aggregate_metric", "calculated_metric", "custom_dimension", "detail_query"]
+    },
+    {
+      "id": "fs-bi-source",
+      "kind": "business_source_read_only",
+      "location": "git@git.firstshare.cn:bi/fs-bi.git",
+      "access_status": "available",
+      "scope": ["bi_backend"]
+    },
+    {
+      "id": "fs-bi-crm-report-source",
+      "kind": "business_source_read_only",
+      "location": "git@git.firstshare.cn:bi/fs-bi-crm-report.git",
+      "access_status": "available",
+      "scope": ["crm_report_backend"]
+    },
+    {
+      "id": "fs-bi-dev-platform-source",
+      "kind": "business_source_read_only",
+      "location": "git@git.firstshare.cn:bi/fs-bi-dev-platform.git",
+      "access_status": "available",
+      "scope": ["joined_report_backend"]
+    },
+    {
+      "id": "fs-bi-udf-report-source",
+      "kind": "business_source_read_only",
+      "location": "git@git.firstshare.cn:dataplatform/fs-bi-udf-report.git",
+      "access_status": "available",
+      "scope": ["udf_report_backend"]
+    },
+    {
+      "id": "fbi-source",
+      "kind": "business_source_read_only",
+      "location": "git@git.firstshare.cn:fe/fbi.git",
+      "access_status": "available",
+      "scope": ["bi_frontend"]
+    },
+    {
+      "id": "bi-sdk-source",
+      "kind": "business_source_read_only",
+      "location": "git@git.firstshare.cn:fe-bi/bi-sdk.git",
+      "access_status": "available",
+      "scope": ["bi_sdk_frontend"]
+    },
+    {
+      "id": "bi-xkcharts-source",
+      "kind": "business_source_read_only",
+      "location": "git@git.firstshare.cn:fe/bi-xkcharts.git",
+      "access_status": "available",
+      "scope": ["chart_frontend"]
+    },
+    {
+      "id": "fs-bi-warehouse-source",
+      "kind": "business_source_read_only",
+      "location": "git@git.firstshare.cn:bi/fs-bi-warehouse.git",
+      "access_status": "available",
+      "scope": ["bi_warehouse"]
+    },
+    {
+      "id": "environment-112",
+      "kind": "writable_test_environment",
+      "location": "config/environment.112.json",
+      "access_status": "available",
+      "scope": ["resource_create", "resource_query", "resource_cleanup"]
+    },
+    {
+      "id": "probe-result-filter-detail-112",
+      "kind": "verified_environment_probe",
+      "location": "tests/test_112_data_lifecycle.py",
+      "access_status": "available",
+      "scope": ["aggregate_metric_create", "detail_query", "aggregate_metric_cleanup"]
+    }
+  ]
+}

@@ -1145,18 +1145,43 @@ def build_a11_prepare_inputs(tmp_path: Path) -> tuple[dict, Path, Path]:
 def valid_a11_output(bundle: dict) -> dict:
     parents = bundle["allowed_inputs"]["parent_test_cases"]
     children = bundle["allowed_inputs"]["compiled_child_cases"]
+    unscoped = {
+        parent["id"]
+        for parent in parents
+        if len(set(parent.get("required_layers", []))) > 1
+        and len({child["layer"] for child in children if child["parent_case_id"] == parent["id"]}) > 1
+        and all(
+            child["expected"] == parent["expected"]
+            for child in children if child["parent_case_id"] == parent["id"]
+        )
+    }
+    issues = [
+        {
+            "id": f"A11-UNSCOPED-{index:03d}",
+            "issue_code": "CROSS_LAYER_RESPONSIBILITY_NOT_NARROWED",
+            "severity": "warning",
+            "category": "layer_boundary",
+            "message": "cross-layer responsibility is unchanged",
+            "path": "compiled_child_cases",
+            "route_to": "N25",
+            "case_id": parent_id,
+            "source_refs": [{"type": "parent_case", "id": parent_id}],
+            "recommendation": "narrow each child layer responsibility",
+        }
+        for index, parent_id in enumerate(sorted(unscoped), start=1)
+    ]
     return {
         "schema_version": bundle["output_contract"],
         "workflow_run_id": bundle["workflow_run_id"],
         "source_snapshot_id": bundle["source_snapshot_id"],
         "input_bundle_hash": bundle["bundle_hash"],
-        "status": "completed",
+        "status": "completed_with_gaps" if issues else "completed",
         "approved": True,
-        "issues": [],
+        "issues": issues,
         "parent_case_coverage": [
             {
                 "parent_case_id": parent["id"],
-                "status": "covered",
+                "status": "partial" if parent["id"] in unscoped else "covered",
                 "covered_child_ids": [
                     child["id"] for child in children if child["parent_case_id"] == parent["id"]
                 ],
@@ -1168,7 +1193,14 @@ def valid_a11_output(bundle: dict) -> dict:
         "layer_coverage": [
             {
                 "layer": layer,
-                "status": "covered",
+                "status": (
+                    "partial"
+                    if any(
+                        child["parent_case_id"] in unscoped
+                        for child in children if child["layer"] == layer
+                    )
+                    else "covered"
+                ),
                 "case_ids": [child["id"] for child in children if child["layer"] == layer],
                 "source_refs": [{"type": "layer", "id": layer}],
                 "rationale": "layer covered",
@@ -1281,7 +1313,7 @@ def test_prepare_and_ingest_multica_a11_input(tmp_path: Path) -> None:
     artifact = ingest_a11(bundle, valid_a11_output(bundle), tmp_path)
 
     assert artifact["artifact_id"] == "a11-split-coverage-review"
-    assert artifact["status"] == "completed"
+    assert artifact["status"] == "completed_with_gaps"
     assert artifact["payload"]["approved"] is True
     assert artifact["payload"]["input_bundle_hash"] == bundle["bundle_hash"]
     assert artifact["producer"]["component_id"] == "A11"
@@ -1301,7 +1333,7 @@ def test_ingest_a11_rejects_approval_mismatch_with_blocking_issue(tmp_path: Path
     bundle, _, _ = build_a11_prepare_inputs(tmp_path)
     output = valid_a11_output(bundle)
     children = bundle["allowed_inputs"]["compiled_child_cases"]
-    output["issues"] = [
+    output["issues"].append(
         {
             "id": "A11-001",
             "issue_code": "A11-COVERAGE-GAP",
@@ -1314,7 +1346,7 @@ def test_ingest_a11_rejects_approval_mismatch_with_blocking_issue(tmp_path: Path
             "source_refs": [{"type": "compiled_case", "id": children[0]["id"]}],
             "recommendation": "补充用例",
         }
-    ]
+    )
 
     with pytest.raises(ContractError, match="approval does not match"):
         ingest_a11(bundle, output, tmp_path)
@@ -1347,4 +1379,32 @@ def test_ingest_a11_rejects_child_oracle_set_change(tmp_path: Path) -> None:
     output = valid_a11_output(bundle)
 
     with pytest.raises(ContractError, match="changed the Oracle set"):
+        ingest_a11(bundle, output, tmp_path)
+
+
+def test_ingest_a11_rejects_unreported_cross_layer_duplicate(tmp_path: Path) -> None:
+    bundle, _, _ = build_a11_prepare_inputs(tmp_path)
+    bundle_path = tmp_path / "a11-inputs" / "a11-input.json"
+    parent = bundle["allowed_inputs"]["parent_test_cases"][0]
+    child = next(
+        item for item in bundle["allowed_inputs"]["compiled_child_cases"]
+        if item["parent_case_id"] == parent["id"]
+    )
+    parent["required_layers"] = ["backend", "contract"]
+    child["layer"] = "backend"
+    bundle["allowed_inputs"]["compiled_child_cases"].append(
+        {**child, "id": f"{parent['id']}-CONTRACT", "layer": "contract"}
+    )
+    bundle["bundle_hash"] = content_hash(
+        {key: value for key, value in bundle.items() if key != "bundle_hash"}
+    )
+    write_json(bundle_path, bundle)
+
+    output = valid_a11_output(bundle)
+    output["issues"] = []
+    output["status"] = "completed"
+    for item in output["parent_case_coverage"]:
+        if item["parent_case_id"] == parent["id"]:
+            item["status"] = "covered"
+    with pytest.raises(ContractError, match="unscoped cross-layer responsibilities"):
         ingest_a11(bundle, output, tmp_path)

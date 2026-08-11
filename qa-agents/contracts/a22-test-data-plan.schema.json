@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "test-data-plan/1.0",
+  "title": "A22 Test Data Plan",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "environment",
+    "namespace",
+    "case_plans",
+    "paused_cases",
+    "unresolved_requirements"
+  ],
+  "properties": {
+    "schema_version": {"const": "test-data-plan/1.0"},
+    "environment": {"const": "112"},
+    "namespace": {"type": "string", "pattern": "^qa-[a-z0-9][a-z0-9-]{5,80}$"},
+    "case_plans": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["case_id", "requires_data_construction", "resources"],
+        "properties": {
+          "case_id": {"type": "string", "minLength": 1},
+          "requires_data_construction": {"type": "boolean"},
+          "resources": {"type": "array"}
+        },
+        "additionalProperties": true
+      }
+    },
+    "paused_cases": {"type": "array"},
+    "unresolved_requirements": {"type": "array"}
+    ,"planning_mode": {"enum": ["case_explicit", "autonomous", "skipped_by_policy"]}
+    ,"policy_reason": {"type": "string"}
+    ,"existing_data_case_ids": {"type": "array", "items": {"type": "string"}}
+    ,"executable_case_ids": {"type": "array", "items": {"type": "string"}}
+    ,"deferred_cases": {"type": "array"}
+  },
+  "additionalProperties": false
+}

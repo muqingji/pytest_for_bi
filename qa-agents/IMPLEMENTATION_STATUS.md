@@ -1,6 +1,6 @@
 # Implementation Status
 
-更新时间：2026-08-11（A11/N26/N15 真实闭环，N07/N16 执行门禁已实现）
+更新时间：2026-08-11（独立置信运行已过 G01/N24/A08/A09/N04 双轮修正，N04 预算耗尽升级 human）
 
 | 范围 | 状态 | 说明 |
 | --- | --- | --- |
@@ -11,31 +11,82 @@
 | A02-A06 本地 Profile | 已实现保守基线 | 支持真实冻结材料；用于离线骨架与降级验证 |
 | A02/A03/A05 Multica | 真实试点已通过 | Codex Runtime；真实冻结数据、消息审计、契约及来源绑定均通过 |
 | A06 Multica | 后端真实试点已通过 | 最终 Artifact 为 `needs_human`；11 个对齐问题应进入 G01；A04 前端输入待接入 |
-| G01 生产审核 Gate | 真实试点已批准 | 23 个问题均由 QA Owner 签署；请求与决策哈希、A06 哈希绑定有效；仅限测试设计试点，无生产发布权限 |
+| G01 生产审核 Gate | 适配器已实跑；置信运行已签署放行 | `pilot-001` 的 23 项旧审批保留。置信运行 QAA-32 已由 QA Owner `muqj11262` 结构化评论签署 `approved`（request `90b67080...` / decision `8f0393d7...` / outcome `d91f9bc2...`），`policy_scope=pilot_test_design_only`，无生产发布权限；Issue 状态不能单独批准 |
 | G02 Multica 审核控制 | 真实放行完成 | QAA-24 由 QA Owner `muqj11262` 置 `done`，线上确认 `decision=approved`、`next_node=N25`；请求/决策/结果与 A08/A09/N04 上游哈希绑定有效；恢复点在 N25（仅测试设计试点，无生产发布权限） |
 | N24/A07 | 真实 N24 已完成 | 风险为 `critical`，必测 `backend/contract/e2e`；规则优先，未知项才调用 A07 |
 | A08/A09/N04/G02 | 人工恢复已闭环 | QAA-21 A08 v1.3.0 入库 `multica-stage10`（13 个父 Case）；QAA-23 A09 通过入库 `multica-stage11`；N04 `correction_attempt=3`、`valid=true`、`next_node=G02`（`multica-stage12`）；G02 QAA-24 放行至 N25 |
-| QA 人工修正恢复 | 代码与协议已实现；试点恢复待重跑 | 已实现请求/决定/结果、Multica Issue、身份与哈希绑定、A08 v1.3.0 人工恢复输入和不重置预算规则；QAA-19 已 `done/authorized`；QAA-20 因缺绑定字段、附件交付和工具轨迹违规被拒，不得入库 |
+| QA 人工修正恢复 | 真实闭环 | QAA-19 `done/authorized`；QAA-20 因契约和工具轨迹违规被拒；QAA-21 合法恢复后重新经过 A09/N04/G02，不重置自动预算 |
 | N25/A11/N26/A12/N15 | 真实闭环 | 主链 N25（stage13）→ A11（stage14，QAA-26 已入库）→ N26（stage15，无 unresolved）→ N15（stage16，3 generate_new + 11 manual_run）全部真实跑通；A12 建议折叠规则与测试就绪；N25 按 `expected[].layers` 注解做确定性分层收窄 `stage_two_nodes.py` 实现 N25/N26/N15 内容寻址驱动与绑定校验；`multica.py` 实现 A11/A12 Profile/输入准备/语义校验；A12 已实现：N26 策略强制/跳过/影响置信度规则、A12 建议折叠（只能扩大或升级、不得缩小或降级强制 Case）；CLI 与 Makefile 新增命令 |
 | A14/A18-BE/N05/N06/G03 | 已实现后端参考切片 | Artifact-only pytest 候选、独立审查、安全检查、精确回流和人工 Gate |
+| N29 候选落盘 | 已实现参考版 | 仅在工作流 Artifact 输出目录落地 hash 绑定候选；`mr_disposition=not_requested`；禁止业务仓写入与外部 landing root |
+| N08 受控环境 Runner | 已实现参考版 | `local_process_reference` 仍拒绝网络/Secret；注册环境类（如 `staging_112`/`112`）可走 `controlled_env_reference`，仍非生产隔离，Secret 仅按 env 名从宿主注入且不入 Artifact |
+| A19/N18/Flaky | 已实现参考版 | A19 本地保守归因；N18 读取 N08 coverage_summary；`flaky-quarantine/1.0` 计入覆盖缺口，P0/P1 或高风险隔离阻塞发布 |
+| 单元测试生成策略 | 已暂停 | `test_level=unit` 在 N15 以 `paused_existing_developer_unit_coverage` 跳过；A14 仅生成服务端 API、集成和功能测试 |
+| A22/N28/N27 自主测试数据构造 | 已实现首个 112 纵向切片 | A22 从 Case 语义输出 `test-data-intent/1.0`；N28 用可追溯 BI 能力目录生成资源 DAG；N27 允许 setup/cleanup 写入并强制 namespace、操作配对、资源 ID、只读 readiness 和 Secret 边界 |
+| 112 数据生命周期执行 | 真实通过 | `CASE-FUNC-RESULT-FILTER-DETAIL-112` 创建带结果集筛选的隔离指标、回查、调用真实查看明细接口断言 `s307011535` 和动态指标名、finally 删除；独立回查无 namespace 残留 |
+| 可追溯 fs-bi 契约 | 已冻结 | OpenAPI `info.version` 和 `x-contract-source.ref` 固定为 MR commit `c6b785344c6973b6d6fc5bb108c45b3971f36c64`，165 个真实 gateway 路由，生成器测试通过 |
 | Oracle 离线评估 | 已实现参考版 | 路由、事实、对齐、开放问题、Gate 决策和测试义务；确定性规则、一对一义务匹配、文本/HTML 报告 |
-| Multica 试点空间 | 已配置基础资源 | 独立 Workspace、Project、私有 Squad、组长和 A02/A03/A05/A06/A08/A09；无仓库绑定；A02/A03/A05/A06 已从离线 Runtime `6fa59d79` 重绑到在线 `5a1ecc9c` |
-| Multica 生产编排 | 部分实现 | Stage 1→A06→G01→N24→A08→A09→N04→A08→A09→N04→人工节点→A08(v1.3.0)→A09→N04(valid)→G02(approved) 已真实跑通；恢复点 N25；N25/A11/N26/N15 驱动就绪，A11 真实审核待跑；全流程触发器仍待完成 |
+| Multica 试点空间 | 已配置基础资源 | 独立 Workspace、Project、私有 Squad、组长及 A02/A03/A05/A06/A08/A09/A11；无仓库绑定；A11 于 2026-08-11 从离线 `6fa59d79` 重绑到在线 `5a1ecc9c` |
+| 需求工作流中心 | 已实现并真实同步 | 一需求一稳定父卡、一触发一 Run；QAA-1 展示 35 个节点、5/35 和唯一 G01 人工事项。QAA-1=`in_review`、内部 Run QAA-27=`in_progress`、人工 Gate QAA-32=`in_review`；Run 与 Gate 使用不同状态映射，避免 Multica stage 自动推进误把 Gate 置为 done。Projection 内容寻址并同步状态、正文、Autopilot 审计、metadata、自定义属性、节点分类及历史 Run 结论 |
+| Multica 生产编排 | 部分实现 | 已创建并实跑一需求一 Autopilot `8f26a3bf...`；失效 Claude Runtime 的首次运行 401 被保留，切换在线 Codex Runtime 后连续两次完成只读对账。Stage 1→A06→G01 和旧试点 Stage 2/质量尾链均有真实证据；原生事件触发器及外部系统 Adapter 仍待接入 |
 | 结构化模型 Runtime | 已实现契约，默认关闭 | 固定 Provider/模型/Prompt、无工具、无留存、凭证和输出契约检查；待 Multica 生产绑定 |
 | fs-qa-knowledge Provider | 消费端完成，上游阻塞 | 冻结版本缺少 capability manifest，且强制 `upload2fs`；状态为 `incompatible`，禁止进入 A08 |
 | A13/A15/A16/A17-*/A18-* 自动化链路 | 已实现本地参考 Profile | 前端 Playwright、契约、E2E 与六个非功能专项的 artifact-only 生成和独立审查 Profile；共享生成/审查引擎 + 版本化 Profile，策略按层路由候选根目录与框架白名单；N05/G03 多 Manifest 汇合 |
 | A01 歧义路由建议 Profile | 已实现 | N00 注册 5 个确定性模板，仅未知模式/触发不匹配时调用 A01 建议，N00 校验后生效；建议不能自行创建或执行流程 |
 | N07/N16 环境与数据门禁 | 已实现 | 确定性节点 + 15 项测试：N07 环境指纹、8 类检查、指纹节流、失败即 blocked 路由 N16；N16 幂等键/无状态变化拒绝/未覆盖失败项拒绝/补偿清理；CLI 与 Makefile 命令就绪 |
-| N08-N12/N17-N23 执行与门禁 | 未实现 | 按阶段 3-5 建设 |
+| N08 自动化执行 | 已实现参考切片 | 认证 N07/A18/N05 producer/contract，绑定 generation/manifest/candidate 哈希；当前策略拒绝网络和 Secret，无 shell 分片执行，JUnit/日志/超时证据入库；本地 Runner 非生产隔离，生产 Adapter 待接入 |
+| N09-N12/N17-N23 归因与门禁 | 已实现确定性参考链并实跑 | N10 重试预算、N17 人工结果汇合、N18 信号、N09 证据/指纹聚类、N20 缺陷去重、N11 决策、N12 JSON/Markdown/HTML 报告及 N13/N19/N23 审计已实现；缺人工结果或自动化证据时严格输出 `inconclusive`，生产发布/MR/Bug 写入 Adapter 仍未接入 |
+| 服务端全链实跑 | 已到最终报告；无待执行项 | `multica-pilot-001` 历史尾链为 `inconclusive/pending`：可执行 1、实际执行 1、延期 13、pending 0。CASE-BE-002-BACKEND 的四类指标错误码和实际名称已在 112 复跑，但精确中英文文案及移除筛选后的正常响应未完整覆盖，因此结果为 blocked，不伪装为通过 |
 
-本地保守 Profile 可以通过显式开发审批开关模拟运行到 G03；这不是生产审批，也不是当前
-真实 Multica 链路的状态。真实试点已完成 G01 与 N24，也完成一轮 A08 自动修正和 A09
-复审；第二轮 N04 因仍有 3 个阻塞问题且修正预算达到 2/2，升级到 QA 人工修正。QAA-19
-已授权，但 QAA-20 人工恢复候选被契约与工具轨迹门禁拒绝，主链仍停在 A08 恢复重跑前，
-G02 仍未启动。历史本地模拟中 24 条 Case 因 Oracle 需要人工确认而全部路由为
-`manual_run`，不能
-作为发布放行结论。完整离线评估仍暴露 A02/A06/A08/A09 的语义差距，下一阶段应先提升这些
-核心能力，不扩展无真实闭环支撑的新 Agent。
+### 2026-08-11 晚间更新（候选落盘 / 受控 Runner / 质量尾链增强）
+
+- N29 `land-automation-candidates`：在 A18 批准且 N05 通过后，将候选物化到运行目录下的
+  `automation-workspace/`，输出内容寻址 `n29-candidate-landing` 与 receipt；默认不创建 MR。
+- N08 增加 `controlled_env_reference`：仅当执行策略 `controlled_environment` 与 N07
+  `environment_class` 同时授权时允许网络和 Secret env 名；生产 / production_isolation 强制拒绝。
+- 质量尾链增强：A19 本地保守失败归因；N18 汇总 shard coverage；Flaky 隔离清单使关键 Case
+  隔离时 N11 直接 `blocked`。
+- CLI：`land-automation-candidates`、`run-server-quality --flaky-quarantine`；Makefile
+  `land-automation-candidates-pilot`。
+- 全量回归：`pytest tests -q` → `270 passed`。
+
+### 2026-08-11 112 数据构造 Agent 与真实集成执行
+
+- A14 收窄为服务端 API/集成/功能生成；显式 unit Case 不再进入生成 Agent。
+- 新增 A22 `TestDataPlannerAgent`、`test-data-plan/1.0`、N27 校验、
+  `policies/test-data-policy.json` 和 `prepare-test-data` CLI。
+- 新增自主路径：A22 数据意图、N28 确定性 DAG 编译、官方资料/代码/契约/112 探针来源清单
+  和 BI 能力目录。Case 不再需要手写 setup/cleanup；旧显式资源计划只作为兼容输入。
+- 数据计划不是全只读：A22 只生成计划，Runner 被明确授权在 112 的 setup/cleanup 阶段
+  创建和删除隔离测试资源；readiness 仅做只读回查。
+- `CaseRunner.execute` 支持 setup/readiness/test/finally cleanup；失败时仍回收，证据只记录操作、
+  状态、HTTP 状态和响应哈希，不落 Secret 或完整响应。
+- 112 真实执行 `CASE-FUNC-RESULT-FILTER-DETAIL-112`：隔离指标创建和回查成功；真实查看明细
+  返回 `s307011535` 且包含 namespace 指标名；删除返回成功，独立字段回查确认无残留。
+- `CASE-AUTO-RESULT-FILTER-DETAIL-112` 仅提供结果集筛选数据意图和测试步骤，由能力目录自动
+  补齐聚合指标创建、回查及清理。14 个真实 N25 Case 的规划审计解析 1 个聚合指标部分，其他
+  未支持数据集进入 `capability_adapter_backlog`，不生成用户人工链路填写任务。
+- 当前数据写白名单先覆盖 fs-bi 主题、聚合指标、计算指标和自定义维度的成对接口。对象/字段、
+  报表、统计图、拼表、交叉表、驾驶舱、目标和首页布局允许在 112 构造，但对应 Adapter 仍需
+  找到并冻结创建/删除契约后才能自动执行。
+
+本地保守 Profile 可以通过显式开发审批开关模拟运行到 G03；这不是生产审批。真实试点已经
+完成 G01、人工恢复、G02 和阶段二 N15，并已用明确标识的本地 reference 环境把服务端尾链
+运行到最终报告。该运行不是 staging 或生产隔离，不能作为发布放行结论。完整离线评估仍暴露
+A02/A06/A08/A09 的语义差距；生产隔离 Runner、真实环境/人工执行证据及外部发布 Adapter
+仍是阻塞项。
+
+新的 `multica-confidence-20260811-01` 与旧试点独立：A02/A03/A05/A06 已验收；QAA-32 绑定
+`g01-comment-table/1.0` 并由 QA Owner 结构化签署 `approved` 后，N24 → A08 → A09 → N04
+自动修正回流已真实推进到 `correction_attempt=2/2`。当前 N04 `valid=false`、`next_node=human`
+（3 个阻塞），G02 对本置信运行尚未打开。`sync-g01-multica` 对无评论、部分填写、非授权成员、
+旧请求哈希和仅状态变更全部 fail-closed。
+
+Multica 日常视图已拆成两个项目：`QA 需求工作流中心` 只保留需求级父卡，
+`QA 内部执行与审计` 保留 31 张运行、节点、人工 Gate 与历史审计卡。需求父卡通过
+`qa_item_type=workflow` 筛选；“我的待处理”再叠加字符串 metadata `qa_action_required=true`
+（或自定义属性 `需要我处理=true`）。Multica CLI 的 StringSlice/JSON 双层解析要求将后者写成
+`--metadata '"qa_action_required=""true"""'`。内部卡不能进入这两个用户视图。
 
 G02 的试点审批身份已经按当前 QA Owner 决策固定为 `muqj11262 / qa_owner`。该配置只有在
 新人工修正版重新通过 A09 和 N04、且 N04 输出 `valid=true` 后才生效；它不能批准当前无效
@@ -48,22 +99,13 @@ G02 不建设独立审批页面，Multica Issue 是审核状态源。进入 Gate
 CLI 没有 Issue 状态 webhook，参考实现通过确定性轮询 Adapter 同步；原生 webhook 可用后只
 替换触发 Adapter。
 
-预算耗尽后的人工修正恢复也使用 Multica Issue。真实 `pilot-001` 已创建 QAA-19，绑定 3 个
-阻塞错误和 1 个警告的四条修正指令；QA Owner 已将其改为 `done`，系统生成并保留
-A08 v1.3.0 `human_directed` 修正输入。修正轮次记为 3，自动预算仍保持 2，不发生静默重置。
-QAA-20 是第一次人工恢复 Multica 运行：本地 workdir 虽有 13 个 Case 的语义修正稿，但输出
-缺少 `schema_version/workflow_run_id/source_snapshot_id/input_bundle_hash/status` 绑定字段，
-且以附件/状态副作用交付而非最终 text JSON，工具轨迹也超出只读边界，因此被记录为
-`rejected_by_contract_and_tool_trace_gate`，不得进入主链。A08 Multica 指令已发布为加固版 v1.3.0；下一步以同一授权输入重跑 A08，随后强制 A09/N04。
+预算耗尽后的人工修正恢复也使用 Multica Issue。真实 `pilot-001` 的 QAA-19 授权后，QAA-20
+因契约和工具轨迹违规被拒收；QAA-21 的 A08 v1.3.0 合法恢复已入库，并重新经过 QAA-23
+A09、N04 和 QAA-24 G02 后进入 N25。自动预算始终保持 2，没有静默重置。
 
-Multica 真实链路的 A02、A03、A05、A06、A08 和 A09 均保留完整消息审计。G01 的 23 个
-问题已由 QA Owner 逐项确认，N24 输出 critical 风险策略。第一轮 A09/N04 阻断了缺少正式
-Oracle 字段、不可执行负向断言和覆盖缺口；QAA-11 修正后，QAA-13 复审将问题收敛为结果集
-筛选的中英文指标名参数配对、不可解析的期望引用、无键本地化集合匹配和复合 Oracle 来源
-范围四项。第二轮 N04 当前明确 `next_node=human`、`g02_status=not_started`，不得继续自动
-回流或进入 G02。动态关联继续遵循冻结规则：所有 what/what-list 均属于动态关联，不采用
-A09 第一轮提出的工单主题限制。QAA-12 仅作为 A08 v1.2.1 协议影子候选保留，不替换主链
-已经验收的 QAA-11 Artifact。
+Multica 真实链路的 A02、A03、A05、A06、A08 和 A09 均保留完整消息审计。旧试点 G01 的
+23 个问题已由 QA Owner 逐项确认，N24 输出 critical 风险策略；后续人工恢复、G02 和阶段二
+已闭环。QAA-12 仍仅作为 A08 v1.2.1 协议影子候选保留，不替换主链 Artifact。
 
 
 ### 2026-08-10 人工恢复实跑更新
@@ -131,9 +173,7 @@ A09 第一轮提出的工单主题限制。QAA-12 仅作为 A08 v1.2.1 协议影
   绑定/继承一致性标志，去掉重复的 test_data/steps/cleanup/oracle 大字段），磁盘降至约
   57KB；A11 指令明确最终 JSON ≤ 10KB、rationale ≤ 60 字、只输出真实问题。新增
   `test_a11_input_is_compact_review_scope`。
-- 当前进展：QAA-26 携带紧凑输入的真实 A11 审核运行中；完成后 `ingest-multica` 入库
-  `multica-stage14`，再 `make run-n26-after-a11-pilot`（stage15）与
-  `make run-n15-after-n26-pilot`（stage16）。
+- 后续结果见下一节：QAA-26 已完成并入库，N26/N15 已闭环。
 
 
 ### 2026-08-11 更新（A11/N26/N15 真实闭环与 N07/N16 执行门禁）
@@ -156,3 +196,71 @@ A09 第一轮提出的工单主题限制。QAA-12 仅作为 A08 v1.2.1 协议影
   `run-n07-env-precheck-pilot`/`run-n16-env-fix-pilot`；`tests/test_env_precheck.py`
   15 项覆盖正/负向（含节流、无状态变化拒绝、未覆盖失败项、CLI 端到端）。
 - 全量回归：`pytest tests -q` → `181 passed`（上轮 163 + N25 3 项 + N07/N16 15 项）。
+
+### 2026-08-11 更新（N08、审计恢复与 Multica 影子复跑）
+
+- 从 QAA-26 真实消息流重建 stage13-16，哈希逐项匹配 `e8505b16…`、`b6e37ba3…`、
+  `64bd7dcb…`、`89764afd…`；修复运行清单仍停 G02 的问题，并为 N25/N26/N15 增加原子
+  checkpoint 更新。
+- N08 已实现：认证 N07/A18/N05 producer 与 payload contract，并绑定
+  generation/manifest/candidate 哈希；无 shell 并行分片，
+  最小环境、超时、脱敏日志、JUnit 校验与原始证据持久化，业务失败进入 N09，基础设施失败
+  进入 N10。当前 `local_process_reference` 明确不是生产隔离，且拒绝网络与 Secret。
+- A18/N05 增加内容绑定；修复空 `secrets: []` 被脱敏破坏类型及 Envelope Schema 缺少
+  `blocked`。新增 N08 和安全/语义回归测试。
+- A11 从离线 `6fa59d79` 重绑在线 `5a1ecc9c` 后实跑 task
+  `2cdb00fd-c20d-482c-a626-9d62a2b1c611`，2 分 05 秒完成。影子输出漏报
+  `CASE-CT-005` 跨层责任未收窄；新增确定性 A11 门禁后拒收，未覆盖主链 Artifact。
+- 全量回归：`pytest tests -q` → `197 passed`。
+
+### 2026-08-11 独立 Multica 置信实跑
+
+- 建立 `multica-confidence-20260811-01`（父 Issue QAA-27），从冻结输入重新运行
+  A02/A03/A05。A02 首次接受；A03 首次因 `input_bundle_hash=null` 被契约门禁拒绝；A05
+  首次因 comment/metadata、写文件工具和 comment 交付被权限门禁拒绝。
+- A03/A05 指令加固并发布 v1.1.1 后，第二次 Task 均正式 ingest 通过。接受 Artifact 哈希：
+  A02 `b6ca118b...`、A03 `366c185c...`、A05 `03e7cfe7...`。
+- A06 在 QAA-31 真实运行并通过完整消息审计和 ingest，Artifact `6da70bda...`，状态
+  `needs_human`，9 个 finding。新 G01 请求含 15 项，request hash `90b67080...`。
+- **G01 已签署放行**：QAA-32 由 QA Owner `muqj11262` 提交结构化评论（含 request/policy 哈希、
+  15 项 disposition/rationale/owner 与冻结 `test_rules`），decision
+  `sha256:8f0393d7b10ea5aa84499dd3ee6b270ee6136bdfc0b0a0594b2a64c1fbbb8997`，outcome
+  `sha256:d91f9bc2e30094ab38b29bea7ce5ab1691f31c5ce709cb754f2de22d1b0999d1`，
+  `next_node=N24`，`policy_scope=pilot_test_design_only`（无生产发布权限）。产品口径冻结要点：
+  多限制任意一条提示；多指标展示全部名称；文案跨端点一致且不写“统计图”；仅四类不支持场景；
+  中英文案冻结；错误码平台证据、稳定动态关联 ID、空字段加固本轮延后。
+- **N24 已完成**（`multica-stage3`）：`sha256:052204851f780c290abdf204902b4c6e3aa232bfb75af8e16610f2f24c04b703`，
+  `risk_level=critical`，`required_layers=[backend, contract, e2e]`。
+- **A08/A09/N04 自动修正主链**（自动预算 max=2，不复用 `pilot-001` 审批/恢复）：
+  - A08 first-pass QAA-33：多次契约拒收后指令加固 `a08-v1.1.1`（`allowed_modes`、
+    `test_data` 对象、oracle `type`+`source_ref`），最终接受
+    `sha256:c1ae5fc90a065287d33899695cfc715d9d470e65e3caffa0fe6f8c07f7fff6aa`（7 父 Case）→
+    `multica-stage4`。
+  - A09 QAA-34：`needs_human`，4 blocking，`sha256:3834bbdf...` → `multica-stage5`。
+  - N04 stage6：`valid=false`，`next=A08`，attempt **0/2**，blocking=4，
+    `sha256:7acdd7c135f71695aeb6daca461c3e955e632ed23c869fde027ad6f8ed4a3297`。
+  - A08 corr#1 QAA-35：缺 top-level `status` 拒收后指令 `a08-v1.2.1`；接受
+    `sha256:fab2c2fcefd11c2b8381ec48c1f1d87de598b0467165d819726f16e16063dfb0` →
+    `multica-stage7`。
+  - A09 QAA-36：5 blocking，`sha256:cda51041...` → `multica-stage8`。
+  - N04 stage9：`valid=false`，`next=A08`，attempt **1/2**，blocking=5，
+    `sha256:0295cdb360773cea97553b5df8f0941b71578d250987ff8b03f1f1929dc56186`。
+  - A08 corr#2 QAA-37：`correction_resolutions` 必须**恰好**覆盖当前 A09 反馈 id
+    （005–009，不得混入旧 001–004）；接受
+    `sha256:bccd074cc7e88b5752124c2ad5bd6dbb2bb125994f5e96be9c10a9ff50604fa2` →
+    `multica-stage10`。
+  - A09 QAA-38：接受 `sha256:7885579dab8e6de90fe7bad6c69c7c22c0e5f9966b1fdfc142c45334f6d07b76`
+    → `multica-stage11`（剩余 A09-ISSUE-010/011/012）。
+  - N04 stage12：**预算耗尽** `valid=false`，`next_node=human`，attempt **2/2**，blocking=3，
+    `sha256:c61f8f1aa7de5de5eada2034f408a286b47c9859c2a6f7c688656519737c85e3`。
+- **当前边界（本置信运行）**：停在人工修正升级路径，**未**打开本运行的 G02，也**未**进入
+  N25。不得把 `pilot-001` 已闭环的 G02/N25 尾链冒充为本运行进度。剩余阻塞语义：
+  PC-002 四类指标实际名称 Oracle 不全、PC-003-E02 多关联成功路径与冻结“>3 不支持”冲突、
+  PC-004-E02 动态关联成功路径与冻结“What/WhatList 均不支持明细”冲突。
+- **下一步**：准备 human correction Issue（展示最新 A08/A09/N04 哈希与 3 个阻塞），授权后
+  生成人工定向 A08 恢复输入 → 再经 A09/N04；仅当 N04 `valid=true` 才可打开本运行 G02。
+- 审计清单位于 `runs/confidence-20260811-01/audit-summary.json` 与 `audit-summary.md`。
+- 已清理 Multica 历史看板状态；人工 Gate 仍以独立决策契约为准，Issue 列状态不能单独作为
+  放行证据。`sync-multica-issue-card` 仅在正式 Artifact/运行/输入哈希/工具审计一致时置
+  Agent 卡 `done`。
+- 全量回归基线：`pytest tests -q` → `200 passed`（本轮文档同步不改代码）。

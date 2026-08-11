@@ -484,6 +484,9 @@ def test_n26_rejects_non_approved_a11_review(tmp_path: Path) -> None:
 
 def test_n15_compiles_execution_plan_after_n26(tmp_path: Path) -> None:
     stage = tmp_path / "stage13"
+    run_manifest_path = write_json(
+        tmp_path / "multica-run-manifest.json", {"workflow_run_id": RUN_ID}
+    )
     design = write_a08_artifact(stage)
     request = g02_request(design)
     outcome = g02_outcome(request)
@@ -492,6 +495,7 @@ def test_n15_compiles_execution_plan_after_n26(tmp_path: Path) -> None:
         write_json(tmp_path / "g02" / "g02-review-request.json", request),
         write_json(tmp_path / "g02" / "g02-review-outcome.json", outcome),
         stage,
+        run_manifest_path=run_manifest_path,
     )
     compiled = json.loads(
         (stage / "artifacts" / "n25-compiled-test-cases.json").read_text(encoding="utf-8")
@@ -508,6 +512,7 @@ def test_n15_compiles_execution_plan_after_n26(tmp_path: Path) -> None:
         review_path,
         bundle_path,
         tmp_path / "stage15",
+        run_manifest_path=run_manifest_path,
     )
     selection = json.loads(
         (tmp_path / "stage15" / "artifacts" / "n26-test-selection.json").read_text(
@@ -519,6 +524,7 @@ def test_n15_compiles_execution_plan_after_n26(tmp_path: Path) -> None:
         tmp_path / "stage15" / "artifacts" / "n26-test-selection.json",
         stage / "artifacts" / "n25-compiled-test-cases.json",
         tmp_path / "stage16",
+        run_manifest_path=run_manifest_path,
     )
 
     assert artifact["artifact_id"] == "n15-execution-plan"
@@ -526,3 +532,11 @@ def test_n15_compiles_execution_plan_after_n26(tmp_path: Path) -> None:
     actions = {item["case_id"]: item["action"] for item in artifact["payload"]["actions"]}
     assert set(actions) == {"CASE-001-BACKEND", "CASE-001-CONTRACT", "CASE-002-E2E"}
     assert all(action == "generate_new" for action in actions.values())
+    checkpoint = json.loads(run_manifest_path.read_text(encoding="utf-8"))
+    assert checkpoint["current_node"] == "N15"
+    assert checkpoint["stage_two"]["status"] == "completed"
+    assert checkpoint["stage_two"]["next_node"] == "N07"
+    assert checkpoint["stage_two"]["n25"]["child_count"] == 3
+    assert checkpoint["stage_two"]["a11"]["approved"] is True
+    assert checkpoint["stage_two"]["n26"]["unresolved_count"] == 0
+    assert checkpoint["stage_two"]["n15"]["action_counts"]["generate_new"] == 3

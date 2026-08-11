@@ -1,0 +1,168 @@
+{
+  "schema_version": "bi-data-capability-catalog/1.0",
+  "environment_profiles": {
+    "112-region-test-schema": {
+      "environment": "112",
+      "variables": {
+        "schema_id": "BI_e672ff1046fb773b76bc2b56",
+        "schema_object": "object_fwtes__c",
+        "schema_display_name": "区域测试",
+        "schema_join_field": "BI_3162840e81468715b0ec6b5aea414582",
+        "amount_db_field": "field_shS2y__c",
+        "amount_field_id": "BI_d9d45d8381de9e094fe1973acf408d92",
+        "date_db_field": "field_3913t__c",
+        "date_field_id": "BI_9b4d74a9fd193cc9b75e51db2dc2c67f"
+      },
+      "evidence_refs": ["environment-112", "probe-result-filter-detail-112"]
+    }
+  },
+  "recipes": [
+    {
+      "id": "aggregate-metric-result-set-filter",
+      "version": "1.0.0",
+      "environment_profile": "112-region-test-schema",
+      "match": {
+        "datasets": ["result_filter_metric", "result_set_metric_types"],
+        "data_intents": ["metric.result_set_filter.detail_unsupported"],
+        "all_term_groups": [
+          ["结果集筛选", "结果集数据范围", "result set filter"],
+          ["查看明细", "detail query", "details view"]
+        ]
+      },
+      "supported_variants": ["聚合指标", "aggregate_metric"],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "result_set_filter_enabled": true,
+            "detail_query": "unsupported_with_metric_name"
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-result-filter-metric"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "result_filter_metric",
+          "resource_type": "aggregate_metric",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "setup": {
+            "name": "创建带结果集数据范围的隔离指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ namespace }}-result-filter-metric",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "金额",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "日期",
+                  "fieldType": "Date",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [
+                  {
+                    "filters": [
+                      {
+                        "displayNumber": 1,
+                        "fieldId": "{{ amount_field_id }}",
+                        "fieldID": "{{ amount_field_id }}",
+                        "operator": 1,
+                        "operatorLabel": "等于",
+                        "value1": "0",
+                        "value2": "",
+                        "dbFieldName": "{{ amount_db_field }}",
+                        "dbObjName": "{{ schema_object }}",
+                        "fieldName": "金额",
+                        "fieldType": "Number",
+                        "aggDimType": "base_agg",
+                        "filterConfig": {
+                          "showAppointLevelSwitch": 0,
+                          "switchStatus": 0,
+                          "filterGroupType": 1,
+                          "aggrType": "2",
+                          "ratioType": "0"
+                        }
+                      }
+                    ]
+                  }
+                ],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {"metric_field_id": "Value.fieldId"},
+            "expect": {
+              "status_code": 200,
+              "json_path": {"Result.FailureCode": 0}
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查指标已创建并可用于功能测试",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "json_path": {
+                  "Result.FailureCode": 0,
+                  "Value.fieldId": "{{ metric_field_id }}"
+                }
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除本次运行创建的隔离指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0,
+                "Value.resultCode": "0"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

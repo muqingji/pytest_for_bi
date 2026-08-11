@@ -149,5 +149,5 @@ def test_manual_oracle_is_not_generated_as_automation() -> None:
         context(), {"cases": [case], "target": target()}, SecurityPolicy()
     )
     assert generation.status == ArtifactStatus.NOT_APPLICABLE
-    assert generation.reason_code == "no_machine_executable_backend_case"
+    assert generation.reason_code == "no_machine_executable_integration_or_functional_case"
     assert generation.payload["manifest"] is None

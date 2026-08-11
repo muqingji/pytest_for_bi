@@ -1,0 +1,37 @@
+{
+  "schema_version": "test-data-policy/1.0",
+  "allowed_environments": ["112"],
+  "phase_permissions": {
+    "setup": "write",
+    "readiness": "read_only",
+    "cleanup": "write"
+  },
+  "resource_types": [
+    "crm_object",
+    "crm_field",
+    "stat_schema",
+    "aggregate_metric",
+    "calculated_metric",
+    "report",
+    "stat_chart",
+    "joined_report",
+    "pivot_table",
+    "dashboard",
+    "goal",
+    "home_layout",
+    "custom_dimension"
+  ],
+  "operation_pairs": {
+    "fs_bi_stat.stat_schema.add_new_schema": "fs_bi_stat.stat_schema.delete_schema",
+    "fs_bi_stat.agg_rule.add_new_agg_rule": "fs_bi_stat.agg_rule.delete_agg_rule",
+    "fs_bi_stat.stat_calc_field.save_calc_field": "fs_bi_stat.stat_calc_field.delete_calc_field",
+    "fs_bi_stat.custom_dimension.create_custom_dimension": "fs_bi_stat.custom_dimension.delete_custom_dimension"
+  },
+  "readiness_operations": [
+    "fs_bi_stat.stat_schema.get_all_schema",
+    "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+    "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+    "fs_bi_stat.stat_base.chart_query",
+    "fs_bi_stat.stat_base.data_query_da655ba1"
+  ]
+}

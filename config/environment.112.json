@@ -14,5 +14,12 @@
     "enterprise_account": "${FXIAOKE_112_ENTERPRISE_ACCOUNT}",
     "username": "${FXIAOKE_112_USERNAME}",
     "password": "${FXIAOKE_112_PASSWORD}"
+  },
+  "test_data": {
+    "writes_enabled": true,
+    "namespace_prefix": "qa-",
+    "cleanup_required": true,
+    "cleanup_verification_required": true,
+    "environment_class": "test"
   }
 }

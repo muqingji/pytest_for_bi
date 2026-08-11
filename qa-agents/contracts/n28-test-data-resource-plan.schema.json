@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "n28-test-data-resource-plan/1.0",
+  "type": "object",
+  "required": ["schema_version", "environment", "namespace", "planning_mode", "capability_catalog_hash", "case_plans", "paused_cases", "unresolved_requirements"],
+  "properties": {
+    "schema_version": {"const": "test-data-plan/1.0"},
+    "environment": {"const": "112"},
+    "namespace": {"type": "string", "pattern": "^qa-[a-z0-9][a-z0-9-]{5,80}$"},
+    "planning_mode": {"const": "autonomous"},
+    "capability_catalog_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "case_plans": {"type": "array"},
+    "paused_cases": {"type": "array"},
+    "unresolved_requirements": {"type": "array"}
+  },
+  "additionalProperties": false
+}

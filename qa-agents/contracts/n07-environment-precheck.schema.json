@@ -21,6 +21,8 @@
     "schema_version": {"const": "n07-environment-precheck/1.0"},
     "workflow_run_id": {"type": "string"},
     "source_snapshot_id": {"type": "string"},
+    "environment_class": {"type": "string", "minLength": 1},
+    "production_isolation": {"type": "boolean"},
     "environment_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "target_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
     "observed_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},

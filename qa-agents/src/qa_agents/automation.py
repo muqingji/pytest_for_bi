@@ -60,7 +60,7 @@ def check_automation_generation(
         issues.append(
             ValidationIssue("manifest_missing", "Automation Manifest is missing", "manifest", "A14")
         )
-        return _result(issues)
+        return _result(issues, generation)
 
     required_manifest_fields = {
         "schema_version",
@@ -254,10 +254,12 @@ def check_automation_generation(
                         )
                     )
 
-    return _result(issues)
+    return _result(issues, generation)
 
 
-def _result(issues: list[ValidationIssue]) -> dict[str, Any]:
+def _result(
+    issues: list[ValidationIssue], generation: Mapping[str, Any]
+) -> dict[str, Any]:
     values = [item.to_dict() for item in issues]
     security_codes = {
         "target_repository_not_approved",
@@ -273,8 +275,19 @@ def _result(issues: list[ValidationIssue]) -> dict[str, Any]:
         "unapproved_runtime_call",
     }
     fatal = any(item.issue_code in security_codes for item in issues)
+    manifest = generation.get("manifest")
+    candidates = generation.get("code_candidates", [])
     return {
         "schema_version": "automation-code-check/1.0",
+        "generation_hash": content_hash(generation),
+        "manifest_hash": content_hash(manifest),
+        "candidate_hashes": {
+            str(candidate.get("path")): str(candidate.get("content_hash", ""))
+            for candidate in sorted(
+                (item for item in candidates if isinstance(item, Mapping)),
+                key=lambda item: str(item.get("path", "")),
+            )
+        },
         "passed": not issues,
         "fatal_security_violation": fatal,
         "issues": values,

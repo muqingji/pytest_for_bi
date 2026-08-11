@@ -53,10 +53,16 @@ def test_sync_generates_matching_idl_and_module_methods(tmp_path) -> None:
     idl_output = tmp_path / "idl"
     python_output = tmp_path / "python"
 
-    result = sync(source_root, idl_output, python_output)
+    source_ref = "c6b785344c6973b6d6fc5bb108c45b3971f36c64"
+    result = sync(source_root, idl_output, python_output, source_ref=source_ref)
 
     document = json.loads((idl_output / "fs-bi-stat.openapi.json").read_text())
     assert result == {"modules": 1, "endpoints": 1}
+    assert document["info"]["version"] == source_ref
+    assert document["x-contract-source"] == {
+        "repository": "fs-bi",
+        "ref": source_ref,
+    }
     operation = document["paths"]["/FHH/EM1HBISTAT/fs-bi-stat/stat/chart/query"]["post"]
     assert operation["operationId"] == "fs_bi_stat.chart.query"
     assert operation["x-auth-cookie-query"] == {"cookie": "fs_token", "parameter": "_fs_token"}

@@ -42,6 +42,7 @@
         "completed",
         "completed_with_gaps",
         "needs_human",
+        "blocked",
         "blocked_input",
         "not_applicable",
         "skipped_by_policy",

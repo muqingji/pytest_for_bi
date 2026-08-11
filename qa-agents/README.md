@@ -1,12 +1,20 @@
 # QA Multi-Agent System
 
 该目录是 [QA_AGENT_DESIGN.md](../QA_AGENT_DESIGN.md) 的可运行参考实现。目前完成阶段 0
-基础能力、阶段 1 测试设计纵向链路，以及阶段 2 的后端自动化参考切片。不声称已经完成
-全部自动化类型、真实环境执行或发布门禁。
+基础能力、阶段 1/2 真实试点链路，以及阶段 3 的环境门禁和受控执行参考切片。不声称已经
+完成生产隔离 Runner、失败归因、完整质量门禁或发布集成。
 
 ## 当前已实现
 
 - Artifact Envelope、完整状态枚举、内容哈希和路径受限的 Artifact Store。
+- A14 仅生成服务端 API、集成和功能自动化；显式单元测试 Case 按
+  `paused_existing_developer_unit_coverage` 暂停，不与研发单测重复建设。
+- A22 从 Case 提取数据意图，N28 根据版本化 BI 能力目录编译资源 DAG，N27 做确定性安全校验；CaseRunner 以
+  `setup -> readiness -> test -> finally cleanup` 执行，并记录响应哈希证据。
+- 测试数据并非全程只读：Runner 可在 112 的 `setup` 创建隔离资源，并在 `cleanup` 删除；
+  只有创建后的 `readiness` 回查被限制为只读。A22 自身只负责出计划，不直接持有环境凭证。
+- `CASE-FUNC-RESULT-FILTER-DETAIL-112` 已在真实 112 完成指标创建、查看明细验证、删除和无残留回查。
+- `CASE-AUTO-RESULT-FILTER-DETAIL-112` 不含手写 setup/cleanup，由 A22/N28 自主生成相同生命周期。
 - N00 确定性模板路由（5 个模板 + L1/L2/L3 执行深度）与 A01 建议 Profile；仅规则无法判定的
   输入才调用 A01，最终路由仍由 N00 校验决定。
 - N01 只读输入采集、N02 ChangeSet 和 first-parent 基线。
@@ -26,6 +34,13 @@
   领域差异由版本化 Profile 与策略表达。
 - A18-* 独立审查、N05 语法/哈希/命令/权限/凭证/层根目录安全检查、N06 回流和 G03 人工 Gate；
   多层级执行计划按层分发生成与审查后汇合到 N05/G03。
+- N07/N16 环境、数据和资源门禁；N08 认证 N07、A18、N05 的 producer/contract，并对上游
+  Artifact 及候选哈希做完整绑定校验后，使用
+  无 shell、最小环境、分片并行、超时和日志脱敏的受控 Runner 执行，业务失败进入 N09，
+  只有超时或基础设施错误进入 N10。A18/N05 结果绑定 generation、manifest 和候选文件哈希。
+- 服务端质量尾链：N10 重试预算、N17 人工结果汇合、N18 质量信号、N09 证据标准化与失败
+  指纹聚类、N20 跨运行缺陷去重、N11 确定性决策、N12 JSON/Markdown/HTML 报告，以及
+  N13/N19/N23 反馈、豁免和上线后验证授权审计。缺少结果时输出 `inconclusive`，不伪造通过。
 - 独立 Multica 试点 Workspace、Project、私有 Squad 和首批 7 个 Agent；远端 ID 固化在
   `multica/workspace-manifest.json`，当前未绑定任何业务仓库。
 - Multica A02/A03/A05 真实 Stage 1 已使用 `pilot-001` 冻结数据运行并通过本地确定性入库
@@ -44,6 +59,27 @@
 
 内置语义 Profile 是无外部模型依赖的保守基线：证据不足时生成需要人工确认的 Oracle，
 不会把模糊预期伪装成自动化断言。生产环境接入模型后仍必须返回相同契约并经过 N03/N04。
+
+## 自主测试数据构造
+
+Case 只声明语义数据集、前置状态或 `data_intent`，不提供创建接口和资源顺序。A22 使用
+`knowledge/bi-knowledge-sources.json` 中登记的官方 BI 手册、只读代码仓库、冻结契约和 112
+探针证据提取目标状态；N28 使用 `knowledge/bi-data-capability-catalog.json` 生成拓扑有序的
+setup/readiness/cleanup。资源创建顺序按 DAG，Runner 的 cleanup 逆序执行。
+
+```bash
+PYTHONPATH=src ../.venv/bin/python -m qa_agents prepare-test-data \
+  --compiled-cases runs/<run-id>/stage/artifacts/n25-compiled-test-cases.json \
+  --policy policies/test-data-policy.json \
+  --knowledge-sources knowledge/bi-knowledge-sources.json \
+  --capability-catalog knowledge/bi-data-capability-catalog.json \
+  --environment 112 --namespace qa-<run-id> --output runs/<run-id>/test-data
+```
+
+当前真实能力模板覆盖“聚合指标 + 结果集筛选 + 查看明细”纵向链路。现有 14 个试点 Case
+审计可自主解析 1 个 Case 的聚合指标部分；普通指标、计算指标、同环比指标以及其余 13 个
+数据集会进入 `capability_adapter_backlog`，不会转成要求用户手写链路的人工事项。产品白皮书
+当前需要 WPS 企业登录，来源状态记录为 `authentication_required`，未被当作已采集证据。
 
 ## 目录
 
@@ -94,6 +130,38 @@ make -C qa-agents pilot-automation
 `skipped_by_policy`，把 N05/G03 标记为 `not_applicable`。这证明路由不会为模糊预期伪造
 自动化代码；具有确定性 Oracle 的后端正向链路由自动化测试样本覆盖。
 
+## 需求工作流中心
+
+用户侧采用“一需求一工作流”：一个稳定的需求父 Issue 对应一个 Autopilot 工作流，需求的
+每次触发产生新的 `workflow_run_id`，但不会再创建第二张用户侧需求卡。并行需求在
+`QA 需求工作流中心` 中各占一张卡；Agent 运行、节点执行、重跑、影子候选和人工 Gate 技术卡
+统一留在 `QA 内部执行与审计` 项目。
+
+需求父卡汇总总体状态、完成节点数、当前节点、全部节点结果、历史运行和当前人工事项。
+总体状态固定按 `阻塞 > 待我处理 > 系统运行中 > 排队中 > 已完成 > 已取消` 归并；只有开放的
+人工 Action 才进入“待我处理”，Agent 审查和内部节点不会制造用户待办。父卡状态、正文、
+metadata 和自定义属性由同一份内容寻址 Projection 幂等同步。
+
+```bash
+make -C qa-agents compile-workflow-center \
+  WORKFLOW_CENTER_SPEC=runs/<run-id>/workflow-center-spec.json \
+  WORKFLOW_CENTER_OUTPUT=runs/<run-id>/workflow-center
+
+make -C qa-agents sync-workflow-center \
+  WORKFLOW_CENTER_SPEC=runs/<run-id>/workflow-center-spec.json \
+  WORKFLOW_CENTER_OUTPUT=runs/<run-id>/workflow-center
+```
+
+当前真实工作流 `REQ-DETAIL-DRILL-I18N` 使用 QAA-1 作为稳定父卡；
+`multica-confidence-20260811-01` 是当前运行，`multica-pilot-001` 作为历史运行。QAA-27～QAA-32
+属于内部执行，其中 QAA-32 仍是独立的 G01 审核入口；父卡只负责告诉用户当前有 15 项待处理，
+不能代替逐项审批。
+
+当前状态映射固定为：需求父卡 QAA-1=`in_review`，内部 Run QAA-27=`in_progress`，开放人工
+Gate QAA-32=`in_review`。不能把 Run 也设为 `in_review`，否则 Multica 的 stage 联动会把
+Gate 子卡错误推进为 `done`。同步器在更新 Run 后最后校正开放 Gate，并将 Autopilot ID、运行
+成功/失败历史和 112 历史质量结论写入 QAA-1 正文。
+
 ## Multica 真实试点
 
 Stage 1 的最小输入由冻结来源材料生成；A06 输入只能由已经通过入库 Gate 的 Stage 1
@@ -107,7 +175,24 @@ make -C qa-agents report-multica-alignment-pilot
 
 远端消息必须先用 `fetch-multica` 保存完整审计流，再用 `ingest-multica` 入库。入库命令
 必须同时提供 `--task-id`、`--issue-id` 和 `--attachment-id`，任一身份或工具轨迹不匹配都
-会失败。真实产物位于：
+会失败。入库成功后必须用正式 Artifact 同步对应 Issue 卡片；该命令会再次核对 Profile、
+运行、输入哈希和工具审计中的 Issue ID，只允许把已接受结果的绑定卡片更新为 `done`，并把
+结构化结果摘要写入卡片正文：
+
+```bash
+PYTHONPATH=src ../.venv/bin/python -m qa_agents sync-multica-issue-card \
+  --bundle runs/<run-id>/multica-inputs/<agent>-input.json \
+  --artifact runs/<run-id>/<stage>/artifacts/<artifact>.json \
+  --issue-id <bound-multica-issue-id>
+```
+
+自动编排应直接给 `ingest-multica` 增加 `--sync-issue-card`，把“验收成功后回写绑定卡片”表达为
+同一次显式操作；不带该参数时入库仍没有网络副作用。同步失败会返回非零，Artifact 保留为已
+验收结果，重试同一命令只会按相同绑定再次同步，不得改投其他 Issue。
+
+失败、影子或未入库候选不得调用该命令。G01/G02 等人工 Gate 不使用 Agent 完成卡模板；
+卡片 description 必须直接包含完整审核项、允许的处置和提交方式，哈希只作为审计绑定，
+不能作为给审核人的主要内容。真实产物位于：
 
 ```text
 qa-agents/runs/pilot-001/multica-outputs/
@@ -153,6 +238,28 @@ make -C qa-agents run-n24-pilot
 A02/A03/A05/A06，并以 A06 为根递归使全部下游 Artifact 失效；修正后从 A06 重新对齐。
 `approved` 才允许进入 N24。Agent、非 QA 审批者、缺少 QA 签名、旧请求、篡改决策和未绑定
 当前 A06 的审批都会被拒绝。
+
+G01 的 Multica 适配器不把 Issue 状态当作审批。`open-g01-multica` 创建或绑定唯一审核卡，
+把完整问题和可复制评论表写入正文；`sync-g01-multica` 只接受指定成员提交、绑定当前
+`request_hash` 的 `g01-comment-table/1.0` 评论。逐项处置、理由、负责人或必填测试规则缺失时
+不会生成决策；单独把卡片改为 `done` 会被忽略并恢复为 `in_review`。
+
+```bash
+PYTHONPATH=src ../.venv/bin/python -m qa_agents open-g01-multica \
+  --request runs/<run-id>/g01/g01-review-request.json \
+  --policy policies/g01-review-policy.json \
+  --adapter-policy policies/g01-multica-policy.json \
+  --output runs/<run-id>/g01 [--issue-id <existing-issue-id>]
+
+PYTHONPATH=src ../.venv/bin/python -m qa_agents sync-g01-multica \
+  --request runs/<run-id>/g01/g01-review-request.json \
+  --policy policies/g01-review-policy.json \
+  --adapter-policy policies/g01-multica-policy.json \
+  --output runs/<run-id>/g01
+```
+
+本次置信运行的 QAA-32 已绑定到该状态机，15 项审核仍为 `pending/in_review`，当前没有正式
+`g01-review-decision.json` 或 `g01-review-outcome.json`，不会复用 `pilot-001` 的旧审批。
 
 ## A08/A09/N04 回流
 
@@ -217,7 +324,22 @@ make -C qa-agents run-n15-after-n26-pilot            # multica-stage16
 ```bash
 make -C qa-agents run-n07-env-precheck-pilot        # multica-stage17（需 env/target.json 与 observed.json）
 make -C qa-agents run-n16-env-fix-pilot             # multica-stage18（需 env/fix-plan.json）
+make -C qa-agents run-n08-automation-pilot \
+  N08_GENERATION=/path/to/generation.json \
+  N08_REVIEW=/path/to/review.json \
+  N08_CODE_CHECK=/path/to/n05.json                   # multica-stage19
+make -C qa-agents prepare-server-automation-pilot   # A14/A15 -> A18 -> N05
+make -C qa-agents run-server-quality-pilot          # N10/N17/N18/N09/N20/N11/N12
+make -C qa-agents run-server-full-pilot             # 当前已批准 pilot 的服务端尾链
 ```
+
+`run-server-full-pilot` 的内置环境是 `local-reference-not-staging`。当前真实 N15 的三个
+`generate_new` 契约 Case 缺少冻结 `contract_ref`，A15 按契约拒绝生成，因此不会调用 N08；
+N17 仍输出 11 个完整人工任务，N11/N12 最终给出 `inconclusive/pending` 报告。
+
+当前 `execution-policy.json` 使用 `local_process_reference`，只用于无网络、无 Secret 的本地
+验证，Artifact 会明确记录 `production_isolated=false`。生产接入必须替换为容器或远端隔离
+Runner，并把 `require_production_isolation` 设为 `true`；不能把本地进程执行冒充生产隔离。
 
 A11 输入是紧凑审查范围而不是完整 Test Case IR：N25 子 Case 与父 Case 内容相同，完整
 重复载荷会把 Agent 上下文推到 Codex Runtime `semantic_inactivity_timeout=10m` 的生成
@@ -298,14 +420,27 @@ Oracle Registry 的 ACL。
 
 ## 尚未实现
 
-- Multica 试点已打通 A02/A03/A05→A06→G01→N24→A08→A09→N04→A08→A09→N04→人工节点；
-  QAA-19 已授权，QAA-20 恢复候选被拒，需按 A08 v1.3.0 重跑后才能进入 G02。生产职责分离、
-  DAG 和全流程触发器尚未完成。
+- Multica `pilot-001` 已真实打通到 N15；新置信运行已完成 A02/A03/A05→A06，当前在 QAA-32
+  等待 15 项 G01 人工审核。生产职责分离、DAG 和全流程事件触发器尚未完成。
 - Multica 模型网关的生产 Provider 绑定、Prompt 发布、影子流量和模型灰度；Runtime 契约已实现。
-- A13 前端、A15 契约、A16 E2E、A17-* 非功能生成及其对应 A18 审查 Profile。
-- 获批自动化仓库的候选代码落盘、创建 MR 和隔离试跑；当前只生成 Artifact 草稿。
-- N07-N12、N16-N23 的真实环境执行、失败归因、质量决策和发布集成。
+- 候选代码已可落到运行目录隔离工作区（N29）；创建正式 MR、生产隔离 Runner 和发布系统写入
+  Adapter 仍未接通。
+- `controlled_env_reference` 可为注册非生产环境开放网络/Secret env 名，但仍不是生产隔离
+  Runner；契约场景的真实请求载荷与完整 112 端到端 N08 证据仍待主链审批后补齐。
 - 生产 Oracle Registry、Secret 服务和测试资产服务。
 
 这些能力按设计方案分阶段接入，不能用本地参考实现的 `completed_with_gaps` 代替正式质量
 结论。
+
+## 候选落盘与受控执行
+
+```bash
+# 在 A14/A18/N05 通过后，把候选落到运行目录隔离工作区（不写业务仓、不建 MR）
+make -C qa-agents land-automation-candidates-pilot \
+  N08_GENERATION=... N08_REVIEW=... N08_CODE_CHECK=...
+
+# N08：默认 local_process_reference 禁止网络/Secret；
+# 若 Manifest 申请网络且 N07 environment_class 属于策略白名单，则走 controlled_env_reference
+make -C qa-agents run-n08-automation-pilot \
+  N08_GENERATION=... N08_REVIEW=... N08_CODE_CHECK=...
+```

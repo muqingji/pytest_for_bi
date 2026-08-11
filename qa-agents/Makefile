@@ -5,12 +5,21 @@ PILOT_INPUT := eval/workflows/pilot-001-detail-drill-message-i18n/input
 PILOT_ORACLE := eval/workflows/pilot-001-detail-drill-message-i18n/oracle
 PILOT_RUN := runs/pilot-001
 
-.PHONY: test pilot pilot-full pilot-automation collect-pilot evaluate-pilot prepare-multica-pilot prepare-multica-alignment-pilot report-multica-alignment-pilot prepare-g01-pilot record-g01-pilot run-n24-pilot prepare-multica-test-design-pilot prepare-multica-oracle-review-pilot run-n04-pilot prepare-multica-test-design-correction-pilot prepare-multica-oracle-review-correction-pilot run-n04-correction-pilot run-n25-after-g02-pilot prepare-multica-split-review-pilot run-n26-after-a11-pilot run-n15-after-n26-pilot run-n07-env-precheck-pilot run-n16-env-fix-pilot prepare-multica-selection-advice-pilot prepare-human-correction-pilot open-human-correction-pilot sync-human-correction-pilot prepare-multica-human-correction-pilot prepare-g02-pilot open-g02-pilot sync-g02-pilot
+.PHONY: test pilot pilot-full pilot-automation collect-pilot evaluate-pilot compile-workflow-center sync-workflow-center init-autopilot reconcile-autopilot prepare-multica-pilot prepare-multica-alignment-pilot report-multica-alignment-pilot prepare-g01-pilot record-g01-pilot run-n24-pilot prepare-multica-test-design-pilot prepare-multica-oracle-review-pilot run-n04-pilot prepare-multica-test-design-correction-pilot prepare-multica-oracle-review-correction-pilot run-n04-correction-pilot run-n25-after-g02-pilot prepare-multica-split-review-pilot run-n26-after-a11-pilot run-n15-after-n26-pilot prepare-autonomous-test-data-pilot prepare-server-automation-pilot run-n07-env-precheck-pilot run-n16-env-fix-pilot land-automation-candidates-pilot run-n08-automation-pilot run-server-quality-pilot run-server-full-pilot prepare-multica-selection-advice-pilot prepare-human-correction-pilot open-human-correction-pilot sync-human-correction-pilot prepare-multica-human-correction-pilot prepare-g02-pilot open-g02-pilot sync-g02-pilot
 
 G01_DIR := $(PILOT_RUN)/g01
 G01_DECISION_INPUT ?= $(G01_DIR)/g01-decision-input.json
 G02_DIR := $(PILOT_RUN)/g02
 HUMAN_CORRECTION_DIR := $(PILOT_RUN)/human-correction
+WORKFLOW_CENTER_CONFIG := multica/workflow-center-config.json
+WORKFLOW_CENTER_SPEC ?= runs/confidence-20260811-01/workflow-center-spec.json
+WORKFLOW_CENTER_OUTPUT ?= runs/confidence-20260811-01/workflow-center
+AUTOPILOT_REQUEST ?=
+AUTOPILOT_REGISTRY ?= runs/autopilot-registry
+AUTOPILOT_OUTPUT ?= runs/autopilot
+AUTOPILOT_ARTIFACT_ROOT ?=
+TEST_DATA_NAMESPACE ?= qa-pilot-data-plan-112
+TEST_DATA_STAGE ?= $(PILOT_RUN)/test-data
 
 test:
 	PYTHONPATH=$(PYTHONPATH) $(PYTEST) -q tests
@@ -29,6 +38,20 @@ collect-pilot:
 
 evaluate-pilot:
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents evaluate --run $(PILOT_RUN) --oracle $(PILOT_ORACLE) --output $(PILOT_RUN)/evaluation.json
+
+compile-workflow-center:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents compile-workflow-center --spec $(WORKFLOW_CENTER_SPEC) --output $(WORKFLOW_CENTER_OUTPUT)
+
+sync-workflow-center:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents sync-workflow-center --spec $(WORKFLOW_CENTER_SPEC) --config $(WORKFLOW_CENTER_CONFIG) --output $(WORKFLOW_CENTER_OUTPUT)
+
+init-autopilot:
+	@test -n "$(AUTOPILOT_REQUEST)" || (echo "set AUTOPILOT_REQUEST to a requirement request JSON"; exit 2)
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents init-autopilot --request $(AUTOPILOT_REQUEST) --config $(WORKFLOW_CENTER_CONFIG) --registry $(AUTOPILOT_REGISTRY) --output $(AUTOPILOT_OUTPUT)
+
+reconcile-autopilot:
+	@test -n "$(AUTOPILOT_ARTIFACT_ROOT)" || (echo "set AUTOPILOT_ARTIFACT_ROOT to the accepted Artifact root"; exit 2)
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents reconcile-autopilot --spec $(WORKFLOW_CENTER_SPEC) --artifact-root $(AUTOPILOT_ARTIFACT_ROOT) --output $(AUTOPILOT_OUTPUT)
 
 prepare-multica-pilot:
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-multica --input $(PILOT_INPUT) --output $(PILOT_RUN)/multica-inputs --run-id multica-pilot-001
@@ -128,19 +151,22 @@ HUMAN_N26_STAGE=$(PILOT_RUN)/multica-stage15
 HUMAN_N15_STAGE=$(PILOT_RUN)/multica-stage16
 
 run-n25-after-g02-pilot:
-	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n25-after-g02 --a08-artifact $(HUMAN_A08_STAGE)/artifacts/a08-test-design-ir.json --g02-request $(G02_DIR)/g02-review-request.json --g02-outcome $(G02_DIR)/g02-review-outcome.json --output $(HUMAN_N25_STAGE)
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n25-after-g02 --a08-artifact $(HUMAN_A08_STAGE)/artifacts/a08-test-design-ir.json --g02-request $(G02_DIR)/g02-review-request.json --g02-outcome $(G02_DIR)/g02-review-outcome.json --output $(HUMAN_N25_STAGE) --run-manifest $(PILOT_RUN)/multica-run-manifest.json
 
 prepare-multica-split-review-pilot:
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-multica-split-review --test-design-artifact $(HUMAN_A08_STAGE)/artifacts/a08-test-design-ir.json --test-design-bundle $(PILOT_RUN)/multica-inputs/a08-human-correction-01/a08-input.json --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --oracle-rules policies/oracle-rule-library.json --output $(HUMAN_A11_INPUT)
 
 run-n26-after-a11-pilot:
-	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n26-after-a11 --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --split-review-artifact $(HUMAN_A11_STAGE)/artifacts/a11-split-coverage-review.json --split-review-bundle $(HUMAN_A11_INPUT)/a11-input.json --output $(HUMAN_N26_STAGE) --selection-policy policies/selection-policy.json
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n26-after-a11 --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --split-review-artifact $(HUMAN_A11_STAGE)/artifacts/a11-split-coverage-review.json --split-review-bundle $(HUMAN_A11_INPUT)/a11-input.json --output $(HUMAN_N26_STAGE) --selection-policy policies/selection-policy.json --run-manifest $(PILOT_RUN)/multica-run-manifest.json
 
 prepare-multica-selection-advice-pilot:
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-multica-selection-advice --selection-artifact $(HUMAN_N26_STAGE)/artifacts/n26-test-selection.json --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --output $(PILOT_RUN)/multica-inputs/a12-input --selection-policy policies/selection-policy.json
 
 run-n15-after-n26-pilot:
-	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n15-after-n26 --selection-artifact $(HUMAN_N26_STAGE)/artifacts/n26-test-selection.json --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --output $(HUMAN_N15_STAGE)
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n15-after-n26 --selection-artifact $(HUMAN_N26_STAGE)/artifacts/n26-test-selection.json --compiled-artifact $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --output $(HUMAN_N15_STAGE) --run-manifest $(PILOT_RUN)/multica-run-manifest.json
+
+prepare-autonomous-test-data-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-test-data --compiled-cases $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --policy policies/test-data-policy.json --knowledge-sources knowledge/bi-knowledge-sources.json --capability-catalog knowledge/bi-data-capability-catalog.json --environment 112 --namespace $(TEST_DATA_NAMESPACE) --output $(TEST_DATA_STAGE)
 
 
 # Execution-phase environment gates (design doc section 17): N07 precheck runs
@@ -149,11 +175,37 @@ run-n15-after-n26-pilot:
 N07_ENV_TARGET := $(PILOT_RUN)/env/target.json
 N07_ENV_OBSERVED := $(PILOT_RUN)/env/observed.json
 N07_ENV_FIX_PLAN := $(PILOT_RUN)/env/fix-plan.json
+AUTOMATION_TARGET := $(PILOT_RUN)/env/automation-target.json
+SERVER_AUTOMATION_STAGE := $(PILOT_RUN)/server-automation
 N07_STAGE := $(PILOT_RUN)/multica-stage17
 N16_STAGE := $(PILOT_RUN)/multica-stage18
+N08_STAGE := $(PILOT_RUN)/multica-stage19
+SERVER_QUALITY_STAGE := $(PILOT_RUN)/server-quality
+SERVER_QUALITY_AUTOMATION_ARGS ?=
+N08_GENERATION ?=
+N08_REVIEW ?=
+N08_CODE_CHECK ?=
+
+prepare-server-automation-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-server-automation --execution-plan $(HUMAN_N15_STAGE)/artifacts/n15-execution-plan.json --compiled-cases $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --automation-policy policies/automation-target-policy.json --target $(AUTOMATION_TARGET) --output $(SERVER_AUTOMATION_STAGE)
 
 run-n07-env-precheck-pilot:
-	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n07-env-precheck --target $(N07_ENV_TARGET) --observed $(N07_ENV_OBSERVED) --output $(N07_STAGE) --workflow-run-id pilot-001 --source-snapshot-id snapshot-v1
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n07-env-precheck --target $(N07_ENV_TARGET) --observed $(N07_ENV_OBSERVED) --output $(N07_STAGE) --workflow-run-id multica-pilot-001 --source-snapshot-id pilot-001-source-v1 --workflow-mode new_requirement
 
 run-n16-env-fix-pilot:
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n16-env-fix --precheck $(N07_STAGE)/artifacts/n07-environment-precheck.json --fix-plan $(N07_ENV_FIX_PLAN) --output $(N16_STAGE)
+
+LANDING_STAGE := $(PILOT_RUN)/candidate-landing
+
+land-automation-candidates-pilot:
+	@test -n "$(N08_GENERATION)" -a -n "$(N08_REVIEW)" -a -n "$(N08_CODE_CHECK)" || (echo "set N08_GENERATION, N08_REVIEW and N08_CODE_CHECK to current hash-bound Artifacts"; exit 2)
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents land-automation-candidates --generation $(N08_GENERATION) --review $(N08_REVIEW) --code-check $(N08_CODE_CHECK) --automation-policy policies/automation-target-policy.json --output $(LANDING_STAGE)
+
+run-n08-automation-pilot:
+	@test -n "$(N08_GENERATION)" -a -n "$(N08_REVIEW)" -a -n "$(N08_CODE_CHECK)" || (echo "set N08_GENERATION, N08_REVIEW and N08_CODE_CHECK to current hash-bound Artifacts"; exit 2)
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-n08-automation --generation $(N08_GENERATION) --review $(N08_REVIEW) --code-check $(N08_CODE_CHECK) --environment-precheck $(N07_STAGE)/artifacts/n07-environment-precheck.json --automation-policy policies/automation-target-policy.json --execution-policy policies/execution-policy.json --output $(N08_STAGE)
+
+run-server-quality-pilot:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents run-server-quality --execution-plan $(HUMAN_N15_STAGE)/artifacts/n15-execution-plan.json --compiled-cases $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --environment-precheck $(N07_STAGE)/artifacts/n07-environment-precheck.json $(SERVER_QUALITY_AUTOMATION_ARGS) --quality-policy policies/quality-policy.json --run-manifest $(PILOT_RUN)/multica-run-manifest.json --output $(SERVER_QUALITY_STAGE)
+
+run-server-full-pilot: prepare-server-automation-pilot run-n07-env-precheck-pilot run-server-quality-pilot

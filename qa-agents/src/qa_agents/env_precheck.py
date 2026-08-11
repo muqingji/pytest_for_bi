@@ -410,8 +410,10 @@ def run_n07_env_precheck(
     *,
     workflow_run_id: str,
     source_snapshot_id: str,
+    workflow_mode: str = "environment_precheck",
     previous_fingerprint: str = "",
     throttle_reason: str = "",
+    test_data_validation_path: Path | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
     """Run the deterministic N07 environment precheck and persist its Artifact."""
@@ -431,6 +433,64 @@ def run_n07_env_precheck(
                 "N07 environment state is unchanged; re-precheck is throttled unless a reason is recorded"
             )
     checks = _evaluate_checks(target, observed)
+    data_validation: dict[str, Any] | None = None
+    data_evidence: tuple[EvidenceRef, ...] = ()
+    if test_data_validation_path is not None:
+        data_validation = _read_json(test_data_validation_path, "N27 data validation")
+        security.assert_no_secret_values(data_validation)
+        if data_validation.get("schema_version") != "artifact-envelope/1.0":
+            raise ContractError("N07 N27 data validation is not an Artifact Envelope")
+        if data_validation.get("artifact_hash") != artifact_hash_from_mapping(data_validation):
+            raise ContractError("N07 N27 data validation Artifact hash is invalid")
+        producer = data_validation.get("producer")
+        payload = data_validation.get("payload")
+        if (
+            data_validation.get("artifact_id") != "n27-test-data-plan-validation"
+            or not isinstance(producer, Mapping)
+            or producer.get("component_id") != "N27"
+            or not isinstance(payload, Mapping)
+        ):
+            raise ContractError("N07 requires an N27 data validation Artifact")
+        if (
+            data_validation.get("workflow_run_id") != workflow_run_id
+            or data_validation.get("source_snapshot_id") != source_snapshot_id
+        ):
+            raise ContractError("N07 and N27 workflow bindings do not match")
+        accepted = (
+            data_validation.get("status") == "completed" and payload.get("valid") is True
+        ) or (
+            data_validation.get("status") == "skipped_by_policy"
+            and payload.get("valid") is True
+            and payload.get("decision") == "skipped_by_policy"
+            and payload.get("next_node") == "N07"
+        )
+        if not accepted:
+            raise ContractError("N07 requires completed or policy-skipped valid N27 evidence")
+        checks.append(
+            _check(
+                "test_data",
+                f"N07-C{len(checks) + 1:03d}",
+                "test-data-plan:route",
+                "passed",
+                f"N27 decision={payload.get('decision', 'validated')}",
+                evidence=[
+                    {
+                        "artifact_hash": data_validation["artifact_hash"],
+                        "decision": payload.get("decision", "validated"),
+                        "deferred_case_count": len(payload.get("deferred_cases", [])),
+                    }
+                ],
+                source_refs=[{"type": "artifact", "id": "n27-test-data-plan-validation"}],
+            )
+        )
+        data_evidence = (
+            EvidenceRef(
+                source_type="artifact",
+                source_id="n27-test-data-plan-validation",
+                location=test_data_validation_path.name,
+                content_hash=str(data_validation["artifact_hash"]),
+            ),
+        )
     summary = {
         "passed": sum(item["status"] == "passed" for item in checks),
         "warning": sum(item["status"] == "warning" for item in checks),
@@ -448,6 +508,8 @@ def run_n07_env_precheck(
         "schema_version": N07_CONTRACT,
         "workflow_run_id": workflow_run_id,
         "source_snapshot_id": source_snapshot_id,
+        "environment_class": str(target.get("environment_class", "unspecified")),
+        "production_isolation": bool(target.get("production_isolation", False)),
         "environment_fingerprint": fingerprint,
         "target_hash": content_hash(target),
         "observed_hash": content_hash(observed),
@@ -457,11 +519,14 @@ def run_n07_env_precheck(
         "summary": summary,
         "decision": decision,
         "next_node": next_node,
+        "test_data_validation_hash": (
+            str(data_validation["artifact_hash"]) if data_validation is not None else None
+        ),
     }
     security.assert_no_secret_values(payload)
     artifact = ArtifactEnvelope(
         workflow_run_id=workflow_run_id,
-        workflow_mode="environment_precheck",
+        workflow_mode=workflow_mode,
         artifact_id="n07-environment-precheck",
         source_snapshot_id=source_snapshot_id,
         producer=Producer(component_id="N07", runtime="deterministic"),
@@ -480,6 +545,7 @@ def run_n07_env_precheck(
                 location=observed_path.name,
                 content_hash=content_hash(observed),
             ),
+            *data_evidence,
         ),
         reason_code="environment_precheck_blocked" if status == "blocked" else None,
     )

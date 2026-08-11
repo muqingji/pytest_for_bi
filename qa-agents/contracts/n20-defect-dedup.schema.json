@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "n20-defect-dedup/1.0",
+  "type": "object",
+  "required": ["schema_version", "evidence_hash", "history_hash", "decisions", "next_node"],
+  "properties": {
+    "schema_version": {"const": "n20-defect-dedup/1.0"},
+    "evidence_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "history_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "decisions": {"type": "array"},
+    "next_node": {"const": "N11"}
+  },
+  "additionalProperties": true
+}

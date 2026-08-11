@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 from contextlib import nullcontext
 from copy import deepcopy
@@ -60,6 +61,11 @@ class CaseRunner:
         self.http_api = HttpApiInvoker(http_client, self.api_catalog)
 
     def run(self, case: dict[str, Any]) -> dict[str, Any]:
+        target_environment = str(case.get("environment", "") or "")
+        if target_environment and target_environment != self.environment.name:
+            raise ValueError(
+                f"Case requires environment '{target_environment}', got '{self.environment.name}'"
+            )
         context: dict[str, Any] = {
             "config": self.environment.values,
             "__case_name": case.get("name", case["id"]),
@@ -70,26 +76,159 @@ class CaseRunner:
             "matched_names": [],
             "matched_translate_values": [],
             "matched_display_paths": [],
+            "__lifecycle__": {
+                "environment": self.environment.name,
+                "namespace": case.get("namespace"),
+                "setup": [],
+                "readiness": [],
+                "test": [],
+                "cleanup": [],
+            },
             **deepcopy(case.get("variables", {})),
         }
-        last_response: ApiResponse | None = None
-        for index, raw_step in enumerate(case["steps"], start=1):
-            step = self._resolve(raw_step, context)
-            context["__expected_keys"] = step.get("expect", {}).get("body_contains_keys", [])
-            name = step.get("name", f"step {index}")
-            if allure:
-                with allure.step(name):
-                    self._attach_json("request", step.get("request", {}))
-                    last_response = self._run_step(step, context)
-            else:
-                last_response = self._run_step(step, context)
-            context["response"] = last_response.body
-            context["status_code"] = last_response.status_code
-            self._extract(last_response, step.get("extract", {}), context)
-            self._attach_response(last_response)
-            if "expect" in step:
-                assert_response(last_response, step["expect"])
+        primary_error: BaseException | None = None
+        cleanup_errors: list[BaseException] = []
+        try:
+            self._run_steps(case.get("setup", []), context, "setup")
+            self._run_steps(case.get("readiness", []), context, "readiness")
+            self._run_steps(case["steps"], context, "test")
+        except BaseException as error:
+            primary_error = error
+        finally:
+            for raw_step in reversed(list(case.get("cleanup", []))):
+                when_variable = str(raw_step.get("when_variable", "") or "")
+                if when_variable and when_variable not in context:
+                    context["__lifecycle__"]["cleanup"].append(
+                        {
+                            "name": raw_step.get("name", "cleanup"),
+                            "status": "skipped",
+                            "reason_code": "resource_not_created",
+                        }
+                    )
+                    continue
+                try:
+                    self._run_steps([raw_step], context, "cleanup")
+                except BaseException as error:
+                    cleanup_errors.append(error)
+        if primary_error is not None:
+            if cleanup_errors:
+                primary_error.add_note(
+                    "Cleanup also failed: "
+                    + "; ".join(str(error) for error in cleanup_errors)
+                )
+            raise primary_error
+        if cleanup_errors:
+            raise RuntimeError(
+                "Case assertions passed but cleanup failed: "
+                + "; ".join(str(error) for error in cleanup_errors)
+            ) from cleanup_errors[0]
+        if "test_response" in context:
+            context["response"] = context["test_response"]
+            context["status_code"] = context["test_status_code"]
         return context
+
+    def execute(self, case: dict[str, Any]) -> dict[str, Any]:
+        """Execute a generated Case Spec with its complete data lifecycle."""
+        return self.run(case)
+
+    def _run_steps(
+        self,
+        raw_steps: list[dict[str, Any]],
+        context: dict[str, Any],
+        phase: str,
+    ) -> None:
+        for index, raw_step in enumerate(raw_steps, start=1):
+            step = self._resolve(raw_step, context)
+            context["__expected_keys"] = step.get("expect", {}).get(
+                "body_contains_keys", []
+            )
+            name = step.get("name", f"{phase} step {index}")
+            try:
+                if allure:
+                    with allure.step(name):
+                        self._attach_json("request", step.get("request", {}))
+                        response = self._run_step(step, context)
+                else:
+                    response = self._run_step(step, context)
+                context["response"] = response.body
+                context["status_code"] = response.status_code
+                if phase == "test":
+                    context["test_response"] = response.body
+                    context["test_status_code"] = response.status_code
+                self._extract(response, step.get("extract", {}), context)
+                self._attach_response(response)
+                if "expect" in step:
+                    assert_response(response, step["expect"])
+                context["__lifecycle__"][phase].append(
+                    self._lifecycle_evidence(name, step, response, "completed")
+                )
+            except BaseException as error:
+                context["__lifecycle__"][phase].append(
+                    {
+                        "name": name,
+                        "operation": self._operation_ref(step),
+                        "status": "failed",
+                        "error_type": type(error).__name__,
+                    }
+                )
+                raise
+
+    @staticmethod
+    def _operation_ref(step: dict[str, Any]) -> str:
+        request = step.get("request", {})
+        if request.get("api"):
+            return str(request["api"])
+        return f"{request.get('method', 'GET').upper()} {request.get('path', '')}".strip()
+
+    @classmethod
+    def _lifecycle_evidence(
+        cls,
+        name: str,
+        step: dict[str, Any],
+        response: ApiResponse,
+        status: str,
+    ) -> dict[str, Any]:
+        canonical = json.dumps(
+            response.body,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        )
+        return {
+            "name": name,
+            "operation": cls._operation_ref(step),
+            "status": status,
+            "status_code": response.status_code,
+            "response_hash": "sha256:"
+            + hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+        }
+
+    @staticmethod
+    def assert_oracles(
+        observations: dict[str, Any], expected: list[dict[str, Any]]
+    ) -> None:
+        """Evaluate the deterministic Oracle subset used by generated Cases."""
+        for item in expected:
+            oracle = item.get("oracle", {})
+            matcher = str(oracle.get("matcher", "equals"))
+            path = str(oracle.get("observation_point", "response"))
+            actual = get_by_path(observations, path)
+            value = oracle.get("expected_value")
+            if matcher == "equals" and actual != value:
+                raise AssertionError(f"{item.get('id')}: expected {value!r}, got {actual!r}")
+            if matcher == "contains" and value not in actual:
+                raise AssertionError(f"{item.get('id')}: {actual!r} does not contain {value!r}")
+            if matcher == "not_contains" and value in actual:
+                raise AssertionError(f"{item.get('id')}: {actual!r} contains {value!r}")
+            if matcher == "one_of" and actual not in oracle.get("expected_values", []):
+                raise AssertionError(f"{item.get('id')}: unexpected value {actual!r}")
+            if matcher == "regex" and re.search(str(value), str(actual)) is None:
+                raise AssertionError(f"{item.get('id')}: {actual!r} does not match {value!r}")
+            if matcher == "exists" and actual is None:
+                raise AssertionError(f"{item.get('id')}: value does not exist")
+            if matcher == "manual_confirmation":
+                raise ValueError("manual_confirmation Oracle cannot run automatically")
 
     def _run_step(self, step: dict[str, Any], context: dict[str, Any]) -> ApiResponse:
         request = step.get("request", {})

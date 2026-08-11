@@ -401,7 +401,9 @@ def _operation_identity(endpoint: JavaEndpoint, used: set[str]) -> tuple[str, st
     return operation_id, python_method
 
 
-def build_documents(endpoints: Iterable[JavaEndpoint]) -> tuple[dict[str, dict[str, Any]], dict[str, list[dict[str, Any]]]]:
+def build_documents(
+    endpoints: Iterable[JavaEndpoint], *, source_ref: str = "generated"
+) -> tuple[dict[str, dict[str, Any]], dict[str, list[dict[str, Any]]]]:
     documents: dict[str, dict[str, Any]] = {}
     generated_methods: dict[str, list[dict[str, Any]]] = {}
     used: set[str] = set()
@@ -419,7 +421,11 @@ def build_documents(endpoints: Iterable[JavaEndpoint]) -> tuple[dict[str, dict[s
             endpoint.module,
             {
                 "openapi": "3.1.0",
-                "info": {"title": f"{endpoint.module} generated HTTP API", "version": "generated"},
+                "info": {"title": f"{endpoint.module} generated HTTP API", "version": source_ref},
+                "x-contract-source": {
+                    "repository": "fs-bi",
+                    "ref": source_ref,
+                },
                 "paths": {},
             },
         )
@@ -584,9 +590,15 @@ def _render_root(modules: list[str]) -> str:
     )
 
 
-def sync(repo_root: Path, idl_output: Path, python_output: Path) -> dict[str, int]:
+def sync(
+    repo_root: Path,
+    idl_output: Path,
+    python_output: Path,
+    *,
+    source_ref: str = "generated",
+) -> dict[str, int]:
     endpoints = externally_callable_endpoints(scan_repository(repo_root))
-    documents, generated_methods = build_documents(endpoints)
+    documents, generated_methods = build_documents(endpoints, source_ref=source_ref)
     idl_output.mkdir(parents=True, exist_ok=True)
     python_output.mkdir(parents=True, exist_ok=True)
     (python_output / "__init__.py").write_text("from .fs_bi_api import FsBiApi\n\n__all__ = [\"FsBiApi\"]\n", encoding="utf-8")
@@ -615,10 +627,20 @@ def sync(repo_root: Path, idl_output: Path, python_output: Path) -> dict[str, in
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True, help="Path to the fs-bi repository")
+    parser.add_argument(
+        "--source-ref",
+        default="generated",
+        help="Frozen source commit/ref recorded in the generated contract",
+    )
     parser.add_argument("--idl-output", type=Path, default=Path("idl/http/generated/fs-bi"))
     parser.add_argument("--python-output", type=Path, default=Path("src/framework/api/generated/fs_bi"))
     args = parser.parse_args()
-    result = sync(args.source.resolve(), args.idl_output, args.python_output)
+    result = sync(
+        args.source.resolve(),
+        args.idl_output,
+        args.python_output,
+        source_ref=args.source_ref,
+    )
     print(f"generated modules={result['modules']}, endpoints={result['endpoints']}")
     return 0
 

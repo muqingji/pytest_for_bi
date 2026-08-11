@@ -50,6 +50,17 @@ def test_empty_secret_declaration_is_allowed_but_values_are_rejected() -> None:
         SecurityPolicy().assert_no_secret_values({"secrets": ["secret-reference"]})
 
 
+def test_redaction_preserves_empty_secret_declaration_shape() -> None:
+    policy = SecurityPolicy()
+    assert policy.redact_secrets({"secrets": [], "network": False}) == {
+        "secrets": [],
+        "network": False,
+    }
+    assert policy.redact_secrets({"password": "not-empty-value"}) == {
+        "password": "[REDACTED]"
+    }
+
+
 def test_case_provider_requires_artifact_only_and_fixed_commit() -> None:
     adapter = CaseProviderAdapter()
     commit = "a" * 40

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "n18-quality-signals/1.0",
+  "type": "object",
+  "required": ["schema_version", "execution_hashes", "signals", "gaps", "next_node"],
+  "properties": {
+    "schema_version": {"const": "n18-quality-signals/1.0"},
+    "execution_hashes": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
+    "signals": {"type": "object"},
+    "gaps": {"type": "array", "items": {"type": "string"}},
+    "next_node": {"const": "N09"}
+  },
+  "additionalProperties": true
+}

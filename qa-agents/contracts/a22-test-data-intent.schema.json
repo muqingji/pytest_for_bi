@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "test-data-intent/1.0",
+  "type": "object",
+  "required": ["schema_version", "case_intents", "paused_cases", "unresolved_requirements", "inference_mode"],
+  "properties": {
+    "schema_version": {"const": "test-data-intent/1.0"},
+    "case_intents": {"type": "array"},
+    "paused_cases": {"type": "array"},
+    "unresolved_requirements": {"type": "array"},
+    "inference_mode": {"const": "case_semantics_plus_versioned_capability_catalog"}
+  },
+  "additionalProperties": false
+}

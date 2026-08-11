@@ -198,8 +198,26 @@ def render_scope_review_markdown(request: Mapping[str, Any]) -> str:
         f"- Policy Hash: `{request.get('review_policy', {}).get('policy_hash', '')}`",
         "",
         "审批不能只选择同意或拒绝。每个问题都必须记录处置、理由和责任人；上游 Artifact 哈希变化后，本审批自动失效。",
+        "请阅读问题详情后，在本 Issue 新增一条评论，完整填写文末的审核表。只有当前绑定人员提交、请求哈希匹配且所有必填项通过校验，系统才会形成正式决策。单独修改卡片状态无效。",
         "",
     ]
+    def review_suggestion(issue: Mapping[str, Any]) -> tuple[str, str, str]:
+        detail = issue.get("detail", {})
+        if not isinstance(detail, Mapping):
+            detail = {}
+        source = str(issue.get("source", ""))
+        route = str(issue.get("route_to") or source).lower()
+        disposition = f"return_to_{route}"
+        owner = str(detail.get("owner") or {
+            "A02": "产品负责人",
+            "A03": "技术方案负责人",
+            "A05": "研发负责人",
+            "A06": "后端研发负责人",
+        }.get(source, "对应负责人"))
+        summary = str(detail.get("summary") or detail.get("message") or issue.get("issue_code", ""))
+        rationale = str(detail.get("recommendation") or f"需确认并冻结：{summary}")
+        return disposition, rationale.replace("|", "/"), owner.replace("|", "/")
+
     grouped: dict[str, list[Mapping[str, Any]]] = {}
     for issue in request.get("issues", []):
         grouped.setdefault(str(issue.get("source", "unknown")), []).append(issue)
@@ -212,6 +230,7 @@ def render_scope_review_markdown(request: Mapping[str, Any]) -> str:
         for index, issue in enumerate(issues, 1):
             detail = issue.get("detail", {})
             summary = detail.get("summary") or detail.get("message") or issue.get("issue_code", "")
+            disposition, rationale, owner = review_suggestion(issue)
             lines.extend(
                 [
                     f"### {source}-{index:02d} `{issue.get('issue_id', '')}`",
@@ -221,10 +240,15 @@ def render_scope_review_markdown(request: Mapping[str, Any]) -> str:
                     f"- 问题类型: `{issue.get('issue_code', '')}`",
                     f"- 严重度: `{issue.get('severity', '')}`",
                     f"- 建议回流: `{issue.get('route_to', '')}`",
+                    f"- 建议处置: `{disposition}`",
+                    f"- 建议责任人: {owner}",
+                    f"- 建议方案: {rationale}",
                     f"- 原始 ID: `{detail.get('id', '')}`",
-                    "",
                 ]
             )
+            if detail.get("start_condition"):
+                lines.append(f"- 恢复条件: {detail['start_condition']}")
+            lines.append("")
     lines.extend(
         [
             "## 允许的决策",
@@ -232,6 +256,25 @@ def render_scope_review_markdown(request: Mapping[str, Any]) -> str:
             "- `approved`: 所有问题都必须为 `confirmed` 或 `resolved_upstream`。",
             "- `request_changes`: 指定问题回流 A02/A03/A05/A06，并填写理由和责任人。",
             "- `rejected`: 当前范围不进入后续测试设计。",
+            "",
+            "## 审核评论模板",
+            "",
+            "下面已按当前证据预填非绑定的 `request_changes` 建议。请逐项核对并修改，再将整段作为一条新评论提交；只有你的评论才是正式输入。若改为 `approved`，必须把全部处置改为 `confirmed` 或 `resolved_upstream`。",
+            "",
+            "G01 Decision Protocol | 1.0",
+            f"Request Hash | {request.get('request_hash', '')}",
+            "Decision | ",
+            "Overall Reason | ",
+            "Test Rules | ",
+            "Issue ID | Disposition | Rationale | Owner",
+            "--- | --- | --- | ---",
+            *[
+                f"{item.get('issue_id', '')} | "
+                + " | ".join(review_suggestion(item))
+                for item in request.get("issues", [])
+            ],
+            "",
+            "允许的 `Disposition`：`confirmed`、`resolved_upstream`、`return_to_a02`、`return_to_a03`、`return_to_a05`、`return_to_a06`。",
             "",
             "Agent 不能审批 G01。审批完成前，N24 和 A08 必须保持阻塞。",
             "",

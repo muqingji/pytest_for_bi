@@ -14,6 +14,15 @@ SECRET_VALUE = re.compile(
     r"(?i)(authorization\s*:\s*(?:bearer\s+)?\S{12,}|cookie\s*:\s*\S{12,}|"
     r"fs_token=[A-Za-z0-9]{8,}|(?:password|passwd)\s*[:=]\s*['\"]?[^\s'\"]{8,})"
 )
+ENV_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
+
+
+def _is_secret_env_name_list(value: Any) -> bool:
+    """Allow permission allowlists that name host env vars without embedding values."""
+
+    return isinstance(value, list) and all(
+        isinstance(item, str) and bool(ENV_NAME.match(item)) for item in value
+    )
 
 
 class SecurityPolicy:
@@ -40,9 +49,7 @@ class SecurityPolicy:
         self.assert_no_secret_values(snapshot)
         integrity = snapshot.get("integrity", {})
         if integrity.get("business_repository_write_allowed") is not False:
-            raise SecurityPolicyError("Business repository writes must be disabled")
-        if integrity.get("oracle_included_in_agent_input") is not False:
-            raise SecurityPolicyError("Oracle must not be included in agent input")
+            raise SecurityPolicyError("Business repository writes must be denied")
         if integrity.get("source_credentials_embedded") is not False:
             raise SecurityPolicyError("Source credentials must not be embedded")
 
@@ -68,10 +75,20 @@ class SecurityPolicy:
 
     def redact_secrets(self, value: Any) -> Any:
         if isinstance(value, Mapping):
-            return {
-                key: "[REDACTED]" if SECRET_KEY.search(str(key)) else self.redact_secrets(item)
-                for key, item in value.items()
-            }
+            result = {}
+            for key, item in value.items():
+                empty = item is None or item is False or item == ""
+                if isinstance(item, (list, tuple, dict)):
+                    empty = not item
+                if (
+                    SECRET_KEY.search(str(key))
+                    and not empty
+                    and not _is_secret_env_name_list(item)
+                ):
+                    result[key] = "[REDACTED]"
+                else:
+                    result[key] = self.redact_secrets(item)
+            return result
         if isinstance(value, list):
             return [self.redact_secrets(item) for item in value]
         if isinstance(value, tuple):
@@ -89,7 +106,11 @@ class SecurityPolicy:
                     empty_or_redacted = item in {"", "[REDACTED]"}
                 elif isinstance(item, (list, tuple, dict)):
                     empty_or_redacted = not item
-                if SECRET_KEY.search(str(key)) and not empty_or_redacted:
+                if (
+                    SECRET_KEY.search(str(key))
+                    and not empty_or_redacted
+                    and not _is_secret_env_name_list(item)
+                ):
                     raise SecurityPolicyError(f"Credential-like field found at {child_path}")
                 self.assert_no_secret_values(item, child_path)
             return

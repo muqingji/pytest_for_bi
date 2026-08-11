@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "n10-retry-budget/1.0",
+  "type": "object",
+  "required": ["schema_version", "attempt", "max_attempts", "decision", "next_node", "policy_hash"],
+  "properties": {
+    "schema_version": {"const": "n10-retry-budget/1.0"},
+    "attempt": {"type": "integer", "minimum": 0},
+    "max_attempts": {"type": "integer", "minimum": 0},
+    "decision": {"enum": ["retry_allowed", "budget_exhausted", "not_required"]},
+    "next_node": {"enum": ["N07", "N09"]},
+    "policy_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+  },
+  "additionalProperties": true
+}

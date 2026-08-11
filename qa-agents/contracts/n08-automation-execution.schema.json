@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "n08-automation-execution/1.0",
+  "type": "object",
+  "required": [
+    "schema_version", "workflow_run_id", "source_snapshot_id",
+    "environment_fingerprint", "input_bindings", "execution_policy_hash",
+    "runner", "shards", "summary", "decision", "next_node"
+  ],
+  "properties": {
+    "schema_version": {"const": "n08-automation-execution/1.0"},
+    "workflow_run_id": {"type": "string", "minLength": 1},
+    "source_snapshot_id": {"type": "string", "minLength": 1},
+    "environment_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "input_bindings": {
+      "type": "object",
+      "required": ["environment_precheck_hash", "generation_hash", "review_hash", "code_check_hash", "manifest_hash"]
+    },
+    "execution_policy_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "runner": {
+      "type": "object",
+      "required": ["backend", "production_isolated", "shell", "network", "secrets"]
+    },
+    "shards": {"type": "array"},
+    "summary": {
+      "type": "object",
+      "required": ["total", "passed", "failed", "timed_out", "infrastructure_error"]
+    },
+    "decision": {"enum": ["passed", "test_failures", "retryable_infrastructure_failure"]},
+    "next_node": {"enum": ["N09", "N10"]}
+  },
+  "additionalProperties": true
+}

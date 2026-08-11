@@ -70,7 +70,23 @@ class AutomationProfile:
 
 
 def _spec_backend(case: Mapping[str, Any]) -> tuple[dict[str, Any], str | None]:
-    return {}, None
+    test_level = str(case.get("test_level", "api") or "api").strip().lower()
+    if test_level in {"unit", "unit_test", "单元", "单元测试"}:
+        return {}, "paused_existing_developer_unit_coverage"
+    if test_level not in {
+        "api",
+        "integration",
+        "integration_test",
+        "functional",
+        "functional_test",
+        "service",
+        "component",
+        "接口",
+        "集成",
+        "功能",
+    }:
+        return {}, "unsupported_server_test_level"
+    return {"test_level": test_level}, None
 
 
 def _spec_frontend(case: Mapping[str, Any]) -> tuple[dict[str, Any], str | None]:
@@ -193,7 +209,7 @@ LAYER_PROFILES: dict[str, AutomationProfile] = {
         manifest_id="manifest-a14-backend",
         layer="backend",
         candidate_root="generated/backend",
-        not_applicable_reason="no_machine_executable_backend_case",
+        not_applicable_reason="no_machine_executable_integration_or_functional_case",
         spec_builder=_spec_backend,
         spec_validator=_review_backend,
     ),
@@ -528,6 +544,12 @@ class DomainAutomationReviewAgent(BaseAgent):
             payload={
                 "schema_version": "automation-review/1.0",
                 "review_profile": self.profile.review_profile,
+                "generation_hash": content_hash(generation),
+                "manifest_hash": content_hash(manifest),
+                "candidate_hashes": {
+                    path: str(candidate.get("content_hash", ""))
+                    for path, candidate in sorted(candidates.items())
+                },
                 "approved": not issues,
                 "issues": issues,
                 "generator_hidden_reasoning_accessed": False,

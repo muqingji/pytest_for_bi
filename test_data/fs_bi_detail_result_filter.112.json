@@ -1,0 +1,188 @@
+{
+  "workflow": "qa-agent-data-lifecycle",
+  "cases": [
+    {
+      "id": "CASE-FUNC-RESULT-FILTER-DETAIL-112",
+      "name": "112-结果集筛选指标查看明细",
+      "environment": "112",
+      "namespace": "qa-multica-confidence-20260811-02",
+      "priority": "P0",
+      "tags": ["smoke", "integration"],
+      "test_level": "functional",
+      "contract_ref": "fs-bi@c6b785344c6973b6d6fc5bb108c45b3971f36c64:fs-bi-stat/src/main/java/com/facishare/bi/stat/controller/StatBaseController.java#dataQuery",
+      "test_data": {
+        "resource_key": "result_filter_metric",
+        "resource_type": "aggregate_metric",
+        "resource_id_variable": "metric_field_id"
+      },
+      "variables": {
+        "namespace": "qa-multica-confidence-20260811-02",
+        "schema_id": "BI_e672ff1046fb773b76bc2b56",
+        "schema_object": "object_fwtes__c",
+        "metric_name": "qa-multica-confidence-20260811-02-result-filter-metric"
+      },
+      "setup": [
+        {
+          "name": "创建带结果集数据范围的隔离指标",
+          "request": {
+            "protocol": "http",
+            "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+            "json": {
+              "schemaId": "{{ schema_id }}",
+              "schemaObjectName": "{{ schema_object }}",
+              "displayName": "{{ metric_name }}",
+              "aggObject": {
+                "refObjName": "object_fwtes__c",
+                "refObjShowName": "区域测试",
+                "refJoinField": "BI_3162840e81468715b0ec6b5aea414582"
+              },
+              "aggField": {
+                "dbFieldName": "field_shS2y__c",
+                "fieldName": "金额",
+                "fieldType": "Number",
+                "dbObjName": "object_fwtes__c",
+                "fieldId": "BI_d9d45d8381de9e094fe1973acf408d92"
+              },
+              "aggFieldTime": {
+                "dbFieldName": "field_3913t__c",
+                "fieldName": "日期",
+                "fieldType": "Date",
+                "dbObjName": "object_fwtes__c",
+                "fieldId": "BI_9b4d74a9fd193cc9b75e51db2dc2c67f"
+              },
+              "filterLists": [
+                {
+                  "filters": [
+                    {
+                      "displayNumber": 1,
+                      "fieldId": "BI_d9d45d8381de9e094fe1973acf408d92",
+                      "fieldID": "BI_d9d45d8381de9e094fe1973acf408d92",
+                      "operator": 1,
+                      "operatorLabel": "等于",
+                      "value1": "0",
+                      "value2": "",
+                      "dbFieldName": "field_shS2y__c",
+                      "dbObjName": "object_fwtes__c",
+                      "fieldName": "金额",
+                      "fieldType": "Number",
+                      "aggDimType": "base_agg",
+                      "filterConfig": {
+                        "showAppointLevelSwitch": 0,
+                        "switchStatus": 0,
+                        "filterGroupType": 1,
+                        "aggrType": "2",
+                        "ratioType": "0"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "checkFieldAggregateType": 2,
+              "initStatus": 1,
+              "timeZone": "Asia/Shanghai"
+            }
+          },
+          "extract": {
+            "metric_field_id": "Value.fieldId"
+          },
+          "expect": {
+            "status_code": 200,
+            "json_path": {
+              "Result.FailureCode": 0
+            }
+          }
+        }
+      ],
+      "readiness": [
+        {
+          "name": "回查指标已创建并可用于集成测试",
+          "request": {
+            "protocol": "http",
+            "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+            "json": {
+              "schemaId": "{{ schema_id }}",
+              "fieldId": "{{ metric_field_id }}"
+            }
+          },
+          "expect": {
+            "status_code": 200,
+            "json_path": {
+              "Result.FailureCode": 0,
+              "Value.fieldId": "{{ metric_field_id }}"
+            }
+          }
+        }
+      ],
+      "steps": [
+        {
+          "name": "调用真实查看明细接口验证结果集筛选限制",
+          "request": {
+            "protocol": "http",
+            "api": "fs_bi_stat.stat_base.data_query_da655ba1",
+            "json": {
+              "id": "{{ schema_id }}",
+              "isView": 0,
+              "measureFieldID": "{{ metric_field_id }}",
+              "measureFieldIDs": ["{{ metric_field_id }}"],
+              "pageNumber": 1,
+              "pageSize": 20,
+              "filterLists": [
+                {
+                  "filters": [
+                    {
+                      "displayNumber": 1,
+                      "fieldId": "{{ metric_field_id }}",
+                      "fieldID": "{{ metric_field_id }}",
+                      "fieldName": "{{ metric_name }}",
+                      "fieldType": "Number",
+                      "operator": 1,
+                      "operatorLabel": "等于",
+                      "value1": "0",
+                      "value2": "",
+                      "aggDimType": "agg",
+                      "filterConfig": {
+                        "showAppointLevelSwitch": 0,
+                        "switchStatus": 0,
+                        "filterGroupType": 1,
+                        "aggrType": "2",
+                        "ratioType": "0"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "timeZone": "Asia/Shanghai",
+              "lan": "zh-CN"
+            }
+          },
+          "expect": {
+            "status_code": 200,
+            "body_contains_keys": ["s307011535"]
+          }
+        }
+      ],
+      "cleanup": [
+        {
+          "name": "删除本次运行创建的隔离指标",
+          "when_variable": "metric_field_id",
+          "request": {
+            "protocol": "http",
+            "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+            "json": {
+              "schemaId": "{{ schema_id }}",
+              "fieldId": "{{ metric_field_id }}",
+              "fieldName": "{{ metric_name }}"
+            }
+          },
+          "expect": {
+            "status_code": 200,
+            "json_path": {
+              "Result.FailureCode": 0,
+              "Value.resultCode": "0"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

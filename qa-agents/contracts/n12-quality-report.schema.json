@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "n12-quality-report/1.0",
+  "type": "object",
+  "required": ["schema_version", "quality_decision_hash", "report_hash", "decision", "release_disposition", "published_outputs", "bug_draft_count", "next_node"],
+  "properties": {
+    "schema_version": {"const": "n12-quality-report/1.0"},
+    "quality_decision_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "report_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "decision": {"enum": ["passed", "passed_with_warning", "blocked", "inconclusive"]},
+    "release_disposition": {"enum": ["eligible", "pending"]},
+    "published_outputs": {"type": "array", "minItems": 3, "items": {"type": "string"}},
+    "bug_draft_count": {"type": "integer", "minimum": 0},
+    "next_node": {"const": "N13"}
+  },
+  "additionalProperties": true
+}

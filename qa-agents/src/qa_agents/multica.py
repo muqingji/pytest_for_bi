@@ -2003,6 +2003,40 @@ def _validate_split_review_semantics(
     if len(observed_parents) != len(set(observed_parents)) or set(observed_parents) != parent_ids:
         raise ContractError("A11 must review every parent Case exactly once")
 
+    coverage_by_parent = {
+        str(item.get("parent_case_id")): str(item.get("status"))
+        for item in payload.get("parent_case_coverage", [])
+        if isinstance(item, Mapping)
+    }
+    issues_by_case = {
+        str(issue.get("case_id") or "")
+        for issue in payload.get("issues", [])
+        if isinstance(issue, Mapping) and issue.get("route_to") == "N25"
+    }
+    for parent in parents:
+        if not isinstance(parent, Mapping):
+            continue
+        parent_id = str(parent.get("id", ""))
+        expected_layers = set(map(str, parent.get("required_layers", [])))
+        split_children = [
+            child for child in children
+            if isinstance(child, Mapping)
+            and str(child.get("parent_case_id", "")) == parent_id
+        ]
+        split_layers = {str(child.get("layer", "")) for child in split_children}
+        responsibilities_unchanged = bool(split_children) and all(
+            child.get("expected") == parent.get("expected") for child in split_children
+        )
+        if len(expected_layers) > 1 and len(split_layers) > 1 and responsibilities_unchanged:
+            related_ids = {parent_id} | {str(child.get("id", "")) for child in split_children}
+            if (
+                coverage_by_parent.get(parent_id) not in {"partial", "missing"}
+                or not (related_ids & issues_by_case)
+            ):
+                raise ContractError(
+                    f"A11 parent {parent_id} has unscoped cross-layer responsibilities"
+                )
+
     layers = {str(item.get("layer")) for item in children if isinstance(item, Mapping)}
     observed_layers: list[str] = []
     for index, item in enumerate(payload.get("layer_coverage", [])):

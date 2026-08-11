@@ -134,6 +134,55 @@ def test_selection_skip_requires_approved_policy_rule() -> None:
     assert {item["action"] for item in plan["actions"]} == {"skip", "generate_new"}
 
 
+def test_execution_plan_pauses_unit_case_even_when_selection_requires_it() -> None:
+    unit_case = child_case("CASE-UNIT")
+    unit_case["test_level"] = "unit"
+    plan = compile_execution_plan(
+        {
+            "schema_version": "test-selection/1.0",
+            "selected_cases": [
+                {
+                    "case_id": "CASE-UNIT",
+                    "selection": "must_run",
+                    "reason_code": "policy_forced",
+                }
+            ],
+        },
+        [unit_case],
+    )
+
+    assert plan["actions"] == [
+        {
+            "case_id": "CASE-UNIT",
+            "action": "skip",
+            "reason_code": "paused_existing_developer_unit_coverage",
+            "automation_ref": None,
+        }
+    ]
+
+
+def test_execution_plan_defers_frontend_scope_by_policy() -> None:
+    case = child_case("CASE-E2E")
+    case["layer"] = "e2e"
+    plan = compile_execution_plan(
+        {
+            "schema_version": "test-selection/1.0",
+            "selected_cases": [
+                {
+                    "case_id": "CASE-E2E",
+                    "selection": "must_run",
+                    "reason_code": "policy_forced",
+                }
+            ],
+        },
+        [case],
+        deferred_layers={"e2e"},
+    )
+
+    assert plan["actions"][0]["action"] == "deferred_frontend"
+    assert plan["actions"][0]["reason_code"] == "e2e_scope_deferred_by_policy"
+
+
 def test_high_confidence_impact_resolves_without_advice() -> None:
     assets = {
         "automation_assets": {

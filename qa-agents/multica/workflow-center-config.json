@@ -1,0 +1,30 @@
+{
+  "schema_version": "multica-workflow-center/1.0",
+  "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
+  "workflow_project_id": "4fa45734-8f07-4e07-92ce-0bdd6bb3d29b",
+  "internal_project_id": "c2c84f1f-20af-456d-9eca-c9fbbd253840",
+  "workflow_lead_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
+  "properties": {
+    "item_type": "工作项类型",
+    "workflow_status": "工作流状态",
+    "progress": "完成进度",
+    "current_node": "当前节点",
+    "action_required": "需要我处理"
+  },
+  "views": {
+    "workflow_center": {
+      "project_id": "4fa45734-8f07-4e07-92ce-0bdd6bb3d29b",
+      "metadata": "qa_item_type=workflow"
+    },
+    "my_actions": {
+      "project_id": "4fa45734-8f07-4e07-92ce-0bdd6bb3d29b",
+      "metadata": [
+        "qa_item_type=workflow",
+        "\"qa_action_required=\"\"true\"\"\""
+      ]
+    },
+    "internal_execution": {
+      "project_id": "c2c84f1f-20af-456d-9eca-c9fbbd253840"
+    }
+  }
+}

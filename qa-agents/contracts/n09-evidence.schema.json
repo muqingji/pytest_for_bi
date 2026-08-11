@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "n09-evidence/1.0",
+  "type": "object",
+  "required": ["schema_version", "input_bindings", "case_results", "failure_clusters", "summary", "next_nodes"],
+  "properties": {
+    "schema_version": {"const": "n09-evidence/1.0"},
+    "input_bindings": {"type": "object"},
+    "case_results": {"type": "array"},
+    "failure_clusters": {"type": "array"},
+    "summary": {"type": "object"},
+    "next_nodes": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+  },
+  "additionalProperties": true
+}

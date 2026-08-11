@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from qa_agents.contracts import content_hash
+from qa_agents.contracts import ArtifactEnvelope, ArtifactStatus, Producer, content_hash
 from qa_agents.env_precheck import run_n07_env_precheck, run_n16_env_fix
 from qa_agents.errors import ContractError, SecurityPolicyError
 
@@ -123,6 +123,60 @@ def test_n07_passed_environment_records_artifact(tmp_path: Path) -> None:
     assert artifact["payload"]["environment_fingerprint"].startswith("sha256:")
     assert artifact["payload"]["throttled"] is False
     assert (tmp_path / "artifacts/n07-environment-precheck.json").exists()
+
+
+def test_n07_accepts_hash_bound_policy_skipped_n27(tmp_path: Path) -> None:
+    target_path = write_json(tmp_path / "target.json", target_dict())
+    observed_path = write_json(tmp_path / "observed.json", observed_dict())
+    n27 = ArtifactEnvelope(
+        workflow_run_id=RUN_ID,
+        workflow_mode="new_requirement",
+        artifact_id="n27-test-data-plan-validation",
+        source_snapshot_id=SNAPSHOT,
+        producer=Producer("N27", runtime="deterministic"),
+        payload={
+            "schema_version": "test-data-plan-validation/1.0",
+            "valid": True,
+            "decision": "skipped_by_policy",
+            "next_node": "N07",
+            "deferred_cases": [{"case_id": "CASE-DATA"}],
+        },
+        status=ArtifactStatus.SKIPPED_BY_POLICY,
+        reason_code="test_data_agent_paused_by_policy",
+    )
+    n27_path = write_json(tmp_path / "n27.json", n27.to_dict())
+
+    artifact = run_n07_env_precheck(
+        target_path,
+        observed_path,
+        tmp_path / "out",
+        workflow_run_id=RUN_ID,
+        source_snapshot_id=SNAPSHOT,
+        workflow_mode="new_requirement",
+        test_data_validation_path=n27_path,
+    )
+
+    assert artifact["payload"]["next_node"] == "N08"
+    assert artifact["payload"]["test_data_validation_hash"] == n27.artifact_hash
+    assert any(item["name"] == "test-data-plan:route" for item in artifact["payload"]["checks"])
+
+
+def test_n07_can_inherit_parent_workflow_mode(tmp_path: Path) -> None:
+    target_path = write_json(tmp_path / "target.json", target_dict())
+    observed_path = write_json(tmp_path / "observed.json", observed_dict())
+
+    artifact = run_n07_env_precheck(
+        target_path,
+        observed_path,
+        tmp_path / "out",
+        workflow_run_id=RUN_ID,
+        source_snapshot_id=SNAPSHOT,
+        workflow_mode="new_requirement",
+    )
+
+    assert artifact["workflow_mode"] == "new_requirement"
+    assert artifact["payload"]["production_isolation"] is False
+    assert (tmp_path / "out/artifacts/n07-environment-precheck.json").exists()
 
 
 def test_n07_failed_check_blocks_and_routes_to_n16(tmp_path: Path) -> None:

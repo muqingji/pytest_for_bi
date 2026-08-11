@@ -1,0 +1,53 @@
+{
+  "schema_version": "execution-policy/1.0",
+  "allowed_executables": [
+    "pytest"
+  ],
+  "max_parallel_shards": 4,
+  "max_timeout_seconds": 900,
+  "max_log_bytes": 1048576,
+  "max_junit_bytes": 10485760,
+  "allow_network": false,
+  "allow_secrets": false,
+  "require_production_isolation": false,
+  "runner_backend": "local_process_reference",
+  "evidence_arguments": [
+    "--junitxml"
+  ],
+  "collect_coverage": false,
+  "controlled_environment": {
+    "enabled": true,
+    "runner_backend": "controlled_env_reference",
+    "allowed_environment_classes": [
+      "staging_112",
+      "local_reference",
+      "112"
+    ],
+    "allow_network": true,
+    "allow_secrets": true,
+    "allowed_secret_env_names": [
+      "FS_BI_TOKEN",
+      "FS_COOKIE",
+      "FS_TOKEN",
+      "QA_ENV_TOKEN",
+      "EA_TOKEN"
+    ],
+    "allowed_env_passthrough": [
+      "PATH",
+      "LANG",
+      "HOME",
+      "TMPDIR",
+      "TMP",
+      "TEMP",
+      "PYTHONPATH",
+      "QA_ENV",
+      "HTTP_PROXY",
+      "HTTPS_PROXY",
+      "NO_PROXY"
+    ],
+    "framework_pythonpath_entries": [
+      "src"
+    ],
+    "collect_coverage": true
+  }
+}
