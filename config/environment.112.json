@@ -18,8 +18,12 @@
   "test_data": {
     "writes_enabled": true,
     "namespace_prefix": "qa-",
-    "cleanup_required": true,
-    "cleanup_verification_required": true,
+    "cleanup_required": false,
+    "cleanup_verification_required": false,
+    "retention_mode": "retain",
+    "retained_asset_registry_required": true,
+    "chart_folder_naming": "requirement_name",
+    "business_resource_naming": "typed_chinese_semantic",
     "environment_class": "test"
   }
 }

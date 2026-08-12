@@ -1,0 +1,4 @@
+interface:
+  display_name: "Lexiang Authorized Snapshot"
+  short_description: "Capture approved Lexiang pages with authorized sessions"
+  default_prompt: "Capture an approved Lexiang category as a sanitized, evidence-bound snapshot."

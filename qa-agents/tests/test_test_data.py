@@ -25,6 +25,7 @@ def _resource() -> dict:
     return {
         "resource_key": "metric",
         "resource_type": "aggregate_metric",
+        "retention_mode": "delete",
         "resource_id_variable": "metric_field_id",
         "setup": {
             "name": "create namespaced metric",
@@ -88,7 +89,8 @@ def test_a22_plans_owned_112_resource_and_n27_validates_it() -> None:
     assert validation["phase_permissions"] == {
         "setup": "write",
         "readiness": "read_only",
-        "cleanup": "write",
+        "cleanup": "disabled",
+        "retention_verification": "read_only",
     }
     bound = bind_plan_to_case(_case(), artifact["payload"])
     assert bound["environment"] == "112"
@@ -137,6 +139,153 @@ def test_n27_rejects_write_operation_in_readiness_phase() -> None:
     )
 
     with pytest.raises(SecurityPolicyError, match="read-only readiness operation"):
+        validate_test_data_plan(plan, _policy())
+
+
+def _enum_plan() -> dict:
+    plan = _run([_case()])["payload"]
+    setup = plan["case_plans"][0]["resources"][0]["setup"]
+    setup["request"]["json"]["filterLists"] = [{"filters": [{
+        "fieldId": "level-field", "fieldID": "level-field", "fieldType": "Enum",
+        "fieldName": "客户级别",
+        "value1": '[{"optionCode":"A","optionName":"重点客户"}]',
+    }]}]
+    return plan
+
+
+def _bind_enum(plan: dict, **overrides: object) -> None:
+    binding = {
+        "field_id": "level-field", "field_api_name": "account_level",
+        "option_query_operation": "fs_bi_stat.stat_edit.get_filters_result",
+        "option_response_hash": "sha256:" + "a" * 64,
+        "response_json_path": "$.Value.options[*]",
+        "queried_option_codes": ["A", "B"], "selected_option_codes": ["A"],
+    }
+    binding.update(overrides)
+    plan["case_plans"][0]["resources"][0]["setup"]["enum_option_bindings"] = [binding]
+
+
+def test_n27_accepts_bound_enum_and_plain_numeric_filter() -> None:
+    plan = _enum_plan()
+    _bind_enum(plan)
+    validate_test_data_plan(plan, _policy())
+    numeric = _run([_case()])["payload"]
+    numeric["case_plans"][0]["resources"][0]["setup"]["request"]["json"]["filterLists"] = [
+        {"filters": [{"fieldId": "amount", "fieldType": "Number", "value1": "0"}]}
+    ]
+    validate_test_data_plan(numeric, _policy())
+
+
+@pytest.mark.parametrize("mutation,message", [
+    ("missing", "enum_option_bindings"), ("hash", "valid option response hash"),
+    ("unknown", "not returned"), ("field", "exactly one binding"),
+    ("label", "without optionCode"),
+])
+def test_n27_rejects_unproven_enum_values(mutation: str, message: str) -> None:
+    plan = _enum_plan()
+    if mutation != "missing":
+        overrides: dict[str, object] = {}
+        if mutation == "hash": overrides["option_response_hash"] = "sample"
+        if mutation == "unknown": overrides["selected_option_codes"] = ["C"]
+        if mutation == "field": overrides["field_id"] = "other-field"
+        _bind_enum(plan, **overrides)
+    if mutation == "label":
+        plan["case_plans"][0]["resources"][0]["setup"]["request"]["json"]["filterLists"][0]["filters"][0]["value1"] = '[{"optionName":"重点客户"}]'
+    with pytest.raises(SecurityPolicyError, match=message):
+        validate_test_data_plan(plan, _policy())
+
+
+def _custom_dimension_plan() -> dict:
+    plan = _run([_case()])["payload"]
+    resource = plan["case_plans"][0]["resources"][0]
+    resource["resource_type"] = "custom_dimension"
+    resource["setup"]["request"]["api"] = "fs_bi_stat.custom_dimension.create_custom_dimension"
+    resource["setup"]["request"]["json"] = {
+        "customType": "enum_group",
+        "sourceDimension": {"fieldId": "source-level", "dimensionField": "account_level"},
+        "dimensionConfig": '{"groups":[{"name":"等级组","values":["A"]}]}',
+        "ownership": "{{ namespace }}",
+    }
+    resource["setup"]["enum_option_bindings"] = [{
+        "field_id": "source-level", "field_api_name": "account_level",
+        "option_query_operation": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+        "option_response_hash": "sha256:" + "b" * 64,
+        "response_json_path": "$.Value[*].ui.data[*]",
+        "queried_option_codes": ["A", "B"], "selected_option_codes": ["A"],
+    }]
+    resource["cleanup"]["request"]["api"] = "fs_bi_stat.custom_dimension.delete_custom_dimension"
+    return plan
+
+
+def test_n27_validates_enum_codes_hidden_in_custom_dimension_config() -> None:
+    validate_test_data_plan(_custom_dimension_plan(), _policy())
+    plan = _custom_dimension_plan()
+    plan["case_plans"][0]["resources"][0]["setup"]["request"]["json"]["dimensionConfig"] = (
+        '{"groups":[{"name":"等级组","values":["invented"]}]}'
+    )
+    with pytest.raises(SecurityPolicyError, match="not returned"):
+        validate_test_data_plan(plan, _policy())
+
+
+def _existing_historical_chart_plan() -> dict:
+    plan = _run([_case()])["payload"]
+    resource = plan["case_plans"][0]["resources"][0]
+    resource.pop("setup")
+    resource.pop("cleanup")
+    resource["resource_type"] = "stat_chart"
+    resource["lifecycle_mode"] = "existing_read_only"
+    resource["discovery"] = {
+        "request": {
+            "api": "fs_bi_stat.view_data_query_api.get_chart_config",
+            "json": {"viewId": "BI_existing"},
+        }
+    }
+    resource["readiness"] = [resource["discovery"]]
+    resource["existing_asset_evidence"] = {
+        "historical_required": True,
+        "evidence_level": "historical_candidate_verified_by_id_timestamp_and_live_readback",
+        "observed_created_at": "2025-09-04T08:08:11Z",
+        "requirement_baseline_at": "2026-08-07T11:42:44Z",
+        "live_readback_status": "succeeded",
+        "configuration_hash": "sha256:" + "c" * 64,
+    }
+    return plan
+
+
+def test_n27_accepts_existing_historical_asset_without_fake_setup() -> None:
+    plan = _existing_historical_chart_plan()
+    validation = validate_test_data_plan(plan, _policy())
+    bound = bind_plan_to_case(_case(), plan)
+
+    assert validation["validated_resource_count"] == 1
+    assert bound["setup"] == []
+    assert [item["phase"] for item in bound["preparation"]] == [
+        "discovery", "readiness"
+    ]
+
+
+@pytest.mark.parametrize("mutation,message", [
+    ("write", "cannot define setup or cleanup"),
+    ("hash", "valid configuration hash"),
+    ("readback", "live readback is not proven"),
+    ("level", "evidence level is insufficient"),
+])
+def test_n27_rejects_unproven_existing_historical_asset(
+    mutation: str, message: str
+) -> None:
+    plan = _existing_historical_chart_plan()
+    resource = plan["case_plans"][0]["resources"][0]
+    evidence = resource["existing_asset_evidence"]
+    if mutation == "write":
+        resource["setup"] = _resource()["setup"]
+    elif mutation == "hash":
+        evidence["configuration_hash"] = "sample"
+    elif mutation == "readback":
+        evidence["live_readback_status"] = "unknown"
+    else:
+        evidence["evidence_level"] = "repository_reference_only"
+
+    with pytest.raises(SecurityPolicyError, match=message):
         validate_test_data_plan(plan, _policy())
 
 

@@ -25,9 +25,47 @@ from .storage import ArtifactStore
 
 INTENT_CONTRACT = "test-data-intent/1.0"
 PLAN_CONTRACT = "test-data-plan/1.0"
+LIFECYCLE_CONTRACT = "test-data-lifecycle-plan/1.0"
 SOURCE_CONTRACT = "bi-knowledge-sources/1.0"
 CATALOG_CONTRACT = "bi-data-capability-catalog/1.0"
 _VARIABLE = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
+DEFAULT_SUBJECT_PRIORITY = ("客户", "销售订单", "销售记录")
+FORBIDDEN_DEFAULT_SUBJECTS = frozenset({"区域测试"})
+CHART_DETAIL_TERMS = ("查看明细", "统计图", "拼表", "交叉表", "detail query", "details view")
+
+
+def select_test_subject(
+    candidates: list[Mapping[str, Any]], *, explicit_subject: str = ""
+) -> dict[str, Any]:
+    """Select a verified subject without silently changing an explicit Case constraint."""
+    usable = [item for item in candidates if int(item.get("status", 0)) == 1]
+    if explicit_subject:
+        matches = [
+            item
+            for item in usable
+            if explicit_subject in str(item.get("schemaName", ""))
+            or explicit_subject == str(item.get("describeApiName", ""))
+        ]
+        if not matches:
+            raise InputError(
+                f"Explicit test subject is unavailable or disabled: {explicit_subject}"
+            )
+        return deepcopy(dict(matches[0]))
+
+    for preferred in DEFAULT_SUBJECT_PRIORITY:
+        for item in usable:
+            if preferred in str(item.get("schemaName", "")):
+                return deepcopy(dict(item))
+    forbidden = [
+        item
+        for item in usable
+        if any(
+            name in str(item.get("schemaName", ""))
+            for name in FORBIDDEN_DEFAULT_SUBJECTS
+        )
+    ]
+    reason = "only forbidden fallback subjects are available" if forbidden else "no mainstream subject is available"
+    raise InputError(f"Default test subject cannot be selected: {reason}")
 
 
 def _read_object(path: Path, label: str) -> dict[str, Any]:
@@ -173,6 +211,15 @@ def _case_text(case: Mapping[str, Any]) -> str:
     ).lower()
 
 
+def required_scene_for_case(case: Mapping[str, Any]) -> str:
+    """Return the full UI/API asset scene required by the Case semantics."""
+    test_data = case.get("test_data", {})
+    if isinstance(test_data, Mapping) and test_data.get("required_scene"):
+        return str(test_data["required_scene"])
+    text = _case_text(case)
+    return "chart_detail" if any(term in text for term in CHART_DETAIL_TERMS) else ""
+
+
 def _matches_recipe(case: Mapping[str, Any], recipe: Mapping[str, Any]) -> bool:
     match = recipe.get("match", {})
     if not isinstance(match, Mapping):
@@ -188,6 +235,12 @@ def _matches_recipe(case: Mapping[str, Any], recipe: Mapping[str, Any]) -> bool:
     datasets = {str(item) for item in match.get("datasets", [])}
     if dataset:
         return dataset in datasets
+    # Composite matrices need a dedicated recipe. A keyword hit must not bind
+    # a multi-resource Case to a single-resource lifecycle.
+    if isinstance(test_data, Mapping) and any(
+        key in test_data for key in ("datasets", "matrix")
+    ):
+        return False
     groups = match.get("all_term_groups", [])
     if not groups:
         return False
@@ -235,6 +288,8 @@ def extract_test_data_intents(
             case_intents.append(
                 {
                     "case_id": case_id,
+                    "requirement_name": str(case.get("requirement_name") or case.get("requirement") or case.get("title") or case_id),
+                    "required_scene": required_scene_for_case(case),
                     "requires_data_construction": True,
                     "dataset": dataset,
                     "resource_goals": [],
@@ -255,6 +310,8 @@ def extract_test_data_intents(
             case_intents.append(
                 {
                     "case_id": case_id,
+                    "requirement_name": str(case.get("requirement_name") or case.get("requirement") or case.get("title") or case_id),
+                    "required_scene": required_scene_for_case(case),
                     "requires_data_construction": requires_data,
                     "dataset": dataset,
                     "resource_goals": [],
@@ -267,6 +324,14 @@ def extract_test_data_intents(
             if isinstance(test_data, Mapping)
             else []
         )
+        if not requested_variants and isinstance(test_data, Mapping):
+            structured_datasets = test_data.get("datasets", [])
+            if isinstance(structured_datasets, list):
+                requested_variants = [
+                    str(item.get("type", ""))
+                    for item in structured_datasets
+                    if isinstance(item, Mapping) and str(item.get("type", ""))
+                ]
         supported_variants = {str(item) for item in recipe.get("supported_variants", [])}
         missing_variants = [
             item for item in requested_variants if item not in supported_variants
@@ -284,6 +349,8 @@ def extract_test_data_intents(
         case_intents.append(
             {
                 "case_id": case_id,
+                "requirement_name": str(case.get("requirement_name") or case.get("requirement") or case.get("title") or case_id),
+                "required_scene": required_scene_for_case(case),
                 "requires_data_construction": True,
                 "dataset": dataset,
                 "resource_goals": deepcopy(recipe.get("resource_goals", [])),
@@ -394,6 +461,8 @@ def compile_resource_plan(
             case_plans.append(
                 {
                     "case_id": str(item.get("case_id", "")),
+                    "requirement_name": str(item.get("requirement_name") or item.get("case_id", "")),
+                    "required_scene": str(item.get("required_scene", "")),
                     "requires_data_construction": bool(
                         item.get("requires_data_construction", False)
                     ),
@@ -422,6 +491,9 @@ def compile_resource_plan(
         case_plans.append(
             {
                 "case_id": str(item.get("case_id", "")),
+                "requirement_name": str(item.get("requirement_name") or item.get("title") or item.get("case_id", "")),
+                "required_scene": str(item.get("required_scene", "")),
+                "retention_mode": "retain",
                 "requires_data_construction": True,
                 "planning_mode": "autonomous",
                 "recipe_refs": [
@@ -429,13 +501,40 @@ def compile_resource_plan(
                 ],
                 "evidence_refs": list(recipe.get("evidence_refs", [])),
                 "variables": variables,
-                "resources": _topological_resources(
-                    list(recipe.get("resources", [])), recipe_id
-                ),
+                "resources": [
+                    {
+                        **resource,
+                        "retention_mode": "retain",
+                        "ownership_namespace": namespace,
+                    }
+                    for resource in _topological_resources(
+                        list(recipe.get("resources", [])), recipe_id
+                    )
+                ],
             }
         )
+    setup_actions = [
+        {"case_id": case["case_id"], "resource_key": resource["resource_key"], **deepcopy(resource["setup"])}
+        for case in case_plans for resource in case["resources"]
+        if resource.get("lifecycle_mode", "create") == "create"
+    ]
+    readiness_checks = [
+        {"case_id": case["case_id"], "resource_key": resource["resource_key"], **deepcopy(check)}
+        for case in case_plans for resource in case["resources"] for check in resource.get("readiness", [])
+    ]
+    cleanup_actions = [
+        {"case_id": case["case_id"], "resource_key": resource["resource_key"], **deepcopy(resource["cleanup"])}
+        for case in case_plans for resource in reversed(case["resources"])
+        if resource.get("retention_mode") == "delete"
+    ]
+    residue_checks = [
+        {"case_id": case["case_id"], "resource_key": resource["resource_key"], **deepcopy(check)}
+        for case in case_plans for resource in reversed(case["resources"])
+        for check in resource.get("residue_checks", [])
+    ]
     return {
         "schema_version": PLAN_CONTRACT,
+        "lifecycle_schema_version": LIFECYCLE_CONTRACT,
         "environment": environment,
         "namespace": namespace,
         "planning_mode": "autonomous",
@@ -443,6 +542,43 @@ def compile_resource_plan(
         "case_plans": case_plans,
         "paused_cases": list(intent.get("paused_cases", [])),
         "unresolved_requirements": list(intent.get("unresolved_requirements", [])),
+        "resource_graph": [
+            {"case_id": case["case_id"], "resource_key": resource["resource_key"],
+             "depends_on": list(resource.get("depends_on", []))}
+            for case in case_plans for resource in case["resources"]
+        ],
+        "setup_actions": setup_actions,
+        "readiness_checks": readiness_checks,
+        "runtime_variables": {
+            case["case_id"]: sorted(case.get("variables", {})) for case in case_plans
+        },
+        "cleanup_actions": cleanup_actions,
+        "retained_assets": [
+            {
+                "case_id": case["case_id"],
+                "requirement_name": case.get("requirement_name", case["case_id"]),
+                "resource_key": resource["resource_key"],
+                "resource_type": resource["resource_type"],
+                "resource_id_variable": resource["resource_id_variable"],
+                "retention_mode": "retain",
+            }
+            for case in case_plans
+            for resource in case["resources"]
+            if resource.get("retention_mode") == "retain"
+        ],
+        "residue_checks": residue_checks,
+        "unsupported_requirements": list(intent.get("unresolved_requirements", [])),
+        "ready_for_execution": not intent.get("unresolved_requirements") and all(
+            (
+                bool(resource.get("discovery"))
+                and bool(resource.get("readiness"))
+                and bool(resource.get("existing_asset_evidence"))
+            )
+            if resource.get("lifecycle_mode") == "existing_read_only"
+            else bool(resource.get("residue_checks"))
+            for case in case_plans
+            for resource in case["resources"]
+        ),
     }
 
 
@@ -462,6 +598,7 @@ def prepare_autonomous_test_data_plan(
     from .test_data import validate_test_data_plan
 
     security = security or SecurityPolicy()
+    from .skill_registry import SkillRegistry, route_data_plan
     compiled = _read_object(compiled_cases_path, "N25 compiled cases Artifact")
     if compiled.get("schema_version") != "artifact-envelope/1.0":
         raise ContractError("N25 compiled cases is not an Artifact Envelope")
@@ -486,6 +623,9 @@ def prepare_autonomous_test_data_plan(
         sources, project_root=source_manifest_path.parent.parent
     )
     catalog_validation = validate_capability_catalog(catalog, sources)
+    registry = SkillRegistry.from_file(policy_path.with_name("backend-skill-registry.json"))
+    skill_authorization = route_data_plan(cases, catalog, registry)
+    registry.validate_authorization(skill_authorization, agent_id="D01")
     identity = (
         str(compiled.get("workflow_run_id", "")),
         str(compiled.get("workflow_mode", "")),
@@ -494,6 +634,8 @@ def prepare_autonomous_test_data_plan(
     if not all(identity):
         raise ContractError("N25 workflow identity is incomplete")
     intent_payload = extract_test_data_intents(cases, catalog)
+    intent_payload["aggregate_agent_id"] = "D01"
+    intent_payload["skill_router_binding"] = skill_authorization
     intent_status = (
         ArtifactStatus.BLOCKED
         if intent_payload["unresolved_requirements"]
@@ -531,6 +673,8 @@ def prepare_autonomous_test_data_plan(
     plan = compile_resource_plan(
         intent_payload, catalog, environment=environment, namespace=namespace
     )
+    plan["aggregate_agent_id"] = "D01"
+    plan["skill_router_binding"] = skill_authorization
     n28 = ArtifactEnvelope(
         workflow_run_id=identity[0],
         workflow_mode=identity[1],
@@ -568,6 +712,7 @@ def prepare_autonomous_test_data_plan(
             "n28_artifact_hash": n28.artifact_hash,
             "source_validation": source_validation,
             "catalog_validation": catalog_validation,
+            "skill_router_binding": skill_authorization,
         },
         status=n27_status,
         reason_code=n28.reason_code,
@@ -596,6 +741,8 @@ def prepare_autonomous_test_data_plan(
         ),
         "unresolved_requirements": plan["unresolved_requirements"],
         "ready_for_execution": n27.status == ArtifactStatus.COMPLETED,
+        "lifecycle_ready": bool(plan["ready_for_execution"]),
+        "skill_registry_hash": registry.registry_hash,
     }
     store.write_json("autonomous-test-data-preparation.json", result)
     return result

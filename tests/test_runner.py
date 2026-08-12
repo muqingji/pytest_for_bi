@@ -126,6 +126,14 @@ def _lifecycle_case() -> dict:
                 "expect": {"status_code": 200},
             }
         ],
+        "residue_checks": [
+            {
+                "name": "verify resource absent",
+                "when_variable": "resource_id",
+                "request": {"method": "GET", "path": "/resources/{{ resource_id }}"},
+                "expect_absent": {"json_path": "Value.id", "value": "{{ resource_id }}"},
+            }
+        ],
     }
 
 
@@ -145,9 +153,11 @@ def test_runner_executes_setup_readiness_test_and_finally_cleanup() -> None:
         "/resources/resource-1",
         "/verify",
         "/resources/resource-1",
+        "/resources/resource-1",
     ]
     assert context["resource_id"] == "resource-1"
     assert context["__lifecycle__"]["cleanup"][0]["status"] == "completed"
+    assert context["__lifecycle__"]["residue"][0]["status"] == "completed"
     assert "response_hash" in context["__lifecycle__"]["setup"][0]
 
 
@@ -165,7 +175,97 @@ def test_runner_cleans_up_after_test_assertion_failure() -> None:
     with pytest.raises(AssertionError, match="expected 0"):
         runner.run(case)
 
-    assert http.calls[-1][:2] == ("DELETE", "/resources/resource-1")
+    assert http.calls[-1][:2] == ("GET", "/resources/resource-1")
+
+
+def test_runner_blocks_when_residue_still_exists() -> None:
+    class ResidualHttpClient(LifecycleHttpClient):
+        def request(self, method, path, **kwargs):
+            response = super().request(method, path, **kwargs)
+            if path == "/resources/resource-1" and method == "GET" and any(
+                call[0] == "DELETE" for call in self.calls
+            ):
+                return ApiResponse(status_code=200, body={"Value": {"id": "resource-1"}})
+            return response
+
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        ResidualHttpClient(), FakeRpcClient(), FakeDatabaseClient(),
+    )
+
+    with pytest.raises(RuntimeError, match="lifecycle finalization failed"):
+        runner.execute(_lifecycle_case())
+
+
+def test_response_rejects_residual_value_anywhere() -> None:
+    from framework.core.assertions import assert_response
+    from framework.clients.models import ApiResponse
+
+    response = ApiResponse(status_code=200, body={"Value": [{"fieldID": "resource-1"}]})
+
+    with pytest.raises(AssertionError, match="forbidden residual value"):
+        assert_response(response, {"body_not_contains_values": ["resource-1"]})
+
+
+def test_response_finds_runtime_value_inside_nested_json_string() -> None:
+    from framework.core.assertions import assert_response
+    from framework.clients.models import ApiResponse
+
+    response = ApiResponse(
+        status_code=200,
+        body={"Value": '{"fields":[{"fieldID":"resource-1"}]}'},
+    )
+
+    assert_response(response, {"body_contains_values": ["resource-1"]})
+
+
+def test_oracle_normalizes_detail_error_and_reports_missing_fields() -> None:
+    observations = {
+        "test_response": {"Error": {"Code": "s307011535", "Message": "unsupported"}}
+    }
+    expected = [{
+        "id": "EXP-ERROR", "oracle": {
+            "observation_point": "detail_api.error", "matcher": "all_fields_equal",
+            "expected_value": {
+                "error_code": "s307011535", "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED"
+            },
+        },
+    }]
+
+    with pytest.raises(AssertionError, match=r"missing=\['key'\], mismatched=\{\}"):
+        CaseRunner.assert_oracles(observations, expected)
+
+
+def test_oracle_normalizes_complete_detail_error_without_weakening() -> None:
+    observations = {"test_response": {"Error": {
+        "Code": "s307011535", "Key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+        "Parameters": ["Revenue"], "Message": "unsupported",
+    }}}
+    expected = [{"id": "EXP-ERROR", "oracle": {
+        "observation_point": "detail_api.error", "matcher": "all_fields_equal",
+        "expected_value": {"error_code": "s307011535",
+                           "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+                           "parameters": ["Revenue"], "message": "unsupported"},
+    }}]
+
+    CaseRunner.assert_oracles(observations, expected)
+
+
+def test_runner_exports_hash_only_lifecycle_evidence(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("QA_LIFECYCLE_EVIDENCE_DIR", str(tmp_path))
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        LifecycleHttpClient(), FakeRpcClient(), FakeDatabaseClient(),
+    )
+
+    runner.execute(_lifecycle_case())
+    evidence = json.loads((tmp_path / "detail-integration.json").read_text())
+
+    assert set(evidence["phases"]) == {"setup", "readiness", "test", "cleanup", "residue"}
+    assert all(evidence["phases"][phase][0]["status"] == "completed" for phase in evidence["phases"])
+    serialized = json.dumps(evidence)
+    assert "response_hash" in serialized
+    assert "resource-1" not in serialized
 
 
 def test_runner_rejects_cross_environment_case_before_setup() -> None:

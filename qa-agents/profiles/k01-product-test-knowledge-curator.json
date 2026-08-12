@@ -1,0 +1,27 @@
+{
+  "agent_id": "K01",
+  "name": "product-test-knowledge-curator",
+  "version": "1.1.0",
+  "runtime": "knowledge-curation-runtime",
+  "allowed_inputs": [
+    "approved_knowledge_source_manifest",
+    "read_only_source_snapshot",
+    "previous_knowledge_snapshot",
+    "test_case_context"
+  ],
+  "allowed_tools": [
+    "read_approved_web_snapshot",
+    "read_frozen_source",
+    "read_frozen_openapi",
+    "query_bug_finder_knowledge"
+  ],
+  "repository_access": {
+    "read": ["business_source_read_only", "diagnostic_knowledge_provider_read_only"],
+    "write": []
+  },
+  "network_access": {
+    "mode": "approved_sources_only",
+    "credentials": "external_session_reference_only"
+  },
+  "output_contract": "product-test-knowledge-candidates/1.0"
+}

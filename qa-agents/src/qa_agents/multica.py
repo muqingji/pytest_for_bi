@@ -1085,6 +1085,17 @@ def prepare_multica_split_review_input(
         item for item in test_design["payload"].get("parent_cases", [])
         if isinstance(item, Mapping)
     ]
+    corrected_parents = compiled["payload"].get("review_parent_cases")
+    if corrected_parents is not None:
+        if not isinstance(corrected_parents, list) or not all(
+            isinstance(item, Mapping) for item in corrected_parents
+        ):
+            raise ContractError("A11 N25 review parent cases are invalid")
+        original_ids = {str(item.get("id")) for item in parents}
+        corrected_ids = {str(item.get("id")) for item in corrected_parents}
+        if corrected_ids != original_ids:
+            raise ContractError("A11 N25 review parent cases changed the parent Case set")
+        parents = corrected_parents
     children = [
         item for item in compiled["payload"].get("compiled_cases", [])
         if isinstance(item, Mapping)
@@ -1195,9 +1206,15 @@ def _compact_a11_review_case(
                 "preconditions",
             )
         }
-        compact["inherits_parent"]["expected_oracle_ids"] = _a11_field_equal(
-            parent, case, "expected", key="id"
-        )
+        parent_ids = {
+            str(item.get("id")) for item in parent.get("expected", [])
+            if isinstance(item, Mapping)
+        }
+        child_ids = {
+            str(item.get("id")) for item in case.get("expected", [])
+            if isinstance(item, Mapping)
+        }
+        compact["inherits_parent"]["expected_oracle_ids"] = child_ids <= parent_ids
     return compact
 
 
@@ -1996,10 +2013,15 @@ def _validate_split_review_semantics(
                 raise ContractError(
                     f"A11 parent_case_coverage[{index}] child {child_id} has a different parent"
                 )
-            if parent_expected.get(parent_id) != child_expected.get(child_id):
+            if not child_expected.get(child_id, set()) <= parent_expected.get(parent_id, set()):
                 raise ContractError(
-                    f"A11 parent_case_coverage[{index}] child {child_id} changed the Oracle set"
+                    f"A11 parent_case_coverage[{index}] child {child_id} added or changed an Oracle"
                 )
+        covered_oracles = set().union(*(child_expected.get(child_id, set()) for child_id in covered))
+        if covered_oracles != parent_expected.get(parent_id, set()):
+            raise ContractError(
+                f"A11 parent_case_coverage[{index}] children do not cover the parent Oracle set"
+            )
     if len(observed_parents) != len(set(observed_parents)) or set(observed_parents) != parent_ids:
         raise ContractError("A11 must review every parent Case exactly once")
 
@@ -2013,6 +2035,13 @@ def _validate_split_review_semantics(
         for issue in payload.get("issues", [])
         if isinstance(issue, Mapping) and issue.get("route_to") == "N25"
     }
+    has_global_n25_issue = any(
+        isinstance(issue, Mapping)
+        and issue.get("route_to") == "N25"
+        and not issue.get("case_id")
+        and issue.get("severity") in {"error", "blocking"}
+        for issue in payload.get("issues", [])
+    )
     for parent in parents:
         if not isinstance(parent, Mapping):
             continue
@@ -2031,7 +2060,7 @@ def _validate_split_review_semantics(
             related_ids = {parent_id} | {str(child.get("id", "")) for child in split_children}
             if (
                 coverage_by_parent.get(parent_id) not in {"partial", "missing"}
-                or not (related_ids & issues_by_case)
+                or not (has_global_n25_issue or related_ids & issues_by_case)
             ):
                 raise ContractError(
                     f"A11 parent {parent_id} has unscoped cross-layer responsibilities"

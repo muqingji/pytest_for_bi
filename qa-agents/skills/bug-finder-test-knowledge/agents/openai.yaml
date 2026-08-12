@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bug Finder Test Knowledge"
+  short_description: "将 bug-finder 历史缺陷与诊断知识适配为测试风险证据"
+  default_prompt: "Use $bug-finder-test-knowledge to retrieve read-only historical risk evidence for a test case, without treating it as the current product contract."

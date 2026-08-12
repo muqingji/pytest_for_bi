@@ -1,6 +1,38 @@
 {
   "schema_version": "bi-data-capability-catalog/1.0",
   "environment_profiles": {
+    "112-mainstream-schemas": {
+      "environment": "112",
+      "subject_selection": {
+        "explicit_case_subject_required_when_present": true,
+        "default_priority": ["客户", "销售订单", "销售记录"],
+        "forbidden_fallbacks": ["区域测试"]
+      },
+      "candidates": [
+        {
+          "schema_id": "BI_5bcebcdc3060e20001e79977",
+          "schema_name": "客户统计",
+          "schema_object": "biz_account",
+          "describe_api_name": "AccountObj",
+          "status": 1
+        },
+        {
+          "schema_id": "BI_5be1351956fc11448cdde39e",
+          "schema_name": "销售订单统计",
+          "schema_object": "biz_sales_order",
+          "describe_api_name": "SalesOrderObj",
+          "status": 1
+        },
+        {
+          "schema_id": "BI_55479c68f4922c26cbadda8265b2f",
+          "schema_name": "销售记录统计",
+          "schema_object": "active_record",
+          "describe_api_name": "ActiveRecordObj",
+          "status": 1
+        }
+      ],
+      "evidence_refs": ["environment-112", "fs-bi-source"]
+    },
     "112-region-test-schema": {
       "environment": "112",
       "variables": {
@@ -17,6 +49,38 @@
     }
   },
   "recipes": [
+    {
+      "id": "ordinary-metric-result-set-filter",
+      "version": "1.0.0",
+      "environment_profile": "112-region-test-schema",
+      "match": {"datasets": ["ordinary_result_filter_metric"], "data_intents": ["metric.ordinary_result_set_filter.detail_unsupported"]},
+      "supported_variants": ["ordinary", "ordinary_metric"],
+      "resource_goals": [{"resource_type": "approved_schema_field", "desired_state": {"read_only": true}}],
+      "variables": {"metric_name": "Revenue"},
+      "evidence_refs": ["fs-bi-contract-c6b7853", "fs-bi-source", "environment-112", "probe-result-filter-detail-112"],
+      "resources": [{
+        "resource_key": "ordinary_field_fixture", "resource_type": "approved_schema_field",
+        "resource_id_variable": "amount_field_id", "depends_on": [], "lifecycle_mode": "existing_read_only",
+        "readiness": [{"name": "确认批准普通指标字段存在", "request": {"protocol": "http", "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id", "json": {"schemaId": "{{ schema_id }}"}}, "expect": {"status_code": 200, "body_contains_values": ["{{ amount_field_id }}"]}}],
+        "residue_checks": []
+      }]
+    },
+    {
+      "id": "comparison-metric-result-set-filter",
+      "version": "1.0.0",
+      "environment_profile": "112-region-test-schema",
+      "match": {"datasets": ["comparison_result_filter_metric"], "data_intents": ["metric.comparison_result_set_filter.detail_unsupported"]},
+      "supported_variants": ["comparison", "comparison_metric"],
+      "resource_goals": [{"resource_type": "approved_schema_field", "desired_state": {"ratio_type": "1", "read_only": true}}],
+      "variables": {"metric_name": "Revenue YoY"},
+      "evidence_refs": ["fs-bi-contract-c6b7853", "fs-bi-source", "environment-112", "probe-result-filter-detail-112"],
+      "resources": [{
+        "resource_key": "comparison_field_fixture", "resource_type": "approved_schema_field",
+        "resource_id_variable": "amount_field_id", "depends_on": [], "lifecycle_mode": "existing_read_only",
+        "readiness": [{"name": "确认批准同环比基础字段存在", "request": {"protocol": "http", "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id", "json": {"schemaId": "{{ schema_id }}"}}, "expect": {"status_code": 200, "body_contains_values": ["{{ amount_field_id }}"]}}],
+        "residue_checks": []
+      }]
+    },
     {
       "id": "aggregate-metric-result-set-filter",
       "version": "1.0.0",
@@ -40,7 +104,7 @@
         }
       ],
       "variables": {
-        "metric_name": "{{ namespace }}-result-filter-metric"
+        "metric_name": "销售金额结果集筛选聚合指标"
       },
       "evidence_refs": [
         "fxiaoke-help-bi",
@@ -54,6 +118,10 @@
         {
           "resource_key": "result_filter_metric",
           "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "display_name": "销售金额结果集筛选聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
           "resource_id_variable": "metric_field_id",
           "depends_on": [],
           "setup": {
@@ -64,7 +132,7 @@
               "json": {
                 "schemaId": "{{ schema_id }}",
                 "schemaObjectName": "{{ schema_object }}",
-                "displayName": "{{ namespace }}-result-filter-metric",
+                "displayName": "销售金额结果集筛选聚合指标",
                 "aggObject": {
                   "refObjName": "{{ schema_object }}",
                   "refObjShowName": "{{ schema_display_name }}",
@@ -93,8 +161,9 @@
                         "fieldID": "{{ amount_field_id }}",
                         "operator": 1,
                         "operatorLabel": "等于",
-                        "value1": "0",
+                        "value1": "{{ numeric_filter_value }}",
                         "value2": "",
+                        "value_kind": "numeric",
                         "dbFieldName": "{{ amount_db_field }}",
                         "dbObjName": "{{ schema_object }}",
                         "fieldName": "金额",
@@ -122,26 +191,7 @@
               "json_path": {"Result.FailureCode": 0}
             }
           },
-          "readiness": [
-            {
-              "name": "回查指标已创建并可用于功能测试",
-              "request": {
-                "protocol": "http",
-                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
-                "json": {
-                  "schemaId": "{{ schema_id }}",
-                  "fieldId": "{{ metric_field_id }}"
-                }
-              },
-              "expect": {
-                "status_code": 200,
-                "json_path": {
-                  "Result.FailureCode": 0,
-                  "Value.fieldId": "{{ metric_field_id }}"
-                }
-              }
-            }
-          ],
+          "readiness": [],
           "cleanup": {
             "name": "删除本次运行创建的隔离指标",
             "request": {
@@ -155,12 +205,116 @@
             },
             "expect": {
               "status_code": 200,
-              "json_path": {
-                "Result.FailureCode": 0,
-                "Value.resultCode": "0"
-              }
+                "json_path": {"Result.FailureCode": 0}
             }
-          }
+          },
+          "residue_checks": [
+            {
+              "name": "确认本次创建的隔离指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect_absent": {"json_path": "Value.fieldId", "value": "{{ metric_field_id }}"}
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "calculated-metric-result-set-filter",
+      "version": "1.0.0",
+      "environment_profile": "112-region-test-schema",
+      "match": {
+        "datasets": ["calculated_result_filter_metric"],
+        "data_intents": ["metric.calculated_result_set_filter.detail_unsupported"]
+      },
+      "supported_variants": ["计算指标", "calculated_metric"],
+      "resource_goals": [
+        {"resource_type": "aggregate_metric", "desired_state": {"formula_base": true}},
+        {"resource_type": "calculated_metric", "desired_state": {"result_set_filter_enabled": true}}
+      ],
+      "variables": {
+        "metric_name": "销售利润率计算指标",
+        "aggregate_metric_name": "销售金额计算基准聚合指标"
+      },
+      "evidence_refs": [
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-calculated-metric-lifecycle-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "aggregate_base",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "display_name": "销售金额计算基准聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "aggregate_metric_id",
+          "depends_on": [],
+          "setup": {
+            "name": "创建计算指标依赖的隔离聚合指标",
+            "request": {"protocol": "http", "api": "fs_bi_stat.agg_rule.add_new_agg_rule", "json": {
+              "schemaId": "{{ schema_id }}", "schemaObjectName": "{{ schema_object }}",
+              "displayName": "销售金额计算基准聚合指标",
+              "aggObject": {"refObjName": "{{ schema_object }}", "refObjShowName": "{{ schema_display_name }}", "refJoinField": "{{ schema_join_field }}"},
+              "aggField": {"dbFieldName": "{{ amount_db_field }}", "fieldName": "金额", "fieldType": "Number", "dbObjName": "{{ schema_object }}", "fieldId": "{{ amount_field_id }}"},
+              "aggFieldTime": {"dbFieldName": "{{ date_db_field }}", "fieldName": "日期", "fieldType": "Date", "dbObjName": "{{ schema_object }}", "fieldId": "{{ date_field_id }}"},
+              "filterLists": [], "checkFieldAggregateType": 2, "initStatus": 1, "timeZone": "Asia/Shanghai"
+            }},
+            "extract": {"aggregate_metric_id": "Value.fieldId"},
+            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+          },
+          "readiness": [],
+          "cleanup": {
+            "name": "删除计算指标依赖的隔离聚合指标",
+            "request": {"protocol": "http", "api": "fs_bi_stat.agg_rule.delete_agg_rule", "json": {"schemaId": "{{ schema_id }}", "fieldId": "{{ aggregate_metric_id }}", "fieldName": "{{ aggregate_metric_name }}"}},
+            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+          },
+          "residue_checks": [{
+            "name": "确认聚合依赖无残留",
+            "request": {"protocol": "http", "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id", "json": {"schemaId": "{{ schema_id }}"}},
+            "expect": {"status_code": 200, "body_not_contains_values": ["{{ aggregate_metric_id }}", "{{ aggregate_metric_name }}"]}
+          }]
+        },
+        {
+          "resource_key": "calculated_metric",
+          "resource_type": "calculated_metric",
+          "retention_mode": "retain",
+          "display_name": "销售利润率计算指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售金额数值指标计算结果",
+          "resource_id_variable": "calculated_metric_id",
+          "depends_on": ["aggregate_base"],
+          "setup": {
+            "name": "创建隔离计算指标",
+            "request": {"protocol": "http", "api": "fs_bi_stat.stat_calc_field.save_calc_field", "json": {
+              "calcFieldId": "", "fieldName": "销售利润率计算指标", "formula": "[{{ aggregate_metric_id }}_2]", "formatStr": "0.00", "ratioType": 0
+            }},
+            "extract": {"calculated_metric_id": "Value.fieldID"},
+            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+          },
+          "readiness": [{
+            "name": "通过计算指标子字段接口回查资源已创建",
+            "request": {"protocol": "http", "api": "fs_bi_stat.stat_base.get_calc_agg_sub_fields", "json": {"viewId": "", "measureFieldId": "{{ calculated_metric_id }}"}},
+            "expect": {"status_code": 200, "body_contains_values": ["{{ calculated_metric_id }}"]}
+          }],
+          "cleanup": {
+            "name": "删除隔离计算指标",
+            "request": {"protocol": "http", "api": "fs_bi_stat.stat_calc_field.delete_calc_field", "json": {"viewId": "", "calcFieldId": ["{{ calculated_metric_id }}"]}},
+            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+          },
+          "residue_checks": [{
+            "name": "确认计算指标无残留",
+            "request": {"protocol": "http", "api": "fs_bi_stat.stat_base.get_calc_agg_sub_fields", "json": {"viewId": "", "measureFieldId": "{{ calculated_metric_id }}"}},
+            "expect": {"status_code": 200, "body_not_contains_values": ["{{ calculated_metric_id }}", "{{ metric_name }}"]}
+          }]
         }
       ]
     }

@@ -459,6 +459,12 @@ def run_n07_env_precheck(
         accepted = (
             data_validation.get("status") == "completed" and payload.get("valid") is True
         ) or (
+            data_validation.get("status") == "completed_with_gaps"
+            and payload.get("valid") is True
+            and payload.get("decision") == "partial_capability_routing"
+            and isinstance(payload.get("executable_case_ids"), list)
+            and isinstance(payload.get("deferred_cases"), list)
+        ) or (
             data_validation.get("status") == "skipped_by_policy"
             and payload.get("valid") is True
             and payload.get("decision") == "skipped_by_policy"

@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from .case_compiler import compile_cases
+from .case_compiler import apply_approved_split_correction, compile_cases
 from .contracts import (
     ArtifactEnvelope,
     ArtifactStatus,
@@ -93,6 +93,7 @@ def run_n25_after_g02(
     g02_outcome_path: Path,
     output_dir: Path,
     *,
+    split_correction_path: Path | None = None,
     run_manifest_path: Path | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
@@ -134,6 +135,15 @@ def run_n25_after_g02(
         isinstance(item, Mapping) for item in parent_cases
     ):
         raise ContractError("N25 A08 parent_cases are invalid")
+    correction = None
+    if split_correction_path is not None:
+        correction = _read_object(split_correction_path)
+        security.assert_no_secret_values(correction)
+        if correction.get("workflow_run_id") != design.get("workflow_run_id"):
+            raise ContractError("N25 split correction belongs to another workflow run")
+        if correction.get("source_artifact_hash") != design.get("artifact_hash"):
+            raise ContractError("N25 split correction does not bind the A08 Artifact")
+        parent_cases = apply_approved_split_correction(parent_cases, correction)
     child_cases = compile_cases(parent_cases, strategy={})
     workflow_run_id, workflow_mode, snapshot_id = _identity(design)
     payload = {
@@ -141,9 +151,12 @@ def run_n25_after_g02(
         "parent_artifact_id": design["artifact_id"],
         "parent_artifact_hash": design["artifact_hash"],
         "compiled_cases": child_cases,
+        "review_parent_cases": parent_cases if correction else None,
         "parent_count": len(parent_cases),
         "child_count": len(child_cases),
         "compile_rule_version": "n25-compiler/1.0",
+        "split_correction_hash": correction.get("correction_hash") if correction else None,
+        "split_correction_approval": correction.get("approval") if correction else None,
     }
     artifact = ArtifactEnvelope(
         workflow_run_id=workflow_run_id,

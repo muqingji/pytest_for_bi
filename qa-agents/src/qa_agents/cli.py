@@ -59,10 +59,12 @@ from .reporting import (
 )
 from .security import SecurityPolicy
 from .risk import run_risk_strategy_after_g01
+from .release_control import decide_agent_release, validate_schema_handoff
 from .source_collector import ReadOnlyGitCollector, RepositoryRegistry
 from .storage import ArtifactStore
 from .test_case_gate import run_n04_after_a09
 from .test_data import prepare_test_data_plan
+from .test_knowledge import assess_automation_readiness
 from .workflow import PhaseOneWorkflow
 from .workflow_center import (
     build_workflow_projection,
@@ -349,6 +351,10 @@ def build_parser() -> argparse.ArgumentParser:
     human_correction_parser.add_argument("--n04-artifact", type=Path, required=True)
     human_correction_parser.add_argument("--policy", type=Path, required=True)
     human_correction_parser.add_argument("--output", type=Path, required=True)
+    human_correction_parser.add_argument(
+        "--multica-parent-issue-id",
+        help="Optional run Issue UUID used as the parent of the human correction Issue",
+    )
 
     human_correction_open_parser = subparsers.add_parser(
         "open-human-correction-multica",
@@ -368,6 +374,18 @@ def build_parser() -> argparse.ArgumentParser:
     human_correction_sync_parser.add_argument("--output", type=Path, required=True)
     human_correction_sync_parser.add_argument("--run-manifest", type=Path)
     human_correction_sync_parser.add_argument("--workspace-manifest", type=Path)
+
+    schema_parser = subparsers.add_parser(
+        "validate-schema-handoff", help="Run N21 schema compatibility validation"
+    )
+    schema_parser.add_argument("--registry", type=Path, required=True)
+    schema_parser.add_argument("--contract", required=True)
+    schema_parser.add_argument("--consumer", required=True)
+    release_parser = subparsers.add_parser(
+        "decide-agent-release", help="Run N22 Agent promotion or rollback control"
+    )
+    release_parser.add_argument("--policy", type=Path, required=True)
+    release_parser.add_argument("--candidate", type=Path, required=True)
 
     n24_parser = subparsers.add_parser(
         "run-n24-after-g01", help="Run deterministic N24 after a validated G01 approval"
@@ -422,6 +440,7 @@ def build_parser() -> argparse.ArgumentParser:
     n25_parser.add_argument("--g02-outcome", type=Path, required=True)
     n25_parser.add_argument("--output", type=Path, required=True)
     n25_parser.add_argument("--run-manifest", type=Path)
+    n25_parser.add_argument("--split-correction", type=Path)
 
     n26_parser = subparsers.add_parser(
         "run-n26-after-a11",
@@ -479,6 +498,17 @@ def build_parser() -> argparse.ArgumentParser:
     server_automation_parser.add_argument("--target", type=Path, required=True)
     server_automation_parser.add_argument("--output", type=Path, required=True)
     server_automation_parser.add_argument("--test-data-validation", type=Path)
+    server_automation_parser.add_argument("--test-data-resource-plan", type=Path)
+    server_automation_parser.add_argument("--knowledge-readiness", type=Path)
+
+    knowledge_readiness_parser = subparsers.add_parser(
+        "assess-automation-knowledge",
+        help="Validate a Test Knowledge Packet and gate compiled Cases for automation",
+    )
+    knowledge_readiness_parser.add_argument("--packet", type=Path, required=True)
+    knowledge_readiness_parser.add_argument("--compiled-cases", type=Path, required=True)
+    knowledge_readiness_parser.add_argument("--output", type=Path, required=True)
+    knowledge_readiness_parser.add_argument("--exclude-layer", action="append", default=[])
 
     test_data_parser = subparsers.add_parser(
         "prepare-test-data",
@@ -554,6 +584,21 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _run(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "validate-schema-handoff":
+        result = validate_schema_handoff(
+            _load_json_input(args.registry, "schema_registry"),
+            contract=args.contract,
+            consumer=args.consumer,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "decide-agent-release":
+        result = decide_agent_release(
+            _load_json_input(args.policy, "agent_release_policy"),
+            _load_json_input(args.candidate, "agent_release_candidate"),
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
     if args.command == "run":
         result = PhaseOneWorkflow().run(
             args.input,
@@ -822,6 +867,7 @@ def _run(argv: list[str] | None = None) -> int:
             args.g02_request,
             args.g02_outcome,
             args.output,
+            split_correction_path=args.split_correction,
             run_manifest_path=args.run_manifest,
         )
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
@@ -910,7 +956,29 @@ def _run(argv: list[str] | None = None) -> int:
             args.target,
             args.output,
             test_data_validation_path=args.test_data_validation,
+            test_data_resource_plan_path=args.test_data_resource_plan,
+            knowledge_readiness_path=args.knowledge_readiness,
         )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "assess-automation-knowledge":
+        packet = _load_json_input(args.packet, "test_knowledge_packet")
+        compiled = _load_json_input(args.compiled_cases, "compiled_cases")
+        if not isinstance(packet, dict) or not isinstance(compiled, dict):
+            raise ContractError("Knowledge readiness inputs must be JSON objects")
+        payload = compiled.get("payload", compiled)
+        cases = payload.get("compiled_cases")
+        if not isinstance(cases, list):
+            raise ContractError("Compiled Cases input requires compiled_cases")
+        excluded_layers = set(map(str, args.exclude_layer))
+        case_ids = {
+            str(item.get("id", ""))
+            for item in cases
+            if isinstance(item, dict) and str(item.get("layer", "")) not in excluded_layers
+        }
+        result = assess_automation_readiness(packet, case_ids)
+        ArtifactStore(args.output.parent).write_json(args.output.name, result)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
 
@@ -1082,6 +1150,7 @@ def _run(argv: list[str] | None = None) -> int:
             args.n04_artifact,
             args.policy,
             args.output,
+            multica_parent_issue_id=args.multica_parent_issue_id,
         )
         print(
             json.dumps(

@@ -190,6 +190,22 @@ def _normalize_failure_text(value: str) -> str:
     return " ".join(value.lower().split())[:4000]
 
 
+def _failure_detail(value: str) -> dict[str, Any] | None:
+    match = re.search(
+        r"(?P<oracle>[A-Za-z0-9_-]+): Oracle fields differ; "
+        r"missing=(?P<missing>\[[^\]]*\]), mismatched=(?P<mismatched>\{[^\n]*\})",
+        value,
+    )
+    if match is None:
+        return None
+    return {
+        "failure_code": "oracle_fields_differ",
+        "oracle_id": match.group("oracle"),
+        "missing_fields": re.findall(r"['\"]([^'\"]+)['\"]", match.group("missing")),
+        "mismatched_fields": match.group("mismatched"),
+    }
+
+
 def _auto_classification(shard: Mapping[str, Any]) -> str:
     outcome = str(shard.get("outcome", ""))
     if outcome in {"timed_out", "infrastructure_error"}:
@@ -377,9 +393,15 @@ def run_server_quality_tail(
     if data_validation is not None:
         data_payload = data_validation["payload"]
         if data_payload.get("valid") is not True or data_validation.get("status") not in {
-            "completed", "skipped_by_policy"
+            "completed", "completed_with_gaps", "skipped_by_policy"
         }:
             raise ContractError("Server quality requires valid N27 data routing")
+        if data_validation.get("status") == "completed_with_gaps" and (
+            data_payload.get("decision") != "partial_capability_routing"
+            or not isinstance(data_payload.get("executable_case_ids"), list)
+            or not isinstance(data_payload.get("deferred_cases"), list)
+        ):
+            raise ContractError("Partial N27 routing contract is invalid")
         deferred_routes = {
             str(item.get("case_id", "")): str(item.get("route", ""))
             for item in data_payload.get("deferred_cases", [])
@@ -517,6 +539,42 @@ def run_server_quality_tail(
     statement_coverage = (
         round(sum(coverage_values) / len(coverage_values), 4) if coverage_values else None
     )
+    lifecycle_evidence_bindings: list[dict[str, Any]] = []
+    execution_integrity_gaps: list[str] = []
+    for execution in executions:
+        for shard in execution["payload"].get("shards", []):
+            if not isinstance(shard, Mapping):
+                continue
+            if shard.get("collection_complete") is False:
+                execution_integrity_gaps.append(
+                    f"pytest_collection_incomplete:{shard.get('shard_id', '')}"
+                )
+            if (
+                shard.get("lifecycle_evidence_required") is True
+                and shard.get("lifecycle_evidence_present") is not True
+            ):
+                execution_integrity_gaps.append(
+                    f"lifecycle_evidence_missing:{shard.get('shard_id', '')}"
+                )
+            evidence_path = shard.get("lifecycle_evidence_path")
+            evidence_hash = shard.get("lifecycle_evidence_hash")
+            if evidence_path is None and evidence_hash is None:
+                continue
+            if not isinstance(evidence_path, str) or not evidence_path.strip():
+                raise ContractError("N08 lifecycle evidence path must be a non-empty string")
+            if not isinstance(evidence_hash, str) or not re.fullmatch(
+                r"sha256:[0-9a-f]{64}", evidence_hash
+            ):
+                raise ContractError("N08 lifecycle evidence hash must be a SHA-256 binding")
+            lifecycle_evidence_bindings.append(
+                {
+                    "automation_execution_hash": execution["artifact_hash"],
+                    "shard_id": str(shard.get("shard_id", "")),
+                    "case_ids": [str(item) for item in shard.get("case_ids", []) if str(item)],
+                    "path": evidence_path,
+                    "content_hash": evidence_hash,
+                }
+            )
     coverage_gap = None
     if not executions:
         coverage_gap = "no_automation_execution"
@@ -529,11 +587,13 @@ def run_server_quality_tail(
             "automation_shards": shard_count,
             "junit_tests": junit_tests,
             "duration_ms": total_duration,
+            "lifecycle_evidence_count": len(lifecycle_evidence_bindings),
             "statement_coverage_percent": statement_coverage,
             "branch_coverage_percent": None,
             "coverage_shard_count": len(coverage_values),
         },
-        "gaps": [coverage_gap] if coverage_gap else [],
+        "gaps": [*([coverage_gap] if coverage_gap else []), *execution_integrity_gaps],
+        "lifecycle_evidence_bindings": lifecycle_evidence_bindings,
         "next_node": "N09",
     }
     n18 = _artifact(
@@ -568,9 +628,8 @@ def run_server_quality_tail(
                     }
                 )
             if outcome != "passed":
-                normalized = _normalize_failure_text(
-                    f"{shard.get('stdout', '')}\n{shard.get('stderr', '')}"
-                )
+                raw_failure = f"{shard.get('stdout', '')}\n{shard.get('stderr', '')}"
+                normalized = _normalize_failure_text(raw_failure)
                 classification = _auto_classification(shard)
                 failures.append(
                     {
@@ -578,6 +637,7 @@ def run_server_quality_tail(
                         "case_ids": case_ids,
                         "classification": classification,
                         "summary": normalized[:500] or outcome,
+                        "detail": _failure_detail(raw_failure),
                         "fingerprint": content_hash(
                             {
                                 "classification": classification,
@@ -636,6 +696,7 @@ def run_server_quality_tail(
                 ),
                 "evidence_count": len(members),
                 "summary": members[0]["summary"],
+                "detail": members[0].get("detail"),
                 "route_to": {
                     "product_defect": "N20",
                     "automation_defect": "G04",
@@ -657,6 +718,7 @@ def run_server_quality_tail(
             "execution_plan_hash": plan["artifact_hash"],
             "environment_precheck_hash": precheck["artifact_hash"],
             "automation_execution_hashes": [item["artifact_hash"] for item in executions],
+            "lifecycle_evidence_bindings": lifecycle_evidence_bindings,
             "manual_execution_hash": n17.artifact_hash,
             "quality_signals_hash": n18.artifact_hash,
         },
@@ -876,9 +938,12 @@ def run_server_quality_tail(
         str(item["case_id"]) for item in actions if item.get("action") == "skip"
     }:
         warnings.append("Execution plan contains policy-deferred Cases")
+    partial_case_ids = plan["payload"].get("scope_summary", {}).get("partial_case_ids", [])
+    if partial_case_ids:
+        warnings.append(f"partial_case_coverage:{','.join(map(str, partial_case_ids))}")
     if deferred_data_case_ids:
         reasons.append(
-            f"{len(deferred_data_case_ids)} Case(s) await the paused test-data construction capability"
+            f"{len(deferred_data_case_ids)} Case(s) await a registered test-data construction capability"
         )
         warnings.append("test_data_construction_deferred")
     if deferred_frontend_case_ids:
@@ -919,6 +984,7 @@ def run_server_quality_tail(
         decision = "passed"
     release_disposition = "eligible" if decision in {"passed", "passed_with_warning"} else "pending"
     metrics = {
+        "scope_total": len(actions),
         "planned": len(actionable),
         "executed": len(executed_ids),
         "passed": len(passed_ids),
@@ -1110,7 +1176,11 @@ def run_server_quality_tail(
         "reached_nodes": ["A19", "N12", "N13", "N19", "N23"],
         "external_adapter_dispositions": {
             "mr": "not_requested_no_code_commit",
-            "bug": "not_applicable_no_product_defect",
+            "bug": (
+                "draft_ready_not_sent"
+                if any(item["disposition"] == "create_new" for item in dedup)
+                else ("dedup_decision_ready_not_sent" if dedup else "not_applicable_no_product_defect")
+            ),
             "release": "not_authorized_quality_not_passed",
         },
     }

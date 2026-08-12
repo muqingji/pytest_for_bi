@@ -1,0 +1,108 @@
+{
+  "schema_version": "bi-asset-create-contract/1.0",
+  "asset_type": "pivot_table",
+  "status": "candidate",
+  "operation_id": "fs_bi_udf_report.rpt_udf_view_create.save_rpt_view",
+  "method": "POST",
+  "path": "/FHH/EM1HBIUDF/rptUdfViewCreateController/saveRptView",
+  "request_dto": "SaveRptViewArg",
+  "intent_model": {
+    "name": "PivotTableIntent",
+    "required": [
+      "requirement_name",
+      "view_name",
+      "subject_roles",
+      "row_dimension_semantics",
+      "column_dimension_semantics",
+      "value_measure_semantics"
+    ]
+  },
+  "plan_model": {
+    "name": "PivotTableBuildPlan",
+    "required": [
+      "resolved_category_id",
+      "resolved_business_objects",
+      "field_placement_decisions",
+      "layout_decisions",
+      "plaintext_save_args",
+      "configuration_hash"
+    ]
+  },
+  "fixed_create_values": {
+    "isEdit": 2,
+    "tableType": 1
+  },
+  "case_derived": [
+    "viewName",
+    "description",
+    "rowGroupFields",
+    "colGroupFields",
+    "statFields",
+    "filterList",
+    "layout.showTotal",
+    "layout.showSubTotal",
+    "layout.showVerticalTotal",
+    "layout.showVerticalSubTotal"
+  ],
+  "metadata_discovered": [
+    "categoryID",
+    "businessObjects",
+    "fieldID",
+    "objId",
+    "objectSequence",
+    "fieldType",
+    "operateMenu",
+    "supported aggregation",
+    "tenant pivot group limit",
+    "tenant attribute dimension limit",
+    "timeZone"
+  ],
+  "field_roles": {
+    "rowGroupFields": {"groupType": 1, "aggrType": "0"},
+    "colGroupFields": {"groupType": 2, "aggrType": "0"},
+    "statFields": {"groupType": 3, "aggrType": "live_supported_nonzero"}
+  },
+  "executor_owned": [
+    "transport encryption",
+    "__bodykey",
+    "__fs_salt",
+    "x-fs-token",
+    "_fs_token",
+    "cookies",
+    "traceId",
+    "spanId",
+    "x-trace-id"
+  ],
+  "preflight_validation": [
+    "exactly_one_main_object",
+    "business_object_topology_is_live",
+    "row_dimensions_support_grouping",
+    "column_dimensions_support_grouping",
+    "stat_fields_support_selected_aggregation",
+    "group_field_count_within_tenant_limit",
+    "attribute_dimension_count_within_tenant_limit",
+    "placements_are_compatible",
+    "requirement_folder_matches_exactly",
+    "no_captured_ids_or_secrets"
+  ],
+  "readiness": [
+    "view_id_returned",
+    "report_config_query_succeeds",
+    "table_type_is_one",
+    "requirement_folder_matches",
+    "row_axes_match",
+    "column_axes_match",
+    "stat_fields_match",
+    "layout_matches",
+    "pivot_data_query_succeeds",
+    "configuration_hash_matches"
+  ],
+  "evidence": [
+    "captured_success_request_protocol_only",
+    "RptUdfViewCreateController.java",
+    "SaveRptViewArg.java",
+    "SaveViewService.java",
+    "QueryPivotReportDataArgValidator.java",
+    "PivotArgConverter.java"
+  ]
+}

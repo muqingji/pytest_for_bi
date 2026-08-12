@@ -169,6 +169,18 @@ def run_n08_automation(
     code_check_artifact = _load(code_check_path, "N05 code-check Artifact")
     precheck_artifact = _load(environment_precheck_path, "N07 precheck Artifact")
     execution_policy = _load(execution_policy_path, "execution policy")
+    framework_root = Path.cwd().parent if Path.cwd().name == "qa-agents" else Path.cwd()
+    runner_sources = [
+        framework_root / "src/framework/core/runner.py",
+        framework_root / "src/framework/core/assertions.py",
+        framework_root / "src/framework/pytest_plugin.py",
+    ]
+    if not all(path.is_file() for path in runner_sources):
+        raise InputError("N08 framework runner bundle is incomplete")
+    runner_bundle_hash = content_hash(
+        {str(path.relative_to(framework_root)): path.read_text(encoding="utf-8")
+         for path in runner_sources}
+    )
     for label, artifact in (
         ("generation", generation_artifact),
         ("review", review_artifact),
@@ -353,6 +365,13 @@ def run_n08_automation(
         mappings_by_path.setdefault(str(item.get("candidate_path", "")), []).append(
             str(item.get("case_id", ""))
         )
+    manifest_bindings = manifest.get("input_bindings", {})
+    if manifest_bindings and not isinstance(manifest_bindings, Mapping):
+        raise ContractError("Manifest input_bindings must be an object")
+    lifecycle_evidence_required = bool(
+        isinstance(manifest_bindings, Mapping)
+        and manifest_bindings.get("test_data_resource_plan_hash")
+    )
 
     store = ArtifactStore(output_dir)
     started_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -383,11 +402,25 @@ def run_n08_automation(
                 if key and key in os.environ and key not in env:
                     env[key] = os.environ[key]
             for name in requested_secrets:
-                if name not in os.environ or not os.environ[name]:
+                if name in os.environ and os.environ[name]:
+                    env[name] = os.environ[name]
+                    continue
+                providers = controlled.get("secret_providers", {})
+                provider = providers.get(env_class, {}) if isinstance(providers, Mapping) else {}
+                provider_names = {
+                    str(item) for item in provider.get("secret_names", [])
+                } if isinstance(provider, Mapping) else set()
+                provider_path = Path.cwd() / str(provider.get("path", ""))
+                repository_root = Path.cwd().parent.resolve()
+                if (
+                    provider.get("type") != "environment_local_config"
+                    or name not in provider_names
+                    or not provider_path.is_file()
+                    or repository_root not in provider_path.resolve().parents
+                ):
                     raise InputError(
-                        f"Required secret env is not available on controlled runner host: {name}"
+                        f"Required secret is unavailable from an approved provider: {name}"
                     )
-                env[name] = os.environ[name]
             pythonpath_entries = [
                 str((Path.cwd() / item).resolve())
                 for item in controlled.get("framework_pythonpath_entries", [])
@@ -416,9 +449,24 @@ def run_n08_automation(
 
         def execute(index_path: tuple[int, str]) -> dict[str, Any]:
             index, path = index_path
+            shard_lifecycle_dir = evidence_dir / f"lifecycle-{index:03d}"
+            shard_lifecycle_dir.mkdir()
+            shard_env = {**env, "QA_LIFECYCLE_EVIDENCE_DIR": str(shard_lifecycle_dir)}
             junit = evidence_dir / f"shard-{index:03d}.xml"
             coverage_json = evidence_dir / f"coverage-{index:03d}.json"
-            effective = [*executable_prefix, "-q", path, f"--junitxml={junit.relative_to(workdir)}"]
+            pytest_policy_args: list[str] = []
+            if needs_network or needs_secrets:
+                for plugin in controlled.get("pytest_plugins", []):
+                    pytest_policy_args.extend(["-p", str(plugin)])
+                by_environment = controlled.get("pytest_arguments_by_environment_class", {})
+                if isinstance(by_environment, Mapping):
+                    pytest_policy_args.extend(
+                        str(item) for item in by_environment.get(env_class, [])
+                    )
+            effective = [
+                *executable_prefix, *pytest_policy_args, "-q", path,
+                f"--junitxml={junit.relative_to(workdir)}",
+            ]
             if collect_coverage and coverage_available:
                 effective.extend(
                     [
@@ -428,7 +476,7 @@ def run_n08_automation(
                         f"json:{coverage_json.relative_to(workdir)}",
                     ]
                 )
-            result = active_runner.run(effective, cwd=workdir, env=env, timeout=timeout)
+            result = active_runner.run(effective, cwd=workdir, env=shard_env, timeout=timeout)
             stdout, stdout_truncated = _log(result.stdout, max_log_bytes)
             stderr, stderr_truncated = _log(result.stderr, max_log_bytes)
             junit_content = ""
@@ -449,6 +497,10 @@ def run_n08_automation(
             if result.timed_out:
                 outcome = "timed_out"
             elif not junit_valid:
+                outcome = "infrastructure_error"
+            elif junit_summary["tests"] < len(mappings_by_path.get(path, [])):
+                outcome = "infrastructure_error"
+            elif junit_summary["tests"] == junit_summary["skipped"]:
                 outcome = "infrastructure_error"
             elif result.returncode == 0:
                 outcome = "passed"
@@ -473,6 +525,17 @@ def run_n08_automation(
                             "num_statements": totals.get("num_statements"),
                             "missing_lines": totals.get("missing_lines"),
                         }
+            lifecycle_evidence = [
+                json.loads(item.read_text(encoding="utf-8"))
+                for item in sorted(shard_lifecycle_dir.glob("*.json"))
+                if any(
+                    case_id == item.stem for case_id in mappings_by_path.get(path, [])
+                )
+            ]
+            if lifecycle_evidence_required and len(lifecycle_evidence) < len(
+                mappings_by_path.get(path, [])
+            ):
+                outcome = "infrastructure_error"
             return {
                 "shard_id": f"N08-S{index:03d}",
                 "candidate_path": path,
@@ -491,9 +554,18 @@ def run_n08_automation(
                 "junit_xml_valid": junit_valid,
                 "junit_xml_hash": content_hash(junit_content) if junit_valid else None,
                 "junit_summary": junit_summary,
+                "collection_complete": (
+                    junit_summary["tests"] >= len(mappings_by_path.get(path, []))
+                    and junit_summary["tests"] > junit_summary["skipped"]
+                ),
+                "lifecycle_evidence_required": lifecycle_evidence_required,
+                "lifecycle_evidence_present": len(lifecycle_evidence) >= len(
+                    mappings_by_path.get(path, [])
+                ),
                 "coverage_summary": coverage_summary,
                 "_junit_xml_content": junit_content,
                 "_coverage_json_content": coverage_content if coverage_summary else "",
+                "_lifecycle_evidence": lifecycle_evidence,
             }
 
         with ThreadPoolExecutor(max_workers=min(max_workers, len(declared_paths))) as pool:
@@ -501,6 +573,7 @@ def run_n08_automation(
         for shard in shards:
             junit_content = shard.pop("_junit_xml_content")
             coverage_content = shard.pop("_coverage_json_content", "")
+            lifecycle_evidence = shard.pop("_lifecycle_evidence", [])
             if shard["junit_xml_valid"]:
                 evidence_path = f"evidence/{shard['shard_id']}/junit.xml"
                 store.write_text(evidence_path, junit_content)
@@ -513,6 +586,17 @@ def run_n08_automation(
                 shard["coverage_json_path"] = coverage_path
             else:
                 shard["coverage_json_path"] = None
+            if lifecycle_evidence:
+                lifecycle_path = f"evidence/{shard['shard_id']}/lifecycle.json"
+                store.write_json(lifecycle_path, {
+                    "schema_version": "shard-lifecycle-evidence/1.0",
+                    "cases": lifecycle_evidence,
+                })
+                shard["lifecycle_evidence_path"] = lifecycle_path
+                shard["lifecycle_evidence_hash"] = content_hash(lifecycle_evidence)
+            else:
+                shard["lifecycle_evidence_path"] = None
+                shard["lifecycle_evidence_hash"] = None
 
     counts = {name: sum(item["outcome"] == name for item in shards) for name in (
         "passed", "failed", "timed_out", "infrastructure_error"
@@ -537,6 +621,7 @@ def run_n08_automation(
             "review_hash": review_artifact["artifact_hash"],
             "code_check_hash": code_check_artifact["artifact_hash"],
             "manifest_hash": manifest_hash,
+            "runner_bundle_hash": runner_bundle_hash,
         },
         "execution_policy_hash": content_hash(execution_policy),
         "automation_policy_hash": content_hash(automation_policy.value),

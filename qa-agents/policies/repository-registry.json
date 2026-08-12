@@ -10,6 +10,7 @@
     {"id": "fbi", "url": "git@git.firstshare.cn:fe/fbi.git", "access_class": "business_source_read_only"},
     {"id": "bi-sdk", "url": "git@git.firstshare.cn:fe-bi/bi-sdk.git", "access_class": "business_source_read_only"},
     {"id": "bi-xkcharts", "url": "git@git.firstshare.cn:fe/bi-xkcharts.git", "access_class": "business_source_read_only"},
-    {"id": "fs-bi-warehouse", "url": "git@git.firstshare.cn:bi/fs-bi-warehouse.git", "access_class": "business_source_read_only"}
+    {"id": "fs-bi-warehouse", "url": "git@git.firstshare.cn:bi/fs-bi-warehouse.git", "access_class": "business_source_read_only"},
+    {"id": "bug-finder", "url": "/Users/liushanshan/code/QA/bug-finder", "access_class": "diagnostic_knowledge_provider_read_only"}
   ]
 }

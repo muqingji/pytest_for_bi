@@ -1,6 +1,6 @@
-PYTHON ?= python3
+PYTHON ?= $(if $(wildcard .venv/bin/python),.venv/bin/python,python3)
 
-.PHONY: install test allure serve-allure interface-test interface-report print-interface-report print-interface-report-details interface-html-report publish-interface-report sync-idl sync-fs-bi-http sync-fs-bi-remote
+.PHONY: install test test-framework test-qa-agents auth-preflight-112 allure serve-allure interface-test interface-report print-interface-report print-interface-report-details interface-html-report publish-interface-report sync-idl sync-fs-bi-http sync-fs-bi-remote
 
 INTERFACE_REPORT_ROOT ?= reports/interface-automation
 INTERFACE_RESULTS_DIR ?= $(INTERFACE_REPORT_ROOT)/allure-results
@@ -13,8 +13,16 @@ INTERFACE_REPORT_URL ?= https://oss.firstshare.cn/reports/interface-automation/c
 install:
 	$(PYTHON) -m pip install -r requirements.txt
 
-test:
+test: test-framework test-qa-agents
+
+test-framework:
 	$(PYTHON) -m pytest --alluredir=allure-results
+
+test-qa-agents:
+	PYTHONPATH=qa-agents/src $(PYTHON) -m pytest -q qa-agents/tests
+
+auth-preflight-112:
+	PYTHONPATH=src $(PYTHON) scripts/preflight_112_auth.py
 
 allure:
 	allure generate allure-results -o allure-report --clean
@@ -22,7 +30,7 @@ allure:
 serve-allure:
 	allure serve allure-results
 
-interface-test:
+interface-test: auth-preflight-112
 	mkdir -p $(INTERFACE_REPORT_ROOT)
 	PYTHONPATH=.:src .venv/bin/pytest -n 0 --env=112 tests/translation_workbench/test_translation_language.py --alluredir=$(INTERFACE_RESULTS_DIR) --clean-alluredir
 

@@ -91,6 +91,18 @@ def contains_key(value: Any, expected: str) -> bool:
     return False
 
 
+def contains_value(value: Any, expected: Any) -> bool:
+    if value == expected:
+        return True
+    if isinstance(value, dict):
+        return any(contains_value(item, expected) for item in value.values())
+    if isinstance(value, list):
+        return any(contains_value(item, expected) for item in value)
+    if isinstance(value, str) and not isinstance(expected, (dict, list)):
+        return str(expected) in value
+    return False
+
+
 def assert_response(response: ApiResponse, expected: dict[str, Any]) -> None:
     """Validate an ApiResponse with a consistent case-file contract."""
     if "status_code" in expected and response.status_code != expected["status_code"]:
@@ -102,6 +114,12 @@ def assert_response(response: ApiResponse, expected: dict[str, Any]) -> None:
     for key in expected.get("body_contains_keys", []):
         if not contains_key(response.body, key):
             raise AssertionError(f"body: expected key {key!r} to exist")
+    for value in expected.get("body_contains_values", []):
+        if not contains_value(response.body, value):
+            raise AssertionError(f"body: expected value {value!r} to exist")
+    for value in expected.get("body_not_contains_values", []):
+        if contains_value(response.body, value):
+            raise AssertionError(f"body: forbidden residual value {value!r} exists")
     for path, value in expected.get("json_path", {}).items():
         actual = get_by_path(response.body, path)
         if actual != value:

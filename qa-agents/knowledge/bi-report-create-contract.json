@@ -1,0 +1,16 @@
+{
+  "schema_version": "bi-asset-create-contract/1.0",
+  "asset_type": "ordinary_report",
+  "status": "candidate",
+  "method": "POST",
+  "path": "/FHH/EM1HBIUDF/rptUdfViewCreateController/saveRptView",
+  "request_dto": "com.fxiaoke.bi.crm.api.entity.SaveRptViewArg",
+  "required_for_create": ["categoryID", "businessObjects", "displayFields", "viewName", "isEdit", "permType", "showMode", "layout", "timeZone", "tableType"],
+  "fixed_create_values": {"isEdit": 2, "tableType": 0},
+  "case_derived": ["displayFields", "filterList", "defaultFilterOptionIDs", "description", "viewName", "layout"],
+  "metadata_discovered": ["categoryID", "businessObjects", "field IDs", "object relations"],
+  "identity_derived": ["permType", "userOwnerList", "editableList", "deletableList", "exportableList", "subscribeableList", "shareableList", "forwardableList"],
+  "executor_owned": ["content-encoding", "__bodykey", "__fs_salt", "x-fs-token", "_fs_token", "cookies", "trace IDs", "transport encryption"],
+  "readiness": ["view_id_returned", "report_config_query_succeeds", "requirement_folder_matches", "tableType_is_zero", "objects_and_fields_match", "configuration_hash_matches"],
+  "evidence": ["captured_encrypted_success_request_not_persisted", "RptUdfViewCreateController.java", "SaveRptViewArg.java"]
+}

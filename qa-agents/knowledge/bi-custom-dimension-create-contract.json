@@ -1,0 +1,21 @@
+{
+  "schema_version": "bi-custom-dimension-create-contract/1.0",
+  "status": "verified",
+  "create_operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+  "source_discovery_operation": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+  "enum_option_operation": "fs_bi_udf_report.view_edit.get_ui_type",
+  "readback_operation": "fs_bi_stat.custom_dimension.get_custom_dimension",
+  "enum_group": {
+    "option_path": "get_ui_type.Value.ui.data[*].optionCode",
+    "compiled_path": "dimensionConfig.groups[*].values",
+    "required_binding": ["field_id", "field_api_name", "option_query_operation", "option_response_hash", "response_json_path", "queried_option_codes", "selected_option_codes"],
+    "failure_state": "not_ready"
+  },
+  "forbidden_literals": ["topologyDescribeId", "dimensionId", "fieldId", "tenantId", "createdBy", "enum optionCode"],
+  "verification": {
+    "environment": "112",
+    "evidence": "generated/112-custom-dimension-create-evidence.json",
+    "result": "created_and_queried_back"
+  },
+  "promotion_requirement": "satisfied"
+}

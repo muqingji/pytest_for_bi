@@ -7,6 +7,8 @@
     "approved_backend_test_case_ir",
     "n15_execution_plan",
     "approved_automation_target"
+    ,"automation_knowledge_readiness"
+    ,"validated_test_data_resource_plan"
   ],
   "allowed_tools": [],
   "repository_access": {

@@ -59,6 +59,9 @@ def test_render_multica_issue_result_is_readable_and_bound(tmp_path: Path) -> No
     markdown = render_multica_issue_result_markdown(bundle, artifact)
 
     assert "A06 运行结果" in markdown
+    for heading in ("## 目标", "## 背景", "## 职责", "## 范围", "## 输入材料", "## Agent 产出", "## 验收", "## 需要我审核"):
+        assert heading in markdown
+    assert "审核范围与口径" in markdown
     assert "`findings` (1)" in markdown
     assert "四个错误码已实现" in markdown
     assert "task-a06" in markdown

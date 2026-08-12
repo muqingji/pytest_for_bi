@@ -43,6 +43,7 @@ def test_implemented_profiles_have_unique_ids_and_no_write_access() -> None:
         "A18-COMPAT",
         "A18-RES",
         "A18-DATA",
+        "K01",
     }
     assert len({profile["name"] for profile in profiles}) == len(profiles)
     assert all(profile["repository_access"]["write"] == [] for profile in profiles)
@@ -55,3 +56,27 @@ def test_a09_explicitly_denies_evaluation_oracle() -> None:
     ) as file:
         profile = json.load(file)
     assert profile["forbidden_inputs"] == ["evaluation_oracle_registry"]
+
+
+def test_every_profile_has_a_complete_work_card() -> None:
+    from qa_agents.agent_work_cards import REQUIRED_FIELDS, load_agent_work_card_registry
+
+    profile_ids = {
+        json.loads(path.read_text(encoding="utf-8"))["agent_id"]
+        for path in (ROOT / "profiles").glob("*.json")
+    }
+    cards = load_agent_work_card_registry()["agents"]
+    assert profile_ids <= set(cards)
+    for card in cards.values():
+        assert all(card[field] for field in REQUIRED_FIELDS)
+
+
+def test_every_deployed_agent_has_a_complete_work_card() -> None:
+    from qa_agents.agent_work_cards import load_agent_work_card_registry
+
+    deployment = json.loads(
+        (ROOT / "multica" / "non-frontend-agent-deployment.json").read_text(encoding="utf-8")
+    )
+    deployed_ids = {agent["logical_id"] for agent in deployment["agents"]}
+    cards = load_agent_work_card_registry()["agents"]
+    assert deployed_ids <= set(cards)

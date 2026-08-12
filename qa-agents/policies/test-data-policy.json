@@ -4,7 +4,21 @@
   "phase_permissions": {
     "setup": "write",
     "readiness": "read_only",
-    "cleanup": "write"
+    "cleanup": "disabled",
+    "retention_verification": "read_only"
+  },
+  "default_retention_mode": "retain",
+  "retained_asset_registry_required": true,
+  "naming_policy": {
+    "chart_folder": "requirement_name",
+    "business_resources": "typed_chinese_semantic",
+    "business_resource_types": [
+      "aggregate_metric",
+      "calculated_metric",
+      "stat_schema",
+      "crm_field",
+      "custom_dimension"
+    ]
   },
   "resource_types": [
     "crm_object",
@@ -20,18 +34,43 @@
     "goal",
     "home_layout",
     "custom_dimension"
+    ,"joined_table"
   ],
   "operation_pairs": {
     "fs_bi_stat.stat_schema.add_new_schema": "fs_bi_stat.stat_schema.delete_schema",
     "fs_bi_stat.agg_rule.add_new_agg_rule": "fs_bi_stat.agg_rule.delete_agg_rule",
     "fs_bi_stat.stat_calc_field.save_calc_field": "fs_bi_stat.stat_calc_field.delete_calc_field",
     "fs_bi_stat.custom_dimension.create_custom_dimension": "fs_bi_stat.custom_dimension.delete_custom_dimension"
+    ,"fs_bi_dev.lwt_manager.save": ""
   },
   "readiness_operations": [
+    "fs_bi_crm.rpt_category.get_category_and_rpt",
     "fs_bi_stat.stat_schema.get_all_schema",
     "fs_bi_stat.stat_schema.get_fields_by_schema_id",
     "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+    "fs_bi_stat.custom_dimension.get_custom_dimension",
+    "fs_bi_stat.stat_base.get_calc_agg_sub_fields",
     "fs_bi_stat.stat_base.chart_query",
-    "fs_bi_stat.stat_base.data_query_da655ba1"
+    "fs_bi_stat.stat_edit.get_chart_config",
+    "fs_bi_stat.stat_base.data_query_da655ba1",
+    "fs_bi_stat.stat_edit.get_filters_result",
+    "fs_bi_stat.stat_edit.batch_get_filters_result",
+    "fs_bi_stat.agg_rule.query_agg_conditions_by_agg_object",
+    "fs_bi_stat.view_data_query_api.get_chart_config",
+    "fs_bi_crm.stat_edit.get_stat_view",
+    "fs_bi_dev_platform.joined_table.get_lwt_args"
+    ,"fs_bi_dev.lwt_manager.query_arg_detail"
+    ,"fs_bi_dev.lwt_manager.query_lwt_arg"
+    ,"fs_bi_dev.lwt_manager.get_data_source_fields_detail"
+  ],
+  "folder_operations": {
+    "query": "fs_bi_crm.rpt_category.get_category_and_rpt",
+    "create": "fs_bi_crm.rpt_category.save_category"
+  },
+  "enum_option_operations": [
+    "fs_bi_udf_report.view_edit.get_ui_type",
+    "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+    "fs_bi_stat.stat_edit.get_filters_result",
+    "fs_bi_stat.stat_edit.batch_get_filters_result"
   ]
 }

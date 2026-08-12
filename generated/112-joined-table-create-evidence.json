@@ -1,0 +1,19 @@
+{
+  "environment": "112",
+  "requirement_name": "统计图查看明细限制原因提示优化",
+  "resource_type": "joined_table",
+  "display_name": "客户销售订单查看明细验证拼表",
+  "resource_id": "BI_lwt_1786535602737",
+  "category_id": "BI_6a7c5dea280b910007abfd5d",
+  "folder_response_hash": "sha256:c2499f8e8929fcd23cb14cf463cad863182b98f10ee93748ff006c0e1d04d19a",
+  "topology_response_hash": "sha256:3820ddcafb3a91139870760624aff2d4e6bd5de5af48a86db4f2767c5ee5de83",
+  "readback_hash": "sha256:0b4d3b1e1f5aaa25024bac0766534394f00e1d9cf6c34162182c66a7e974b17a",
+  "data_source_count": 2,
+  "relation_count": 3,
+  "display_field_count": 11,
+  "join_type": "left",
+  "retention_mode": "retain",
+  "readiness": "active",
+  "reusable": true,
+  "credentials_persisted": false
+}

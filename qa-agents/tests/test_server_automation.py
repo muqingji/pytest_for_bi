@@ -47,12 +47,19 @@ def _case(case_id: str, layer: str, *, contract_ref: str = "") -> dict:
         "source_refs": [{"type": "requirement", "id": "REQ-1"}],
         "preconditions": ["fixture ready"],
         "test_data": {},
-        "steps": ["execute request"],
+        "steps": [{
+            "name": "execute request",
+            "request": {"protocol": "http", "api": "example.query", "json": {}},
+        }],
         "expected": [
             {
                 "id": "EXP-1",
                 "description": "response matches",
-                "oracle": {"matcher": "equals", "expected_value": 200},
+                "oracle": {
+                    "observation_point": "response.status",
+                    "matcher": "equals",
+                    "expected_value": 200,
+                },
             }
         ],
         "cleanup": [],
@@ -182,3 +189,69 @@ def test_pauses_explicit_unit_case_generation(tmp_path: Path) -> None:
             "reason_code": "paused_existing_developer_unit_coverage",
         }
     ]
+
+
+def test_binds_validated_n28_lifecycle_into_server_candidate(tmp_path: Path) -> None:
+    case = _case("CASE-BE", "backend")
+    inputs = _inputs(tmp_path, [case], [{"case_id": "CASE-BE", "action": "generate_new"}])
+    plan_payload = {
+        "schema_version": "test-data-plan/1.0", "environment": "112",
+        "namespace": "qa-server-bind-001", "case_plans": [{
+            "case_id": "CASE-BE", "variables": {"resource_id": "logical"},
+            "resources": [{
+                "resource_key": "metric", "resource_type": "aggregate_metric",
+                "resource_id_variable": "metric_id",
+                "setup": {"request": {"api": "create", "json": {"name": "{{ namespace }}"}}},
+                "readiness": [{"request": {"api": "query"}}],
+                "cleanup": {"request": {"api": "delete", "json": {"id": "{{ metric_id }}"}}},
+                "residue_checks": [{"request": {"api": "query"},
+                                    "expect_absent": {"json_path": "Value.id", "value": "{{ metric_id }}"}}],
+            }],
+        }],
+    }
+    n28 = _artifact(tmp_path / "n28.json", "N28", "n28-test-data-resource-plan", plan_payload)
+    n28_value = json.loads(n28.read_text())
+    n27 = _artifact(
+        tmp_path / "n27.json", "N27", "n27-test-data-plan-validation",
+        {"schema_version": "test-data-plan-validation/1.0", "valid": True,
+         "n28_artifact_hash": n28_value["artifact_hash"], "deferred_cases": []},
+    )
+    result = prepare_server_automation(
+        inputs["plan"], inputs["compiled"], ROOT / "policies/automation-target-policy.json",
+        inputs["target"], tmp_path / "out", test_data_validation_path=n27,
+        test_data_resource_plan_path=n28,
+    )
+    generation = json.loads(
+        (tmp_path / "out/artifacts/a14-backend-automation-generation.json").read_text()
+    )["payload"]
+    assert result["ready_for_n08"] is True
+    assert "residue_checks" in generation["code_candidates"][0]["content"]
+    assert result["test_data_resource_plan_hash"] == n28_value["artifact_hash"]
+    assert generation["manifest"]["input_bindings"]["test_data_validation_hash"]
+    assert generation["manifest"]["input_bindings"]["test_data_resource_plan_hash"] == n28_value["artifact_hash"]
+
+
+def test_knowledge_readiness_defers_unready_case_and_binds_ready_packet(tmp_path: Path) -> None:
+    cases = [_case("CASE-READY", "backend"), _case("CASE-DEFERRED", "backend")]
+    inputs = _inputs(
+        tmp_path, cases,
+        [{"case_id": "CASE-READY", "action": "generate_new"},
+         {"case_id": "CASE-DEFERRED", "action": "generate_new"}],
+    )
+    readiness = _write(tmp_path / "readiness.json", {
+        "schema_version": "automation-knowledge-readiness/1.0",
+        "packet_hash": "sha256:knowledge",
+        "ready_case_ids": ["CASE-READY"],
+        "deferred_case_ids": ["CASE-DEFERRED"],
+        "cases": [],
+    })
+    result = prepare_server_automation(
+        inputs["plan"], inputs["compiled"], ROOT / "policies/automation-target-policy.json",
+        inputs["target"], tmp_path / "out", knowledge_readiness_path=readiness,
+    )
+    generation = json.loads(
+        (tmp_path / "out/artifacts/a14-backend-automation-generation.json").read_text()
+    )["payload"]
+    assert result["planned_generation_case_ids"] == ["CASE-READY"]
+    assert result["deferred_case_ids"] == ["CASE-DEFERRED"]
+    assert generation["manifest"]["input_bindings"]["knowledge_packet_hash"] == "sha256:knowledge"

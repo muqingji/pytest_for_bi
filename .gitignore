@@ -10,6 +10,7 @@ artifacts/
 .coverage
 htmlcov/
 .env
+.env.*.local
 .cache/
 *.egg-info/
 config/environment.*.local.json

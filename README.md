@@ -17,9 +17,13 @@ publishes pytest JUnit output and the Allure report.
 python3 -m venv .venv
 source .venv/bin/activate
 make install
-make test
+make test               # framework and qa-agents offline quality suites
 make allure
 ```
+
+Use `make test-framework` or `make test-qa-agents` to run one suite in
+isolation. The default quality command runs both suites so changes to the QA
+orchestration subsystem cannot bypass the repository-level gate.
 
 Open the report with `allure open allure-report`, or run `make serve-allure`.
 
@@ -96,6 +100,14 @@ requests to `crm.ceshi112.com`. The online environment uses `www.fxiaoke.com`
 for both. Login cookies are retained by the shared HTTP session. Keep all
 credentials in environment variables, CI secrets, or an ignored
 `config/environment.112.local.json` file.
+
+Run `make auth-preflight-112` before any 112 data write. Credentials must come
+from one complete source: all three `FXIAOKE_112_*` environment variables, or
+`config/environment.112.local.json` with file mode `0600`. Jenkins and Multica
+must inject the same values through their Secret provider. The preflight only
+reports the source type and session-cookie count; it never prints credential or
+cookie values. Every 112 pytest session also fails fast when the credential
+source is missing, partial, or has unsafe file permissions.
 
 `--env` overrides `TEST_ENV`; `test` is the default. Each selected environment
 requires `config/environment.<env>.json`. `test`, `hk`, and `prod` templates

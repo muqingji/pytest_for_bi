@@ -38,6 +38,19 @@ pipeline {
             }
         }
 
+        stage('Offline quality gate') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p artifacts
+                    "$VENV_DIR/bin/python" -m pytest tests \
+                        --junitxml=artifacts/framework-junit.xml
+                    PYTHONPATH=qa-agents/src "$VENV_DIR/bin/python" -m pytest -q qa-agents/tests \
+                        --junitxml=artifacts/qa-agents-junit.xml
+                '''
+            }
+        }
+
         stage('Run interface cases') {
             steps {
                 script {
@@ -54,6 +67,7 @@ pipeline {
                             fi
 
                             if [ "$TEST_ENV" = "112" ]; then
+                                PYTHONPATH=src "$VENV_DIR/bin/python" scripts/preflight_112_auth.py
                                 set -- -n 0 tests/translation_workbench/test_translation_language.py
                             else
                                 set --
@@ -62,11 +76,11 @@ pipeline {
                             if [ -n "$CASE_FILTER" ]; then
                                 TEST_ENV="$TEST_ENV" "$VENV_DIR/bin/python" -m pytest --env "$TEST_ENV" \
                                     "$@" -k "$CASE_FILTER" --alluredir=allure-results \
-                                    --clean-alluredir --junitxml=artifacts/junit.xml
+                                    --clean-alluredir --junitxml=artifacts/interface-junit.xml
                             else
                                 TEST_ENV="$TEST_ENV" "$VENV_DIR/bin/python" -m pytest --env "$TEST_ENV" \
                                     "$@" --alluredir=allure-results \
-                                    --clean-alluredir --junitxml=artifacts/junit.xml
+                                    --clean-alluredir --junitxml=artifacts/interface-junit.xml
                             fi
                         '''
                     }
@@ -93,7 +107,7 @@ pipeline {
                         --summary-only --quiet || true
                 fi
             '''
-            junit allowEmptyResults: true, testResults: 'artifacts/junit.xml'
+            junit allowEmptyResults: true, testResults: 'artifacts/*-junit.xml'
             archiveArtifacts allowEmptyArchive: true, artifacts: 'allure-results/**,artifacts/**'
             allure includeProperties: false, jdk: '', results: [[path: 'allure-results']]
         }

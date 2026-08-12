@@ -1,0 +1,4 @@
+interface:
+  display_name: "KDocs Authorized Snapshot"
+  short_description: "Read approved KDocs sources into evidence-bound snapshots"
+  default_prompt: "Create a read-only, evidence-bound snapshot from an approved KDocs URL."

@@ -25,7 +25,10 @@ def backend_case() -> dict:
         ],
         "preconditions": ["使用无权限账号"],
         "test_data": {"request": {"method": "GET", "path": "/api/report"}},
-        "steps": ["请求报表接口"],
+        "steps": [{
+            "name": "请求报表接口",
+            "request": {"protocol": "http", "api": "report.query", "json": {}},
+        }],
         "expected": [
             {
                 "id": "EXP-01",
@@ -68,9 +71,11 @@ def test_backend_generation_review_and_n05_check_are_separate() -> None:
         context(), {"cases": [case], "target": target()}, security
     )
     assert generation.status == ArtifactStatus.COMPLETED
+    assert f"'id': '{case['id']}'" in generation.payload["code_candidates"][0]["content"]
     assert generation.payload["manifest"]["target_repository"]["write_mode"] == (
         "artifact_only_candidate"
     )
+    assert generation.payload["manifest"]["input_bindings"] == {}
 
     review = BackendAutomationReviewAgent().run(
         context(), {"cases": [case], "generation": generation.payload}, security

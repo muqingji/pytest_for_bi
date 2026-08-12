@@ -1378,7 +1378,7 @@ def test_ingest_a11_rejects_child_oracle_set_change(tmp_path: Path) -> None:
     write_json(bundle_path, bundle)
     output = valid_a11_output(bundle)
 
-    with pytest.raises(ContractError, match="changed the Oracle set"):
+    with pytest.raises(ContractError, match="added or changed an Oracle"):
         ingest_a11(bundle, output, tmp_path)
 
 
@@ -1408,3 +1408,45 @@ def test_ingest_a11_rejects_unreported_cross_layer_duplicate(tmp_path: Path) -> 
             item["status"] = "covered"
     with pytest.raises(ContractError, match="unscoped cross-layer responsibilities"):
         ingest_a11(bundle, output, tmp_path)
+
+
+def test_ingest_a11_accepts_reported_global_cross_layer_duplicate(tmp_path: Path) -> None:
+    bundle, _, _ = build_a11_prepare_inputs(tmp_path)
+    bundle_path = tmp_path / "a11-inputs" / "a11-input.json"
+    parent = bundle["allowed_inputs"]["parent_test_cases"][0]
+    child = next(
+        item for item in bundle["allowed_inputs"]["compiled_child_cases"]
+        if item["parent_case_id"] == parent["id"]
+    )
+    parent["required_layers"] = ["backend", "contract"]
+    child["layer"] = "backend"
+    bundle["allowed_inputs"]["compiled_child_cases"].append(
+        {**child, "id": f"{parent['id']}-CONTRACT", "layer": "contract"}
+    )
+    bundle["bundle_hash"] = content_hash(
+        {key: value for key, value in bundle.items() if key != "bundle_hash"}
+    )
+    write_json(bundle_path, bundle)
+
+    output = valid_a11_output(bundle)
+    output["issues"] = [{
+        "id": "A11-GLOBAL-001",
+        "issue_code": "CROSS_LAYER_FULL_DUPLICATION",
+        "severity": "error",
+        "category": "coverage",
+        "message": "Multiple parents duplicate responsibilities across layers",
+        "path": "$.allowed_inputs.compiled_child_cases",
+        "route_to": "N25",
+        "case_id": None,
+        "source_refs": ["REQ-001"],
+        "recommendation": "Scope each layer responsibility",
+    }]
+    output["approved"] = False
+    output["status"] = "needs_human"
+    for item in output["parent_case_coverage"]:
+        if item["parent_case_id"] == parent["id"]:
+            item["status"] = "partial"
+
+    artifact = ingest_a11(bundle, output, tmp_path)
+    assert artifact["payload"]["approved"] is False
+    assert artifact["status"] == "needs_human"

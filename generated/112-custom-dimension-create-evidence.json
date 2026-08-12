@@ -1,0 +1,31 @@
+{
+  "requirement_name": "统计图查看明细限制原因提示优化",
+  "resource_type": "custom_dimension",
+  "display_name": "客户等级实时枚举分组自定义维度",
+  "resource_id": "BI_02293bb8fb184b56b0502f25cf06e3d5",
+  "topology_describe_id": "BI_5bcebcdc3060e20001e79977",
+  "source_field_id": "BI_5bcebcddcab2980001ee22b3",
+  "source_field_api_name": "account_level",
+  "source_field_type": "select_one",
+  "enum_option_binding": {
+    "field_id": "BI_5bcebcddcab2980001ee22b3",
+    "field_api_name": "account_level",
+    "option_query_operation": "fs_bi_udf_report.view_edit.get_ui_type",
+    "option_response_hash": "sha256:89bbe008e4a48b49e7cdf22bbee31982f463e234e7db4d311244411f9e816c9d",
+    "response_json_path": "$.Value.ui.data[*].optionCode",
+    "queried_option_codes": [
+      "1",
+      "2",
+      "3",
+      "other"
+    ],
+    "selected_option_codes": [
+      "1",
+      "2"
+    ]
+  },
+  "readback_hash": "sha256:af2162855991877476938fc348cac206713fda6141fb7b93bf0196e19b5caf17",
+  "retention_mode": "retain",
+  "readiness": "active",
+  "reusable": true
+}

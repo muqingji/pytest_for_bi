@@ -133,6 +133,31 @@ def check_automation_generation(
                 "SYSTEM",
             )
         )
+    skill_bound = manifest.get("aggregate_agent_id") == "B01"
+    if skill_bound and manifest.get("allowed_tools") != ["case_runner"]:
+        issues.append(
+            ValidationIssue("unauthorized_tool", str(manifest.get("allowed_tools")),
+                            "manifest.allowed_tools", "SYSTEM")
+        )
+    authorizations = generation.get("skill_router_bindings")
+    authorized = {
+        str(ref) for value in authorizations.values() if isinstance(value, Mapping)
+        for ref in value.get("required_skills", [])
+    } if isinstance(authorizations, Mapping) else set()
+    if skill_bound and set(manifest.get("authorized_skills", [])) != authorized:
+        issues.append(
+            ValidationIssue("unauthorized_skill", "Manifest Skills differ from Router authorization",
+                            "manifest.authorized_skills", "SYSTEM")
+        )
+    registry_hashes = {
+        str(value.get("registry_hash", "")) for value in authorizations.values()
+        if isinstance(value, Mapping)
+    } if isinstance(authorizations, Mapping) else set()
+    if skill_bound and registry_hashes != {str(manifest.get("skill_registry_hash", ""))}:
+        issues.append(
+            ValidationIssue("skill_registry_hash_mismatch", "Skill Registry binding differs",
+                            "manifest.skill_registry_hash", "SYSTEM")
+        )
 
     framework = str(manifest.get("framework", ""))
     language = str(manifest.get("language", ""))
@@ -273,6 +298,9 @@ def _result(
         "forbidden_import",
         "forbidden_call",
         "unapproved_runtime_call",
+        "unauthorized_tool",
+        "unauthorized_skill",
+        "skill_registry_hash_mismatch",
     }
     fatal = any(item.issue_code in security_codes for item in issues)
     manifest = generation.get("manifest")

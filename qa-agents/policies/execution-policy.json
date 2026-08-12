@@ -22,6 +22,7 @@
       "staging_112",
       "local_reference",
       "112"
+      ,"integration_test_112"
     ],
     "allow_network": true,
     "allow_secrets": true,
@@ -31,7 +32,23 @@
       "FS_TOKEN",
       "QA_ENV_TOKEN",
       "EA_TOKEN"
+      ,"FXIAOKE_112_ENTERPRISE_ACCOUNT"
+      ,"FXIAOKE_112_USERNAME"
+      ,"FXIAOKE_112_PASSWORD"
     ],
+    "secret_providers": {
+      "integration_test_112": {
+        "type": "environment_local_config",
+        "path": "../config/environment.112.local.json",
+        "file_mode": "0600",
+        "preflight_command": "PYTHONPATH=src .venv/bin/python scripts/preflight_112_auth.py",
+        "secret_names": [
+          "FXIAOKE_112_ENTERPRISE_ACCOUNT",
+          "FXIAOKE_112_USERNAME",
+          "FXIAOKE_112_PASSWORD"
+        ]
+      }
+    },
     "allowed_env_passthrough": [
       "PATH",
       "LANG",
@@ -46,8 +63,13 @@
       "NO_PROXY"
     ],
     "framework_pythonpath_entries": [
-      "src"
+      "src",
+      "."
     ],
+    "pytest_plugins": ["framework.pytest_plugin"],
+    "pytest_arguments_by_environment_class": {
+      "integration_test_112": ["--env=112"]
+    },
     "collect_coverage": true
   }
 }

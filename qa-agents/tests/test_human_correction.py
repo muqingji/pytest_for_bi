@@ -106,6 +106,10 @@ def test_human_correction_multica_done_authorizes_a08_recovery(tmp_path: Path) -
     )
 
     assert opened["state"] == "waiting_for_review"
+    metadata = multica.issue["metadata"]
+    assert metadata["qa_item_type"] == "human_action"
+    assert metadata["qa_action_required"] == "true"
+    assert metadata["qa_visible_in_workflow_center"] == "false"
     assert paused["state"] == "waiting_for_review"
     assert not (output / DECISION_FILE).exists()
 
@@ -156,6 +160,25 @@ def test_human_correction_multica_done_authorizes_a08_recovery(tmp_path: Path) -
     assert bundle["upstream_human_decision"]["request_hash"] == read_json(
         request_path
     )["request_hash"]
+
+
+def test_human_correction_issue_is_created_under_run_parent(tmp_path: Path) -> None:
+    output = tmp_path / "human-correction"
+    request = prepare_human_correction_request(
+        *pilot_artifacts(),
+        POLICY,
+        output,
+        multica_parent_issue_id="run-issue-1",
+    )
+    multica = FakeMultica()
+
+    open_multica_human_correction(
+        output / "human-correction-request.json", POLICY, output, runner=multica
+    )
+
+    create = next(call for call in multica.calls if call[:2] == ["issue", "create"])
+    assert create[create.index("--parent") + 1] == "run-issue-1"
+    assert request["multica_control"]["parent_issue_id"] == "run-issue-1"
 
 
 def test_human_correction_cancel_terminates(tmp_path: Path) -> None:
@@ -354,6 +377,16 @@ def test_a08_v130_instruction_requires_binding_fields_and_text_delivery() -> Non
         "no file writes",
         "human_directed",
         "correction_attempt=3",
+        "authorized_directive_ids",
+        "do not reuse directives",
     ):
         assert required in instruction
 
+
+def test_a09_instruction_disambiguates_top_level_bundle_binding() -> None:
+    instruction = (
+        ROOT / "multica" / "agent-instructions" / "a09-v1.1.1.md"
+    ).read_text(encoding="utf-8")
+    assert "输入顶层 `bundle_hash`" in instruction
+    assert "禁止复制" in instruction
+    assert "allowed_inputs.test_design_ir.input_bundle_hash" in instruction

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fxiaoke Help Snapshot"
+  short_description: "Capture approved product help pages as snapshots"
+  default_prompt: "Capture an approved Fxiaoke help tree as evidence-bound snapshots."

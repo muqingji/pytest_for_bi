@@ -1,0 +1,17 @@
+{
+  "requirement_name": "统计图查看明细限制原因提示优化",
+  "resource_type": "stat_chart",
+  "display_name": "客户指标完整配置查看明细验证统计图",
+  "resource_id": "BI_6a7c6421280b910007abfe94",
+  "category_id": "BI_6a7c5dea280b910007abfd5d",
+  "folder_response_hash": "sha256:c2499f8e8929fcd23cb14cf463cad863182b98f10ee93748ff006c0e1d04d19a",
+  "schema_id": "BI_5bcebcdc3060e20001e79977",
+  "measure_field_id": "BI_6a5d9a2a43b23a0007b98180",
+  "measure_source_response_hash": "sha256:2b457ffa357548f08140506954374ae9169bf5faf709316192c647489747293d",
+  "source_view_id": "BI_6a7c652f280b910007abff8b",
+  "configuration_hash": "sha256:32db36fc5eb2b28d22485d14530b43dba7c17bf681ce3ea98d0446873db43596",
+  "readback_hash": "sha256:bdfdca65ac24a337b84b126d36290bba271b5910b00c2bf5bc568c50ac98a92b",
+  "retention_mode": "retain",
+  "readiness": "active",
+  "reusable": true
+}

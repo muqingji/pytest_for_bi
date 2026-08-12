@@ -15,6 +15,7 @@ from qa_agents.contracts import (
     content_hash,
 )
 from qa_agents.errors import ContractError
+from qa_agents.case_compiler import apply_approved_split_correction
 from qa_agents.stage_two_nodes import (
     run_n15_after_n26,
     run_n25_after_g02,
@@ -90,6 +91,61 @@ def parent_cases() -> list[dict]:
             "automation_candidate": True,
         },
     ]
+
+
+def split_correction() -> dict:
+    raw = {
+        "schema_version": "n25-split-correction/1.0",
+        "workflow_run_id": RUN_ID,
+        "source_artifact_hash": "sha256:design",
+        "approval": {
+            "issue_id": "issue-1",
+            "issue_identifier": "QAA-1",
+            "status": "done",
+        },
+        "case_rules": {
+            "CASE-001": {
+                "required_layers": ["backend", "contract"],
+                "expected_layers": {"E1": ["contract"]},
+                "cleanup_oracle": {"matcher": "namespace_empty"},
+            },
+            "CASE-002": {
+                "required_layers": ["e2e"],
+                "expected_layers": {"E2": ["e2e"]},
+                "cleanup_oracle": {"matcher": "namespace_empty"},
+            },
+        },
+    }
+    raw["correction_hash"] = content_hash(raw)
+    return raw
+
+
+def test_approved_split_correction_only_adds_scoped_responsibilities() -> None:
+    corrected = apply_approved_split_correction(parent_cases(), split_correction())
+    assert corrected[0]["expected"][0]["layers"] == ["contract"]
+    assert corrected[0]["cleanup_oracle"]["matcher"] == "namespace_empty"
+
+
+@pytest.mark.parametrize("mutation,match", [
+    (lambda value: value["approval"].update(status="in_review"), "completed human approval"),
+    (lambda value: value["case_rules"]["CASE-001"].update(required_layers=["contract"]), "cannot remove layers"),
+    (lambda value: value["case_rules"]["CASE-001"].update(expected_layers={}), "assign every Oracle"),
+])
+def test_split_correction_rejects_unapproved_or_destructive_changes(mutation, match) -> None:
+    correction = split_correction()
+    mutation(correction)
+    correction["correction_hash"] = content_hash(
+        {key: value for key, value in correction.items() if key != "correction_hash"}
+    )
+    with pytest.raises(ContractError, match=match):
+        apply_approved_split_correction(parent_cases(), correction)
+
+
+def test_split_correction_rejects_hash_tampering() -> None:
+    correction = split_correction()
+    correction["approval"]["issue_id"] = "tampered"
+    with pytest.raises(ContractError, match="hash is invalid"):
+        apply_approved_split_correction(parent_cases(), correction)
 
 
 def write_a08_artifact(dir_path: Path) -> dict:

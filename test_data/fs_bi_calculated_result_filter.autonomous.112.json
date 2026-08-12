@@ -1,0 +1,73 @@
+{
+  "workflow": "qa-agent-autonomous-calculated-data-lifecycle",
+  "cases": [
+    {
+      "id": "CASE-AUTO-CALCULATED-RESULT-FILTER-112",
+      "name": "112-自主构造计算指标并验证结果集筛选查看明细",
+      "title": "计算指标结果集筛选查看明细返回专用错误",
+      "environment": "112",
+      "priority": "P0",
+      "tags": ["smoke", "integration", "calculated-metric"],
+      "test_level": "functional",
+      "contract_ref": "fs-bi@c6b785344c6973b6d6fc5bb108c45b3971f36c64:fs-bi-stat/src/main/java/com/facishare/bi/stat/controller/StatBaseController.java#dataQuery",
+      "preconditions": ["计算指标使用运行时创建的聚合指标作为公式依赖"],
+      "test_data": {
+        "dataset": "calculated_result_filter_metric",
+        "data_intent": "metric.calculated_result_set_filter.detail_unsupported",
+        "variants": ["计算指标"]
+      },
+      "steps": [
+        {
+          "name": "调用真实查看明细接口验证计算指标结果集筛选限制",
+          "request": {
+            "protocol": "http",
+            "api": "fs_bi_stat.stat_base.data_query_da655ba1",
+            "json": {
+              "id": "{{ schema_id }}",
+              "isView": 0,
+              "measureFieldID": "{{ calculated_metric_id }}",
+              "measureFieldIDs": ["{{ calculated_metric_id }}"],
+              "pageNumber": 1,
+              "pageSize": 20,
+              "filterLists": [{"filters": [{
+                "displayNumber": 1,
+                "fieldId": "{{ calculated_metric_id }}",
+                "fieldID": "{{ calculated_metric_id }}",
+                "fieldName": "{{ metric_name }}",
+                "fieldType": "Number",
+                "operator": 1,
+                "operatorLabel": "等于",
+                "value1": "0",
+                "value2": "",
+                "aggDimType": "agg",
+                "filterConfig": {
+                  "showAppointLevelSwitch": 0,
+                  "switchStatus": 0,
+                  "filterGroupType": 1,
+                  "aggrType": "7",
+                  "ratioType": "0"
+                }
+              }]}],
+              "timeZone": "Asia/Shanghai",
+              "lan": "zh-CN"
+            }
+          },
+          "expect": {
+            "status_code": 200,
+            "body_contains_keys": ["s307011535"],
+            "body_contains_values": ["{{ metric_name }}"]
+          }
+        }
+      ],
+      "expected": [{
+        "id": "CASE-AUTO-CALC-E01",
+        "oracle": {
+          "type": "deterministic",
+          "observation_point": "detail_api.error",
+          "matcher": "all_fields_equal",
+          "expected_value": {"error_code": "s307011535"}
+        }
+      }]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "environment": "112",
+  "requirement_name": "统计图查看明细限制原因提示优化",
+  "category_id": "BI_6a7c5dea280b910007abfd5d",
+  "query_operation": "bi_crm_report.rpt_category.get_category_and_rpt",
+  "query_response_item_hash": "sha256:c2499f8e8929fcd23cb14cf463cad863182b98f10ee93748ff006c0e1d04d19a",
+  "live_readback_status": "succeeded"
+}

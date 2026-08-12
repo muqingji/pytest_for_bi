@@ -170,6 +170,7 @@ def prepare_human_correction_request(
     output_dir: Path,
     *,
     security: SecurityPolicy | None = None,
+    multica_parent_issue_id: str | None = None,
 ) -> dict[str, Any]:
     security = security or SecurityPolicy()
     policy = _policy(policy_path)
@@ -211,6 +212,8 @@ def prepare_human_correction_request(
         "decision_contract": "human-test-design-correction-decision/1.0",
         "outcome_contract": "human-test-design-correction-outcome/1.0",
     }
+    if multica_parent_issue_id:
+        core["multica_control"]["parent_issue_id"] = multica_parent_issue_id
     request_path = output_dir / REQUEST_FILE
     store = ArtifactStore(output_dir)
     if request_path.exists():
@@ -302,6 +305,10 @@ def open_multica_human_correction(
     workspace = ["--workspace-id", multica["workspace_id"]]
     if not state.get("issue_id"):
         short_hash = request["request_hash"].removeprefix("sha256:")[:12]
+        parent_args = []
+        parent_issue_id = request["multica_control"].get("parent_issue_id")
+        if parent_issue_id:
+            parent_args = ["--parent", parent_issue_id]
         created = runner(
             [
                 "issue", "create",
@@ -312,6 +319,7 @@ def open_multica_human_correction(
                 "--project", multica["project_id"],
                 "--status", "todo",
                 "--priority", "high",
+                *parent_args,
                 "--output", "json",
                 *workspace,
             ],
@@ -325,9 +333,12 @@ def open_multica_human_correction(
         )
     issue_id = str(state["issue_id"])
     metadata = {
+        "qa_item_type": "human_action",
         "qa_node_id": request["node_id"],
+        "qa_action_required": "true",
         "qa_request_hash": request["request_hash"],
         "qa_policy_hash": request["policy"]["policy_hash"],
+        "qa_visible_in_workflow_center": "false",
         "qa_workflow_run_id": request["workflow_run_id"],
     }
     for key, value in metadata.items():
@@ -364,9 +375,12 @@ def _decision(
         raise SecurityPolicyError("Human correction Issue reviewer is unauthorized")
     metadata = issue.get("metadata")
     expected = {
+        "qa_item_type": "human_action",
         "qa_node_id": request["node_id"],
+        "qa_action_required": "true",
         "qa_request_hash": request["request_hash"],
         "qa_policy_hash": request["policy"]["policy_hash"],
+        "qa_visible_in_workflow_center": "false",
         "qa_workflow_run_id": request["workflow_run_id"],
     }
     if not isinstance(metadata, Mapping) or any(

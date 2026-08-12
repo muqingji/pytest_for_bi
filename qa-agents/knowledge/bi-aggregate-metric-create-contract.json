@@ -1,0 +1,17 @@
+{
+  "schema_version": "bi-aggregate-metric-create-contract/1.0",
+  "status": "candidate",
+  "compiler_inputs": ["metric_intent", "live_schema", "live_aggregate_object_conditions", "live_filter_options", "current_identity", "current_timezone"],
+  "discovery_operations": {
+    "aggregate_conditions": "fs_bi_stat.agg_rule.query_agg_conditions_by_agg_object",
+    "filter_options": ["fs_bi_stat.stat_edit.get_filters_result", "fs_bi_stat.stat_edit.batch_get_filters_result"]
+  },
+  "create_operation": "fs_bi_stat.agg_rule.add_new_agg_rule",
+  "readback_operation": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+  "enum_invariant": {
+    "selection_identity": "optionCode",
+    "required_evidence": ["field_id", "field_api_name", "option_query_operation", "option_response_hash", "response_json_path", "queried_option_codes", "selected_option_codes"],
+    "failure_state": "not_ready"
+  },
+  "promotion_requirement": "A newly created 112 metric must be queried back and configuration-compared successfully."
+}

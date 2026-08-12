@@ -40,6 +40,201 @@ _CREATE_HINTS = (
     "主题",
 )
 _SECRET_KEYS = {"password", "token", "secret", "authorization", "cookie"}
+_CJK = re.compile(r"[\u4e00-\u9fff]")
+_NAMED_BUSINESS_RESOURCES = {
+    "aggregate_metric", "calculated_metric", "stat_schema", "crm_field", "custom_dimension"
+}
+_CHART_RESOURCES = {"stat_chart", "joined_report", "pivot_table", "report"}
+_CHART_DETAIL_CLOSURE_ROLES = {
+    "source_field",
+    "metric_or_dimension",
+    "requirement_folder",
+    "chart_or_pivot",
+    "view_readiness",
+    "detail_entry_execution",
+}
+_ENUM_FIELD_TYPE_HINTS = ("enum", "select", "option", "bpm", "boolean", "bool")
+_SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
+
+
+def _validate_joined_table_create(
+    resource: Mapping[str, Any], setup: Mapping[str, Any], path: str
+) -> None:
+    if resource.get("resource_type") != "joined_table":
+        return
+    if _operation_id(setup, path) != "fs_bi_dev.lwt_manager.save":
+        raise SecurityPolicyError(f"{path} joined table must use the controlled save operation")
+    request = setup.get("request", {})
+    body = request.get("json", {}) if isinstance(request, Mapping) else {}
+    if not isinstance(body, Mapping) or body.get("saveType") != 0:
+        raise SecurityPolicyError(f"{path} joined table must be a create-only save")
+    lwt = body.get("lwtArgs")
+    query = body.get("queryLwtArg")
+    if not isinstance(lwt, Mapping) or not isinstance(query, Mapping):
+        raise ContractError(f"{path} joined table requires lwtArgs and queryLwtArg")
+    if str(lwt.get("lwtId", "")) or str(query.get("id", "")):
+        raise SecurityPolicyError(f"{path} joined table create IDs must be empty")
+    requirement_name = str(resource.get("requirement_name", ""))
+    if not requirement_name or resource.get("asset_folder_name") != requirement_name:
+        raise SecurityPolicyError(f"{path} joined table folder must equal requirement name")
+    evidence = setup.get("live_discovery_evidence")
+    if not isinstance(evidence, Mapping):
+        raise SecurityPolicyError(f"{path} joined table requires live discovery evidence")
+    for key in ("folder", "topology", "identity"):
+        item = evidence.get(key)
+        if not isinstance(item, Mapping) or _SHA256.fullmatch(
+            str(item.get("response_hash", ""))
+        ) is None:
+            raise SecurityPolicyError(f"{path} joined table {key} evidence is invalid")
+    folder = evidence["folder"]
+    if folder.get("name") != requirement_name or str(folder.get("id")) != str(body.get("categoryID")):
+        raise SecurityPolicyError(f"{path} joined table folder binding does not match live evidence")
+    sources = lwt.get("dataSources", [])
+    relations = lwt.get("relations", [])
+    fields = lwt.get("displayFields", [])
+    if not isinstance(sources, list) or len(sources) < 2 or not relations or not fields:
+        raise SecurityPolicyError(f"{path} joined table topology is incomplete")
+    source_ids = {str(item.get("id")) for item in sources if isinstance(item, Mapping) and item.get("id")}
+    if len(source_ids) != len(sources):
+        raise SecurityPolicyError(f"{path} joined table source IDs are missing or duplicated")
+    for field in fields:
+        if not isinstance(field, Mapping) or str(field.get("dataSourceId")) not in source_ids:
+            raise SecurityPolicyError(f"{path} joined table output field has no selected source")
+    for relation in relations:
+        if not isinstance(relation, Mapping):
+            raise SecurityPolicyError(f"{path} joined table relation is invalid")
+        endpoints = {str(relation.get("leftDataSourceId")), str(relation.get("rightDataSourceId"))}
+        if endpoints - source_ids or not relation.get("leftFieldId") or not relation.get("rightFieldId"):
+            raise SecurityPolicyError(f"{path} joined table relation is not live-bound")
+
+
+def _walk_filter_objects(value: Any, path: str) -> list[tuple[str, Mapping[str, Any]]]:
+    found: list[tuple[str, Mapping[str, Any]]] = []
+    if isinstance(value, Mapping):
+        keys = {str(key) for key in value}
+        if "value1" in keys and ("fieldId" in keys or "fieldID" in keys):
+            found.append((path, value))
+        for key, child in value.items():
+            found.extend(_walk_filter_objects(child, f"{path}.{key}"))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            found.extend(_walk_filter_objects(child, f"{path}[{index}]"))
+    return found
+
+
+def _is_enum_filter(filter_value: Mapping[str, Any]) -> bool:
+    value_kind = str(filter_value.get("value_kind", "")).strip().lower()
+    if value_kind:
+        return value_kind in {"enum", "business_enum", "option"}
+    field_types = " ".join(
+        str(filter_value.get(key, "")).lower()
+        for key in ("fieldType", "subFieldType", "originalType")
+    )
+    return any(hint in field_types for hint in _ENUM_FIELD_TYPE_HINTS)
+
+
+def _option_codes(value: Any, path: str) -> set[str]:
+    parsed = value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError as error:
+            raise SecurityPolicyError(f"{path}.value1 must contain optionCode objects") from error
+    if not isinstance(parsed, list) or not parsed:
+        raise SecurityPolicyError(f"{path}.value1 must contain non-empty optionCode objects")
+    codes: set[str] = set()
+    for index, item in enumerate(parsed):
+        if not isinstance(item, Mapping) or not str(item.get("optionCode", "")).strip():
+            raise SecurityPolicyError(
+                f"{path}.value1[{index}] is a handwritten enum value without optionCode"
+            )
+        codes.add(str(item["optionCode"]))
+    return codes
+
+
+def _validate_enum_provenance(
+    setup: Mapping[str, Any], path: str, approved_operations: set[str]
+) -> int:
+    request = setup.get("request", {})
+    request_json = request.get("json", {}) if isinstance(request, Mapping) else {}
+    filters = [item for item in _walk_filter_objects(request_json, f"{path}.request.json") if _is_enum_filter(item[1])]
+    if not filters:
+        return 0
+    bindings = setup.get("enum_option_bindings")
+    if not isinstance(bindings, list) or not bindings:
+        raise SecurityPolicyError(f"{path} enum filters require enum_option_bindings")
+    validated = 0
+    for filter_path, filter_value in filters:
+        field_id = str(filter_value.get("fieldId") or filter_value.get("fieldID") or "")
+        matches = [item for item in bindings if isinstance(item, Mapping) and str(item.get("field_id", "")) == field_id]
+        if len(matches) != 1:
+            raise SecurityPolicyError(f"{filter_path} requires exactly one binding for field {field_id!r}")
+        binding = matches[0]
+        operation = str(binding.get("option_query_operation", ""))
+        if operation not in approved_operations:
+            raise SecurityPolicyError(f"{filter_path} option query operation is not approved")
+        if _SHA256.fullmatch(str(binding.get("option_response_hash", ""))) is None:
+            raise SecurityPolicyError(f"{filter_path} requires a valid option response hash")
+        if not str(binding.get("response_json_path", "")).strip():
+            raise SecurityPolicyError(f"{filter_path} requires option response_json_path")
+        selected = binding.get("selected_option_codes")
+        available = binding.get("queried_option_codes")
+        if not isinstance(selected, list) or not selected or not isinstance(available, list) or not available:
+            raise SecurityPolicyError(f"{filter_path} requires selected and queried option codes")
+        selected_codes = {str(item) for item in selected if str(item)}
+        available_codes = {str(item) for item in available if str(item)}
+        request_codes = _option_codes(filter_value.get("value1"), filter_path)
+        if not selected_codes or not selected_codes <= available_codes:
+            raise SecurityPolicyError(f"{filter_path} selected option was not returned by the option query")
+        if request_codes != selected_codes:
+            raise SecurityPolicyError(f"{filter_path} request option codes do not match its binding")
+        validated += 1
+    return validated
+
+
+def _validate_custom_dimension_enum_provenance(
+    setup: Mapping[str, Any], path: str, approved_operations: set[str]
+) -> int:
+    request = setup.get("request", {})
+    body = request.get("json", {}) if isinstance(request, Mapping) else {}
+    if not isinstance(body, Mapping) or body.get("customType") != "enum_group":
+        return 0
+    raw_config = body.get("dimensionConfig")
+    try:
+        config = json.loads(raw_config) if isinstance(raw_config, str) else raw_config
+    except json.JSONDecodeError as error:
+        raise SecurityPolicyError(f"{path}.request.json.dimensionConfig is invalid JSON") from error
+    if not isinstance(config, Mapping):
+        raise SecurityPolicyError(f"{path}.request.json.dimensionConfig must be an object")
+    requested_codes = {
+        str(code)
+        for group in config.get("groups", [])
+        if isinstance(group, Mapping) and not group.get("isNotGrouped")
+        for code in group.get("values", [])
+        if str(code)
+    }
+    if not requested_codes:
+        raise SecurityPolicyError(f"{path} enum_group requires live option codes")
+    bindings = setup.get("enum_option_bindings")
+    if not isinstance(bindings, list) or len(bindings) != 1 or not isinstance(bindings[0], Mapping):
+        raise SecurityPolicyError(f"{path} enum_group requires exactly one enum_option_binding")
+    binding = bindings[0]
+    source = body.get("sourceDimension") or body.get("sourceField") or {}
+    source_field_id = str(source.get("fieldId", "")) if isinstance(source, Mapping) else ""
+    if not source_field_id or str(binding.get("field_id", "")) != source_field_id:
+        raise SecurityPolicyError(f"{path} enum_group binding must match its source field")
+    operation = str(binding.get("option_query_operation", ""))
+    if operation not in approved_operations:
+        raise SecurityPolicyError(f"{path} enum_group option query operation is not approved")
+    if _SHA256.fullmatch(str(binding.get("option_response_hash", ""))) is None:
+        raise SecurityPolicyError(f"{path} enum_group requires a valid option response hash")
+    if not str(binding.get("response_json_path", "")).strip():
+        raise SecurityPolicyError(f"{path} enum_group requires option response_json_path")
+    queried = {str(code) for code in binding.get("queried_option_codes", []) if str(code)}
+    selected = {str(code) for code in binding.get("selected_option_codes", []) if str(code)}
+    if requested_codes != selected or not selected <= queried:
+        raise SecurityPolicyError(f"{path} enum_group values were not returned by its option query")
+    return 1
 
 
 def _is_unit_case(case: Mapping[str, Any]) -> bool:
@@ -211,13 +406,17 @@ def validate_test_data_plan(
     if phase_permissions != {
         "setup": "write",
         "readiness": "read_only",
-        "cleanup": "write",
+        "cleanup": "disabled",
+        "retention_verification": "read_only",
     }:
         raise ContractError(
             "test-data policy must allow setup/cleanup writes and keep readiness read-only"
         )
     readiness_operations = {
         str(item) for item in policy.get("readiness_operations", [])
+    }
+    enum_option_operations = {
+        str(item) for item in policy.get("enum_option_operations", [])
     }
     allowed_types = {str(item) for item in policy.get("resource_types", [])}
     validated_resources = 0
@@ -238,6 +437,19 @@ def validate_test_data_plan(
                 raise ContractError(
                     f"case_plans[{case_index}] autonomous resources require evidence_refs"
                 )
+        if case_plan.get("required_scene") == "chart_detail":
+            roles = {
+                str(role)
+                for resource in resources
+                if isinstance(resource, Mapping)
+                for role in resource.get("scene_roles", [])
+            }
+            missing_roles = sorted(_CHART_DETAIL_CLOSURE_ROLES - roles)
+            if missing_roles:
+                raise SecurityPolicyError(
+                    f"case_plans[{case_index}] chart_detail scene closure is incomplete; "
+                    f"missing roles: {', '.join(missing_roles)}"
+                )
         seen_keys: set[str] = set()
         for resource_index, resource in enumerate(resources):
             path = f"case_plans[{case_index}].resources[{resource_index}]"
@@ -255,25 +467,148 @@ def validate_test_data_plan(
                 raise ContractError(f"{path}.resource_id_variable is required")
             setup = resource.get("setup")
             cleanup = resource.get("cleanup")
-            if not isinstance(setup, Mapping) or not isinstance(cleanup, Mapping):
-                raise SecurityPolicyError(f"{path} requires paired setup and cleanup operations")
+            retention_mode = str(resource.get("retention_mode", "retain"))
+            lifecycle_mode = str(resource.get("lifecycle_mode", "create"))
+            if lifecycle_mode == "existing_read_only":
+                if setup is not None or cleanup is not None:
+                    raise SecurityPolicyError(
+                        f"{path} existing_read_only resource cannot define setup or cleanup"
+                    )
+                discovery = resource.get("discovery")
+                if not isinstance(discovery, Mapping):
+                    raise SecurityPolicyError(
+                        f"{path} existing_read_only resource requires discovery"
+                    )
+                discovery_id = _operation_id(discovery, f"{path}.discovery")
+                if discovery_id not in readiness_operations:
+                    raise SecurityPolicyError(
+                        f"{path}.discovery must use a read-only operation"
+                    )
+                evidence = resource.get("existing_asset_evidence")
+                if not isinstance(evidence, Mapping):
+                    raise SecurityPolicyError(
+                        f"{path} existing_read_only resource requires existing_asset_evidence"
+                    )
+                if evidence.get("live_readback_status") != "succeeded":
+                    raise SecurityPolicyError(f"{path} existing asset live readback is not proven")
+                if re.fullmatch(
+                    r"sha256:[0-9a-f]{64}", str(evidence.get("configuration_hash", ""))
+                ) is None:
+                    raise SecurityPolicyError(
+                        f"{path} existing asset requires a valid configuration hash"
+                    )
+                if evidence.get("historical_required"):
+                    if evidence.get("evidence_level") not in {
+                        "database_created_at_and_live_readback",
+                        "historical_candidate_verified_by_id_timestamp_and_live_readback",
+                    }:
+                        raise SecurityPolicyError(
+                            f"{path} historical asset evidence level is insufficient"
+                        )
+                    if not str(evidence.get("observed_created_at", "")) or not str(
+                        evidence.get("requirement_baseline_at", "")
+                    ):
+                        raise SecurityPolicyError(
+                            f"{path} historical asset requires timestamp and requirement baseline"
+                        )
+                readiness = resource.get("readiness", [])
+                if not isinstance(readiness, list) or not readiness:
+                    raise SecurityPolicyError(
+                        f"{path} existing_read_only resource requires online readiness checks"
+                    )
+                for check_index, check in enumerate(readiness):
+                    check_id = _operation_id(check, f"{path}.readiness[{check_index}]")
+                    if check_id not in readiness_operations:
+                        raise SecurityPolicyError(
+                            f"{path}.readiness[{check_index}] operation is not read-only"
+                        )
+                validated_resources += 1
+                continue
+            if lifecycle_mode != "create":
+                raise SecurityPolicyError(f"{path}.lifecycle_mode is invalid")
+            if not isinstance(setup, Mapping):
+                raise SecurityPolicyError(f"{path} requires a setup operation")
             setup_id = _operation_id(setup, f"{path}.setup")
-            cleanup_id = _operation_id(cleanup, f"{path}.cleanup")
-            if str(pairs.get(setup_id, "")) != cleanup_id:
-                raise SecurityPolicyError(
-                    f"{path} operation pair {setup_id!r} -> {cleanup_id!r} is not allowed"
-                )
+            _validate_joined_table_create(resource, setup, f"{path}.setup")
+            _validate_enum_provenance(setup, f"{path}.setup", enum_option_operations)
+            _validate_custom_dimension_enum_provenance(
+                setup, f"{path}.setup", enum_option_operations
+            )
+            if retention_mode == "delete":
+                if not isinstance(cleanup, Mapping):
+                    raise SecurityPolicyError(f"{path} delete mode requires cleanup")
+                cleanup_id = _operation_id(cleanup, f"{path}.cleanup")
+                if str(pairs.get(setup_id, "")) != cleanup_id:
+                    raise SecurityPolicyError(
+                        f"{path} operation pair {setup_id!r} -> {cleanup_id!r} is not allowed"
+                    )
+            elif retention_mode != "retain":
+                raise SecurityPolicyError(f"{path}.retention_mode is invalid")
             extract = setup.get("extract")
             if not isinstance(extract, Mapping) or id_variable not in extract:
                 raise ContractError(f"{path}.setup must extract {id_variable!r}")
-            cleanup_text = json.dumps(cleanup, ensure_ascii=False)
-            if f"{{{{ {id_variable} }}}}" not in cleanup_text:
+            cleanup_text = json.dumps(cleanup, ensure_ascii=False) if cleanup else ""
+            if retention_mode == "delete" and f"{{{{ {id_variable} }}}}" not in cleanup_text:
                 raise SecurityPolicyError(
                     f"{path}.cleanup must target the extracted resource id"
                 )
             setup_text = json.dumps(setup, ensure_ascii=False)
-            if f"{{{{ namespace }}}}" not in setup_text:
-                raise SecurityPolicyError(f"{path}.setup must embed the run namespace")
+            ownership_namespace = str(resource.get("ownership_namespace", ""))
+            if f"{{{{ namespace }}}}" not in setup_text and ownership_namespace != namespace:
+                raise SecurityPolicyError(
+                    f"{path} must bind the run namespace as hidden ownership metadata"
+                )
+            if retention_mode == "retain" and resource_type in _NAMED_BUSINESS_RESOURCES:
+                display_name = str(resource.get("display_name", ""))
+                field_type = str(resource.get("source_field_type", ""))
+                if not _CJK.search(display_name) or not field_type:
+                    raise SecurityPolicyError(
+                        f"{path} requires typed Chinese semantic naming evidence"
+                    )
+            if retention_mode == "retain" and resource_type in _CHART_RESOURCES:
+                requirement_name = str(case_plan.get("requirement_name", ""))
+                if not requirement_name or resource.get("asset_folder_name") != requirement_name:
+                    raise SecurityPolicyError(
+                        f"{path} chart folder must equal the requirement name"
+                    )
+            if resource_type == "stat_chart":
+                folder = resource.get("folder_binding")
+                if not isinstance(folder, Mapping):
+                    raise SecurityPolicyError(f"{path} chart requires live folder binding")
+                requirement_name = str(case_plan.get("requirement_name", ""))
+                if str(folder.get("folder_name", "")) != requirement_name:
+                    raise SecurityPolicyError(f"{path} chart folder binding name mismatch")
+                category_id = str(folder.get("category_id", ""))
+                if not category_id or not str(folder.get("folder_query_operation", "")):
+                    raise SecurityPolicyError(f"{path} chart folder discovery is incomplete")
+                if _SHA256.fullmatch(str(folder.get("folder_response_hash", ""))) is None:
+                    raise SecurityPolicyError(f"{path} chart folder response hash is invalid")
+                if _SHA256.fullmatch(str(resource.get("configuration_hash", ""))) is None:
+                    raise SecurityPolicyError(f"{path} chart configuration hash is invalid")
+                request = setup.get("request", {})
+                request_json = request.get("json", {}) if isinstance(request, Mapping) else {}
+                base_info = request_json.get("statViewBaseInfo", {}) if isinstance(request_json, Mapping) else {}
+                if setup_id == "fs_bi_crm.stat_create.copy_stat_view":
+                    provenance = resource.get("source_provenance")
+                    if not isinstance(provenance, Mapping) or not str(provenance.get("source_view_id", "")):
+                        raise SecurityPolicyError(f"{path} chart clone source is missing")
+                    if _SHA256.fullmatch(str(provenance.get("source_config_hash", ""))) is None:
+                        raise SecurityPolicyError(f"{path} chart clone source hash is invalid")
+                    post_setup = resource.get("post_setup")
+                    if not isinstance(post_setup, list) or len(post_setup) != 2:
+                        raise SecurityPolicyError(f"{path} chart clone requires move and rename")
+                    move = post_setup[0].get("request", {})
+                    rename = post_setup[1].get("request", {})
+                    if move.get("api") != "fs_bi_crm.rpt_view_display.move_rpt_view" or str(
+                        move.get("json", {}).get("targetCategoryID", "")
+                    ) != category_id:
+                        raise SecurityPolicyError(f"{path} chart clone move target does not match folder")
+                    if rename.get("api") != "fs_bi_crm.rpt_view_display.rename_rpt_view" or str(
+                        rename.get("json", {}).get("viewName", "")
+                    ) != str(resource.get("display_name", "")):
+                        raise SecurityPolicyError(f"{path} chart clone rename does not match display name")
+                elif not isinstance(base_info, Mapping) or str(base_info.get("categoryID", "")) != category_id:
+                    raise SecurityPolicyError(f"{path} chart category does not match folder binding")
             readiness = resource.get("readiness", [])
             if not isinstance(readiness, list):
                 raise ContractError(f"{path}.readiness must be a list")
@@ -285,6 +620,19 @@ def validate_test_data_plan(
                     raise SecurityPolicyError(
                         f"{path}.readiness[{check_index}] operation is not a read-only "
                         "readiness operation"
+                    )
+            residue = resource.get("residue_checks", [])
+            if autonomous and (not isinstance(residue, list) or not residue):
+                raise SecurityPolicyError(f"{path} requires residue verification")
+            if not isinstance(residue, list):
+                raise ContractError(f"{path}.residue_checks must be a list")
+            for check_index, check in enumerate(residue):
+                if not isinstance(check, Mapping):
+                    raise ContractError(f"{path}.residue_checks[{check_index}] must be an object")
+                check_id = _operation_id(check, f"{path}.residue_checks[{check_index}]")
+                if check_id not in readiness_operations:
+                    raise SecurityPolicyError(
+                        f"{path}.residue_checks[{check_index}] must use a read-only operation"
                     )
             validated_resources += 1
     return {
@@ -317,17 +665,54 @@ def bind_plan_to_case(
         raise ContractError(f"test-data plan does not contain Case {case_id}")
     setup: list[dict[str, Any]] = []
     readiness: list[dict[str, Any]] = []
+    preparation: list[dict[str, Any]] = []
     cleanup: list[dict[str, Any]] = []
+    residue: list[dict[str, Any]] = []
     for resource in case_plan.get("resources", []):
-        setup.append(deepcopy(resource["setup"]))
-        readiness.extend(deepcopy(resource.get("readiness", [])))
-        cleanup_step = deepcopy(resource["cleanup"])
-        cleanup_step["when_variable"] = str(resource["resource_id_variable"])
-        cleanup.append(cleanup_step)
+        if resource.get("lifecycle_mode") == "existing_read_only":
+            discovery_step = deepcopy(resource["discovery"])
+            resource_readiness = deepcopy(resource.get("readiness", []))
+            readiness.append(discovery_step)
+            readiness.extend(resource_readiness)
+            preparation.append({"phase": "discovery", "step": discovery_step})
+            preparation.extend(
+                {"phase": "readiness", "step": readiness_step}
+                for readiness_step in resource_readiness
+            )
+            continue
+        setup_step = deepcopy(resource["setup"])
+        resource_readiness = deepcopy(resource.get("readiness", []))
+        setup.append(setup_step)
+        readiness.extend(resource_readiness)
+        preparation.append({"phase": "setup", "step": setup_step})
+        preparation.extend(
+            {"phase": "readiness", "step": readiness_step}
+            for readiness_step in resource_readiness
+        )
+        if resource.get("retention_mode") == "delete":
+            cleanup_step = deepcopy(resource["cleanup"])
+            cleanup_step["when_variable"] = str(resource["resource_id_variable"])
+            cleanup.append(cleanup_step)
+            for residue_step in deepcopy(resource.get("residue_checks", [])):
+                residue_step["when_variable"] = str(resource["resource_id_variable"])
+                residue.append(residue_step)
     return {
         **deepcopy(dict(case)),
         "environment": str(plan["environment"]),
         "namespace": str(plan["namespace"]),
+        "retention_mode": str(case_plan.get("retention_mode", "retain")),
+        "retained_assets": [
+            {
+                "requirement_name": case_plan.get("requirement_name", case_id),
+                "resource_key": resource["resource_key"],
+                "resource_type": resource["resource_type"],
+                "resource_id_variable": resource["resource_id_variable"],
+                "display_name": resource.get("display_name"),
+                "source_field_type": resource.get("source_field_type"),
+            }
+            for resource in case_plan.get("resources", [])
+            if resource.get("retention_mode") == "retain"
+        ],
         "variables": {
             **deepcopy(dict(case.get("variables", {}))),
             **deepcopy(dict(case_plan.get("variables", {}))),
@@ -335,7 +720,9 @@ def bind_plan_to_case(
         },
         "setup": setup,
         "readiness": readiness,
+        "preparation": preparation,
         "cleanup": cleanup,
+        "residue_checks": residue,
     }
 
 

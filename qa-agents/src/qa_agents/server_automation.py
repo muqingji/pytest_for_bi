@@ -21,6 +21,7 @@ from .contracts import (
 from .errors import ContractError, InputError
 from .security import SecurityPolicy
 from .storage import ArtifactStore
+from .skill_registry import SkillRegistry, route_backend_case
 
 
 SERVER_LAYERS = {"backend", "contract"}
@@ -113,7 +114,10 @@ def prepare_server_automation(
     output_dir: Path,
     *,
     test_data_validation_path: Path | None = None,
+    test_data_resource_plan_path: Path | None = None,
+    knowledge_readiness_path: Path | None = None,
     security: SecurityPolicy | None = None,
+    skill_registry_path: Path | None = None,
 ) -> dict[str, Any]:
     """Run A14/A15, independent A18 review and aggregate N05 for one Run.
 
@@ -140,7 +144,21 @@ def prepare_server_automation(
     if _identity(compiled) != identity:
         raise ContractError("N15 and N25 belong to different workflow runs")
     data_validation: dict[str, Any] | None = None
+    data_resource_plan: dict[str, Any] | None = None
     deferred_data_case_ids: set[str] = set()
+    deferred_knowledge_case_ids: set[str] = set()
+    knowledge_readiness: dict[str, Any] | None = None
+    if knowledge_readiness_path is not None:
+        knowledge_readiness = _read_object(
+            knowledge_readiness_path, "automation knowledge readiness"
+        )
+        if knowledge_readiness.get("schema_version") != "automation-knowledge-readiness/1.0":
+            raise ContractError("Automation knowledge readiness contract is invalid")
+        if not isinstance(knowledge_readiness.get("deferred_case_ids"), list):
+            raise ContractError("Automation knowledge readiness deferred_case_ids is invalid")
+        deferred_knowledge_case_ids = set(
+            map(str, knowledge_readiness["deferred_case_ids"])
+        )
     if test_data_validation_path is not None:
         data_validation = _verified_artifact(
             test_data_validation_path,
@@ -153,14 +171,34 @@ def prepare_server_automation(
             raise ContractError("N27 and N15 belong to different workflow runs")
         data_payload = data_validation["payload"]
         if data_payload.get("valid") is not True or data_validation.get("status") not in {
-            "completed", "skipped_by_policy"
+            "completed", "completed_with_gaps", "skipped_by_policy"
         }:
             raise ContractError("Server automation requires valid N27 data routing")
+        if data_validation.get("status") == "completed_with_gaps" and (
+            data_payload.get("decision") != "partial_capability_routing"
+            or not isinstance(data_payload.get("executable_case_ids"), list)
+            or not isinstance(data_payload.get("deferred_cases"), list)
+        ):
+            raise ContractError("Partial N27 routing contract is invalid")
         deferred_data_case_ids = {
             str(item.get("case_id", ""))
             for item in data_payload.get("deferred_cases", [])
             if isinstance(item, Mapping) and str(item.get("case_id", ""))
         }
+    if test_data_resource_plan_path is not None:
+        if data_validation is None:
+            raise ContractError("N28 resource plan requires an N27 validation binding")
+        data_resource_plan = _verified_artifact(
+            test_data_resource_plan_path,
+            "N28 test-data resource plan",
+            artifact_id="n28-test-data-resource-plan",
+            producer_id="N28",
+            security=security,
+        )
+        if _identity(data_resource_plan) != identity:
+            raise ContractError("N28 and N15 belong to different workflow runs")
+        if data_validation["payload"].get("n28_artifact_hash") != data_resource_plan["artifact_hash"]:
+            raise ContractError("N27 is not bound to the supplied N28 resource plan")
     if plan["payload"].get("schema_version") != "execution-plan/1.0":
         raise ContractError("N15 execution plan payload contract is invalid")
     if compiled["payload"].get("schema_version") != "n25-compiled-test-cases/1.0":
@@ -173,6 +211,9 @@ def prepare_server_automation(
         missing = sorted(required_target - set(target))
         raise ContractError(f"Automation target is missing required fields: {missing}")
     policy = AutomationPolicy.from_file(automation_policy_path)
+    registry = SkillRegistry.from_file(
+        skill_registry_path or automation_policy_path.with_name("backend-skill-registry.json")
+    )
 
     actions = plan["payload"].get("actions")
     cases = compiled["payload"].get("compiled_cases")
@@ -183,6 +224,12 @@ def prepare_server_automation(
     cases_by_id = {str(item.get("id", "")): dict(item) for item in cases}
     if "" in cases_by_id or len(cases_by_id) != len(cases):
         raise ContractError("N25 compiled cases require unique non-empty IDs")
+    unknown_knowledge_cases = deferred_knowledge_case_ids - set(cases_by_id)
+    if unknown_knowledge_cases:
+        raise ContractError(
+            "Automation knowledge readiness references unknown compiled Cases: "
+            f"{sorted(unknown_knowledge_cases)}"
+        )
 
     groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
     manual_case_ids: list[str] = []
@@ -199,7 +246,7 @@ def prepare_server_automation(
         if case is None:
             raise ContractError(f"N15 action references unknown compiled Case: {case_id}")
         action_name = str(action.get("action", ""))
-        if case_id in deferred_data_case_ids:
+        if case_id in deferred_data_case_ids or case_id in deferred_knowledge_case_ids:
             deferred_case_ids.append(case_id)
             continue
         if action_name.startswith("deferred_"):
@@ -213,6 +260,13 @@ def prepare_server_automation(
         layer = str(case.get("layer", ""))
         if layer not in SERVER_LAYERS:
             excluded_case_ids.append(case_id)
+            continue
+        level = str(case.get("test_level", "") or "").strip().lower()
+        if level in {"unit", "unit_test", "单元", "单元测试"}:
+            unsupported.append({
+                "case_id": case_id,
+                "reason_code": "paused_existing_developer_unit_coverage",
+            })
             continue
         profile = profile_for_case(case)
         if profile is None:
@@ -235,8 +289,34 @@ def prepare_server_automation(
         profile = profile_for_case(groups[agent_id][0])
         if profile is None:  # guarded above; retained for defensive type narrowing
             continue
+        generation_cases = groups[agent_id]
+        if data_resource_plan is not None:
+            from .test_data import bind_plan_to_case
+
+            generation_cases = [
+                bind_plan_to_case(case, data_resource_plan["payload"]) for case in generation_cases
+            ]
+        authorizations = {
+            str(case["id"]): route_backend_case(case, registry) for case in generation_cases
+        }
         generation = DomainAutomationAgent(profile).run(
-            context, {"cases": groups[agent_id], "target": target}, security
+            context,
+            {"cases": generation_cases, "target": target,
+             "skill_router_bindings": authorizations,
+             "input_bindings": {
+                 "knowledge_packet_hash": (
+                     str(knowledge_readiness.get("packet_hash", ""))
+                     if knowledge_readiness is not None else ""
+                 ),
+                 "test_data_validation_hash": (
+                     str(data_validation["artifact_hash"])
+                     if data_validation is not None else ""
+                 ),
+                 "test_data_resource_plan_hash": (
+                     str(data_resource_plan["artifact_hash"])
+                     if data_resource_plan is not None else ""
+                 ),
+             }}, security
         )
         store.write_artifact(generation)
         generations.append(generation)
@@ -262,7 +342,7 @@ def prepare_server_automation(
         else:
             review = DomainAutomationReviewAgent(profile).run(
                 context,
-                {"cases": groups[agent_id], "generation": generation.payload},
+                {"cases": generation_cases, "generation": generation.payload},
                 security,
             )
         store.write_artifact(review)
@@ -325,6 +405,8 @@ def prepare_server_automation(
         "workflow_run_id": identity[0],
         "source_snapshot_id": identity[2],
         "server_layers": sorted(SERVER_LAYERS),
+        "aggregate_agent_id": "B01",
+        "skill_registry_hash": registry.registry_hash,
         "planned_generation_case_ids": sorted(
             str(case["id"]) for items in groups.values() for case in items
         ),
@@ -356,6 +438,13 @@ def prepare_server_automation(
         "deferred_case_ids": sorted(deferred_case_ids),
         "test_data_validation_hash": (
             str(data_validation["artifact_hash"]) if data_validation is not None else None
+        ),
+        "test_data_resource_plan_hash": (
+            str(data_resource_plan["artifact_hash"]) if data_resource_plan is not None else None
+        ),
+        "knowledge_packet_hash": (
+            str(knowledge_readiness.get("packet_hash", ""))
+            if knowledge_readiness is not None else None
         ),
         "rejected_cases": rejected,
         "ready_for_n08": passed

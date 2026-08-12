@@ -169,8 +169,23 @@ def test_n08_executes_bound_candidates_without_shell(tmp_path: Path) -> None:
         "total": 1, "passed": 1, "failed": 0, "timed_out": 0, "infrastructure_error": 0
     }
     assert artifact["payload"]["runner"]["shell"] is False
+    assert artifact["payload"]["input_bindings"]["runner_bundle_hash"].startswith("sha256:")
     assert runner.commands[0][1:3] == ["-m", "pytest"]
     assert (tmp_path / "out/artifacts/n08-automation-execution.json").exists()
+
+
+def test_controlled_n08_loads_only_policy_registered_fixture_plugin(tmp_path: Path) -> None:
+    paths = _inputs(tmp_path, network=True)
+    runner = FakeRunner()
+    runner.backend = "controlled_env_reference"
+    precheck = json.loads(paths["precheck"].read_text())
+    precheck["payload"]["environment_class"] = "integration_test_112"
+    paths["precheck"] = _write_artifact(
+        paths["precheck"],
+        _envelope("N07", "n07-precheck", precheck["payload"], ArtifactStatus.COMPLETED),
+    )
+    _run(tmp_path, paths, runner)
+    assert runner.commands[0][3:7] == ["-p", "framework.pytest_plugin", "--env=112", "-q"]
 
 
 def test_n08_business_assertion_failure_is_not_retried(tmp_path: Path) -> None:
@@ -181,6 +196,28 @@ def test_n08_business_assertion_failure_is_not_retried(tmp_path: Path) -> None:
     assert artifact["status"] == "completed_with_gaps"
     assert artifact["payload"]["decision"] == "test_failures"
     assert artifact["payload"]["next_node"] == "N09"
+
+
+def test_n08_rejects_zero_collection_as_infrastructure_failure(tmp_path: Path) -> None:
+    paths = _inputs(tmp_path)
+
+    class ZeroCollection(FakeRunner):
+        def run(self, command: list[str], **kwargs: object) -> ProcessResult:
+            cwd = Path(str(kwargs["cwd"]))
+            junit_arg = next(item for item in command if item.startswith("--junitxml="))
+            junit = cwd / junit_arg.split("=", 1)[1]
+            junit.parent.mkdir(parents=True, exist_ok=True)
+            junit.write_text(
+                '<testsuite tests="0" failures="0" errors="0" skipped="0"></testsuite>',
+                encoding="utf-8",
+            )
+            return ProcessResult(0, "no tests ran", "", False, 5)
+
+    artifact = _run(tmp_path, paths, ZeroCollection())
+    shard = artifact["payload"]["shards"][0]
+    assert artifact["status"] == "failed_retryable"
+    assert shard["outcome"] == "infrastructure_error"
+    assert shard["collection_complete"] is False
 
 
 def test_n08_local_process_runner_captures_real_pytest_evidence(tmp_path: Path) -> None:

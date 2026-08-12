@@ -155,7 +155,33 @@ def _spec_non_functional(kind: str) -> Callable[[Mapping[str, Any]], tuple[dict[
 
 
 def _review_backend(case_spec: Mapping[str, Any], content: str) -> list[dict[str, Any]]:
-    return []
+    issues: list[dict[str, Any]] = []
+    if case_spec.get("backend_readiness_enforced") is not True:
+        return issues
+    steps = case_spec.get("steps", [])
+    if not isinstance(steps, list) or not steps:
+        issues.append({"issue_code": "execution_steps_missing"})
+    else:
+        for index, step in enumerate(steps):
+            if not isinstance(step, Mapping):
+                issues.append({"issue_code": "execution_step_not_structured", "step_index": index})
+                continue
+            request = step.get("request")
+            if not isinstance(request, Mapping):
+                issues.append({"issue_code": "execution_request_missing", "step_index": index})
+                continue
+            if not request.get("api") and not request.get("url"):
+                issues.append({"issue_code": "execution_operation_missing", "step_index": index})
+    for index, expected in enumerate(case_spec.get("expected", [])):
+        oracle = expected.get("oracle") if isinstance(expected, Mapping) else None
+        if not isinstance(oracle, Mapping):
+            issues.append({"issue_code": "executable_oracle_missing", "expected_index": index})
+            continue
+        if not oracle.get("observation_point") or not oracle.get("matcher"):
+            issues.append({"issue_code": "executable_oracle_incomplete", "expected_index": index})
+    if case_spec.get("setup") and not case_spec.get("readiness"):
+        issues.append({"issue_code": "test_data_readiness_missing"})
+    return issues
 
 
 def _review_frontend(case_spec: Mapping[str, Any], content: str) -> list[dict[str, Any]]:
@@ -325,12 +351,21 @@ class DomainAutomationAgent(BaseAgent):
     def analyze(self, inputs: Mapping[str, Any]) -> AgentOutput:
         cases = list(inputs.get("cases", []))
         target = dict(inputs.get("target", {}))
+        input_bindings = dict(inputs.get("input_bindings", {}))
+        authorizations = inputs.get("skill_router_bindings", {})
         candidates: list[dict[str, Any]] = []
         mappings: list[dict[str, Any]] = []
         rejected: list[dict[str, str]] = []
+        used_skills: list[str] = []
 
         for case in cases:
             case_id = str(case.get("id", ""))
+            authorization = authorizations.get(case_id) if isinstance(authorizations, Mapping) else None
+            if authorizations and not isinstance(authorization, Mapping):
+                rejected.append({"case_id": case_id, "reason_code": "skill_authorization_missing"})
+                continue
+            case_skills = [str(item) for item in authorization.get("required_skills", [])] if isinstance(authorization, Mapping) else []
+            used_skills.extend(case_skills)
             allowed_modes = set(case.get("execution_policy", {}).get("allowed_modes", []))
             expected_ids = [str(item.get("id", "")) for item in case.get("expected", [])]
             manual_oracle = any(
@@ -355,6 +390,7 @@ class DomainAutomationAgent(BaseAgent):
                 continue
 
             case_spec = {
+                "id": case_id,
                 "case_id": case_id,
                 "title": str(case.get("title", "")),
                 "preconditions": list(case.get("preconditions", [])),
@@ -363,7 +399,18 @@ class DomainAutomationAgent(BaseAgent):
                 "expected": list(case.get("expected", [])),
                 "cleanup": list(case.get("cleanup", [])),
             }
+            for lifecycle_key in (
+                "environment", "namespace", "variables", "setup", "readiness",
+                "residue_checks",
+            ):
+                if lifecycle_key in case:
+                    case_spec[lifecycle_key] = case[lifecycle_key]
             case_spec.update(spec_extra)
+            if self.profile.layer == "backend":
+                case_spec["backend_readiness_enforced"] = bool(
+                    input_bindings.get("knowledge_packet_hash")
+                    or input_bindings.get("test_data_resource_plan_hash")
+                )
             path = f"{self.profile.candidate_root}/test_{_python_name(case_id)}.py"
             literal = repr(case_spec)
             function_name = f"test_{_python_name(case_id)}"
@@ -421,13 +468,22 @@ class DomainAutomationAgent(BaseAgent):
                 "secrets": list(target.get("secrets", [])),
             },
             "expected_artifacts": ["junit_xml", "stdout", "stderr"],
+            "input_bindings": input_bindings,
         }
+        if authorizations:
+            manifest.update({
+                "aggregate_agent_id": "B01",
+                "authorized_skills": sorted(set(used_skills)),
+                "skill_registry_hash": str(next(iter(authorizations.values()))["registry_hash"]),
+                "allowed_tools": ["case_runner"],
+            })
         return AgentOutput(
             payload={
                 "schema_version": "automation-generation/1.0",
                 "manifest": manifest,
                 "code_candidates": candidates,
                 "rejected_cases": rejected,
+                **({"skill_router_bindings": dict(authorizations)} if authorizations else {}),
             }
         )
 

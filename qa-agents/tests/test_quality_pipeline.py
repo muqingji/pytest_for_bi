@@ -111,6 +111,8 @@ def _inputs(
                     "stdout": "1 passed",
                     "stderr": "",
                     "duration_ms": 10,
+                    "lifecycle_evidence_path": "evidence/N08-S001/lifecycle.json",
+                    "lifecycle_evidence_hash": "sha256:" + "2" * 64,
                     "junit_summary": {
                         "tests": 1,
                         "failures": 0,
@@ -163,6 +165,7 @@ def test_server_quality_tail_reaches_report_with_all_results(tmp_path: Path) -> 
 
     assert result["decision"] == "passed_with_warning"
     assert result["metrics"] == {
+        "scope_total": 2,
         "planned": 2,
         "executed": 2,
         "passed": 2,
@@ -180,6 +183,23 @@ def test_server_quality_tail_reaches_report_with_all_results(tmp_path: Path) -> 
     assert (tmp_path / "out/artifacts/n11-quality-decision.json").exists()
     assert (tmp_path / "out/artifacts/n12-quality-report.json").exists()
 
+    n18 = json.loads((tmp_path / "out/artifacts/n18-quality-signals.json").read_text())
+    lifecycle = n18["payload"]["lifecycle_evidence_bindings"]
+    assert n18["payload"]["signals"]["lifecycle_evidence_count"] == 1
+    assert lifecycle == [
+        {
+            "automation_execution_hash": json.loads(inputs["execution"].read_text())[
+                "artifact_hash"
+            ],
+            "shard_id": "N08-S001",
+            "case_ids": ["CASE-AUTO"],
+            "path": "evidence/N08-S001/lifecycle.json",
+            "content_hash": "sha256:" + "2" * 64,
+        }
+    ]
+    n09 = json.loads((tmp_path / "out/artifacts/n09-evidence.json").read_text())
+    assert n09["payload"]["input_bindings"]["lifecycle_evidence_bindings"] == lifecycle
+
 
 def test_missing_manual_results_is_inconclusive_not_passed(tmp_path: Path) -> None:
     result = _run(tmp_path, _inputs(tmp_path))
@@ -189,6 +209,21 @@ def test_missing_manual_results_is_inconclusive_not_passed(tmp_path: Path) -> No
     n17 = json.loads((tmp_path / "out/artifacts/n17-manual-execution.json").read_text())
     assert n17["status"] == "needs_human"
     assert n17["payload"]["tasks"][0]["status"] == "pending"
+
+
+def test_incomplete_pytest_collection_cannot_pass_quality_gate(tmp_path: Path) -> None:
+    inputs = _inputs(tmp_path, manual=False)
+    execution = json.loads(Path(inputs["execution"]).read_text())
+    payload = dict(execution["payload"])
+    payload["shards"] = [dict(payload["shards"][0])]
+    payload["shards"][0]["collection_complete"] = False
+    inputs["execution"] = _artifact(
+        tmp_path / "n08-incomplete.json", "N08", "n08-automation-execution", payload,
+    )
+    result = _run(tmp_path, inputs)
+    n18 = json.loads((tmp_path / "out/artifacts/n18-quality-signals.json").read_text())
+    assert "pytest_collection_incomplete:N08-S001" in n18["payload"]["gaps"]
+    assert result["decision"] != "passed"
 
 
 def test_server_quality_updates_run_manifest_after_artifacts_complete(tmp_path: Path) -> None:
@@ -246,6 +281,7 @@ def test_product_failure_is_blocked_and_deduplicated(tmp_path: Path) -> None:
     assert dedup["payload"]["decisions"][0]["disposition"] == "create_new"
     drafts = json.loads((tmp_path / "out/bug-drafts.json").read_text())
     assert len(drafts["drafts"]) == 1
+    assert result["external_adapter_dispositions"]["bug"] == "draft_ready_not_sent"
 
 
 def test_retryable_execution_uses_n10_budget(tmp_path: Path) -> None:

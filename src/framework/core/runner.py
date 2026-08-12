@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 import re
 from contextlib import nullcontext
 from copy import deepcopy
+from pathlib import Path
 from typing import Any
 
 from framework.clients.database import DatabaseClient
@@ -83,14 +85,24 @@ class CaseRunner:
                 "readiness": [],
                 "test": [],
                 "cleanup": [],
+                "residue": [],
             },
             **deepcopy(case.get("variables", {})),
         }
         primary_error: BaseException | None = None
         cleanup_errors: list[BaseException] = []
+        residue_errors: list[BaseException] = []
         try:
-            self._run_steps(case.get("setup", []), context, "setup")
-            self._run_steps(case.get("readiness", []), context, "readiness")
+            preparation = case.get("preparation")
+            if isinstance(preparation, list) and preparation:
+                for item in preparation:
+                    phase = str(item.get("phase", ""))
+                    if phase not in {"setup", "readiness"}:
+                        raise ValueError(f"Unsupported preparation phase: {phase}")
+                    self._run_steps([item["step"]], context, phase)
+            else:
+                self._run_steps(case.get("setup", []), context, "setup")
+                self._run_steps(case.get("readiness", []), context, "readiness")
             self._run_steps(case["steps"], context, "test")
         except BaseException as error:
             primary_error = error
@@ -110,22 +122,62 @@ class CaseRunner:
                     self._run_steps([raw_step], context, "cleanup")
                 except BaseException as error:
                     cleanup_errors.append(error)
+            for raw_step in list(case.get("residue_checks", [])):
+                when_variable = str(raw_step.get("when_variable", "") or "")
+                if when_variable and when_variable not in context:
+                    context["__lifecycle__"]["residue"].append(
+                        {
+                            "name": raw_step.get("name", "residue"),
+                            "status": "skipped",
+                            "reason_code": "resource_not_created",
+                        }
+                    )
+                    continue
+                try:
+                    self._run_steps([raw_step], context, "residue")
+                except BaseException as error:
+                    residue_errors.append(error)
         if primary_error is not None:
-            if cleanup_errors:
+            self._write_lifecycle_evidence(case, context)
+            if cleanup_errors or residue_errors:
                 primary_error.add_note(
-                    "Cleanup also failed: "
-                    + "; ".join(str(error) for error in cleanup_errors)
+                    "Lifecycle finalization also failed: "
+                    + "; ".join(str(error) for error in [*cleanup_errors, *residue_errors])
                 )
             raise primary_error
-        if cleanup_errors:
+        if cleanup_errors or residue_errors:
+            self._write_lifecycle_evidence(case, context)
             raise RuntimeError(
-                "Case assertions passed but cleanup failed: "
-                + "; ".join(str(error) for error in cleanup_errors)
-            ) from cleanup_errors[0]
+                "Case assertions passed but lifecycle finalization failed: "
+                + "; ".join(str(error) for error in [*cleanup_errors, *residue_errors])
+            ) from [*cleanup_errors, *residue_errors][0]
         if "test_response" in context:
             context["response"] = context["test_response"]
             context["status_code"] = context["test_status_code"]
+        self._write_lifecycle_evidence(case, context)
         return context
+
+    @staticmethod
+    def _write_lifecycle_evidence(case: dict[str, Any], context: dict[str, Any]) -> None:
+        evidence_dir = os.getenv("QA_LIFECYCLE_EVIDENCE_DIR", "")
+        if not evidence_dir:
+            return
+        case_id = str(case.get("id", "unknown"))
+        filename = re.sub(r"[^A-Za-z0-9_.-]+", "_", case_id) + ".json"
+        lifecycle = context.get("__lifecycle__", {})
+        value = {
+            "schema_version": "case-lifecycle-evidence/1.0",
+            "case_id": case_id,
+            "environment": lifecycle.get("environment"),
+            "namespace": lifecycle.get("namespace"),
+            "phases": {
+                phase: list(lifecycle.get(phase, []))
+                for phase in ("setup", "readiness", "test", "cleanup", "residue")
+            },
+        }
+        target = Path(evidence_dir) / filename
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def execute(self, case: dict[str, Any]) -> dict[str, Any]:
         """Execute a generated Case Spec with its complete data lifecycle."""
@@ -159,6 +211,18 @@ class CaseRunner:
                 self._attach_response(response)
                 if "expect" in step:
                     assert_response(response, step["expect"])
+                absent = step.get("expect_absent")
+                if isinstance(absent, dict):
+                    path = str(absent.get("json_path", ""))
+                    forbidden = absent.get("value")
+                    try:
+                        actual = get_by_path(response.body, path)
+                    except AssertionError:
+                        actual = None
+                    if actual == forbidden:
+                        raise AssertionError(
+                            f"{path}: residual value {forbidden!r} is still present"
+                        )
                 context["__lifecycle__"][phase].append(
                     self._lifecycle_evidence(name, step, response, "completed")
                 )
@@ -195,9 +259,16 @@ class CaseRunner:
             separators=(",", ":"),
             default=str,
         )
+        operation = cls._operation_ref(step)
+        for value in step.get("request", {}).get("path_params", {}).values():
+            if str(value):
+                operation = operation.replace(str(value), "<runtime-id>")
+        request_path = str(step.get("request", {}).get("path", ""))
+        if request_path and "{{" not in request_path:
+            operation = re.sub(r"(?<=/)[A-Za-z0-9_-]*\d[A-Za-z0-9_-]*(?=/|$)", "<runtime-id>", operation)
         return {
             "name": name,
-            "operation": cls._operation_ref(step),
+            "operation": operation,
             "status": status,
             "status_code": response.status_code,
             "response_hash": "sha256:"
@@ -213,8 +284,25 @@ class CaseRunner:
             oracle = item.get("oracle", {})
             matcher = str(oracle.get("matcher", "equals"))
             path = str(oracle.get("observation_point", "response"))
-            actual = get_by_path(observations, path)
+            actual = CaseRunner._oracle_observation(observations, path)
             value = oracle.get("expected_value")
+            if matcher == "all_fields_equal":
+                if not isinstance(value, dict) or not isinstance(actual, dict):
+                    raise AssertionError(
+                        f"{item.get('id')}: all_fields_equal requires object values"
+                    )
+                missing = sorted(set(value) - set(actual))
+                mismatched = {
+                    key: {"expected": expected_value, "actual": actual.get(key)}
+                    for key, expected_value in value.items()
+                    if key in actual and actual[key] != expected_value
+                }
+                if missing or mismatched:
+                    raise AssertionError(
+                        f"{item.get('id')}: Oracle fields differ; "
+                        f"missing={missing!r}, mismatched={mismatched!r}"
+                    )
+                continue
             if matcher == "equals" and actual != value:
                 raise AssertionError(f"{item.get('id')}: expected {value!r}, got {actual!r}")
             if matcher == "contains" and value not in actual:
@@ -229,6 +317,28 @@ class CaseRunner:
                 raise AssertionError(f"{item.get('id')}: value does not exist")
             if matcher == "manual_confirmation":
                 raise ValueError("manual_confirmation Oracle cannot run automatically")
+
+    @staticmethod
+    def _oracle_observation(observations: dict[str, Any], path: str) -> Any:
+        """Resolve registered semantic observation points without inventing values."""
+        if path != "detail_api.error":
+            return get_by_path(observations, path)
+        response = observations.get("test_response")
+        error = response.get("Error") if isinstance(response, dict) else None
+        if not isinstance(error, dict):
+            raise AssertionError("detail_api.error: response.Error is missing")
+        field_map = {
+            "error_code": ("Code", "code", "errorCode"),
+            "key": ("Key", "key", "messageKey"),
+            "parameters": ("Parameters", "parameters", "params"),
+            "message": ("Message", "message"),
+        }
+        normalized: dict[str, Any] = {}
+        for target, candidates in field_map.items():
+            source = next((name for name in candidates if name in error), None)
+            if source is not None:
+                normalized[target] = error[source]
+        return normalized
 
     def _run_step(self, step: dict[str, Any], context: dict[str, Any]) -> ApiResponse:
         request = step.get("request", {})

@@ -114,6 +114,19 @@
       "location": "tests/test_112_data_lifecycle.py",
       "access_status": "available",
       "scope": ["aggregate_metric_create", "detail_query", "aggregate_metric_cleanup"]
+    },
+    {
+      "id": "probe-calculated-metric-lifecycle-112",
+      "kind": "verified_environment_probe",
+      "location": "tests/test_112_calculated_metric_lifecycle.py",
+      "access_status": "available",
+      "scope": [
+        "aggregate_metric_create",
+        "calculated_metric_create",
+        "calculated_metric_cleanup",
+        "aggregate_metric_cleanup",
+        "resource_residue_verification"
+      ]
     }
   ]
 }

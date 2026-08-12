@@ -1,0 +1,68 @@
+{
+  "schema_version": "requirement-test-data-agent-report/1.0",
+  "requirement_name": "统计图查看明细限制原因提示优化",
+  "issue_card": {
+    "目标": "在112实际构造并验证PC-001至PC-007所需测试数据，而不是只生成计划或请求模板。",
+    "背景": "需求覆盖自定义维度、结果集筛选、多关联、动态关联、组合优先级、历史兼容和端一致性。",
+    "职责": "测试数据构造Agent负责实时元数据发现、枚举来源校验、受控创建、按ID回查、效果验证和保留资产登记。",
+    "范围": "创建当前可安全构造的业务资产；不伪造历史资产、不伪造权限身份、不进行未授权故障注入。",
+    "输入材料": ["PC-001至PC-007 Case", "112实时接口", "业务前后端源码", "保留资产注册表"],
+    "产出": ["1个verified自定义维度", "6个可回查聚合指标", "在线效果矩阵", "缺口和阻塞清单"],
+    "验收": ["枚举全部来自实时接口", "创建后按返回ID回查", "目标错误码在线验证", "不可构造项明确not_ready"],
+    "需要用户审核": ["是否批准长期保留大量统计图和拼表", "受限/无权限测试身份", "隔离故障注入能力", "真正的变更前历史资产"]
+  },
+  "execution_summary": {
+    "verified_retained_assets": 5,
+    "behavior_failed_retained_assets": 2,
+    "suspect_historical_assets": 1,
+    "online_matrix": {"passed": 9, "failed": 3, "skipped": 1}
+  },
+  "case_status": {
+    "PC-001": "partial: verified dimension body exists; reusable chart/table placement assets missing",
+    "PC-002": "partial: result-set filter variants pass; full ordinary/calculated/comparison/long-name chart-table matrix missing",
+    "PC-003": "blocked_by_product_behavior: four-node returns s307050002 instead of s307011536",
+    "PC-004": "blocked_by_product_behavior: What returns s207050405 instead of s307011537; WhatList passes",
+    "PC-005": "not_ready: combination assets, restricted identity and fault hooks missing",
+    "PC-006": "historical_candidate_verified_by_id_timestamp_and_live_readback: pre-change chart and joined-table configurations read back; database createdAt not verified",
+    "PC-007": "not_ready: reusable Web/mobile chart/table zh-CN/en assets missing"
+  },
+  "completion_matrix": {
+    "PC-006": {
+      "evidence_level": "historical_candidate_verified_by_id_timestamp_and_live_readback",
+      "historical_chart_id": "BI_68b948eb669f380001f66b87",
+      "historical_joined_table_id": "BI_lwt_1768789131662",
+      "readback_status": "succeeded",
+      "database_created_at_verified": false,
+      "evidence_file": "generated/pc006-historical-assets-evidence.json"
+    },
+    "PC-001": {
+      "required_current_views": 6,
+      "formula": "3 placements x (stat_chart + joined_table)",
+      "placements": ["dimension", "data_range", "drill_field"]
+    },
+    "PC-002": {
+      "required_base_views": 8,
+      "formula": "4 metric types x (stat_chart + joined_table)",
+      "metric_types": ["ordinary", "aggregate", "calculated", "comparison"],
+      "additional": ["long_zh_name_pair", "long_en_name_pair"]
+    },
+    "PC-007": {
+      "required_reason_views": 8,
+      "formula": "4 reasons x (stat_chart + joined_table)",
+      "reuse": "PC-001 and PC-002 current assets; Web/mobile and zh-CN/en are execution dimensions"
+    }
+  },
+  "creation_closure_blockers": [
+    "stat_chart and joined_table create contracts remain candidate",
+    "N27 policy lacks chart/joined write and readback closure",
+    "requirement folder live query operation is unresolved",
+    "joined_table drill-field equivalent configuration is unresolved",
+    "PC-005 restricted identity and fault hooks are environment capabilities, not ordinary business assets",
+    "PC-006 candidate assets are verified by embedded ID timestamps and live readback; database createdAt audit remains unavailable"
+  ],
+  "security": {
+    "captured_credentials_persisted": false,
+    "invented_enum_values": false,
+    "business_repositories_modified": false
+  }
+}

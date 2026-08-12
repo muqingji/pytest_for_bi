@@ -16,6 +16,9 @@ Pipeline job 或 Multibranch Pipeline job。
 Jenkinsfile 会自行创建工作区下的 `.venv` 并安装 `requirements.txt`，不需要
 在节点全局安装 pytest 或数据库驱动。
 
+Pipeline 会先运行不依赖外部环境和凭据的离线质量门禁，包括基础测试框架和
+`qa-agents` 子系统的完整单元测试。两套测试全部通过后，才会进入目标环境接口测试。
+
 ## 必须创建的凭据
 
 为每个环境创建一个 **Secret file** 类型凭据，凭据 ID 必须为：
@@ -78,7 +81,9 @@ interface-test-112-config
 
 ## 构建产物
 
-- `artifacts/junit.xml`：Jenkins Tests 页面显示的 pytest 结果；
+- `artifacts/framework-junit.xml`：基础测试框架的离线测试结果；
+- `artifacts/qa-agents-junit.xml`：质量编排系统的离线测试结果；
+- `artifacts/interface-junit.xml`：目标环境接口测试结果；
 - `artifacts/interface-report.txt`：可在 Jenkins 构建产物中直接下载的详细文本报告；
 - `allure-results/`：原始 Allure 结果，始终归档；
 - Allure Jenkins Plugin 生成的构建报告：在构建页面的 Allure Report 入口查看。

@@ -8,6 +8,7 @@ import subprocess
 from typing import Any, Callable, Mapping
 
 from .contracts import content_hash
+from .agent_work_cards import get_agent_work_card, review_items
 from .errors import ContractError, InputError, RetryableAgentError
 from .security import SecurityPolicy
 
@@ -69,11 +70,48 @@ def render_multica_issue_result_markdown(
     if not task_id or not issue_id or audit.get("result") != "passed":
         raise ContractError("Multica Issue card requires a passed, bound tool-trace audit")
 
+    card = get_agent_work_card(str(bundle.get("profile_id")))
+    inputs = bundle.get("inputs") or bundle.get("input_materials") or []
+    if isinstance(inputs, Mapping):
+        input_lines = [f"- `{key}`: {value}" for key, value in inputs.items()]
+    elif isinstance(inputs, list):
+        input_lines = [f"- {item}" for item in inputs]
+    else:
+        input_lines = [f"- {inputs}"] if inputs else []
+    if not input_lines:
+        input_lines = [f"- 输入 Bundle: `{bundle.get('bundle_hash')}`"]
+    reviews = review_items(artifact, card)
+
     lines = [
         f"# {bundle.get('profile_id')} 运行结果",
         "",
-        "## 任务与输出",
+        "## 目标",
         "",
+        str(card["goal"]),
+        "",
+        "## 背景",
+        "",
+        str(card["background"]),
+        "",
+        "## 职责",
+        "",
+        *[f"- {item}" for item in card["responsibilities"]],
+        "",
+        "## 范围",
+        "",
+        "改这些：",
+        *[f"- {item}" for item in card["in_scope"]],
+        "",
+        "不改这些：",
+        *[f"- {item}" for item in card["out_of_scope"]],
+        "",
+        "## 输入材料",
+        "",
+        *input_lines,
+        "",
+        "## Agent 产出",
+        "",
+        *[f"- {item}" for item in card["deliverables"]],
         f"- Workflow: `{artifact.get('workflow_run_id')}`",
         f"- 输出契约: `{bundle.get('output_contract')}`",
         f"- 最终状态: `{artifact.get('status')}`",
@@ -81,6 +119,15 @@ def render_multica_issue_result_markdown(
         f"- Artifact: `{artifact.get('artifact_hash')}`",
         "",
         "该结果已通过工具轨迹、权限、Schema、输入哈希和 Profile 语义 Gate。",
+        "",
+        "## 验收",
+        "",
+        *[f"- {item}" for item in card["acceptance"]],
+        "- 现有业务仓库只读边界和既有通过现象不能被破坏。",
+        "",
+        "## 需要我审核",
+        "",
+        *([f"- {item}" for item in reviews] if reviews else ["- 无需人工审核；当前结果可按既定 Gate 自动流转。"]),
         "",
         "## 结构化输出摘要",
         "",

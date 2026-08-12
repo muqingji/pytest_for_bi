@@ -1,0 +1,115 @@
+{
+  "schema_version": "bi-asset-create-contract/1.0",
+  "asset_type": "joined_table",
+  "status": "verified_112",
+  "operation_id": "fs_bi_dev.lwt_manager.save",
+  "registered_operations": {
+    "save": "fs_bi_dev.lwt_manager.save",
+    "readback": "fs_bi_dev.lwt_manager.query_arg_detail",
+    "config_readback": "fs_bi_dev.lwt_manager.query_lwt_arg",
+    "field_detail": "fs_bi_dev.lwt_manager.get_data_source_fields_detail"
+  },
+  "remote_create_gate": "satisfied by current 112 folder evidence plus live queryArgDetail topology discovery and post-save queryArgDetail comparison",
+  "verification_evidence": "generated/112-joined-table-create-evidence.json",
+  "method": "POST",
+  "path": "/FHH/EM1HBIDEV/lwt/m/save",
+  "request_dto": "LargeWideTableSaveArgs",
+  "response_dto": "LargeWideTableSaveResult",
+  "intent_model": {
+    "name": "JoinedTableIntent",
+    "required": [
+      "requirement_name",
+      "view_name",
+      "join_semantics",
+      "data_source_roles",
+      "output_field_semantics"
+    ]
+  },
+  "plan_model": {
+    "name": "JoinedTableBuildPlan",
+    "required": [
+      "resolved_category_id",
+      "resolved_data_sources",
+      "relation_decisions",
+      "field_placement_decisions",
+      "plaintext_save_args",
+      "configuration_hash"
+    ]
+  },
+  "fixed_create_values": {
+    "saveType": 0,
+    "queryLwtArg.id": "",
+    "lwtArgs.lwtId": ""
+  },
+  "case_derived": [
+    "viewName",
+    "description",
+    "lwtArgs.joinType",
+    "lwtArgs.displayFields",
+    "lwtArgs.filterList",
+    "lwtArgs.rowFilter",
+    "lwtArgs.totalRowRules",
+    "lwtArgs.layout"
+  ],
+  "metadata_discovered": [
+    "categoryID",
+    "lwtArgs.dataSources",
+    "lwtArgs.relations",
+    "field ids",
+    "field source ids",
+    "relation endpoints",
+    "relation keys",
+    "field types",
+    "timeZone"
+  ],
+  "identity_derived": [
+    "userOwnerList",
+    "editableList",
+    "deletableList",
+    "exportableList",
+    "subscribeableList",
+    "shareableList",
+    "forwardableList",
+    "permType",
+    "opPermission"
+  ],
+  "executor_owned": [
+    "transport encryption",
+    "__bodykey",
+    "__fs_salt",
+    "x-fs-token",
+    "_fs_token",
+    "cookies",
+    "traceId",
+    "spanId",
+    "x-trace-id"
+  ],
+  "preflight_validation": [
+    "requirement_folder_matches_exactly",
+    "data_sources_are_live_and_unique",
+    "output_fields_belong_to_selected_sources",
+    "relation_endpoints_exist",
+    "relation_key_types_are_compatible",
+    "relation_graph_is_connected_or_vertical",
+    "create_ids_are_empty",
+    "no_captured_ids_or_secrets"
+  ],
+  "readiness": [
+    "view_id_returned",
+    "query_arg_detail_succeeds",
+    "requirement_folder_matches",
+    "data_sources_match",
+    "relation_graph_matches",
+    "display_fields_match",
+    "join_type_matches",
+    "configuration_hash_matches"
+  ],
+  "evidence": [
+    "captured_success_request_protocol_only",
+    "ManagerController.java",
+    "LargeWideTableSaveArgs.java",
+    "LargeWideTableArgs.java",
+    "QueryLwtArg.java",
+    "SaveLwtService.java"
+  ]
+}

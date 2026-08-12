@@ -1,0 +1,37 @@
+{
+  "schema_version": "schema-registry/1.0",
+  "contracts": {
+    "test-design-ir": {
+      "published_versions": ["test-design-ir/1.0", "test-design-ir/1.1"],
+      "consumers": {
+        "A09": ["test-design-ir/1.1"],
+        "N04": ["test-design-ir/1.0"],
+        "N25": ["test-design-ir/1.1"]
+      }
+    },
+    "automation-manifest": {
+      "published_versions": ["automation-manifest/1.0"],
+      "consumers": {
+        "A18": ["automation-manifest/1.0"],
+        "N05": ["automation-manifest/1.0"],
+        "N08": ["automation-manifest/1.0"]
+      }
+    },
+    "test-knowledge-packet": {
+      "published_versions": ["test-knowledge-packet/1.0"],
+      "consumers": {
+        "N25": ["test-knowledge-packet/1.0"],
+        "A22": ["test-knowledge-packet/1.0"],
+        "N28": ["test-knowledge-packet/1.0"],
+        "A14": ["test-knowledge-packet/1.0"]
+      }
+    },
+    "automation-knowledge-readiness": {
+      "published_versions": ["automation-knowledge-readiness/1.0"],
+      "consumers": {
+        "A14": ["automation-knowledge-readiness/1.0"],
+        "N05": ["automation-knowledge-readiness/1.0"]
+      }
+    }
+  }
+}

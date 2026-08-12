@@ -1,0 +1,225 @@
+{
+  "schema_version": "case-asset-inventory/1.0",
+  "environment": "112",
+  "catalog_entry_count": 222,
+  "chart_count": 111,
+  "custom_dimension_id": "BI_02293bb8fb184b56b0502f25cf06e3d5",
+  "custom_dimension_assets": [],
+  "result_set_filter_assets": [
+    {
+      "resource_id": "BI_6a73fa4761036a0007aaa686",
+      "display_name": "指标做数据范围",
+      "schema_id": "BI_5bcebcdc3060e20001e79977",
+      "matched_metrics": [
+        {
+          "field_id": "BI_6a4f53e8f7f06e0007c27788",
+          "field_name": "客户名称计数",
+          "metric_type": "ordinary"
+        }
+      ],
+      "chart_configuration_hash": "sha256:eda2167af69ff8ce0cffae8b8d528d0817979b828d06ebd3b81d1fd4f9634109",
+      "filter_configuration_hash": "sha256:1c1f74f23c1ae07c7c4a993cbb26c7bc9403f7c819955e8f0cb7c6bedd4ef6d5",
+      "schema_fields_response_hash": "sha256:d4fd7ee5eb096a35d0b41a66bc1c879563a69d8f465fa137028c17e496e76681"
+    },
+    {
+      "resource_id": "BI_6a50d0d70242890008c080ea",
+      "display_name": "统计字段+自定义字段_副本",
+      "schema_id": "BI_5be1351956fc11448cdde39e",
+      "matched_metrics": [
+        {
+          "field_id": "BI_6a50bae012d54800075b993a",
+          "field_name": "统计字段-number",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50bb9b12d54800075b9961",
+          "field_name": "自定义数字",
+          "metric_type": "ordinary"
+        },
+        {
+          "field_id": "BI_6a50ba4d12d54800075b9920",
+          "field_name": "统计字段-订单产品-",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50ba2f12d54800075b9919",
+          "field_name": "统计字段-数值-订单产品-汇率最大值",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50ba7d12d54800075b9929",
+          "field_name": "统计字段-数字 （订单产品-数量）",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50bfc612d54800075b9a2d",
+          "field_name": "销售订单金额-本位币",
+          "metric_type": "calculated"
+        }
+      ],
+      "chart_configuration_hash": "sha256:26612389dea79407b2981613b669bfaa1c677d1ce6569f9974803e99b6f7b003",
+      "filter_configuration_hash": "sha256:68dfc73c436d8ec398725aae8f765431d6095b46cf03edafe24b35eb7692823c",
+      "schema_fields_response_hash": "sha256:aaf1109ad80493d87e8f4805884f42f88f8f4694ef476a962918749a92f8849c"
+    },
+    {
+      "resource_id": "BI_6a50cb740242890008c07f62",
+      "display_name": "统计字段 2",
+      "schema_id": "BI_5be1351956fc11448cdde39e",
+      "matched_metrics": [
+        {
+          "field_id": "BI_6a50bae012d54800075b993a",
+          "field_name": "统计字段-number",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50ba4d12d54800075b9920",
+          "field_name": "统计字段-订单产品-",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50ba2f12d54800075b9919",
+          "field_name": "统计字段-数值-订单产品-汇率最大值",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50ba7d12d54800075b9929",
+          "field_name": "统计字段-数字 （订单产品-数量）",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50bfc612d54800075b9a2d",
+          "field_name": "销售订单金额-本位币",
+          "metric_type": "calculated"
+        }
+      ],
+      "chart_configuration_hash": "sha256:7a9c6d5d2d0d430f782dc4118c86a6f832eab9e6ff6271805d14143560ad4932",
+      "filter_configuration_hash": "sha256:ec9779b0907486c815a6a6e800914aba8bd0683b72395b30d10586734123a1a9",
+      "schema_fields_response_hash": "sha256:aaf1109ad80493d87e8f4805884f42f88f8f4694ef476a962918749a92f8849c"
+    },
+    {
+      "resource_id": "BI_6a50bc550242890008c07a49",
+      "display_name": "计算字段",
+      "schema_id": "BI_5be1351956fc11448cdde39e",
+      "matched_metrics": [
+        {
+          "field_id": "BI_6a50bb1f12d54800075b9948",
+          "field_name": "计算字段-number",
+          "metric_type": "calculated"
+        },
+        {
+          "field_id": "BI_6a50bb6212d54800075b9957",
+          "field_name": "计算字段-返回数值",
+          "metric_type": "calculated"
+        },
+        {
+          "field_id": "BI_6a50bb0612d54800075b9942",
+          "field_name": "计算字段-数值-销售订单金额+200",
+          "metric_type": "calculated"
+        },
+        {
+          "field_id": "BI_6a50bb4b12d54800075b9950",
+          "field_name": "计算字段-销售订单金额+100-原币",
+          "metric_type": "calculated"
+        }
+      ],
+      "chart_configuration_hash": "sha256:25ce464f1ec80671592f2641ea3461463da40b57578b032b866600e8e2f4eca0",
+      "filter_configuration_hash": "sha256:7409232be2591ceea0918ca986ec763b0f343e866eda4553dac692553803b3d9",
+      "schema_fields_response_hash": "sha256:aaf1109ad80493d87e8f4805884f42f88f8f4694ef476a962918749a92f8849c"
+    },
+    {
+      "resource_id": "BI_6a50befe0242890008c07bdd",
+      "display_name": "统计字段+自定义字段",
+      "schema_id": "BI_5be1351956fc11448cdde39e",
+      "matched_metrics": [
+        {
+          "field_id": "BI_6a50bae012d54800075b993a",
+          "field_name": "统计字段-number",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50bb9b12d54800075b9961",
+          "field_name": "自定义数字",
+          "metric_type": "ordinary"
+        },
+        {
+          "field_id": "BI_6a50ba4d12d54800075b9920",
+          "field_name": "统计字段-订单产品-",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50ba2f12d54800075b9919",
+          "field_name": "统计字段-数值-订单产品-汇率最大值",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50ba7d12d54800075b9929",
+          "field_name": "统计字段-数字 （订单产品-数量）",
+          "metric_type": "aggregate"
+        },
+        {
+          "field_id": "BI_6a50bfc612d54800075b9a2d",
+          "field_name": "销售订单金额-本位币",
+          "metric_type": "calculated"
+        }
+      ],
+      "chart_configuration_hash": "sha256:76c107ffe8ee7072492b1e27150360517ad4c3824754dfbe44e39fa513f78eff",
+      "filter_configuration_hash": "sha256:7de7d7f8146f12f20281d7cd0d31ac75e3c8a28a414783eef7a40f7c31b71cba",
+      "schema_fields_response_hash": "sha256:aaf1109ad80493d87e8f4805884f42f88f8f4694ef476a962918749a92f8849c"
+    },
+    {
+      "resource_id": "BI_6a30f327d9d5d40007956979",
+      "display_name": "统计图",
+      "schema_id": "BI_5bcebcdc3060e20001e79977",
+      "matched_metrics": [
+        {
+          "field_id": "BI_68affba0078cbf00013af922",
+          "field_name": "m互联企业（外部负责人不为空）",
+          "metric_type": "ordinary"
+        }
+      ],
+      "chart_configuration_hash": "sha256:0b54f25dfe8881c63fa33e99af30600cf2425ed1b5618c53c2f6bfcf8c4f0ef3",
+      "filter_configuration_hash": "sha256:d6f865ffa79df0f22428f8d2b8909757f6a6c60a901cb854302f0cd70c3843ff",
+      "schema_fields_response_hash": "sha256:d4fd7ee5eb096a35d0b41a66bc1c879563a69d8f465fa137028c17e496e76681"
+    },
+    {
+      "resource_id": "BI_6a4264d10242890007f2b3c1",
+      "display_name": "客户统计_副本",
+      "schema_id": "BI_5bcebcdc3060e20001e79977",
+      "matched_metrics": [
+        {
+          "field_id": "BI_68affb1b078cbf00013af909",
+          "field_name": "m客户名称计数（外部负责人不属于）",
+          "metric_type": "ordinary"
+        },
+        {
+          "field_id": "BI_68affba0078cbf00013af922",
+          "field_name": "m互联企业（外部负责人不为空）",
+          "metric_type": "ordinary"
+        }
+      ],
+      "chart_configuration_hash": "sha256:887f7ab092ada4750f8ef5eaf9ee3ae54c606bd2fd5506a5bf95a9f715640fa2",
+      "filter_configuration_hash": "sha256:053faac86c845fa03aeab11fbfb0267197ad4cb44b5cd2aaa4fa5fe21b571377",
+      "schema_fields_response_hash": "sha256:d4fd7ee5eb096a35d0b41a66bc1c879563a69d8f465fa137028c17e496e76681"
+    },
+    {
+      "resource_id": "BI_6a4263c50242890007f2b337",
+      "display_name": "客户统计",
+      "schema_id": "BI_5bcebcdc3060e20001e79977",
+      "matched_metrics": [
+        {
+          "field_id": "BI_68affb1b078cbf00013af909",
+          "field_name": "m客户名称计数（外部负责人不属于）",
+          "metric_type": "ordinary"
+        },
+        {
+          "field_id": "BI_68affba0078cbf00013af922",
+          "field_name": "m互联企业（外部负责人不为空）",
+          "metric_type": "ordinary"
+        }
+      ],
+      "chart_configuration_hash": "sha256:9406139e03635b593f2fb3ba8830d344a6deae99c3d928e5b35e3a71ac9c12ad",
+      "filter_configuration_hash": "sha256:d062690fa9eb92f4ae0d72067a5953e6647cebd21e4d825901887e3ed9df6d2b",
+      "schema_fields_response_hash": "sha256:d4fd7ee5eb096a35d0b41a66bc1c879563a69d8f465fa137028c17e496e76681"
+    }
+  ]
+}

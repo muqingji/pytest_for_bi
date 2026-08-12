@@ -351,23 +351,6 @@ class StatApi:
             headers=headers,
         )
 
-    def bi_semantic_value_resolve_value_resolve(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: BiSemanticValueResolveController.valueResolve
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/api/semantic/bi/value-resolve
-        Request body: BiValueResolveRequest (required)
-        Response: BiValueResolveResponse
-        Operation ID: fs_bi_stat.bi_semantic_value_resolve.value_resolve
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.bi_semantic_value_resolve.value_resolve",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
     def bill_board_query_bill_board_detail(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
         """
         Purpose: 查询排行榜数据详情
@@ -651,244 +634,6 @@ class StatApi:
         _params = dict(params or {})
         return self._invoker.call(
             "fs_bi_stat.describe_query.relations",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def easy_stat_backdoor_test1(self, *, body: Any = None, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: EasyStatBackdoorController.test1
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/backdoor/qwueihfasdguqeghoi/test1
-        Request body: object (optional)
-        Response: DataSet
-        Operation ID: fs_bi_stat.easy_stat_backdoor.test1
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.easy_stat_backdoor.test1",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def easy_stat_backdoor_test2(self, *, body: Any = None, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: EasyStatBackdoorController.test2
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/backdoor/qwueihfasdguqeghoi/test2
-        Request body: object (optional)
-        Response: DataSet
-        Operation ID: fs_bi_stat.easy_stat_backdoor.test2
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.easy_stat_backdoor.test2",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def easy_stat_backdoor_test3(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: EasyStatBackdoorController.test3
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/backdoor/qwueihfasdguqeghoi/test3
-        Request body: String (required)
-        Response: DataSet
-        Operation ID: fs_bi_stat.easy_stat_backdoor.test3
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.easy_stat_backdoor.test3",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def easy_stat_backdoor_test4(self, *, body: Any = None, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: EasyStatBackdoorController.test4
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/backdoor/qwueihfasdguqeghoi/test4
-        Request body: object (optional)
-        Response: Integer
-        Operation ID: fs_bi_stat.easy_stat_backdoor.test4
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.easy_stat_backdoor.test4",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def easy_stat_backdoor_test5(self, *, body: Any = None, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: EasyStatBackdoorController.test5
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/backdoor/qwueihfasdguqeghoi/test5
-        Request body: object (optional)
-        Response: String
-        Operation ID: fs_bi_stat.easy_stat_backdoor.test5
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.easy_stat_backdoor.test5",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def forecast_rule_query_agg_fields(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: ForecastRuleController.queryAggFields
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/aggField/query
-        Request body: ForecastRuleCandidateArg (required)
-        Response: QueryForecastFieldListResult
-        Operation ID: fs_bi_stat.forecast_rule.query_agg_fields
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.forecast_rule.query_agg_fields",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def forecast_rule_query_agg_objects(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: ForecastRuleController.queryAggObjects
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/aggObject/query
-        Request body: ForecastRuleCandidateArg (required)
-        Response: QueryForecastObjectListResult
-        Operation ID: fs_bi_stat.forecast_rule.query_agg_objects
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.forecast_rule.query_agg_objects",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def forecast_rule_query_count_time_fields(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: ForecastRuleController.queryCountTimeFields
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/countTimeField/query
-        Request body: ForecastRuleCandidateArg (required)
-        Response: QueryForecastFieldListResult
-        Operation ID: fs_bi_stat.forecast_rule.query_count_time_fields
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.forecast_rule.query_count_time_fields",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def forecast_rule_query_count_time_objects(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: ForecastRuleController.queryCountTimeObjects
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/countTimeObject/query
-        Request body: ForecastRuleCandidateArg (required)
-        Response: QueryForecastObjectListResult
-        Operation ID: fs_bi_stat.forecast_rule.query_count_time_objects
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.forecast_rule.query_count_time_objects",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def forecast_rule_query_dim_fields(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: ForecastRuleController.queryDimFields
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/dimField/query
-        Request body: ForecastRuleCandidateArg (required)
-        Response: QueryForecastFieldListResult
-        Operation ID: fs_bi_stat.forecast_rule.query_dim_fields
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.forecast_rule.query_dim_fields",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def forecast_rule_query_dim_objects(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: ForecastRuleController.queryDimObjects
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/dimObject/query
-        Request body: ForecastRuleCandidateArg (required)
-        Response: QueryForecastObjectListResult
-        Operation ID: fs_bi_stat.forecast_rule.query_dim_objects
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.forecast_rule.query_dim_objects",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def forecast_rule_query_filter_fields(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: ForecastRuleController.queryFilterFields
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/filterField/query
-        Request body: ForecastRuleCandidateArg (required)
-        Response: QueryForecastFieldListResult
-        Operation ID: fs_bi_stat.forecast_rule.query_filter_fields
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.forecast_rule.query_filter_fields",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def forecast_rule_query_filter_objects(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: ForecastRuleController.queryFilterObjects
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/filterObject/query
-        Request body: ForecastRuleCandidateArg (required)
-        Response: QueryForecastObjectListResult
-        Operation ID: fs_bi_stat.forecast_rule.query_filter_objects
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.forecast_rule.query_filter_objects",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def forecast_rule_query_relation_fields(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: ForecastRuleController.queryRelationFields
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/relationField/query
-        Request body: ForecastRuleCandidateArg (required)
-        Response: QueryForecastRelationFieldResult
-        Operation ID: fs_bi_stat.forecast_rule.query_relation_fields
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.forecast_rule.query_relation_fields",
             body=body,
             path_params=None,
             params=_params or None,
@@ -1881,6 +1626,23 @@ class StatApi:
             headers=headers,
         )
 
+    def stat_business_view_data_query_report_data(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
+        """
+        Purpose: StatBusinessViewDataController.queryReportData
+        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/business/data/query
+        Request body: QueryChartDataArg (required)
+        Response: QueryChartData.Result
+        Operation ID: fs_bi_stat.stat_business_view_data.query_report_data
+        """
+        _params = dict(params or {})
+        return self._invoker.call(
+            "fs_bi_stat.stat_business_view_data.query_report_data",
+            body=body,
+            path_params=None,
+            params=_params or None,
+            headers=headers,
+        )
+
     def stat_calc_field_delete_calc_field(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
         """
         Purpose: 物理删除计算字段
@@ -2385,40 +2147,6 @@ class StatApi:
         _params = dict(params or {})
         return self._invoker.call(
             "fs_bi_stat.stat_schema.query_field_topology",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def stat_schema_query_forecast_rule_type(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: 根据// 0 模板 1 视图 2 空模板 id判断对应主题是否需要选预测规则
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/schema/forecastType/query
-        Request body: QueryGoalRuleTypeArg (required)
-        Response: ForecastRuleTypeResult
-        Operation ID: fs_bi_stat.stat_schema.query_forecast_rule_type
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.stat_schema.query_forecast_rule_type",
-            body=body,
-            path_params=None,
-            params=_params or None,
-            headers=headers,
-        )
-
-    def stat_schema_query_forecast_rule_type_9bfb3b45(self, body: Any, *, params: dict[str, Any] | None = None, headers: dict[str, str] | None = None) -> ApiResponse:
-        """
-        Purpose: 根据// 0 模板 1 视图 2 空模板 id判断对应主题是否需要选预测规则
-        Route: POST /FHH/EM1HBISTAT/fs-bi-stat/stat/schema/forecastRuleType/query
-        Request body: QueryGoalRuleTypeArg (required)
-        Response: ForecastRuleTypeResult
-        Operation ID: fs_bi_stat.stat_schema.query_forecast_rule_type_9bfb3b45
-        """
-        _params = dict(params or {})
-        return self._invoker.call(
-            "fs_bi_stat.stat_schema.query_forecast_rule_type_9bfb3b45",
             body=body,
             path_params=None,
             params=_params or None,

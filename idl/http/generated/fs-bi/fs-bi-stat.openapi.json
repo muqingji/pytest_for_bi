@@ -2,11 +2,11 @@
   "openapi": "3.1.0",
   "info": {
     "title": "fs-bi-stat generated HTTP API",
-    "version": "c6b785344c6973b6d6fc5bb108c45b3971f36c64"
+    "version": "87604735d0817257e8e6256829d9a08f1d40d441"
   },
   "x-contract-source": {
     "repository": "fs-bi",
-    "ref": "c6b785344c6973b6d6fc5bb108c45b3971f36c64"
+    "ref": "87604735d0817257e8e6256829d9a08f1d40d441"
   },
   "paths": {
     "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions": {
@@ -927,6 +927,47 @@
         }
       }
     },
+    "/FHH/EM1HBISTAT/fs-bi-stat/stat/business/data/query": {
+      "post": {
+        "operationId": "fs_bi_stat.stat_business_view_data.query_report_data",
+        "summary": "StatBusinessViewDataController.queryReportData",
+        "x-java-return-type": "QueryChartData.Result",
+        "x-auth-cookie-query": {
+          "cookie": "fs_token",
+          "parameter": "_fs_token"
+        },
+        "x-default-headers": {
+          "Accept": "application/json, text/javascript, */*; q=0.01",
+          "Content-Type": "application/json; charset=UTF-8",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "x-java-type": "QueryChartData.Result"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "x-java-type": "QueryChartDataArg"
+              }
+            }
+          }
+        }
+      }
+    },
     "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggData/diff": {
       "post": {
         "operationId": "fs_bi_stat.agg_data_diff.agg_data_diff",
@@ -1736,47 +1777,6 @@
         }
       }
     },
-    "/FHH/EM1HBISTAT/fs-bi-stat/api/semantic/bi/value-resolve": {
-      "post": {
-        "operationId": "fs_bi_stat.bi_semantic_value_resolve.value_resolve",
-        "summary": "BiSemanticValueResolveController.valueResolve",
-        "x-java-return-type": "BiValueResolveResponse",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "BiValueResolveResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "BiValueResolveRequest"
-              }
-            }
-          }
-        }
-      }
-    },
     "/FHH/EM1HBISTAT/fs-bi-stat/stat/billBoard/measureData/query": {
       "post": {
         "operationId": "fs_bi_stat.bill_board.query_bill_measure_data",
@@ -1976,536 +1976,6 @@
               "schema": {
                 "type": "object",
                 "x-java-type": "UserDataAuthArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/backdoor/qwueihfasdguqeghoi/test1": {
-      "post": {
-        "operationId": "fs_bi_stat.easy_stat_backdoor.test1",
-        "summary": "EasyStatBackdoorController.test1",
-        "x-java-return-type": "DataSet",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "DataSet"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/backdoor/qwueihfasdguqeghoi/test2": {
-      "post": {
-        "operationId": "fs_bi_stat.easy_stat_backdoor.test2",
-        "summary": "EasyStatBackdoorController.test2",
-        "x-java-return-type": "DataSet",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "DataSet"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/backdoor/qwueihfasdguqeghoi/test3": {
-      "post": {
-        "operationId": "fs_bi_stat.easy_stat_backdoor.test3",
-        "summary": "EasyStatBackdoorController.test3",
-        "x-java-return-type": "DataSet",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "DataSet"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "string",
-                "x-java-type": "String"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/backdoor/qwueihfasdguqeghoi/test4": {
-      "post": {
-        "operationId": "fs_bi_stat.easy_stat_backdoor.test4",
-        "summary": "EasyStatBackdoorController.test4",
-        "x-java-return-type": "Integer",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "integer",
-                  "x-java-type": "Integer"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/backdoor/qwueihfasdguqeghoi/test5": {
-      "post": {
-        "operationId": "fs_bi_stat.easy_stat_backdoor.test5",
-        "summary": "EasyStatBackdoorController.test5",
-        "x-java-return-type": "String",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string",
-                  "x-java-type": "String"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/dimObject/query": {
-      "post": {
-        "operationId": "fs_bi_stat.forecast_rule.query_dim_objects",
-        "summary": "ForecastRuleController.queryDimObjects",
-        "x-java-return-type": "QueryForecastObjectListResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "QueryForecastObjectListResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "ForecastRuleCandidateArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/dimField/query": {
-      "post": {
-        "operationId": "fs_bi_stat.forecast_rule.query_dim_fields",
-        "summary": "ForecastRuleController.queryDimFields",
-        "x-java-return-type": "QueryForecastFieldListResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "QueryForecastFieldListResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "ForecastRuleCandidateArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/aggObject/query": {
-      "post": {
-        "operationId": "fs_bi_stat.forecast_rule.query_agg_objects",
-        "summary": "ForecastRuleController.queryAggObjects",
-        "x-java-return-type": "QueryForecastObjectListResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "QueryForecastObjectListResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "ForecastRuleCandidateArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/relationField/query": {
-      "post": {
-        "operationId": "fs_bi_stat.forecast_rule.query_relation_fields",
-        "summary": "ForecastRuleController.queryRelationFields",
-        "x-java-return-type": "QueryForecastRelationFieldResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "QueryForecastRelationFieldResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "ForecastRuleCandidateArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/aggField/query": {
-      "post": {
-        "operationId": "fs_bi_stat.forecast_rule.query_agg_fields",
-        "summary": "ForecastRuleController.queryAggFields",
-        "x-java-return-type": "QueryForecastFieldListResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "QueryForecastFieldListResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "ForecastRuleCandidateArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/countTimeObject/query": {
-      "post": {
-        "operationId": "fs_bi_stat.forecast_rule.query_count_time_objects",
-        "summary": "ForecastRuleController.queryCountTimeObjects",
-        "x-java-return-type": "QueryForecastObjectListResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "QueryForecastObjectListResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "ForecastRuleCandidateArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/countTimeField/query": {
-      "post": {
-        "operationId": "fs_bi_stat.forecast_rule.query_count_time_fields",
-        "summary": "ForecastRuleController.queryCountTimeFields",
-        "x-java-return-type": "QueryForecastFieldListResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "QueryForecastFieldListResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "ForecastRuleCandidateArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/filterObject/query": {
-      "post": {
-        "operationId": "fs_bi_stat.forecast_rule.query_filter_objects",
-        "summary": "ForecastRuleController.queryFilterObjects",
-        "x-java-return-type": "QueryForecastObjectListResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "QueryForecastObjectListResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "ForecastRuleCandidateArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/forecastRule/filterField/query": {
-      "post": {
-        "operationId": "fs_bi_stat.forecast_rule.query_filter_fields",
-        "summary": "ForecastRuleController.queryFilterFields",
-        "x-java-return-type": "QueryForecastFieldListResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "QueryForecastFieldListResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "ForecastRuleCandidateArg"
               }
             }
           }
@@ -5908,88 +5378,6 @@
                 "schema": {
                   "type": "object",
                   "x-java-type": "GoalRuleTypeResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "QueryGoalRuleTypeArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/forecastType/query": {
-      "post": {
-        "operationId": "fs_bi_stat.stat_schema.query_forecast_rule_type",
-        "summary": "StatSchemaController.queryForecastRuleType",
-        "x-java-return-type": "ForecastRuleTypeResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "ForecastRuleTypeResult"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "x-java-type": "QueryGoalRuleTypeArg"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/forecastRuleType/query": {
-      "post": {
-        "operationId": "fs_bi_stat.stat_schema.query_forecast_rule_type_9bfb3b45",
-        "summary": "StatSchemaController.queryForecastRuleType",
-        "x-java-return-type": "ForecastRuleTypeResult",
-        "x-auth-cookie-query": {
-          "cookie": "fs_token",
-          "parameter": "_fs_token"
-        },
-        "x-default-headers": {
-          "Accept": "application/json, text/javascript, */*; q=0.01",
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Requested-With": "XMLHttpRequest"
-        },
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "x-java-type": "ForecastRuleTypeResult"
                 }
               }
             }

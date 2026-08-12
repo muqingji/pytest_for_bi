@@ -1,0 +1,30 @@
+{
+  "schema_version": "bi-asset-create-contract/1.0",
+  "asset_type": "stat_chart",
+  "status": "candidate_until_112_create_and_readback",
+  "operation_id": "fs_bi_stat.stat_edit.creat_stat_view",
+  "readback_operation_id": "fs_bi_stat.stat_edit.get_chart_config",
+  "method": "POST",
+  "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/creatStatView",
+  "request_dto": "CreateStatViewArg",
+  "required_top_level": ["axisData", "filterLists", "statLayoutInfo", "statViewBaseInfo"],
+  "case_derived": ["axisData.chartType", "axisData.dimensionFields", "axisData.measureFieldList", "filterLists", "drillRouteFieldLists", "drillDownPath", "statViewBaseInfo.viewName"],
+  "metadata_discovered": ["statViewBaseInfo.schemaID", "statViewBaseInfo.categoryID", "fieldId", "dbFieldName", "dbObjName", "fieldType", "fieldLocation", "describeApiNames", "topology"],
+  "folder_provenance": {
+    "required": true,
+    "folder_name": "exact requirement_name",
+    "query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+    "create_operation": "fs_bi_crm.rpt_category.save_category",
+    "required_evidence": ["folder_query_operation", "folder_response_hash", "category_id"],
+    "on_missing_or_ambiguous": "not_ready"
+  },
+  "idempotency": {
+    "server_key": false,
+    "pre_create": "query exact folder and view name; reuse only when live readback configuration hash matches",
+    "on_unknown_write_result": "discover by exact folder, name and configuration hash; never retry blindly"
+  },
+  "identity_derived": ["statViewBaseInfo.userOwnerList", "statViewBaseInfo.editableList", "statViewBaseInfo.deletableList", "statViewBaseInfo.exportableList", "statViewBaseInfo.subscribeableList", "statViewBaseInfo.shareableList", "statViewBaseInfo.forwardableList"],
+  "executor_owned": ["_fs_token", "traceId", "spanId", "cookies", "x-trace-id", "requestId"],
+  "readiness": ["view_id_returned", "chart_config_query_succeeds", "requirement_folder_matches", "schema_matches", "axes_match", "configuration_hash_matches"],
+  "evidence": ["captured_success_request_sanitized_in_memory", "CreateStatViewArg.java", "AxisData.java", "StatViewBaseInfo.java"]
+}
