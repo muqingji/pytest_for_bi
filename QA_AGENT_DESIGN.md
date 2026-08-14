@@ -255,6 +255,55 @@ Runtime、完整自动化链路或发布门禁已经完成。
   N11 输出 `blocked`。生产隔离 Runner、正式 MR/Bug/发布 Adapter 仍是后续关键路径；独立置信
   运行的 G01 已签署，当前阻塞在 human correction（N04 预算耗尽），不是 G01 待审。
 
+### 2.7 八卡 G01 汇总审批实现快照（2026-08-14）
+
+本节记录八卡工作流在“统计图查看明细限制原因提示优化”真实运行中已经落地并验证的行为，
+不替代前述其他试点运行的审计结论。
+
+**G01 输入和路由**
+
+- `qa-agents/src/qa_agents/gates.py` 将 A02 需求歧义、A03 阻塞项和 A06 全部 finding 统一
+  转换为面向 QA Owner 的 `category`、`plain_summary`、`confirm_action`、`requirement_ids`；技术原文继续保存在
+  `detail`，展示层不再要求审批人解释内部英文标签。
+- A06 产出 `needs_human` 时不再创建独立人工分支。Autopilot 将 A06 记为完成，结果摘要明确为
+  “发现待确认项，已并入 G01 汇总审批”，并把全部问题交给同一个 G01 请求。A02 或 A03 单独
+  存在开放项时也会进入同一 G01；只有三方均无待审项时，G01 才以 `not_required` 自动完成。
+- G01 始终是职责分离的人工作业。Issue 状态变化不能替代评论协议；缺少合法评论时 Adapter
+  返回 `waiting_for_review`，N24 和 A08 保持 `not_started`。
+
+**自动生成和展示**
+
+- `qa-agents/scripts/sync_eight_card_progress.py` 在三份上游 Artifact 齐备后自动生成
+  `g01-scope-review.json`、`g01-review-request.md` 和空白的
+  `g01-decision-template.json`。内容哈希未变化时复用既有请求，避免重复审批单。
+- G01 Multica Issue 标题统一为
+  `[{workflow_run_id}] G01 范围与口径人工审核 [{request_hash_short}]`，使 Autopilot 能按运行和
+  节点稳定发现并回绑既有 Issue。
+- Workflow Center 的 Parent、C2 阶段卡和 G01 正文直接展开全部通俗确认项、涉及需求和处理
+  动作；Parent 同时展示唯一待处理入口、总进度和当前 Gate。原始证据仍通过 Artifact hash
+  审计，不在阶段卡复制长日志。
+
+**恢复和版本保护**
+
+- 重新初始化既有运行只用于发现 Parent、Run、阶段卡和节点 Issue。八卡同步以当前规格为状态
+  基线，按 `node_id` 合并恢复规格中的 `issue_id`、`issue_identifier`，禁止用初始化时的
+  `not_started` 覆盖已经完成或等待人工的状态。
+- 发布前以当前规格和已发布投影的最大 revision 为下限；新增绑定时递增 revision。
+  Workflow Center 仍拒绝版本倒退，恢复失败也不得把低版本 `current` 投影发布到线上。
+
+**真实运行验证**
+
+- Workflow：`REQ-DETAIL-DRILL-I18N`；Run：
+  `detail-drill-i18n-8card-20260814-final-01`。
+- C1 `QAA-262` 已完成；C2 `QAA-263` 为 `in_review`；G01 `QAA-274` 已绑定到原 Run、分配给
+  授权成员并保持 `in_review`。G01 收集 25 项确认内容，request hash 为
+  `sha256:53ff9ef5686b59cd2887d5991370f24e899029cd2ff24d4d245f274bf61bc7ce`。
+- Parent `QAA-260` 已发布 revision 10，状态为 `needs_action`，进度 `6/36`（17%），当前 Gate
+  为 G01。内部执行项目仅存在已完成的 A02/A03/A05/A06 和等待人工的 G01，没有创建 N24、A08
+  或其他后续节点。
+- `qa-agents` 全量测试 `398 passed`；仓库根本地测试 `84 passed, 47 skipped`，跳过项均要求
+  `--env=112` 或对应在线环境；Python 编译和 `git diff --check` 通过。
+
 
 ## 3. 核心架构原则
 
@@ -312,15 +361,26 @@ Test Case IR，审核通过后才能生成 Automation Manifest 和自动化代�
 旧 Run 纳入历史，不新增第二张用户侧需求卡。多个需求可以并行运行，但状态、节点、人工事项和
 历史只能聚合到各自父卡，禁止跨需求串联或覆盖。
 
-Multica 分为两个项目：`QA 需求工作流中心` 只展示需求父卡，`QA 内部执行与审计` 保存 Run、
-节点执行、重跑、影子候选、人工 Gate 技术卡和历史证据。父卡状态从节点和人工 Action
-确定性投影，优先级为 `blocked > needs_action > running > queued > completed > cancelled`。
-只有开放的人工 Action 才产生用户待办；Agent Review 属于内部执行。父卡必须直接汇总节点状态、
-完成情况、结果摘要、当前 Action 和历史 Run，不能只显示运行 ID 或哈希。
+Multica 中一个需求对应一个项目，项目名称就是需求名称。需求项目只面向使用者展示
+`C1`-`C8` 共 8 张阶段任务卡；Parent、Run、内部节点执行和人工 Gate 技术卡保存在
+`QA 内部执行与审计` 项目中，默认不显示为需求项目任务卡。
 
-父卡、内部卡和 Artifact 通过 `workflow_id`、`workflow_run_id`、`requirement_id`、节点 ID 及
-Projection hash 绑定。同一 Projection 的重复同步必须幂等；任何人工 Gate 仍以独立审核卡和
-正式 Decision Artifact 为准，父卡的“待我处理”只是聚合入口，不能替代审批或扩大权限。
+初始化时：
+
+- Parent 和 Run 创建在 `internal_project_id` 指向的内部项目。
+- 8 张阶段卡创建在 `workflow_project_id` 指向的需求项目。
+- 每个内部节点记录 `stage_card_id`，但不额外创建用户可见卡片。
+- 同步脚本 `qa-agents/scripts/sync_eight_card_progress.py` 读取内部项目已完成 Run，
+  入库 Artifact 后对账，再把阶段状态和详情投影回 8 张卡。
+
+阶段卡状态按所属内部节点聚合，优先级固定为
+`blocked > in_review > in_progress > done > backlog`。活动重试优先于历史失败，因此重跑
+开始后卡片必须从“已阻塞”回到“进行中”。修正、退回和重试只更新原卡，不创建新的需求项目卡。
+
+Parent、Run、阶段卡和 Artifact 通过 `workflow_id`、`workflow_run_id`、`requirement_id`、
+`stage_card_id`、节点 ID 及 Projection hash 绑定。同一 Projection 的重复同步必须幂等；任何
+人工 Gate 仍以正式 Decision Artifact 为准，阶段卡的“待审核”只是聚合入口，不能替代审批或
+扩大权限。
 
 ## 4. 工作流模式
 
@@ -334,9 +394,9 @@ Projection hash 绑定。同一 Projection 的重复同步必须幂等；任何�
 | Bug 复现与固化 | Bug、日志、修复 MR | 最小复现 Case、自动化回归和修复验证 |
 | 上线后验证 | 已批准发布单、部署版本和监控范围 | 只读冒烟、SLO 信号和线上缺陷反馈 |
 
-`N00 Workflow Template Selector` 根据结构化触发类型和组织策略确定性选择工作流模板。
-只有输入含义确实无法由规则判定时才调用 `A01 Workflow Route Advisor` 给出路由建议，
-随后仍由 N00 校验并决定。A01 不能自行创建或执行未授权流程。
+`N00 Workflow Template Selector` 根据结构化触发类型和组织策略确定性选择工作流模板与
+执行深度。当前实现不保留 `A01` 路由建议 Agent；如果 N00 无法确定模板，输入标记为
+`blocked_input` 并等待补全或人工确认，不允许自行创建或执行未授权流程。
 
 根据风险和输入完整度，N00 选择执行深度：
 
@@ -349,318 +409,297 @@ Projection hash 绑定。同一 Projection 的重复同步必须幂等；任何�
 
 ## 5. 优化后的总体流程
 
-### 5.1 简版流程图
+### 5.1 Multica 八张任务卡展示方案
 
-```text
-任务触发
-  -> 确定性工作流模板选择；仅歧义输入调用路由 Agent 建议
-  -> 输入采集、解析质量校验和版本冻结
-  -> 生成标准 ChangeSet
-  -> 测试资产目录与影响关系图快照
-  -> 需求/技术方案及可测性/前端 ChangeSet/后端 ChangeSet 并行分析
-  -> 需求与变更对齐 Agent
-  -> 确定性风险策略；仅歧义项调用风险建议 Agent
-  -> 测试设计 Agent
-  -> Oracle 与测试防范覆盖审查 Agent
-  -> N04 确定性 Test Case IR 校验
-  -> 校验失败时按根因回流；自动修正预算耗尽后转 QA 人工修正并重新校验
-  -> 人工 Test Case IR Gate
-  -> 确定性 Case 编译器
-  -> 拆分后覆盖回查 Agent
-  -> 确定性测试选择；仅未知影响调用选择建议 Agent
-  -> 执行计划编译：生成、更新、直接执行、人工执行或跳过
-  -> 需要生成或更新的自动化并行生成
-  -> 对应领域的自动化代码审查 Agent
-  -> 格式化、lint、编译和安全扫描
-  -> 人工或风险分级 Gate
-  -> 环境、数据、Feature Flag 和资源锁预检及修复
-  -> 自动化测试与人工/探索测试并行执行
-  -> 代码覆盖率、运行质量信号和证据标准化
-  -> 失败聚类、跨运行去重和归因
-  -> 确定性质量决策节点
-  -> 可选、限时且不篡改原结论的质量豁免
-  -> 报告、MR 评论草稿和 Bug 草稿
-  -> 经授权的上线后只读验证
-  -> 人工修正进入离线评估集
+Multica 面向使用者固定展示 8 张阶段任务卡，内部仍按完整 DAG 执行并保存每个节点的输入、
+输出、重试、错误和 Artifact。任务卡是内部运行状态的版本化投影，不是新的执行节点；不得因
+合并任务卡删除节点、合并 Artifact、绕过 Gate，或降低失败和人工审核的可见性。
+
+```mermaid
+flowchart LR
+    C1["1. 需求分析与变更对齐<br/>INPUT-FREEZE / N00 / A02 / A03 / A05 / A06"]
+    C2["2. 范围确认与测试策略<br/>G01 / N24"]
+    C3["3. 测试设计与审核<br/>A08 / A09 / N04 / G02"]
+    C4["4. Case 编译与执行计划<br/>N25 / A11 / N26 / N15"]
+    C5["5. 自动化与测试数据准备<br/>A14 / A15 / A22 / A18-BE / A18-CT / N27 / N05 / G03"]
+    C6["6. 环境预检与测试执行<br/>N07 / N08 / N17 / N10"]
+    C7["7. 证据归一与质量决策<br/>N18 / N09 / N20 / N11 / N19"]
+    C8["8. 报告与关闭<br/>N12 / N13 / N23"]
+
+    C1 --> C2 --> C3 --> C4 --> C5 --> C6 --> C7 --> C8
+    C2 -. "范围补充/口径退回：更新原卡" .-> C1
+    C3 -. "IR 校验或审核退回：更新原卡" .-> C3
+    C4 -. "拆分遗漏：更新原卡" .-> C4
+    C5 -. "代码审核退回：更新原卡" .-> C4
+    C5 -. "自动化或数据问题：更新原卡" .-> C5
+    C6 -. "环境重试：更新原卡" .-> C6
+    C7 -. "归因后修复：更新对应原卡" .-> C5
 ```
 
-### 5.2 Multica 详细流程图
+| 卡片 | 用户可见标题 | 内部节点 | 完成标准 |
+| --- | --- | --- | --- |
+| C1 | 需求分析与变更对齐 | INPUT-FREEZE、N00、A02、A03、A05、A06 | 路由确定，需求、方案和后端变更完成对齐；未选分支有明确跳过原因 |
+| C2 | 范围确认与测试策略 | G01、N24 | 范围确认完成，风险等级、必测层级和 Gate 策略已冻结 |
+| C3 | 测试设计与审核 | A08、A09、N04、G02 | Test Case IR 校验通过并取得有效人工审核 Decision Artifact |
+| C4 | Case 编译与执行计划 | N25、A11、N26、N15 | 父子 Case 编译、覆盖回查、测试选择和执行路由全部完成 |
+| C5 | 自动化与测试数据准备 | A14、A15、A22、A18-BE、A18-CT、N27、N05、G03 | 所选自动化、数据计划、审查、扫描和代码 Gate 均终态 |
+| C6 | 环境预检与测试执行 | N07、N08、N17、N10 | 预检通过，自动化与人工任务执行完毕；重试预算有明确结论 |
+| C7 | 证据归一与质量决策 | N18、N09、N20、N11、N19 | 证据与缺陷归一完成，确定性质量结论及可选豁免已登记 |
+| C8 | 报告与关闭 | N12、N13、N23 | 报告发布、反馈归档及按授权执行的上线后验证均终态 |
+
+每张卡对应的 Agent/节点、职责、关键输入和关键产出如下；完整说明见
+`MULTICA_8_CARD_SIMPLE.md`。
+
+| 卡片 | Agent/节点 | 职责 | 关键输入 | 关键产出 |
+| --- | --- | --- | --- | --- |
+| C1 | INPUT-FREEZE、N00、A02、A03、A05、A06 | 冻结输入、路由选择、需求分析、技术可测性分析、后端变更分析、需求-方案-变更对齐 | 需求、技术方案、ChangeSet、只读代码快照 | 已冻结输入快照、路由决策、分析与对齐结论 |
+| C2 | G01、N24 | 人工确认范围，确定性生成风险等级、必测层级和 Gate 策略 | C1 对齐结论、范围审核材料 | 范围审核 Decision、测试策略 |
+| C3 | A08、A09、N04、G02 | 设计 Test Case IR、审查 Oracle 与覆盖、确定性校验、人工审核 | 冻结需求、测试策略、上游分析结论 | 有效 Test Case IR、覆盖矩阵、Gate Decision |
+| C4 | N25、A11、N26、N15 | 编译父子 Case、审查拆分覆盖、选择测试集、编译执行计划 | C3 已审核 Test Case IR、资产影响关系 | 父子 Case、测试选择、执行计划 |
+| C5 | A14、A15、A22、A18-BE、A18-CT、N27、N05、G03 | 生成后端/契约自动化与测试数据计划，独立复核，安全校验，代码检查与人工审核 | C4 执行计划、Test Case IR、OpenAPI、112 能力目录 | 自动化代码/Manifest、测试数据计划、审查与检查结论 |
+| C6 | N07、N08、N17、N10 | 环境预检、受控自动化执行、人工/探索测试、环境失败重试预算 | C5 已就绪自动化与数据、执行环境 | 执行证据、人工测试结果、重试结论 |
+| C7 | N18、N09、N20、N11、N19 | 采集运行信号、标准化证据与失败聚类、跨运行缺陷去重、确定性质量决策、豁免审计 | C6 执行证据、历史缺陷/失败指纹 | 质量结论、缺陷记录、豁免审计记录 |
+| C8 | N12、N13、N23 | 发布报告、记录反馈、按授权执行上线后验证与审计 | C7 质量结论、报告发布授权 | 质量报告、反馈记录、上线后验证审计结论 |
+
+未进入某次模板的可选内部节点记为 `skipped_by_policy`，但仍归属于对应卡片。将来增加新节点时，
+必须在版本化映射中显式归属到一张阶段卡；未映射节点应使初始化 fail-fast，不能自动恢复成
+“一节点一卡”。前端、E2E 或非功能自动化分支启用后，应归入 C5，不额外增加用户可见卡片。
+
+阶段卡状态由所属节点聚合，每次对一张卡只同步一次，优先级固定如下：
+
+1. 任一已路由节点处于 `queued`、`dispatched`、`deferred` 或 `running`：`in_progress`。
+2. 无运行节点且存在等待人工决策的 Gate：`in_review`。
+3. 无活动重试且存在失败或阻塞节点：`blocked`。
+4. 全部已路由节点为 `completed`、`skipped_by_policy` 或其他合法终态：`done`。
+5. 其余情况：`backlog`。
+
+活动重试优先于历史失败，因此重跑开始后卡片必须从 `blocked` 回到 `in_progress`。修正回路、
+重试和同一运行的重复同步只更新原阶段卡的状态与正文，禁止创建新卡。每张卡正文统一包含：
+
+```text
+## 目标
+## 输入
+## 执行内容
+## 当前进度
+## 产出
+## 异常处理
+## 人工操作
+## 完成标准
+```
+
+`当前进度` 必须列出内部节点总数及各状态数量，并标明当前节点；`产出` 展示 Artifact 名称、
+版本和哈希；`异常处理` 展示最近错误、重试次数和下一路由；`人工操作` 仅在需要人工决策时给出
+明确动作。长日志留在 Artifact/运行记录中，不复制到任务卡正文。
+
+### 5.2 简版内部执行流程
+
+```text
+INPUT-FREEZE 输入冻结
+  -> N00 工作流模板与深度选择
+  -> A02 需求分析 / A03 技术方案与可测性分析 / A05 后端变更分析
+  -> A06 需求、方案与变更对齐
+  -> G01 范围与口径人工审核
+  -> N24 风险与测试策略
+  -> A08 测试设计
+  -> A09 Oracle 与覆盖审查
+  -> N04 Test Case IR 校验
+  -> G02 Test Case IR 人工审核
+  -> N25 父子 Case 编译
+  -> A11 拆分覆盖审查
+  -> N26 测试选择
+  -> N15 执行计划编译
+  -> A14 / A15 / A22 自动化生成与测试数据规划
+  -> A18-BE / A18-CT / N27 自动化独立复核与数据计划校验
+  -> N05 自动化代码检查与安全扫描
+  -> G03 自动化代码人工审核
+  -> N07 环境、数据与资源预检
+  -> N08 受控自动化执行 / N17 人工与探索测试
+  -> N10 环境失败重试预算
+  -> N18 运行质量信号采集
+  -> N09 执行证据标准化与失败聚类
+  -> N20 跨运行缺陷去重
+  -> N11 确定性质量决策
+  -> N19 质量豁免审计
+  -> N12 质量报告发布
+  -> N13 报告反馈入口
+  -> N23 上线后验证授权审计
+```
+
+流程中的退回、修正和重试只更新内部节点状态，并最终投影回原阶段卡；不会创建新的用户侧任务卡。
+
+### 5.3 内部 DAG 详细流程图
 
 ```mermaid
 flowchart TD
-    START([任务触发]) --> TEMPLATE{N00 确定性工作流模板选择}
-    TEMPLATE -->|输入有歧义| ROUTER[A01 工作流路由建议 Agent]
-    ROUTER --> TEMPLATE
-    TEMPLATE -->|路由已确定| COLLECT[N01 输入采集、标准化与解析质量校验]
-    COLLECT --> SNAPSHOT[N02 输入版本冻结]
+    START([任务触发]) --> FREEZE[INPUT-FREEZE 输入冻结]
+    FREEZE --> N00{N00 模板与深度选择}
+    N00 -->|路由确定| A02[A02 需求分析]
+    N00 -->|路由确定| A03[A03 技术方案与可测性分析]
+    N00 -->|路由确定| A05[A05 后端 ChangeSet 分析]
+    A02 --> A06[A06 需求与变更对齐]
+    A03 --> A06
+    A05 --> A06
 
-    SNAPSHOT --> ASSET[N14 测试资产目录与影响关系图快照]
-    SNAPSHOT --> REQ[A02 需求分析 Agent]
-    SNAPSHOT --> TECH[A03 技术方案与可测性分析 Agent]
-    ASSET --> FE_MR[A04 前端 ChangeSet 分析 Agent]
-    ASSET --> BE_MR[A05 后端 ChangeSet 分析 Agent]
+    A06 --> G01{{G01 范围与口径人工审核}}
+    G01 -->|补充输入| FREEZE
+    G01 -->|确认通过| N24[N24 风险与测试策略]
+    N24 --> A08[A08 测试设计]
+    A08 --> A09[A09 Oracle 与覆盖审查]
+    A09 --> N04{N04 Test Case IR 校验}
+    N04 -->|不通过| A08
+    N04 -->|通过| G02{{G02 Test Case IR 人工审核}}
+    G02 -->|退回| A08
+    G02 -->|通过| N25[N25 父子 Case 编译]
 
-    REQ --> ALIGN[A06 需求与变更对齐 Agent]
-    TECH --> ALIGN
-    FE_MR --> ALIGN
-    BE_MR --> ALIGN
+    N25 --> A11[A11 拆分覆盖审查]
+    A11 -->|有遗漏或重复| N25
+    A11 -->|通过| N26[N26 测试选择]
+    N26 --> N15[N15 执行计划编译]
+    N15 -->|生成/更新| A14[A14 服务端自动化生成]
+    N15 -->|生成/更新| A15[A15 契约自动化生成]
+    N15 -->|生成/更新| A22[A22 测试数据规划]
 
-    ALIGN --> ALIGN_CHECK{N03 Schema 与证据校验}
-    ALIGN_CHECK -->|输入缺失或高风险冲突| SCOPE_GATE{{G01 范围确认 Gate}}
-    SCOPE_GATE -->|补充输入| COLLECT
-    SCOPE_GATE -->|确认继续| RISK_POLICY
-    ALIGN_CHECK -->|通过| RISK_POLICY{N24 确定性风险策略引擎}
-    RISK_POLICY -->|存在策略无法判定项| RISK_ADVISOR[A07 风险策略建议 Agent]
-    RISK_ADVISOR --> RISK_POLICY
-    RISK_POLICY -->|策略确定| DESIGN[A08 测试设计 Agent]
-    DESIGN --> ORACLE[A09 Oracle 与测试防范覆盖审查 Agent]
-    ORACLE --> IR_CHECK{N04 Test Case IR 校验}
-    IR_CHECK -->|不通过| CORRECTION_BUDGET{自动修正预算是否剩余}
-    CORRECTION_BUDGET -->|有预算：Test Case IR、Oracle 或覆盖问题| DESIGN
-    CORRECTION_BUDGET -->|有预算：风险策略或测试层级缺失| RISK_POLICY
-    CORRECTION_BUDGET -->|有预算：上游冲突或需求无法定义预期| ALIGN
-    CORRECTION_BUDGET -->|预算耗尽| HUMAN_CORRECTION{{QA 人工修正节点}}
-    HUMAN_CORRECTION -->|提交修正意见或新版本，不直接放行| DESIGN
-    IR_CHECK -->|通过| IR_GATE{{G02 Test Case IR 审核 Gate}}
+    A14 --> A18BE[A18-BE 服务端自动化独立复核]
+    A15 --> A18CT[A18-CT 契约自动化独立复核]
+    A22 --> N27[N27 测试数据计划安全校验]
+    A18BE --> N05[N05 自动化确定性代码检查]
+    A18CT --> N05
+    N27 --> N05
+    N05 --> G03{{G03 自动化代码人工审核}}
+    G03 -->|退回| N15
+    G03 -->|通过| N07[N07 环境、数据与资源预检]
 
-    IR_GATE -->|退回| DESIGN
-    IR_GATE -->|通过| SPLIT[N25 确定性 Case 编译器]
-    SPLIT --> COVERAGE[A11 拆分覆盖回查 Agent]
-    COVERAGE -->|有遗漏或无效重复| SPLIT
-    COVERAGE -->|通过| SELECT{N26 确定性测试选择引擎}
+    N07 --> N08[N08 受控自动化执行]
+    N07 --> N17[N17 人工与探索测试执行]
+    N08 --> N10{N10 环境失败重试预算}
+    N17 --> N18[N18 运行质量信号采集]
+    N10 -->|允许重试| N07
+    N10 -->|继续| N18
 
-    ASSET --> SELECT
-    SELECT -->|存在未知影响关系| SELECT_ADVISOR[A12 测试选择建议 Agent]
-    SELECT_ADVISOR --> SELECT
-    SELECT --> PLAN[N15 执行计划编译与路由]
-    PLAN -->|generate_new 或 update_existing| GEN_ROUTE{按测试类型生成}
-    PLAN -->|run_existing| READY[待执行集合汇合]
-    PLAN -->|manual_run| MANUAL_READY[人工测试任务集合]
-    PLAN -->|skip| SKIP_RECORD[记录跳过原因]
-    SKIP_RECORD --> READY
-
-    GEN_ROUTE --> FE_AUTO[A13 前端自动化 Agent]
-    GEN_ROUTE --> BE_AUTO[A14 后端自动化 Agent]
-    GEN_ROUTE --> CONTRACT[A15 契约自动化 Agent]
-    GEN_ROUTE --> E2E[A16 E2E 自动化 Agent]
-    GEN_ROUTE --> NF_AUTO[A17-* 非功能专项 Agent]
-
-    FE_AUTO --> FE_REVIEW[A18-FE 前端自动化审查 Agent]
-    BE_AUTO --> BE_REVIEW[A18-BE 后端自动化审查 Agent]
-    CONTRACT --> CONTRACT_REVIEW[A18-CT 契约自动化审查 Agent]
-    E2E --> E2E_REVIEW[A18-E2E E2E 审查 Agent]
-    NF_AUTO --> NF_REVIEW[A18 对应非功能专项审查 Agent]
-
-    FE_REVIEW --> CODE_CHECK[N05 代码检查与安全扫描]
-    BE_REVIEW --> CODE_CHECK
-    CONTRACT_REVIEW --> CODE_CHECK
-    E2E_REVIEW --> CODE_CHECK
-    NF_REVIEW --> CODE_CHECK
-
-    CODE_CHECK -->|不通过且可修复| REPAIR{N06 修复路由与重试预算}
-    CODE_CHECK -->|不可修复| QUALITY[N11 确定性质量决策]
-    CODE_CHECK -->|通过| CODE_GATE{{G03 自动化代码 Gate}}
-
-    CODE_GATE -->|退回并附问题类型| REPAIR
-    CODE_GATE -->|通过| READY
-    REPAIR -->|对应测试代码问题| GEN_ROUTE
-    REPAIR -->|Case 拆分问题| SPLIT
-    REPAIR -->|Test Case IR 问题| DESIGN
-    REPAIR -->|预算耗尽| QUALITY
-
-    READY --> PREFLIGHT[N07 环境、数据和资源预检]
-    MANUAL_READY --> PREFLIGHT
-    PREFLIGHT -->|失败| PREFLIGHT_DECISION{可恢复性判断}
-    PREFLIGHT_DECISION -->|可恢复| REMEDIATE[N16 环境与测试数据修复动作]
-    REMEDIATE --> RETRY{N10 环境重试预算}
-    RETRY -->|允许| PREFLIGHT
-    RETRY -->|不允许| QUALITY
-    PREFLIGHT_DECISION -->|不可恢复| TRIAGE[A19 失败聚类与归因 Agent]
-
-    PREFLIGHT -->|通过| EXECUTE[N08 自动化测试并行执行]
-    PREFLIGHT -->|存在人工任务| MANUAL[N17 人工与探索测试编排]
-    EXECUTE --> SIGNALS[N18 代码覆盖率与运行质量信号采集]
-    SIGNALS --> EVIDENCE[N09 证据标准化、确定性指纹聚类与汇合]
-    MANUAL --> EVIDENCE
-    EVIDENCE --> RESULT{规则判断结果}
-    RESULT -->|全部通过| QUALITY
-    RESULT -->|明确的自动化缺陷| FIX_GATE
-    RESULT -->|明确的环境或数据问题| REMEDIATE
-    RESULT -->|明确的产品缺陷| DEDUP
-    RESULT -->|无法确定归因| TRIAGE
-
-    TRIAGE -->|自动化缺陷| FIX_GATE{{G04 测试修复 Gate}}
-    FIX_GATE -->|批准| REPAIR
-    FIX_GATE -->|拒绝或无法修复| QUALITY
-    TRIAGE -->|环境或数据问题| REMEDIATE
-    TRIAGE -->|产品缺陷| DEDUP[N20 跨运行缺陷去重]
-    DEDUP --> QUALITY
-    TRIAGE -->|需求歧义或待确认| QUALITY
-
-    QUALITY -->|无需豁免| NARRATIVE_POLICY{是否生成解释摘要}
-    QUALITY -->|申请豁免| WAIVER_GATE{{G05 质量豁免 Gate}}
-    WAIVER_GATE -->|批准| WAIVER[N19 质量豁免登记]
-    WAIVER_GATE -->|拒绝| NARRATIVE_POLICY
-    WAIVER --> NARRATIVE_POLICY
-    NARRATIVE_POLICY -->|生成| REPORT[A20 可选质量解释摘要 Agent]
-    NARRATIVE_POLICY -->|跳过| PUBLISH[N12 发布报告、MR 评论草稿或 Bug 草稿]
-    REPORT -->|成功、失败或超时| PUBLISH
-    PUBLISH -->|普通流程| FEEDBACK[N13 人工反馈入评估集]
-    PUBLISH -->|已授权上线后验证| POST_RELEASE[N23 只读上线后验证与线上信号采集]
-    POST_RELEASE --> FEEDBACK
-    FEEDBACK --> END([流程结束])
+    N18 --> N09[N09 执行证据标准化与失败聚类]
+    N09 --> N20[N20 跨运行缺陷去重]
+    N20 --> N11[N11 确定性质量决策]
+    N11 -->|有豁免申请| N19[N19 质量豁免审计]
+    N11 -->|无豁免| N12[N12 质量报告发布]
+    N19 --> N12
+    N12 --> N13[N13 报告反馈入口]
+    N13 --> N23[N23 上线后验证授权审计]
+    N23 --> END([流程结束])
 ```
 
-图中的多入边只表达依赖关系，不代表“任意一个上游完成即可继续”。落地到 Multica 时，
-`A06`、`N05`、`N09` 等汇合节点必须显式配置为：等待本次路由选中的全部必需分支完成，
-再校验 Artifact 完整性后继续。未被路由选中的分支记为 `skipped_by_policy`，不能记为成功，
-也不能导致汇合节点永久等待。
+图中的多入边只表达依赖关系，不代表“任意一个上游完成即可继续”。`A06`、`N05`、`N18` 等汇合
+节点必须等待本次路由选中的全部必需分支完成，再校验 Artifact 完整性后继续。未被路由选中的
+分支记为 `skipped_by_policy`，不能记为成功，也不能导致汇合节点永久等待。
 
-`N21 Schema Registry` 和 `N22 Agent 版本发布控制` 属于控制平面，不作为普通业务分支
-出现在主 DAG 中。N21 校验每次 Artifact 交接，N22 在工作流启动前决定允许使用的 Agent、
-模型、Prompt 和工具版本。
+Schema 兼容和 Agent/模型/Prompt/工具版本控制由 Artifact Envelope 与工作流配置在交接前
+确定性校验，不创建额外的 `N21`/`N22` 业务节点。
+
+### 5.4 展示卡与内部 DAG 的同步边界
+
+- `SERVER_NODE_DEFINITIONS`（或等价注册表）继续定义内部节点、依赖、执行器和审计契约；新增
+  版本化的 `SERVER_STAGE_CARD_DEFINITIONS`，只定义 8 张展示卡及节点归属。
+- 初始化运行时只创建 8 张阶段 Issue，并把 `stage_card_id`、`stage_issue_id` 记录到每个内部
+  节点；同一 `workflow_run_id + stage_card_id` 必须复用已有 Issue。
+- 对账时先读取本次运行的全部内部节点，再按阶段聚合，最后每张 Issue 只写一次。禁止在逐节点
+  循环中直接更新共享 Issue，避免后执行节点覆盖阶段整体状态。
+- Gate 仍生成正式 Decision Artifact；阶段卡的 `in_review` 只是聚合展示，不替代审批协议。
+- 新需求默认使用当前八卡 Schema。旧运行保留原节点卡和审计记录；如执行迁移，只能取消旧的
+  非终态展示卡并创建八卡投影，不删除历史卡或 Artifact。
+- 卡片描述由结构化运行数据确定性渲染；重复对账输入必须得到相同正文和状态，且不新增 Issue。
 
 ## 6. Agent 和确定性节点清单
+
+当前服务端工作流共 36 个内部节点，按阶段投影到 `C1`-`C8` 八张用户任务卡。
+其中 12 个为 Agent，3 个为人工 Gate，其余为确定性节点或输入冻结节点。
 
 ### 6.1 Agent 清单
 
 | ID | Agent | 核心职责 | 主要输出 |
 | --- | --- | --- | --- |
-| A01 | Workflow Route Advisor | 仅对规则无法判定的输入提出路由建议 | `workflow_route_advice.json` |
-| A02 | Requirement Analyzer | 提取需求、验收标准和歧义 | `requirement_analysis.json` |
-| A03 | Technical Design & Testability Analyzer | 提取架构、依赖、技术风险和可测性缺口 | `technical_analysis.json` |
-| A04 | Frontend Change Analyzer | 分析前端 ChangeSet 和影响 | `frontend_change_analysis.json` |
-| A05 | Backend Change Analyzer | 分析后端 ChangeSet 和影响 | `backend_change_analysis.json` |
-| A06 | Change Alignment | 对齐需求、方案和实现 | `alignment_result.json` |
-| A07 | Risk Strategy Advisor | 只对 N24 无法按规则判定的风险项提出建议 | `risk_strategy_advice.json` |
-| A08 | Test Designer | 生成 Test Intent 和父级 Test Case IR | `test_design_ir.json` |
-| A09 | Oracle 与测试防范覆盖审查 Agent | 审查预期可判定性和测试防范覆盖 | `oracle_review.json` |
-| A11 | Split Coverage Auditor | 回查遗漏、重复和层级错误 | `split_coverage_review.json` |
-| A12 | Test Selection Advisor | 只解释 N26 无法确定的代码影响和 Case 关联 | `test_selection_advice.json` |
-| A13 | Frontend Automation | 生成前端单元、组件或 UI 自动化 | 代码变更和 Manifest |
-| A14 | Server Integration & Functional Automation | 生成服务端 API、集成和功能自动化；不生成研发单元测试 | 代码变更和 Manifest |
-| A15 | Contract Automation | 生成接口契约测试 | 代码变更和 Manifest |
-| A16 | E2E Automation | 生成关键链路测试 | 代码变更和 Manifest |
-| A17-PERF | Performance Automation | 生成性能测试 | 性能测试代码或执行计划 |
-| A17-SEC | Security Automation | 生成安全测试 | 安全测试代码或执行计划 |
-| A17-A11Y | Accessibility Automation | 生成可访问性测试 | 可访问性测试代码或执行计划 |
-| A17-COMPAT | Compatibility Automation | 生成兼容性测试 | 兼容性测试代码或执行计划 |
-| A17-RES | Resilience Automation | 生成稳定性和容错测试 | 韧性测试代码或执行计划 |
-| A17-DATA | Data Consistency Automation | 生成数据一致性测试 | 数据测试代码或执行计划 |
-| A18-FE | Frontend Automation Reviewer | 审查前端自动化 | `automation_review.json` |
-| A18-BE | Backend Automation Reviewer | 审查后端自动化 | `automation_review.json` |
-| A18-CT | Contract Automation Reviewer | 审查契约自动化 | `automation_review.json` |
-| A18-E2E | E2E Automation Reviewer | 审查 E2E 自动化 | `automation_review.json` |
-| A18-PERF | Performance Reviewer | 审查性能测试和阈值 | `automation_review.json` |
-| A18-SEC | Security Reviewer | 审查安全测试和权限边界 | `automation_review.json` |
-| A18-A11Y | Accessibility Reviewer | 审查可访问性测试 | `automation_review.json` |
-| A18-COMPAT | Compatibility Reviewer | 审查兼容性测试 | `automation_review.json` |
-| A18-RES | Resilience Reviewer | 审查稳定性和容错测试 | `automation_review.json` |
-| A18-DATA | Data Consistency Reviewer | 审查数据一致性测试 | `automation_review.json` |
-| A19 | Failure Triage | 对 N09 无法确定归因的失败簇做语义归因 | `failure_triage.json` |
-| A20 | Quality Narrative | 解释已确定的覆盖、风险和结果，不计算结论 | `quality_narrative.md/json` |
-| A22 | Test Data Intent Agent | 从 Case、需求和变更证据提取 112 所需业务状态，不要求用户提供接口链路 | `test_data_intent.json` |
+| A02 | Requirement Analyzer | 把冻结需求拆成原子需求、验收条件、歧义和人工确认项 | `a02-requirement-analysis.json` |
+| A03 | Technical Design & Testability Analyzer | 分析技术方案、组件依赖、可测性缺口、阻塞项和测试能力边界 | `a03-technical-testability-analysis.json` |
+| A05 | Backend Change Analyzer | 分析后端 ChangeSet 的事实、影响范围、变更归属和实现偏差 | `a05-backend-change-analysis.json` |
+| A06 | Change Alignment | 对需求、技术方案与后端变更做映射对齐，输出遗漏、冲突和未实现项 | `a06-alignment-result.json` |
+| A08 | Test Designer | 按冻结需求和测试策略设计 Test Case IR 与覆盖矩阵 | `a08-test-design-ir.json` |
+| A09 | Oracle 与测试防范覆盖审查 Agent | 审查 Oracle 规则、测试防范覆盖、遗漏和修正建议 | `a09-oracle-coverage-review.json` |
+| A11 | Split Coverage Auditor | 审查父子 Case 拆分后的覆盖完整性、冲突和遗漏 | `a11-split-coverage-review.json` |
+| A14 | Server Automation | 生成后端 API、集成和功能自动化测试候选 | 代码变更和 `a14-backend-automation-generation.json` |
+| A15 | Contract Automation | 基于冻结 OpenAPI 生成契约自动化测试候选 | 代码变更和 `a15-contract-automation-generation.json` |
+| A22 | Test Data Intent Agent | 从 Case 提取测试数据意图、业务状态和资源目标 | `a22-test-data-plan.json` |
+| A18-BE | Backend Automation Reviewer | 独立审查后端自动化候选的断言、隔离、清理和权限 | `a18-be-backend-automation-review.json` |
+| A18-CT | Contract Automation Reviewer | 独立审查契约自动化候选的 Schema、操作和兼容判断 | `a18-ct-contract-automation-review.json` |
 
-`A10` 已由确定性的 `N25 Case Compiler` 替代，编号保留但不再作为 Agent 使用；`A21`
-职责已并入 A03。历史 Artifact 和审计记录中的编号不复用。
+当前服务端主链不再使用 `A01`、`A04`、`A07`、`A12`、`A13`、`A16`、`A17-*`、
+`A18-FE`、`A18-E2E`、`A19`、`A20`、`A21`。这些编号仅可能出现在历史运行记录或历史快照中，
+不作为新需求工作流节点。
 
-### 6.2 确定性节点清单
+### 6.2 确定性节点与人工 Gate 清单
 
 | ID | 节点 | 职责 |
 | --- | --- | --- |
-| N00 | 工作流模板选择与路由策略 | 根据触发、输入和风险策略确定性选择模板，校验 A01 建议 |
-| N01 | 输入采集、标准化与解析质量校验 | 下载并解析文档、ChangeSet、OpenAPI，校验附件、表格、图片和权限完整性 |
-| N02 | 输入版本冻结 | 记录文档版本、commit、环境和 Agent 版本 |
-| N03 | Schema 与证据校验 | 校验 Agent 输出结构、引用完整性和来源存在性 |
-| N04 | Test Case IR 校验 | 校验字段、唯一 ID、Oracle 和来源引用，并按问题类型路由回流 |
-| N05 | 代码检查与安全扫描 | 格式化、lint、编译、依赖和敏感信息检查 |
-| N06 | 修复路由与重试预算 | 按问题根因返回对应 Agent，并控制修复次数和成本 |
-| N07 | 环境、数据和资源预检 | 校验部署版本、依赖、账号、数据、Flag 和锁 |
-| N08 | 自动化测试并行执行 | 运行审核后的固定命令和自动化测试代码 |
-| N09 | 证据标准化、指纹聚类与汇合 | 汇合证据，并按规则完成失败指纹聚类和明确根因路由 |
-| N10 | 环境重试预算 | 仅对明确的环境类失败有限重试 |
-| N11 | 确定性质量决策 | 按发布策略计算 pass/warn/block |
-| N12 | 确定性报告与结果发布 | 生成机器/HTML 报告，合并可选解释摘要，并生成 MR 评论草稿和 Bug 草稿 |
-| N13 | 反馈入评估集 | 保存人工修正，不在线自动改 Prompt |
-| N14 | 测试资产目录与影响关系图快照 | 同步并冻结需求、Case、代码、接口、Bug 和结果之间的映射 |
-| N15 | 执行计划编译与路由 | 将 Case 编译为生成、更新、直接执行、人工执行或跳过动作 |
-| N16 | 环境与测试数据修复动作 | 执行白名单内的数据准备、环境部署、Flag 配置和账号初始化 |
-| N17 | 人工与探索测试编排 | 创建人工任务、收集证据并等待结果 |
-| N18 | 代码覆盖率与运行质量信号采集 | 确定性采集代码覆盖率、性能和运行质量信号 |
-| N19 | 质量豁免登记 | 记录限时、限范围且不修改原质量结论的风险接受 |
-| N20 | 跨运行缺陷去重 | 根据失败指纹和历史 Bug 判断新增、关联或重新打开 |
-| N21 | Schema Registry 与迁移校验 | 管理 Artifact Schema 兼容、迁移和消费者版本 |
-| N22 | Agent 版本发布控制 | 执行影子运行、灰度、回滚和版本冻结 |
-| N23 | 只读上线后验证与线上信号采集 | 在单独授权下运行只读冒烟并采集 SLO 和逃逸缺陷 |
-| N24 | 确定性风险策略引擎 | 按版本化规则计算风险、必测层级和 Gate，仅把未知项交给 A07 |
-| N25 | 确定性 Case 编译器 | 按已审核 Test Case IR 和层级规则生成父子 Case，不改变业务预期 |
-| N26 | 确定性测试选择引擎 | 根据 ChangeSet、资产关系和强制策略选择 Case，仅把未知影响交给 A12 |
-| N27 | 测试数据计划校验 | 校验 112 白名单、namespace、创建/删除配对、资源 ID、就绪检查和 Secret 边界 |
-| N28 | 测试数据资源计划编译 | 根据版本化 BI 能力目录将 A22 数据意图确定性展开为资源依赖 DAG 和 setup/readiness/cleanup |
+| INPUT-FREEZE | 需求、方案与 ChangeSet 冻结 | 冻结输入版本，校验输入完整性与权限边界 |
+| N00 | 工作流模板选择与路由策略 | 按触发类型和组织策略确定模板、执行深度与节点路由 |
+| G01 | 范围与口径人工审核 | 人工确认测试范围、风险等级、必测内容和需求口径 |
+| N24 | 风险与测试策略 | 确定性生成风险等级、必测层级与 Gate 策略 |
+| N04 | Test Case IR 校验 | 校验结构、来源、Oracle 和覆盖规则，并按问题类型回流 |
+| G02 | Test Case IR 人工审核 | 人工审核预期结果和测试覆盖 |
+| N25 | 父子 Case 编译 | 把父级 Case 编译成可执行子 Case，并建立父子与能力映射 |
+| N26 | 测试选择 | 按资产、风险和策略确定本次要执行的测试 Case |
+| N15 | 执行计划编译 | 生成、更新、直接执行、人工执行或跳过的执行计划 |
+| N27 | 测试数据计划安全校验 | 校验测试数据计划的安全性、可复现性和能力边界 |
+| N05 | 自动化确定性代码检查 | 格式、lint、编译和安全扫描 |
+| G03 | 自动化代码人工审核 | 人工审核自动化代码质量、风险和发布边界 |
+| N07 | 环境、数据与资源预检 | 检查测试环境、账号、数据和资源是否满足执行条件 |
+| N08 | 受控自动化执行 | 受控执行自动化测试并收集运行证据 |
+| N17 | 人工与探索测试执行 | 执行人工与探索测试，并记录过程和结果 |
+| N10 | 环境失败重试预算 | 按重试预算处理环境失败，给出继续、暂停或阻塞结论 |
+| N18 | 运行质量信号采集 | 采集自动化与人工执行的运行质量信号 |
+| N09 | 执行证据标准化与失败聚类 | 标准化执行证据并对失败做聚类和根因归纳 |
+| N20 | 跨运行缺陷去重 | 跨运行识别和合并重复缺陷 |
+| N11 | 确定性质量决策 | 根据证据、缺陷和风险确定性生成质量结论 |
+| N19 | 质量豁免审计 | 审计质量豁免申请及授权范围 |
+| N12 | 质量报告发布 | 发布质量报告并留存发布证据 |
+| N13 | 报告反馈入口 | 记录报告反馈并归档后续动作 |
+| N23 | 上线后验证授权审计 | 按授权执行上线后验证并记录审计结论 |
 
-N27 不是“禁止向环境写入”的校验器。它允许执行 Runner 在 112 的 `setup` 阶段创建 Case
-所需测试资源，并要求在 `cleanup` 阶段按创建时提取的资源 ID 删除；仅 `readiness` 阶段
-限定为只读回查。A22 负责生成计划而不直接持有环境凭证，实际写入和补偿清理由 Runner
-执行并留存证据。对象、字段、主题、指标、报表、统计图、拼表、交叉表、驾驶舱、目标和
-首页布局都属于允许规划的测试资源；每类资源只有在创建/删除接口已冻结为可追溯契约并加入
-操作对清单后才可自动执行。用户不提供资源链路；A22 从 Case 提取语义目标，N28 负责选择
-有官方手册、冻结源码/契约和 112 探针共同佐证的能力模板。无法匹配的目标进入
-`capability_adapter_backlog`，属于系统能力建设项，不得自动变成用户逐 Case 人工待办。
+`N01`、`N02`、`N03`、`N06`、`N14`、`N16`、`N21`、`N22`、`N28`、`N29` 不是当前服务端
+主链节点；输入采集/冻结由 `INPUT-FREEZE` 完成，Schema 兼容由 Artifact Envelope 校验，
+数据资源计划由 N28 作为 C5 内部确定性子能力编译、`N27` 校验，候选隔离落盘（N29）是影子
+候选的内部辅助工具。历史编号不复用。
 
 ### 6.3 Agent 输入输出依赖
 
-下表是后续拆建各 Agent 的最小依赖基线。实现时可以减少不需要的字段，但不得绕过指定
-上游 Artifact 直接依赖聊天记录，也不得自行读取表中未授权的数据源。
-
 | Agent | 必需输入 | 核心输出 | 直接消费者 |
 | --- | --- | --- | --- |
-| A01 | N00 无法判定的任务目标、触发类型和可用输入清单 | 路由建议、歧义说明和证据 | N00 |
 | A02 | 冻结后的需求正文和附件 | 验收标准、业务规则、角色、场景、歧义和证据引用 | A06、A08 |
 | A03 | 冻结后的技术方案、架构图、接口说明和测试工具能力 | 组件关系、依赖、技术风险、可测性缺口和阻塞项 | A06、N24、G01 |
-| A04 | 前端 ChangeSet、只读代码快照和 N14 资产快照 | 页面与组件变更、交互影响、接口消费变化 | A06、N26 |
-| A05 | 后端 ChangeSet、只读代码快照和 N14 影响关系图 | 接口、业务逻辑、数据、消息和权限影响 | A06、N26 |
-| A06 | A02 至 A05 的有效 Artifact | 需求、方案和实现映射，遗漏、冲突及未实现项 | N24、A08、G01 |
-| A07 | N24 无法判定的风险项、原始证据和组织风险规则 | 风险建议、证据和不确定性说明 | N24 |
-| A08 | 需求分析、技术分析、对齐结果、测试策略和 Provider 草稿 | Test Intent、父级 Test Case IR、需求覆盖矩阵 | A09 |
+| A05 | 冻结后的后端 ChangeSet、只读代码快照 | 接口、业务逻辑、数据、消息和权限影响 | A06、N26 |
+| A06 | A02、A03、A05 的有效 Artifact | 需求、方案和实现映射，遗漏、冲突及未实现项 | N24、A08、G01 |
+| A08 | 需求分析、技术分析、对齐结果和测试策略 | Test Intent、父级 Test Case IR、需求覆盖矩阵 | A09 |
 | A09 | Test Intent、父级 Test Case IR、原始证据和 Oracle 规则库 | Oracle 审查、测试防范覆盖缺口、阻塞问题和修正建议 | N04、A08、G02 |
 | A11 | N25 生成的父子 Test Case IR、覆盖矩阵和编译规则 | 遗漏、重复、层级错误及拆分审查结论 | N25、N26 |
-| A12 | N26 无法判定的影响关系、ChangeSet 和 N14 资产证据 | 选择建议、证据和不确定性说明 | N26 |
-| A13 | 前端 Test Case IR、前端仓库快照、测试框架约定 | Playwright 代码、Case 映射和 Automation Manifest | A18-FE |
 | A14 | 服务端集成/功能 Test Case IR、测试仓库快照、API 契约和框架约定 | API/集成/功能测试代码、Case 映射和 Automation Manifest | A18-BE |
 | A15 | 契约 Test Case IR、OpenAPI 和消费者契约 | 契约测试代码、兼容性基线和 Automation Manifest | A18-CT |
-| A16 | E2E Test Case IR、关键链路、环境能力和跨服务证据点 | E2E 代码、链路映射和 Automation Manifest | A18-E2E |
-| A17-* | 对应非功能 Test Case IR、已批准阈值、环境容量和专用工具约束 | 对应专项测试代码或执行计划、Automation Manifest | 对应的 A18 专项审查 Agent |
-| A18-* | 对应 Test Case IR、Automation Manifest、生成代码和安全规则 | 审查结论、缺陷清单、问题类型和可审查修复建议 | N05、G03、N06 |
-| A19 | 预检结果、标准化执行证据、环境、数据和历史失败指纹 | 失败聚类、归因、证据充分度和建议动作 | G04、N16、N20、N11、A20 |
-| A20 | Test Case IR、执行计划、覆盖数据、自动化/人工结果、归因与去重结果、豁免记录和 N11 决策 | 面向人的可选解释性摘要 | N12 |
-| A22 | N25 Case、需求/变更证据、BI 业务知识来源 | 业务状态、数据集、资源目标和证据 | N28 |
-| N28 | A22 数据意图、固定 API Catalog、112 环境 Profile 和版本化能力目录 | 资源依赖 DAG、setup、readiness、cleanup、变量和 namespace | N27、N07、N08 |
+| A22 | N25/N26 选中 Case、需求/变更证据、BI 业务知识来源 | 业务状态、数据集、资源目标和证据 | N27 |
+| A18-BE | A14 生成代码、Test Case IR、Automation Manifest 和安全规则 | 审查结论、缺陷清单、问题类型和修复建议 | N05、G03 |
+| A18-CT | A15 生成代码、Test Case IR、Automation Manifest 和安全规则 | 审查结论、缺陷清单、问题类型和修复建议 | N05、G03 |
 
 ### 6.4 逻辑 Agent 与部署 Runtime
 
-Agent ID 表示独立职责、独立上下文和独立审计记录，不要求每个 ID 都建设一套服务。生产
-实现使用少量 Runtime 加载版本化 Profile，减少部署、监控、模型调用和 Prompt 维护成本：
+Agent ID 表示独立职责、独立上下文和独立审计记录。生产实现复用少量 Runtime 加载版本化
+Profile，减少部署和运维成本：
 
 | Runtime | 逻辑 Profile | 约束 |
 | --- | --- | --- |
-| Analysis Runtime | A01-A07 | 每个 Profile 独立调用；A07 仅在 N24 返回未知项时运行 |
-| Test Design Runtime | A08、A12 | A08 生成测试设计；A12 仅解释 N26 无法确定的影响关系 |
-| Coverage Review Runtime | A09、A11 | 使用 `pre_split`、`post_split` 两种 Profile，分别输出 Artifact |
-| Automation Generation Runtime | A13-A17-* | 按前端、后端、契约、E2E 和非功能类型加载不同工具包 |
-| Automation Review Runtime | A18-* | 与生成 Runtime 使用不同身份、Prompt、上下文和写权限 |
-| Triage Runtime | A19 | 只处理确定性指纹聚类后仍无法归因的失败簇 |
-| Narrative Runtime | A20 | 只解释已确定事实；报告 JSON、统计和质量结论由确定性节点生成 |
+| Analysis Runtime | A02、A03、A05、A06 | 每个 Profile 独立调用，不共享聊天历史 |
+| Test Design Runtime | A08 | 只生成框架无关的 Test Intent 和 Test Case IR |
+| Coverage Review Runtime | A09、A11 | 使用 `pre_split`、`post_split` Profile，分别输出 Artifact |
+| Automation Generation Runtime | A14、A15 | 后端与契约使用不同工具包和只读边界 |
+| Test Data Planning Runtime | A22 | 只生成数据意图，不持有环境凭证 |
+| Automation Review Runtime | A18-BE、A18-CT | 与生成 Runtime 使用不同身份、上下文和写权限 |
 
-逻辑隔离不能因 Runtime 复用而取消。生成和审查必须是不同调用、不同上下文和不同服务
-身份；审查 Runtime 不得读取生成 Agent 的隐藏推理，也不得拥有业务仓库或测试仓库写权限。
-
-可测性评审并入 A03 的输出 Schema；`A09` 和 `A11` 共用审查引擎但使用不同 Schema。
-A13-A18 的领域差异优先通过 Profile、规则包和
-工具白名单表达，不复制十余套近似 Agent 工程。
-
-确定性节点也复用基础设施：N03/N04 使用同一个 Validation Engine 的通用 Artifact 与
-Test Case IR 规则集；N06/N10 使用同一个 Recovery Policy Service 的代码修复与环境重试
-策略。逻辑节点、预算和审计仍分别记录，避免复用服务后混淆业务失败与环境重试。
+逻辑隔离不能因 Runtime 复用而取消。生成和审查必须是不同调用、不同上下文和不同服务身份；
+审查 Runtime 不得读取生成 Agent 的隐藏推理，也不得拥有业务仓库或测试仓库写权限。
 
 ## 7. Agent 统一实现规范
 
@@ -757,10 +796,10 @@ Agent 输出使用相同外层协议：
   "workflow_run_id": "run-20260806-001",
   "workflow_mode": "new_requirement",
   "schema_version": "1.0",
-  "artifact_id": "frontend-analysis-001",
+  "artifact_id": "requirement-analysis-001",
   "artifact_hash": "sha256:...",
   "producer": {
-    "agent_id": "A04",
+    "agent_id": "A02",
     "agent_version": "1.0.0",
     "model_provider": "provider-id",
     "model_snapshot": "immutable-model-id",
@@ -802,8 +841,8 @@ Agent 输出使用相同外层协议：
 
 ### 8.1 Schema 兼容与迁移
 
-`N21 Schema Registry` 管理所有 Artifact Schema。每个消费者必须声明支持的 Schema
-版本范围，Multica 在调用前完成兼容性检查：
+Schema 由 Artifact Envelope 与版本化 Schema 注册表管理（不设独立的 `N21` 业务节点）。
+每个消费者必须声明支持的 Schema 版本范围，Multica 在调用前完成兼容性检查：
 
 - 向后兼容字段使用 minor 版本升级；删除字段、改变语义或类型使用 major 版本升级。
 - 迁移必须由确定性转换器完成，不允许 Agent 临时猜测字段含义。
@@ -813,11 +852,11 @@ Agent 输出使用相同外层协议：
 
 ## 9. 输入版本冻结与失效规则
 
-`N01` 必须先生成 `source_extraction_manifest.json`，记录每个输入的来源权限、附件数量、
+`INPUT-FREEZE` 必须先生成 `source_extraction_manifest.json`，记录每个输入的来源权限、附件数量、
 文本块、表格、图片、OCR、解析器版本、内容哈希、解析置信度和已知遗漏。需求正文、关键
 附件、接口定义或架构图无法读取时必须进入 `blocked_input`，不能基于残缺输入继续推理。
 
-`N02` 必须生成不可变 `source_snapshot.json`：
+`INPUT-FREEZE` 必须生成不可变 `source_snapshot.json`：
 
 ```yaml
 snapshot_id: snapshot-001
@@ -848,7 +887,7 @@ environment:
 ### 9.1 受管业务代码源清单
 
 以下仓库是当前系统登记的业务代码输入源。它们统一标记为
-`business_source/read_only`，只允许 N01/N02 获取并冻结指定 commit，Agent 只能读取冻结
+`business_source/read_only`，只允许 INPUT-FREEZE 获取并冻结指定 commit，Agent 只能读取冻结
 快照：
 
 | 领域 | 仓库 | 访问级别 |
@@ -866,7 +905,7 @@ environment:
 密级、负责人和 `access_class=business_source_read_only`。禁止由 Agent 根据文档中的地址
 临时扩大仓库访问范围。
 
-N01 使用仅具备 Git 读取能力的服务身份拉取代码，N02 记录远端 URL、目标分支、源/目标
+INPUT-FREEZE 使用仅具备 Git 读取能力的服务身份拉取代码，并记录远端 URL、目标分支、源/目标
 commit、MR ID、内容哈希和抓取时间。Agent 不读取开发人员可变的本地工作树，也不直接
 访问未冻结分支；所有分析必须引用本次 `source_snapshot_id` 中的不可变 commit。
 
@@ -876,7 +915,7 @@ commit、MR ID、内容哈希和抓取时间。Agent 不读取开发人员可变
 
 1. Git 服务凭证只授予 `read_repository`，不授予 push、创建分支、创建或更新 MR、评论、
    审批、触发流水线和修改仓库设置的权限。
-2. N01/N02 在 Agent 启动前完成抓取；冻结快照以只读文件系统挂载到 Agent 容器，Agent
+2. INPUT-FREEZE 在 Agent 启动前完成抓取；冻结快照以只读文件系统挂载到 Agent 容器，Agent
    不接收业务仓库写凭证和通用 Git 写工具。
 3. 策略引擎拒绝对业务仓库执行 `git add`、`commit`、`push`、`merge`、`rebase`、`tag`、
    `reset`、`clean`、分支创建/删除，以及 Git API/CLI 的任何写请求。
@@ -889,7 +928,7 @@ commit、MR ID、内容哈希和抓取时间。Agent 不读取开发人员可变
    运行时拦截越权调用。发现任何业务仓库写入尝试立即终止当前分支并返回
    `failed_fatal/security_policy_violation`，不得重试为其他写法。
 7. 审计日志记录代码快照哈希、挂载模式、凭证权限、工具调用和被拒绝操作。流程结束时再次
-   校验快照哈希，必须与 N02 冻结值一致。
+   校验快照哈希，必须与 INPUT-FREEZE 冻结值一致。
 
 MR 评论、代码审查意见和修改建议只能作为 Artifact 草稿输出。N12 不得使用 Agent 身份
 写入业务 Git 平台；需要发布时由仓库维护者在系统外人工处理。Bug 和报告仅允许写入单独
@@ -897,8 +936,8 @@ MR 评论、代码审查意见和修改建议只能作为 Artifact 草稿输出�
 
 ### 9.3 ChangeSet 统一契约
 
-N01 必须把 MR、单 commit、merge commit、commit range 和发布清单标准化为 ChangeSet，
-A04/A05 只能消费该契约，不能自己选择 diff 基线：
+INPUT-FREEZE 必须把 MR、单 commit、merge commit、commit range 和发布清单标准化为
+ChangeSet，A05 只能消费该契约，不能自己选择 diff 基线：
 
 ```json
 {
@@ -930,7 +969,7 @@ A04/A05 只能消费该契约，不能自己选择 diff 基线：
 | 多仓发布 | 每个仓库独立 ChangeSet，再生成只读聚合清单 |
 
 如果 base/head 不可解析、MR 已发生 force-push、commit 不属于声明仓库，或 diff 超出配置
-上限，N01 返回 `blocked_input`。ChangeSet 必须记录 rename、delete、binary、submodule、
+上限，INPUT-FREEZE 返回 `blocked_input`。ChangeSet 必须记录 rename、delete、binary、submodule、
 生成文件和超大文件状态；不得只保存截断后的文本 diff。源码快照与 diff 均使用内容寻址
 缓存，相同仓库和 commit 不重复拉取。
 
@@ -958,7 +997,8 @@ A04/A05 只能消费该契约，不能自己选择 diff 基线：
 
 ### 10.1 测试资产目录与影响关系图
 
-`N14` 不是 Agent，而是持续维护的确定性索引服务。它至少维护以下关系：
+测试资产目录与影响关系图是持续维护的版本化数据索引，作为工作流输入由
+`INPUT-FREEZE` 冻结快照，不设独立的 `N14` 主链节点。索引至少维护以下关系：
 
 ```text
 需求/验收点
@@ -968,7 +1008,7 @@ A04/A05 只能消费该契约，不能自己选择 diff 基线：
   <-> 历史 Bug、执行结果、Flaky 记录和负责人
 ```
 
-每次工作流冻结一个只读资产快照供 A04、A05 和 N26 使用。索引必须记录来源和更新时间；
+每次工作流冻结一个只读资产快照供 A05 和 N26 使用。索引必须记录来源和更新时间；
 无法建立影响关系时标记 `unknown_impact`，由确定性策略扩大测试范围。
 
 Case 生命周期至少支持：`draft`、`approved`、`active`、`quarantined`、`deprecated` 和
@@ -982,7 +1022,7 @@ MVP 不建设独立图数据库或复杂知识图谱平台。第一阶段使用�
 
 ## 11. 风险与测试策略
 
-`A07` 根据以下维度评估风险：
+`N24` 根据以下维度确定性评估风险：
 
 - 业务影响和用户规模。
 - 代码改动范围和依赖扩散。
@@ -1114,9 +1154,9 @@ automation_candidate: true
 
 ### 12.3 Automation Manifest
 
-A13-A17-* 在 Test Case IR 审核通过后生成 Automation Manifest，描述框架、目标测试仓库、
+A14/A15 在 Test Case IR 审核通过后生成 Automation Manifest，描述框架、目标测试仓库、
 代码位置、执行入口、Case 映射、依赖、权限和预期产物。Manifest 只能引用 Test Case IR，
-不得重写业务预期；代码与 Manifest 必须共同经过 A18 和 N05。
+不得重写业务预期；代码与 Manifest 必须共同经过 A18-BE/A18-CT 和 N05。
 
 ### 12.4 Execution Plan
 
@@ -1129,11 +1169,11 @@ N15 根据已审核 Case、资产目录和 Manifest 确定性生成 Execution Pl
 `fs-qa-knowledge` 作为外部 Case 草稿能力提供方，不等同于 A08。通过版本化 Adapter 调用：
 
 ```text
-N01/N02 冻结需求
+INPUT-FREEZE 冻结需求
   -> requirement-analyze
   -> testcase-generate artifact-only profile
   -> Case Provider Adapter 转为 case_draft.json
-  -> A08 结合 A03/A04/A05/A06/A07 补充并生成 Test Intent/Test Case IR
+  -> A08 结合 A02/A03/A05/A06 与 N24 策略补充并生成 Test Intent/Test Case IR
 ```
 
 生产接入要求：
@@ -1203,8 +1243,8 @@ A09 必须从冻结需求、方案、契约和 ChangeSet 证据中审查 Case �
 | --- | --- | --- |
 | Schema、必填字段、唯一 ID 或来源引用错误 | A08 | 定向修正 Test Case IR 的结构和引用 |
 | Oracle 不可执行、测试防范覆盖不足、测试数据或清理策略缺失 | A08 | 根据 A09 问题清单补充 Case、断言和数据，再重新经过 A09 |
-| 风险等级、必测层级或非功能测试策略缺失 | A07 | 重新分析测试策略，再由 A08 补充 Test Case IR |
-| 需求、技术方案、契约或代码存在上游冲突 | A06/G01 | 重新对齐并人工确认事实，再经过 A07、A08 和 A09 |
+| 风险等级、必测层级或非功能测试策略缺失 | N24 | 重新生成测试策略，再由 A08 补充 Test Case IR |
+| 需求、技术方案、契约或代码存在上游冲突 | A06/G01 | 重新对齐并人工确认事实，再经过 N24、A08 和 A09 |
 | 连续修正超过重试预算 | 人工处理 | 暂停流程并保留全部版本和问题，不允许带病进入 G02 |
 
 每条问题至少包含：`issue_code`、`case_id`、`expected_id`、`source_refs`、问题描述和
@@ -1297,15 +1337,15 @@ A09 必须从冻结需求、方案、契约和 ChangeSet 证据中审查 Case �
 - 变更模块所有者和历史缺陷密度。
 
 每条候选 Case 输出：`must_run`、`recommended`、`skip` 或 `needs_human`，并附规则 ID、
-证据和原因。只有代码调用关系缺失、跨仓影响冲突或存量资产映射不确定时才调用 A12；
-A12 只给出建议，N26 校验建议后形成最终选择。
+证据和原因。代码调用关系缺失、跨仓影响冲突或存量资产映射不确定时，N26 按确定性兜底
+规则扩大或升级范围并标记 `needs_human`，不调用建议 Agent。
 
 `N15` 再把选择结果和测试资产目录编译成确定性的执行计划。每条 Case 必须且只能选择
 一个动作：
 
 | 动作 | 含义 | 后续路由 |
 | --- | --- | --- |
-| `generate_new` | 没有自动化资产，需要新建 | A13-A17-* 对应生成 Agent |
+| `generate_new` | 没有自动化资产，需要新建 | A14/A15 对应生成 Agent（扩展 Profile 归入 C5） |
 | `update_existing` | 已有自动化受变更影响，需要修改 | 对应生成 Agent，且保留旧代码差异 |
 | `run_existing` | 已有自动化仍然有效 | 跳过生成，直接进入预检和 N08 |
 | `manual_run` | 当前不适合自动化或属于探索性测试 | N17 人工与探索测试编排 |
@@ -1354,19 +1394,20 @@ A12 只给出建议，N26 校验建议后形成最终选择。
 
 ### 16.4 非功能测试
 
-由风险策略按需启用独立专项 Agent：
+由风险策略按需在 C5 启用扩展 Profile，复用 A14/A15 生成与 A18-BE/A18-CT 审查引擎，
+不新增用户可见节点，也不设独立 `A17-*` Agent：
 
-| Agent | 范围 |
+| 扩展域 | 范围 |
 | --- | --- |
-| A17-PERF | 性能、容量和资源消耗 |
-| A17-SEC | 认证、授权、输入安全和敏感数据 |
-| A17-A11Y | 可访问性标准和辅助技术 |
-| A17-COMPAT | 浏览器、设备、版本和协议兼容性 |
-| A17-RES | 稳定性、容错、降级和恢复 |
-| A17-DATA | 迁移、异步、对账和数据一致性 |
+| performance | 性能、容量和资源消耗 |
+| security | 认证、授权、输入安全和敏感数据 |
+| accessibility | 可访问性标准和辅助技术 |
+| compatibility | 浏览器、设备、版本和协议兼容性 |
+| resilience | 稳定性、容错、降级和恢复 |
+| data_consistency | 迁移、异步、对账和数据一致性 |
 
-每个专项 Agent 使用独立工具、权限、Schema、评估集和审查 Agent。非功能阈值必须来自
-已批准标准，不能由模型自行生成。
+每个扩展 Profile 使用独立工具、权限、Schema 和评估集，并按域挂载对应审查 Profile。
+非功能阈值必须来自已批准标准，不能由模型自行生成。
 
 ### 16.5 专项代码审查
 
@@ -1382,14 +1423,15 @@ A12 只给出建议，N26 校验建议后形成最终选择。
 
 ### 16.6 自动化修复路由
 
-N05、G03 或执行结果发现自动化问题后，由 `N06` 根据标准问题码回流：
+N05、G03 或执行结果发现自动化问题后，按标准问题码直接回流到对应节点（不设独立
+`N06` 修复节点）：
 
 | 问题类型 | 回流节点 |
 | --- | --- |
-| 前端、后端、契约、E2E 或非功能代码问题 | 对应 A13-A17-* 生成 Agent |
+| 前端、后端、契约、E2E 或非功能代码问题 | 对应 A14/A15 生成 Agent（扩展 Profile 归入 C5） |
 | Case 层级、职责边界或拆分问题 | N25，随后重新经过 A11 |
 | Test Case IR、Oracle 或测试数据定义问题 | A08，随后重新经过 A09/N04 |
-| 风险策略问题 | N24；只有规则无法判定时调用 A07 |
+| 风险策略问题 | N24 |
 | 上游事实冲突 | A06/G01 |
 
 修复必须基于上一版本做定向补丁，保留代码和 Artifact 差异。超过预算时输出未解决问题并
@@ -1423,8 +1465,9 @@ locks:
 
 ### 17.1 环境与数据修复
 
-可恢复的预检失败必须先进入 `N16` 执行明确动作，例如部署指定 commit、初始化测试账号、
-准备或重置数据、设置 Feature Flag、等待资源锁。每个动作必须记录期望状态、执行前状态、
+可恢复的预检失败必须先按 `N10` 重试预算登记并执行明确动作（例如部署指定 commit、
+初始化测试账号、准备或重置数据、设置 Feature Flag、等待资源锁），不设独立 `N16` 修复节点。
+每个动作必须记录期望状态、执行前状态、
 执行结果、补偿清理和幂等键。没有状态变化时禁止原地重复预检。
 
 测试数据必须按敏感级别分类。默认使用合成数据；使用脱敏数据需要审批、用途限制、访问
@@ -1451,9 +1494,10 @@ locks:
 - 数据准备、清理和依赖健康结果。
 - 首次失败及允许重试后的全部结果。
 
-失败处理采用“规则优先、Agent 兜底”：N09 先按错误码、接口、堆栈、trace、环境指纹和
-依赖健康状态做确定性指纹聚类；可由规则明确归因的失败直接进入对应分支。`A19` 只分析
-仍然存在多种可能或需要语义判断的失败簇。一个登录服务异常导致 200 条失败时，应形成
+失败处理采用“规则优先”：N09 先按错误码、接口、堆栈、trace、环境指纹和
+依赖健康状态做确定性指纹聚类；可由规则明确归因的失败直接进入对应分支。规则无法归因
+或需要语义判断的失败簇标记 `needs_human`，由人工按证据判断，不设独立归因 Agent。
+一个登录服务异常导致 200 条失败时，应形成
 一个根因组，而不是调用 200 次 Agent 或创建 200 个 Bug。
 
 标准分类：
@@ -1468,8 +1512,8 @@ locks:
 | 待确认 | 证据不足或多个原因可能 | 不自动建正式 Bug |
 
 产品缺陷进入发布前，`N20` 必须根据错误指纹、接口、堆栈、Test Case IR、环境版本和历史 Bug
-进行跨运行去重，输出 `create_new`、`link_existing`、`reopen` 或 `needs_human`。A19 的单次
-运行聚类不能替代跨版本、跨工作流去重。
+进行跨运行去重，输出 `create_new`、`link_existing`、`reopen` 或 `needs_human`。N09 的单次
+运行聚类不能替代 N20 的跨版本、跨工作流去重。
 
 ### 18.1 Flaky Case 治理
 
@@ -1510,17 +1554,16 @@ warnings:
 | `blocked` | 存在强制失败、环境不一致或高风险未覆盖 |
 | `inconclusive` | 证据不足，无法形成可靠结论 |
 
-N12 根据 N11 决策、结构化证据和版本化模板确定性生成 canonical JSON/HTML 报告。A20 只
-生成可选的人类可读摘要，不能重新计算通过率、覆盖率或质量结论；A20 失败时仍必须能够发布
-不含叙述摘要的完整报告。Multica 对 A20 设置软依赖：成功时由 N12 合并摘要，跳过、超时或
-失败时 N12 直接使用结构化证据发布，不得因此改变质量结论或阻塞报告。
+N12 根据 N11 决策、结构化证据和版本化模板确定性生成 canonical JSON/HTML 报告，
+报告摘要同样由 N12 用模板生成，不设独立 `A20` 叙述 Agent。模型不得重新计算通过率、
+覆盖率或质量结论；N12 直接使用结构化证据发布，不得因此改变质量结论或阻塞报告。
 
 ### 19.1 质量豁免
 
 真实发布流程允许经授权的风险接受，但豁免不能修改 N11 的原始质量结论。例如原结论仍为
 `blocked`，另行记录 `release_disposition: approved_exception`。
 
-`G05/N19` 必须记录豁免范围、失败 Case、风险说明、审批人、责任人、补偿措施、有效期和
+`N19` 必须记录豁免范围、失败 Case、风险说明、审批人、责任人、补偿措施、有效期和
 关联发布版本。豁免只对指定版本有效，到期自动失效；权限、资金、数据破坏和未授权生产
 操作等红线问题不可豁免。
 
@@ -1539,7 +1582,7 @@ N12 根据 N11 决策、结构化证据和版本化模板确定性生成 canonic
 机制。审批页面必须展示原始证据、前后差异、风险影响和推荐动作，不能只提供“同意/拒绝”
 按钮。生成者不能审批自己的 Test Case IR、自动化代码或质量豁免。
 
-G01-G05 是五类逻辑决策，不建设五套独立审批产品。Multica 统一接入一个 QA Review
+G01-G03 是三类逻辑决策，不建设三套独立审批产品。Multica 统一接入一个 QA Review
 Center，按 `gate_type`、风险、角色和 Artifact Schema 渲染不同视图。一次工作流中相邻且
 属于同一审批人的 Gate 可以合并成一个待办，但每个 Gate 的结论、证据和审计记录仍独立
 保存，不能因合并界面而绕过职责分离。
@@ -1550,6 +1593,22 @@ Center，按 `gate_type`、风险、角色和 Artifact Schema 渲染不同视图
 处置、理由和负责人。Adapter 经 G01 决策校验器复核后才生成 decision/outcome Artifact 并改变
 Issue 状态。仅把 Issue 改为 `done/blocked/cancelled` 不构成决策，无合法评论时必须保持或恢复
 `in_review`。重复同步按评论事件和决策哈希幂等，不得重复恢复下游。
+
+八卡同步在 A02、A03、A06 三份已验收 Artifact 齐备后，确定性生成
+`g01-scope-review` Artifact，不要求人工再执行一次 `prepare-g01`。G01 请求收集 A02 的需求歧义、
+A03 的阻塞项和 A06 的全部 finding（包括中低风险项），每项同时保留原始 `detail`，并增加面向
+QA Owner 的 `category`、`plain_summary`、`confirm_action` 和 `requirement_ids`。A06 即使输出
+`needs_human` 也不再创建独立人工待办；Autopilot 将其标记为“已并入 G01”，由 G01 统一形成
+一次人工审批。若汇总后有审批项，G01 Artifact 状态为 `needs_human`；若没有审批项，则状态为
+`completed`、决定为 `not_required`，工作流可直接进入 N24。
+
+自动生成必须绑定三份上游 Artifact hash 和 G01 policy hash。同一输入重复同步复用已有 Artifact；
+任一上游内容或策略变化都会生成新的内容哈希并替换当前投影。Workflow Center 和阶段卡正文直接
+展开上述通俗字段、涉及需求和需要确认的动作，原始技术细节仍留在内容寻址 Artifact 中。
+
+恢复既有运行时，重新发现的 Multica 节点 Issue 只按 `node_id` 补入 `issue_id` 和
+`issue_identifier`，不得用初始化规格覆盖当前节点状态。恢复后的规格修订号必须以当前规格和已发布
+投影中的较大值为下限；新增绑定时递增修订号，发布端继续拒绝任何版本倒退。
 
 以下场景始终保留人工确认：
 
@@ -1667,8 +1726,8 @@ Multica 至少需要支持：
 
 首个纵向流程基准位于
 `qa-agents/eval/workflows/pilot-001-detail-drill-message-i18n/`，使用远端冻结的 PRD、后端
-技术方案和 `fs-bi` merge commit，评估 N00/N01/N02 与 A02-A09/N04 的输入冻结、范围识别、
-first-parent ChangeSet 分析、对齐和测试义务召回能力。
+技术方案和 `fs-bi` merge commit，评估 INPUT-FREEZE/N00 与 A02/A03/A05/A06/A08/A09/N04 的输入
+冻结、范围识别、first-parent ChangeSet 分析、对齐和测试义务召回能力。
 
 当前仓库中的 `input/` 和 `oracle/` 只用于本地开发和结构自检，目录隔离不等于生产权限
 隔离。生产评估必须把输入数据和 Oracle Registry 放在不同仓库或不同 ACL 的对象存储中：
@@ -1728,12 +1787,13 @@ first-parent ChangeSet 分析、对齐和测试义务召回能力。
 
 ### 26.1 Agent 版本发布
 
-`N22` 管理 Agent、模型、Prompt、工具和规则的组合版本。新版本必须依次经过固定评估集、
+Agent、模型、Prompt、工具和规则的组合版本由版本化工作流配置与 Artifact Envelope
+管理（不设独立的 `N22` 业务节点）。新版本必须依次经过固定评估集、
 未见前向集、历史运行重放、影子运行和低风险灰度；达到验收阈值后才能扩大流量。发布时
 冻结模型快照和推理参数，持续比较新旧版本的漏检、无依据结论、人工修改、耗时和费用。
 
 任一关键指标恶化超过阈值时自动停止灰度并回滚。供应商模型别名、线上 Prompt 或工具
-依赖变化不能绕过 N22 直接进入生产工作流。
+依赖变化不能绕过版本化发布流程直接进入生产工作流。
 
 ### 26.2 上线后反馈
 
@@ -1744,6 +1804,23 @@ first-parent ChangeSet 分析、对齐和测试义务召回能力。
 上线后信号不能直接触发生产写操作，也不能在线自动修改 Case、Prompt 或质量策略。
 
 ## 27. 分阶段实施路线
+
+### 八张 Multica 任务卡投影改造
+
+该改造优先于继续扩展用户可见节点卡，实施顺序如下：
+
+1. 增加版本化阶段卡定义和节点归属校验，保留完整内部节点定义；未映射或重复映射时启动失败。
+2. 改造初始化逻辑，每个新运行按 `workflow_run_id + stage_card_id` 幂等创建或复用 8 张 Issue，
+   并在节点注册表保存阶段卡绑定。
+3. 增加统一状态聚合器和正文渲染器，对账周期内每张阶段卡只同步一次；修正、重试和回流更新
+   原卡，不产生后缀卡或重复卡。
+4. 增加旧运行兼容读取。默认不迁移历史卡；单独迁移工具必须可预览、可重复执行并保留审计。
+5. 为新需求启用八卡 Schema，观察创建数量、状态延迟、重复 Issue 数和人工 Gate 可见性后再设为
+   全工作区默认值。
+
+实现验收至少覆盖：恰好创建 8 张卡；同运行重复初始化不增卡；活动、人工审核、阻塞和完成状态
+优先级；同卡并行节点聚合；跳过节点不阻塞完成；失败重试恢复进行中；回流只更新原卡；所有内部
+节点仍存在于工作流规范和 Artifact 审计中；卡片正文完整包含固定八个章节。
 
 ### 阶段 0：契约、平台和评估基础
 
@@ -1758,12 +1835,12 @@ first-parent ChangeSet 分析、对齐和测试义务召回能力。
 
 ### 阶段 1：测试设计质量闭环
 
-- 使用 N00 固定模板打通 N01/N02、A02/A03/A05/A06、N24、Case Provider Adapter、
-  A08/A09、N04 和 G02；A07 只处理 N24 的未知项。
+- 使用 N00 固定模板打通 INPUT-FREEZE、A02/A03/A05/A06、N24、Case Provider Adapter、
+  A08/A09、N04 和 G02。
 - 生成 Test Intent、Test Case IR 和覆盖矩阵。
 - 全量人工审核并记录修正。
 - 使用 `pilot-001` 验证范围识别、first-parent ChangeSet、实现偏差、Oracle 和测试义务召回。
-- 阶段末再接入 N25/A11 的层级拆分闭环；暂不实现 A01 歧义路由建议 Profile。
+- 阶段末再接入 N25/A11 的层级拆分闭环。
 
 当前阶段 1 已跑通至第二轮 N04，并正确升级到 QA 人工节点；人工修正 Artifact、Multica
 控制面恢复协议和 G02 Adapter 已实现。真实试点已完成 QAA-19 授权，但 QAA-20 恢复候选被
@@ -1772,11 +1849,11 @@ A09/N04/G02，再扩展新的 Agent Profile。
 
 ### 阶段 2：测试选择和代码生成
 
-- ✅ N25/N26/N15 代码与测试已就绪；A13-A18-* 自动化 Profile 已实现；A12 已实现（N26
-  未解析影响关系时触发建议，N26 校验后折叠；可扩大或升级，不可缩小、跳过或降级强制 Case）。
+- ✅ N25/N26/N15 代码与测试已就绪；自动化生成/审查已收敛为主链 A14/A15 与
+  A18-BE/A18-CT Profile，N26 无法判定的影响关系按确定性兜底规则处理。
 - ✅ N15 执行计划编译已实现，区分生成、更新、直接执行、人工执行和跳过。
-- ✅ A01 歧义路由建议 Profile 已实现，最终模板仍由 N00 确定。
-- ✅ 已用少量 Generator/Reviewer Runtime 的领域 Profile（A13/A14/A15/A16/A17-*/A18-*）
+- ✅ N00 确定性路由已实现；A01 等早期建议 Profile 已从主链退役。
+- ✅ 已用 Generator/Reviewer Runtime 的领域 Profile（A14/A15/A18-BE/A18-CT）
   在独立测试仓库生成 pytest 与 Playwright 候选。
 - 🕐 自动执行代码检查和隔离试跑待阶段 3 建设。
 - ✅ G03 人工 Gate 参考实现已就绪；真实发布流程尚未接入。
@@ -1785,19 +1862,20 @@ A09/N04/G02，再扩展新的 Agent Profile。
 
 ### 阶段 3：测试环境自主执行
 
-- ✅ A22/N28/N27 已实现 Case 语义到 112 资源计划的自主纵向切片与安全校验；CaseRunner 已实现
+- ✅ A22 解析数据意图、N28 编译资源计划（C5 内部确定性子能力）、N27 安全校验，已实现
+  Case 语义到 112 资源计划的自主纵向切片与安全校验；CaseRunner 已实现
   `setup -> readiness -> test -> finally cleanup` 和脱敏生命周期证据。
 - ✅ 官方 BI 帮助手册、8 个业务代码仓库、冻结 fs-bi 契约、112 环境和真实探针已登记为
   可追溯知识来源；产品白皮书因 WPS 登录要求明确记录为未采集。
 - ✅ 112 真实实跑已完成聚合指标创建、回查、查看明细断言、删除和独立无残留回查。
 - 🕐 CRM 对象/字段、报表、统计图、拼表、交叉表、驾驶舱、目标和首页布局仍需逐域接入
   创建/删除 Adapter 后加入白名单；不能在缺少回收接口时伪装为已支持。
-- ✅ 环境修复动作（N16）、人工/探索任务（N17）、代码覆盖率信号（N18）和 Flaky 隔离治理已实现
-  参考版；覆盖率仍依赖执行侧实际产出，缺失时记 gap。
-- ✅ 失败聚类（N09）与 A19 本地保守归因已实现参考版；语义不足时仍 `needs_human`。
+- ✅ 环境预检与重试预算（N07/N10）、人工/探索任务（N17）、代码覆盖率信号（N18）和 Flaky 隔离治理
+  已实现参考版；覆盖率仍依赖执行侧实际产出，缺失时记 gap。
+- ✅ 失败聚类（N09）与跨运行去重（N20）已实现参考版；规则无法归因时仍 `needs_human`。
 - ✅ 跨运行 Bug 去重（N20）已实现参考版。
-- ✅ 候选隔离落盘（N29）与注册非生产环境受控执行（N08 controlled_env_reference）已实现；
-  生产隔离 Runner 与正式 MR 仍待接入。
+- ✅ 候选隔离落盘（N29，影子候选内部辅助）与注册非生产环境受控执行（N08
+  controlled_env_reference）已实现；生产隔离 Runner 与正式 MR 仍待接入。
 - 自动运行低风险测试，高风险仍保留 Gate。
 
 ### 阶段 4：确定性质量门禁
@@ -1824,11 +1902,11 @@ A09/N04/G02，再扩展新的 Agent Profile。
 2. 定义 ChangeSet 及各输入类型的确定性 diff 基线规则。
 3. 定义 Test Intent、Test Case IR、Oracle、Automation Manifest 和 Execution Plan Schema。
 4. 建立受 ACL 隔离的 Oracle Registry、标注规范和 sealed holdout。
-5. 实现 N00、N01、N02，以及只读源码快照和内容寻址缓存。
-6. 建设 N14 的版本化关系表最小版本，不建设图数据库。
+5. 实现 INPUT-FREEZE 与 N00，以及只读源码快照和内容寻址缓存。
+6. 建设版本化资产目录/影响关系索引的最小版本，不建设图数据库（不设独立 N14 主链节点）。
 7. 实现 A02、合并可测性评审的 A03 和 A05 Profile，并用首个试点独立评估。
 8. 实现 A06 需求、方案和 ChangeSet 对齐。
-9. 实现 N24 确定性风险策略和 A07 未知项建议 Profile。
+9. 实现 N24 确定性风险策略。
 10. 实现 `fs-qa-knowledge` Case Provider Adapter 的影子模式。
 11. ✅ 已实现 A08 测试设计和 A09 `pre_split` 覆盖审查 Profile；真实试点含人工恢复
     A08 v1.3.0（QAA-21 入库 `multica-stage10`）。
@@ -1837,9 +1915,10 @@ A09/N04/G02，再扩展新的 Agent Profile。
 13. ✅ 已实现 QA Review Center、人工修正 Artifact、影子候选晋升和受控恢复；QAA-24
     置 `done` 后 G02 真实放行（`decision=approved`、`next_node=N25`），纵向测试设计闭环
     在 N25 恢复；试点仅测试设计，无生产发布权限。
-14. ✅ N25 Case 编译器、A11 `post_split` Profile、N26/A12/N15 已实现并完成真实 Multica
+14. ✅ N25 Case 编译器、A11 `post_split` Profile、N26/N15 已实现并完成真实 Multica
     闭环；阶段二 checkpoint 使用内容寻址 Artifact 自动更新。
-15. ✅ A01、A13-A18-*、N07/N16/N08 和 N09-N12/N17-N23 的本地 reference 链已实现；
+15. ✅ N07/N08/N10 和 N09-N12/N17-N23 的本地 reference 链已实现；早期 A01/A13/A16/
+    A17-*/A19/A20 等建议与叙述 Agent 已从主链退役。
     🕐 生产隔离执行、真实环境证据和外部发布 Adapter 仍待阶段 3-5 接入。
 
 不要同时实现所有 Agent。每完成一个 Agent，都必须：
@@ -1905,13 +1984,14 @@ A09/N04/G02，再扩展新的 Agent Profile。
 
 ## 31. 后端 Pytest 与自主测试数据构造
 
-本节合并原《后端 Pytest 自动化与全自动测试数据构造设计》，是 B01、D01、A22、N28、
-N27 和 N08 的唯一设计基线。专项文档不再单独维护。
+本节合并原《后端 Pytest 自动化与全自动测试数据构造设计》，是 A14、A22、N28、
+N27 和 N08 的唯一设计基线（B01、D01 为早期名称，分别对应 A14、N28 的职责）。专项文档
+不再单独维护。
 
 ### 31.1 职责与执行链
 
-- B01 根据批准后的 Case 生成 pytest/API/契约候选，不执行环境写入，不修改 Oracle。
-- D01 将 Case 编译为数据资源 DAG，不直接持有凭据或自由选择未登记接口。
+- A14（早期 B01）根据批准后的 Case 生成 pytest/API/契约候选，不执行环境写入，不修改 Oracle。
+- N28（早期 D01）将 Case 编译为数据资源 DAG，不直接持有凭据或自由选择未登记接口。
 - A22 解析数据意图；N28 编译 setup/readiness/retention；N27 做权限、来源、枚举、拓扑和
   图表场景闭包校验；N08 使用受控会话实际执行。
 - 查看明细 Case 的完整 DAG 固定为：`真实源字段 -> 指标或自定义维度 -> 需求同名文件夹 ->
@@ -2014,3 +2094,50 @@ N27 和 N08 的唯一设计基线。专项文档不再单独维护。
 - [ ] 运行本地全量回归、112 在线生命周期测试、配置哈希校验、凭据泄漏扫描和 completion audit。
 - [ ] 只有 PC-001 至 PC-007（PC-005 无权限除外）全部拥有真实数据、入口执行和证据时，才能把
   数据构造 Agent 标记为“可按 Case 完整生成”；在此之前状态固定为 `in_progress`。
+
+## 33. 未实现 Agent 与确定性替代清单（后续补充优化）
+
+本节单独登记设计规范中定义、但当前 8 卡真实模板
+`server-requirement/1.1-eight-stage-cards` 尚未路由或尚未实现的 Agent，作为后续
+补充优化的明确清单。判定口径：节点未出现在 `SERVER_NODE_DEFINITIONS` / 阶段卡定义
+（`qa-agents/src/qa_agents/autopilot.py`），或已部署到 Multica 但未接入本模板执行链。
+
+### 33.1 未接入 8 卡模板的 Agent
+
+| 类别 | Agent | 设计位置 | 当前状态 | 后续补充优化 |
+| --- | --- | --- | --- | --- |
+| 前端变更分析 | A04 Frontend Change Analyzer | §6.1、§5.2 | 未部署、未接入模板。当前需求无前端 ChangeSet，前端影响由 N14 资产快照 + A05 后端事实间接覆盖 | 接入 A04 输入：前端 ChangeSet、只读代码快照、N14 影响关系图；输出 `frontend_change_analysis.json`，供 A06/N26 消费 |
+| 前端自动化 | A13 Frontend Automation | §6.1、§16.1 | 参考 Profile 存在但被 `excluded_frontend_profiles` 排除，未接入 N15 `generate_new` 路由 | 接入前端 Test Case IR、前端仓库快照和框架约定，生成 Playwright 候选，交 A18-FE 审查 |
+| E2E 自动化 | A16 E2E Automation | §6.1、§16.3 | 已部署到 Multica，但 8 卡模板未路由（N15 未产生 e2e 生成动作） | 接入 E2E Test Case IR、关键链路和环境能力，生成跨服务链路测试候选 |
+| 非功能专项 | A17-PERF/SEC/A11Y/COMPAT/RES/DATA | §6.1、§16.4 | A17-PERF/SEC/COMPAT/RES/DATA 已部署，A17-A11Y 被排除；均未接入模板，N24 未强制非功能层 | N24 风险策略支持 `required_non_functional` 时路由对应专项生成；阈值必须来自已批准标准 |
+| 专项审查 | A18-FE/E2E/PERF/SEC/A11Y/COMPAT/RES/DATA | §6.1、§16.5 | A18-E2E/PERF/SEC/COMPAT/RES/DATA 已部署，A18-FE/A18-A11Y 被排除；当前模板只配置 A18-BE/A18-CT | 与对应生成 Agent 成对接入，使用不同服务身份、上下文和写权限，输出 `automation_review.json` |
+| 失败归因 | A19 Failure Triage | §6.1、§18 | 已部署，但模板未配置；N09 只能做确定性指纹聚类，语义无法归因的失败簇当前直接转 `needs_human`，没有 A19 兜底 | 接入 N09 无法归因的失败簇，做语义归因并输出 `failure_triage.json`，供 G04/N16/N20/N11 消费 |
+| 质量叙述 | A20 Quality Narrative | §6.1、§19 | 已部署，但模板未配置；N12 只发布确定性 JSON/HTML 报告，不生成人类可读叙述摘要 | 接入 N12 的可选软依赖：成功时合并摘要，失败/超时/跳过不影响质量结论和报告发布 |
+
+### 33.2 用确定性节点替代的 Agent（当前模板不触发）
+
+| Agent | 设计触发条件 | 确定性替代 | 替代边界 |
+| --- | --- | --- | --- |
+| A01 Workflow Route Advisor | N00 无法判定输入时提供建议 | N00 模板注册表确定性路由 | 当前需求输入可被规则判定，未触发；输入出现歧义时仍应接入 A01 建议并由 N00 校验 |
+| A07 Risk Strategy Advisor | N24 存在策略无法判定项 | N24 版本化风险规则 | 当前需求风险项全部可被规则判定；新增未知风险类型时接入 A07，建议只能解释不能降级 |
+| A12 Test Selection Advisor | N26 存在 unresolved 影响关系 | N26 强制/跳过/影响置信度规则 | 当前需求无 unresolved；出现未知影响关系时接入 A12，建议只能扩大或升级范围 |
+
+### 33.3 参考实现已存在但未真实运行的说明
+
+- 上述 Agent 除 A04、A13、A17-A11Y、A18-FE、A18-A11Y 外，均已由
+  `qa-agents/scripts/deploy_non_frontend_agents.py` 部署到 Multica 并登记在
+  `qa-agents/multica/workspace-manifest.json`；§33.1 的“当前状态”指 8 卡真实模板
+  `SERVER_NODE_DEFINITIONS` 未路由，不代表参考实现缺失。
+- 前端类（A04/A13/A17-A11Y/A18-FE/A18-A11Y）因当前需求无前端变更且非功能专项未强制，
+  在部署清单中显式排除（`excluded_frontend_profiles`），接入前需先补齐 Agent 规格、
+  Prompt、Schema、评估集和权限负向测试（§7 验收标准）。
+
+### 33.4 补充优化的验收口径
+
+后续每接入一个 §33.1 的 Agent，必须满足：
+
+1. 节点进入 `SERVER_NODE_DEFINITIONS` 与对应阶段卡定义，且按 §6.3 依赖表配置输入输出。
+2. 真实运行产出正式 Artifact 并通过入库门禁（Schema、证据引用、权限轨迹、哈希绑定）。
+3. 触发条件符合 §33.2 的边界：确定性节点能判定时不调用 Agent，Agent 不能自行扩大职责。
+4. 审查类 Agent 与生成类 Agent 使用不同服务身份和写权限（§3.2、§6.4）。
+5. 结果可回查到 Artifact 哈希、模型/Prompt 版本和来源快照（§24）。

@@ -6,6 +6,7 @@ import pytest
 from qa_agents.errors import ContractError
 from qa_agents.storage import ArtifactStore
 from qa_agents.workflow_center import (
+    _render_stage_card_markdown,
     build_workflow_projection,
     render_workflow_center_markdown,
     sync_multica_workflow_center,
@@ -140,6 +141,62 @@ def test_projection_prioritizes_human_action_and_renders_one_cockpit() -> None:
     assert projection["projection_hash"].startswith("sha256:")
 
 
+def test_human_action_renders_approval_items_in_cockpit_and_stage_card() -> None:
+    spec = workflow_spec()
+    approval_items = [
+        {
+            "id": "A06:FIND-004",
+            "title": "实现与测试范围待确认",
+            "category": "实现与测试范围待确认",
+            "summary": "需要人工确认：动态关联覆盖范围未冻结，需要产品确认。",
+            "confirm_action": "请确认是接受当前实现口径还是补齐实现证据。",
+            "severity": "high",
+            "requirement_ids": ["REQ-005"],
+            "source_refs": [],
+        },
+        {
+            "id": "A02:AMB-001",
+            "title": "需求待确认",
+            "category": "需求待确认",
+            "summary": "需求文档里没有写清楚：多限制命中时的提示优先级未确认。",
+            "confirm_action": "请确认或补充需求口径。",
+            "severity": "high",
+            "requirement_ids": ["REQ-001"],
+            "source_refs": [],
+        },
+    ]
+    spec["actions"][0]["approval_items"] = approval_items
+    spec["actions"][0]["item_count"] = len(approval_items)
+    for node in spec["nodes"]:
+        if node["node_id"] == "G01":
+            node["approval_items"] = approval_items
+
+    projection = build_workflow_projection(spec)
+    markdown = render_workflow_center_markdown(projection)
+    assert "#### 审批项（2）" in markdown
+    assert "**实现与测试范围待确认**（`A06:FIND-004`）" in markdown
+    assert "需要人工确认：动态关联覆盖范围未冻结，需要产品确认。" in markdown
+    assert "需要确认：请确认是接受当前实现口径还是补齐实现证据。" in markdown
+    assert "涉及需求：`REQ-005`" in markdown
+    assert "**需求待确认**（`A02:AMB-001`）" in markdown
+
+    g01_node = next(node for node in projection["nodes"] if node["node_id"] == "G01")
+    stage_markdown = _render_stage_card_markdown("C1", "范围确认", [g01_node])
+    assert "审核 `G01`" in stage_markdown
+    assert "**实现与测试范围待确认**（`A06:FIND-004`）" in stage_markdown
+    assert "需要确认：请确认是接受当前实现口径还是补齐实现证据。" in stage_markdown
+    assert "涉及需求：`REQ-005`" in stage_markdown
+
+
+def test_human_action_without_approval_items_renders_fallback_hint() -> None:
+    projection = build_workflow_projection(workflow_spec())
+    markdown = render_workflow_center_markdown(projection)
+    assert "审批项：请打开审核入口查看具体审批项。" in markdown
+    g01_node = next(node for node in projection["nodes"] if node["node_id"] == "G01")
+    stage_markdown = _render_stage_card_markdown("C1", "范围确认", [g01_node])
+    assert "审批项：请打开审核入口查看具体审批项。" in stage_markdown
+
+
 @pytest.mark.parametrize(
     ("node_states", "action_status", "expected"),
     [
@@ -214,7 +271,7 @@ def test_sync_moves_only_parent_to_center_and_classifies_bound_nodes(
 
     update, description = multica.calls[0]
     assert update[1:4] == ["issue", "update", PARENT_ID]
-    assert update[update.index("--project") + 1] == WORKFLOW_PROJECT_ID
+    assert update[update.index("--project") + 1] == INTERNAL_PROJECT_ID
     assert update[update.index("--status") + 1] == "in_review"
     assert description is not None and "15" in description
     assert result["overall_status"] == "needs_action"
@@ -311,6 +368,73 @@ def test_projection_rejects_node_bound_to_parent_issue() -> None:
 
     with pytest.raises(ContractError, match="cannot reuse a parent or Run Issue"):
         build_workflow_projection(spec)
+
+
+def test_stage_card_shared_issue_is_aggregated_and_synced_once(tmp_path: Path) -> None:
+    spec = workflow_spec()
+    spec["nodes"] = [
+        {
+            "execution_id": "A08-run",
+            "node_id": "A08",
+            "label": "测试设计",
+            "stage": 7,
+            "state": "completed",
+            "completion": "1/1",
+            "result_summary": "设计完成",
+            "artifact_id": "a08-test-design-ir",
+            "artifact_hash": "sha256:a08",
+            "stage_card_id": "C3",
+            "stage_card_title": "测试设计与审核",
+            "issue_id": "issue-a08-execution",
+            "issue_identifier": "QAA-A08",
+            "stage_issue_id": "issue-c3",
+            "stage_issue_identifier": "QAA-C3",
+        },
+        {
+            "execution_id": "G02-run",
+            "node_id": "G02",
+            "label": "人工审核",
+            "stage": 10,
+            "state": "waiting_human",
+            "completion": "0/1",
+            "result_summary": "等待 QA 审核",
+            "stage_card_id": "C3",
+            "stage_card_title": "测试设计与审核",
+            "issue_id": "issue-g02-execution",
+            "issue_identifier": "QAA-G02",
+            "stage_issue_id": "issue-c3",
+            "stage_issue_identifier": "QAA-C3",
+        },
+    ]
+    spec["actions"] = []
+    store = ArtifactStore(tmp_path / "input")
+    multica = FakeMultica()
+    result = sync_multica_workflow_center(
+        store.write_json("workflow.json", spec),
+        store.write_json("config.json", workflow_config()),
+        tmp_path / "output",
+        runner=multica,
+    )
+
+    card_updates = [
+        (command, stdin)
+        for command, stdin in multica.calls
+        if command[1:4] == ["issue", "update", "issue-c3"]
+    ]
+    assert len(card_updates) == 1
+    command, description = card_updates[0]
+    assert command[command.index("--status") + 1] == "in_review"
+    assert description is not None
+    assert all(
+        heading in description
+        for heading in (
+            "## 目标", "## 输入", "## 执行内容", "## 当前进度",
+            "## 产出", "## 异常处理", "## 人工操作", "## 完成标准",
+        )
+    )
+    assert "A08 -> G02" in description
+    assert result["stage_card_count"] == 1
+    assert result["classified_node_count"] == 2
 
 
 def test_sync_rejects_conflicting_projection_at_same_revision(tmp_path: Path) -> None:

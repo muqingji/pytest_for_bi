@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from datetime import datetime
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from .contracts import artifact_hash_from_mapping, content_hash
@@ -21,6 +22,97 @@ RETURN_DISPOSITION_TARGETS = {
     "return_to_a06": "A06",
 }
 
+# 审批条目分类与通俗表达：面向 QA Owner 的审核表直接展示中文，
+# 不要求先看懂内部术语才能判断要确认什么。
+CATEGORY_BY_SOURCE = {
+    "A02": "需求待确认",
+    "A03": "技术方案待确认",
+    "A06": "实现与测试范围待确认",
+}
+
+FINDING_TYPE_LABELS = {
+    "conflict": "实现与需求/技术方案冲突",
+    "omission": "缺少实现证据",
+    "partial_implementation": "只实现了一部分",
+    "needs_human": "需要人工确认",
+    "out_of_scope_change": "存在超出需求范围的变更",
+    "design_not_evidenced": "技术方案没有落地证据",
+    "implementation_not_evidenced": "没有实现证据",
+    "scope_drift": "范围漂移",
+    "implementation_evidence_gap": "实现证据不足",
+}
+
+# 常见内部术语的确定性通俗化（长词优先，避免部分替换）。
+_PLAIN_TERMS = (
+    ("METRIC_OBJECT_RELATION_DETAIL_UNSUPPORTED", "「对象关系明细暂不支持」错误码"),
+    ("I18NErrorCodeEnum", "国际化错误码枚举"),
+    ("MultiRelationMetricDetailUnsupported", "「多关联明细暂不支持」错误码"),
+    ("filter.fieldName", "筛选字段名称"),
+    ("filterLists", "筛选条件"),
+    ("businessObjects", "业务对象数量"),
+    ("fieldId", "字段 ID"),
+    ("WhatList", "WhatList 动态关联"),
+    ("what-list", "WhatList 动态关联"),
+    ("What", "What 动态关联"),
+    ("zh_CN", "中文"),
+    ("en_US", "英文"),
+    ("UDF", "自定义函数"),
+    ("PRD", "需求文档"),
+    ("StatDetailQueryService", "明细查询服务"),
+    ("OperateMenuElement", "操作菜单组件"),
+    ("BusinessObjectTransConverter", "业务对象转换组件"),
+    ("ObjectRelationTransConverter", "对象关系转换组件"),
+    ("StatDetailRptDwService", "明细报表服务"),
+    ("GrayManager", "灰度开关"),
+    ("AggRuleCovertService", "聚合规则转换服务"),
+)
+_PLAIN_TERM_MAP = dict(_PLAIN_TERMS)
+_PLAIN_TERM_PATTERN = re.compile(
+    "|".join(re.escape(source) for source, _target in _PLAIN_TERMS)
+)
+
+
+def plain_text(value: Any) -> str:
+    """把内部术语替换为通俗中文，方便 QA Owner 直接阅读。"""
+
+    text = str(value or "").strip()
+    return _PLAIN_TERM_PATTERN.sub(lambda match: _PLAIN_TERM_MAP[match.group(0)], text)
+
+
+def _plain_summary(source: str, item: Mapping[str, Any]) -> str:
+    if source == "A02":
+        message = plain_text(item.get("message") or item.get("summary") or "")
+        return f"需求文档里没有写清楚：{message}" if message else "需求文档里存在未明确的规则，需要补充确认。"
+    if source == "A03":
+        summary = plain_text(item.get("summary") or item.get("message") or "")
+        recommendation = plain_text(item.get("recommendation") or "")
+        text = f"技术方案里有待确认项：{summary}" if summary else "技术方案里存在待确认项。"
+        if recommendation:
+            text = f"{text} 建议：{recommendation}"
+        return text
+    finding_type = str(item.get("type") or "")
+    label = FINDING_TYPE_LABELS.get(finding_type, "实现与需求/技术方案存在差异")
+    summary = plain_text(item.get("summary") or "")
+    return f"{label}：{summary}" if summary else f"{label}，需要确认口径。"
+
+
+def _confirm_action(source: str, item: Mapping[str, Any]) -> str:
+    if source == "A02":
+        return "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。"
+    if source == "A03":
+        recommendation = plain_text(item.get("recommendation") or "")
+        return f"请确认技术方案的处理方式：{recommendation}" if recommendation else (
+            "请确认技术方案如何处理该待确认项；确认后 A03 会更新技术事实。"
+        )
+    return "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。"
+
+
+def _requirement_ids(item: Mapping[str, Any]) -> list[str]:
+    raw = item.get("requirement_ids")
+    if not isinstance(raw, list):
+        return []
+    return [str(value) for value in raw if str(value).strip()]
+
 
 def scope_gate_issues(
     requirement_analysis: Mapping[str, Any],
@@ -35,7 +127,11 @@ def scope_gate_issues(
                 "issue_code": ambiguity.get("issue_code", "requirement_ambiguity"),
                 "source": "A02",
                 "route_to": "A02",
-                "severity": "high",
+                "severity": ambiguity.get("severity", "high"),
+                "category": CATEGORY_BY_SOURCE["A02"],
+                "plain_summary": _plain_summary("A02", ambiguity),
+                "confirm_action": _confirm_action("A02", ambiguity),
+                "requirement_ids": _requirement_ids(ambiguity),
                 "detail": dict(ambiguity),
             }
         )
@@ -46,22 +142,29 @@ def scope_gate_issues(
                 "issue_code": item.get("issue_code", "testability_blocked"),
                 "source": "A03",
                 "route_to": "A03",
-                "severity": "high",
+                "severity": item.get("severity", "high"),
+                "category": CATEGORY_BY_SOURCE["A03"],
+                "plain_summary": _plain_summary("A03", item),
+                "confirm_action": _confirm_action("A03", item),
+                "requirement_ids": _requirement_ids(item),
                 "detail": dict(item),
             }
         )
     for finding in alignment.get("findings", []):
-        if finding.get("severity") in {"high", "critical"}:
-            issues.append(
-                {
-                    "issue_id": f"A06:{finding.get('id', len(issues) + 1)}",
-                    "issue_code": finding.get("type", "high_risk_alignment_conflict"),
-                    "source": "A06",
-                    "route_to": "A06",
-                    "severity": finding.get("severity", "high"),
-                    "detail": dict(finding),
-                }
-            )
+        issues.append(
+            {
+                "issue_id": f"A06:{finding.get('id', len(issues) + 1)}",
+                "issue_code": finding.get("type", "alignment_conflict"),
+                "source": "A06",
+                "route_to": "A06",
+                "severity": finding.get("severity", "high"),
+                "category": CATEGORY_BY_SOURCE["A06"],
+                "plain_summary": _plain_summary("A06", finding),
+                "confirm_action": _confirm_action("A06", finding),
+                "requirement_ids": _requirement_ids(finding),
+                "detail": dict(finding),
+            }
+        )
     return issues
 
 

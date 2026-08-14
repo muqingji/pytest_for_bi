@@ -305,11 +305,12 @@ def test_prepare_g01_request_and_validate_complete_human_approval(tmp_path: Path
     request = prepare_request(paths, tmp_path / "g01")
 
     assert request["status"] == "needs_human"
-    assert request["issue_count"] == 3
+    assert request["issue_count"] == 4
     assert [item["issue_id"] for item in request["issues"]] == [
         "A02:AMB-001",
         "A03:BI-001",
         "A06:FND-001",
+        "A06:FND-LOW",
     ]
     decision = validate_scope_review_decision(request, approved_decision(request), POLICY)
     assert decision["decision"] == "approved"
@@ -322,6 +323,20 @@ def test_g01_markdown_exposes_actionable_non_binding_suggestions(tmp_path: Path)
 
     markdown = render_scope_review_markdown(request)
 
+    for heading in (
+        "## 目标",
+        "## 背景",
+        "## 范围",
+        "## 输入材料",
+        "## 你需要审核什么",
+        "## 你需要怎么做",
+        "## 验收",
+    ):
+        assert heading in markdown
+    assert "1. 多个限制同时命中" in markdown
+    assert "6. Web/移动端" in markdown
+    assert "研发需要补证，不由审核人代替确认" in markdown
+    assert "同意：评论" in markdown
     assert "预填非绑定" in markdown
     assert "- 建议处置: `return_to_a02`" in markdown
     assert "- 建议责任人: 产品负责人" in markdown
@@ -648,6 +663,32 @@ def test_open_g01_binds_existing_issue_and_is_idempotent(tmp_path: Path) -> None
     assert len(multica.calls) == call_count
     assert multica.issue["metadata"]["qa_request_hash"] == request["request_hash"]
     assert any(call[:2] == ["issue", "update"] for call in multica.calls)
+
+
+def test_open_g01_created_issue_uses_autopilot_discovery_title(tmp_path: Path) -> None:
+    artifacts = write_gate_artifacts(tmp_path / "run")
+    output = tmp_path / "g01"
+    request = prepare_request(artifacts, output)
+    ArtifactStore(output).write_text(
+        "g01-review-request.md", render_scope_review_markdown(request)
+    )
+    gate_policy_path = ArtifactStore(tmp_path / "policies").write_json(
+        "g01-policy.json", POLICY
+    )
+    adapter_policy_path = write_adapter_policy(tmp_path / "policies")
+    multica = FakeG01Multica()
+
+    open_multica_scope_review(
+        output / "g01-review-request.json",
+        gate_policy_path,
+        adapter_policy_path,
+        output,
+        runner=multica,
+    )
+
+    create = next(call for call in multica.calls if call[:2] == ["issue", "create"])
+    title = create[create.index("--title") + 1]
+    assert title.startswith(f"[{request['workflow_run_id']}] G01 ")
 
 
 def test_g01_terminal_status_without_decision_comment_is_ignored(tmp_path: Path) -> None:

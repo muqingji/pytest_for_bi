@@ -1,0 +1,24 @@
+{
+  "autopilot": {
+    "execution_mode": "run_only",
+    "id": "47d329d0-f13a-4ed0-a174-dbe6f77df188",
+    "status": "active"
+  },
+  "autopilot_reused": false,
+  "parent_issue": {
+    "id": "9ef08868-e166-41bc-98f3-412eed53610a",
+    "identifier": "QAA-260"
+  },
+  "parent_reused": false,
+  "registry_revision": 1,
+  "result_hash": "sha256:52947c4fe628e6d4acce8c3150d729d5b8a71909cf23ec37e3de06bc7aab7640",
+  "run_issue": {
+    "id": "c3fbc764-ad3b-4d3d-aea0-60b5f9679190",
+    "identifier": "QAA-261"
+  },
+  "run_reused": false,
+  "schema_version": "autopilot-initialization-result/1.0",
+  "spec_path": "generated/multica-eight-card-run-20260814-final/initial/workflow-center-spec.json",
+  "workflow_id": "REQ-DETAIL-DRILL-I18N",
+  "workflow_run_id": "detail-drill-i18n-8card-20260814-final-01"
+}

@@ -1,12 +1,10 @@
 ---
 name: lexiang-authorized-snapshot
-description: Capture approved lexiangla.com feature and FAQ categories through the user's visible authenticated Chrome session. Use when K01 needs a complete sanitized category index and page bodies without exporting browser cookies or credentials.
+description: Query current Lexiang BI knowledge in real time by fuzzy keyword and retrieve only explicitly selected documents. Use for BI feature notes, FAQs, operating knowledge, and historical product context; never bulk-capture category bodies.
 ---
 
-# Lexiang Authorized Snapshot
+# Lexiang Real-Time Knowledge
 
-Run `scripts/capture_category.py URL --output PATH`. The script opens the approved category in visible Chrome, uses the page's authenticated same-origin context, enumerates category pages, fetches each page body, and emits a sanitized JSON snapshot.
+Verify `authorized-product-browser-session`, then run `scripts/realtime_query.js search KEYWORD`. The search reads current category indexes and returns only ranked document ID, title, summary, update time, category and source URL.
 
-Never read or copy browser profile files, cookies, local storage, authorization headers, passwords, or tokens. Reject login redirects, cross-origin results, empty categories and partial page failures. Do not silently publish partial captures.
-
-Each page must retain doc ID, title, source URL, edit metadata when available, sanitized Markdown/text and SHA-256 hash. The category snapshot must contain page counts, failure counts and a manifest hash. K01 receives candidates only; Publisher validation remains mandatory.
+Run `scripts/realtime_query.js detail DOCUMENT_ID` only after a search result is selected for the active requirement. Bind conclusions to returned URL, document ID, update time, retrieval time and content hash. Never enumerate all bodies or persist a full-category corpus.

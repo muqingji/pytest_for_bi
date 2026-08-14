@@ -16,6 +16,7 @@ SOURCE_VIEW_ID = "BI_6a7c6421280b910007abfe94"
 CATEGORY_ID = "BI_6a7c5dea280b910007abfd5d"
 DIMENSION_ID = "BI_02293bb8fb184b56b0502f25cf06e3d5"
 OUTPUT = ROOT / "generated/112-pc001-chart-placement-evidence.json"
+REQUIREMENT = "统计图查看明细限制原因提示优化"
 
 
 def _value(response):
@@ -44,29 +45,44 @@ def _copy(case_runner, name):
             continue
         candidate = str(current.get("itemID") or current.get("viewID") or "")
         if candidate and _chart(case_runner, candidate).body.get("Result", {}).get("FailureCode") == 0:
-            _value(case_runner.http_api.call("fs_bi_crm.rpt_view_display.move_rpt_view", body={
-                "targetCategoryID": CATEGORY_ID, "viewID": candidate, "isCategory": 2,
-            }))
-            return candidate
+            return candidate, name
     response = case_runner.http_api.call("fs_bi_crm.stat_create.copy_stat_view", body={
         "statViewBaseInfo": {"viewID": SOURCE_VIEW_ID, "isChange": 0},
     })
     value = _value(response)
     view_id = str(value.get("viewID") or value.get("ViewID"))
     assert view_id
-    name = f"{datetime.now(timezone.utc).strftime('%m%d%H%M%S%f')}-客户自定义维度轴图"
-    for operation, body in [
+    name = f"{name}-{datetime.now(timezone.utc).astimezone().strftime('%H%M%S')}"
+    renamed = None
+    operations = [
         ("fs_bi_crm.rpt_view_display.rename_rpt_view", {
             "viewID": view_id, "viewName": name,
             "description": "需求：统计图查看明细限制原因提示优化", "isCategory": 2,
         }),
-        ("fs_bi_crm.rpt_view_display.move_rpt_view", {
-            "targetCategoryID": CATEGORY_ID, "viewID": view_id, "isCategory": 2,
-        }),
-    ]:
+    ]
+    for operation, body in operations:
         changed = case_runner.http_api.call(operation, body=body)
         assert changed.body.get("Result", {}).get("FailureCode") in (None, 0), {
             "operation": operation, "body": body, "response": changed.body,
+        }
+        if operation == "fs_bi_crm.rpt_view_display.rename_rpt_view":
+            renamed = _value(case_runner.http_api.call(
+                "fs_bi_crm.stat_edit.get_stat_view", body={"id": view_id}
+            ))
+            assert str(renamed.get("viewName")) == name, {
+                "reason": "renamed chart name was not persisted exactly",
+                "expected": name, "actual": renamed.get("viewName"), "view_id": view_id,
+            }
+    assert renamed is not None
+    origin_category_id = str(renamed.get("categoryID") or renamed.get("categoryId") or "0")
+    if origin_category_id != CATEGORY_ID:
+        moved = case_runner.http_api.call("fs_bi_crm.rpt_view_display.move_rpt_view", body={
+            "targetCategoryID": CATEGORY_ID, "originCategoryID": origin_category_id,
+            "viewID": view_id, "isCategory": 2,
+        })
+        assert moved.body.get("Result", {}).get("FailureCode") in (None, 0), {
+            "operation": "fs_bi_crm.rpt_view_display.move_rpt_view",
+            "origin_category_id": origin_category_id, "response": moved.body,
         }
     return view_id, name
 
@@ -102,17 +118,45 @@ def _update_body(case_runner, view_id, custom_field):
         "isShowDimension": chart.get("isShowDimension", 0), "timeZone": chart.get("timeZone"),
         "ratioDateFieldId": chart.get("ratioDateFieldId"), "authType": chart.get("authType"),
     })
+    axis_field = copy.deepcopy(custom_field)
+    axis_field["fieldID"] = str(axis_field.get("fieldID") or axis_field["fieldId"])
+    if str(axis_field.get("customType")) == "enum_group":
+        axis_field["fieldType"] = "SingleSelectEnum"
+        axis_field["subFieldType"] = "SingleSelectEnum"
     axis = {
-        "chartType": chart["chartType"], "dimensionFields": [custom_field],
+        "chartType": chart["chartType"], "dimensionFields": [axis_field],
         "measureFieldList": chart["measureFields"],
         "dimensionAttrFields": chart.get("dimensionAttrFields") or [],
         "schemaId": chart["schemaId"], "topNum": chart.get("topNum", 0),
         "isShowDimension": chart.get("isShowDimension", 0),
     }
+    default_filter_option_ids = (
+        crm.get("defaultFilterOptionIDs") or crm.get("defaultFilterOptionIds")
+        or chart.get("defaultFilterOptionIDs") or chart.get("defaultFilterOptionIds")
+        or filters.get("defaultFilterOptionIDs") or filters.get("defaultFilterOptionIds")
+    )
+    if not default_filter_option_ids:
+        option_ids = []
+        stack = [filters]
+        while stack:
+            current = stack.pop()
+            if isinstance(current, dict):
+                candidate = current.get("optionID") or current.get("optionId")
+                if candidate and str(candidate) not in option_ids:
+                    option_ids.append(str(candidate))
+                stack.extend(current.values())
+            elif isinstance(current, list):
+                stack.extend(current)
+        default_filter_option_ids = option_ids
+    assert default_filter_option_ids, {
+        "reason": "live chart defaultFilterOptionIDs are required for update",
+        "filter_keys": sorted(filters),
+    }
     return {
         "axisData": axis, "filterLists": filters.get("filterLists") or [],
         "secondaryFilterLists": filters.get("secondaryFilterLists") or [],
-        "defaultFilterOptionIDs": [], "statLayoutInfo": chart["layout"],
+        "defaultFilterOptionIDs": default_filter_option_ids,
+        "statLayoutInfo": chart["layout"],
         "statMobileLayoutInfo": chart.get("mobileLayout"), "statViewBaseInfo": base,
         "drillRouteFieldLists": [], "drillDownPath": chart.get("drillDownPath", "-1"),
     }
@@ -121,7 +165,11 @@ def _update_body(case_runner, view_id, custom_field):
 def test_create_pc001_dimension_chart_in_112(environment, case_runner):
     if environment.name != "112":
         pytest.skip("112 only")
-    name = "客户自定义维度轴查看明细验证统计图"
+    name = "客户自定义维度轴图"
+    folder = json.loads((ROOT / "generated/112-requirement-folder-evidence.json").read_text())
+    assert folder["requirement_name"] == REQUIREMENT
+    assert folder["category_id"] == CATEGORY_ID
+    assert folder["live_readback_status"] == "succeeded"
     custom_field = _custom_field(case_runner)
     copied = _copy(case_runner, name)
     if isinstance(copied, tuple):

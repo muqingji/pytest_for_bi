@@ -1,0 +1,4 @@
+interface:
+  display_name: "bi-product-docs-router"
+  short_description: "Route verified BI knowledge from bi-product-docs-router"
+  default_prompt: "Use bi-product-docs-router to retrieve evidence-bound BI knowledge."

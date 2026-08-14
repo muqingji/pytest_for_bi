@@ -1,0 +1,4 @@
+interface:
+  display_name: "repo-fbi"
+  short_description: "Route verified BI knowledge from repo-fbi"
+  default_prompt: "Use repo-fbi to retrieve evidence-bound BI knowledge."

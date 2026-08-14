@@ -36,19 +36,40 @@ def _filters(case_runner, view_id):
     ).body
 
 
-def _metric_type(metric):
+def _source_metric_type(metric):
     source_type = str(metric.get("type", "")).lower()
     if source_type == "formula":
         return "calculated"
     if source_type in {"count", "sum", "max", "min", "average", "count_distinct"}:
         return "aggregate"
-    if str(metric.get("ratioType", "0")) != "0" or str(metric.get("aggrType")) in {"7", "8", "9", "10"}:
-        return "comparison"
     if metric.get("formula") or metric.get("isCalc"):
         return "calculated"
     if str(metric.get("isPredefined")) == "2":
         return "aggregate"
     return "ordinary"
+
+
+def _axis_key(metric):
+    return (
+        str(metric.get("fieldId") or metric.get("fieldID") or ""),
+        str(metric.get("aggrType") or "0"),
+        str(metric.get("ratioType") or "0"),
+    )
+
+
+def _comparison_config(metric):
+    ratio_type = str(metric.get("ratioType") or "0")
+    if ratio_type == "0":
+        return None
+    return {
+        "configured_on": "chart_measure_instance",
+        "field_id": _axis_key(metric)[0],
+        "aggr_type": _axis_key(metric)[1],
+        "ratio_type": ratio_type,
+        "field_name": metric.get("fieldName"),
+        "custom_name": metric.get("customName") or metric.get("alias"),
+        "date_field_id": metric.get("dateFieldId") or metric.get("dateFieldID"),
+    }
 
 
 def test_inventory_live_case_assets_in_112(environment, case_runner):
@@ -60,6 +81,7 @@ def test_inventory_live_case_assets_in_112(environment, case_runner):
     charts = [item for item in catalog if int(item.get("isCategory", -1)) == 2]
     result_set_assets = []
     custom_dimension_assets = []
+    comparison_chart_assets = []
     schema_fields = {}
     for item in charts:
         view_id = str(item["itemID"])
@@ -67,6 +89,21 @@ def test_inventory_live_case_assets_in_112(environment, case_runner):
         if chart_body.get("Result", {}).get("FailureCode") != 0:
             continue
         value = chart_body.get("Value") or {}
+        measures = value.get("measureFields") or []
+        comparisons = [config for metric in measures
+                       if (config := _comparison_config(metric)) is not None]
+        if comparisons:
+            comparison_chart_assets.append({
+                "resource_id": view_id,
+                "display_name": value.get("viewName") or item.get("itemName"),
+                "catalog_item": {
+                    key: item.get(key) for key in (
+                        "itemName", "categoryName", "parentID", "fullPath", "path"
+                    ) if item.get(key) is not None
+                },
+                "measure_instances": comparisons,
+                "chart_configuration_hash": canonical_hash(value),
+            })
         chart_text = json.dumps(value, ensure_ascii=False, sort_keys=True)
         if CUSTOM_DIMENSION_ID in chart_text:
             custom_dimension_assets.append({
@@ -80,7 +117,8 @@ def test_inventory_live_case_assets_in_112(environment, case_runner):
                               and node["filterConfig"].get("filterGroupType") == 1)]
         if not result_filters:
             continue
-        metrics = value.get("measureFields") or []
+        metrics = measures
+        by_axis = {_axis_key(metric): metric for metric in metrics}
         by_id = {str(metric.get("fieldId") or metric.get("fieldID")): metric for metric in metrics}
         schema_id = str(value.get("schemaId") or "")
         if schema_id and schema_id not in schema_fields:
@@ -95,13 +133,20 @@ def test_inventory_live_case_assets_in_112(environment, case_runner):
         matched = []
         for filter_item in result_filters:
             field_id = str(filter_item.get("fieldId") or filter_item.get("fieldID") or "")
-            metric = schema_fields.get(schema_id, {}).get("by_id", {}).get(
-                field_id, by_id.get(field_id, filter_item)
+            config = filter_item.get("filterConfig") or filter_item
+            axis_key = (field_id, str(config.get("aggrType") or "0"),
+                        str(config.get("ratioType") or "0"))
+            measure_instance = by_axis.get(axis_key) or by_id.get(field_id) or filter_item
+            source_metric = schema_fields.get(schema_id, {}).get("by_id", {}).get(
+                field_id, measure_instance
             )
             if field_id:
                 matched.append({"field_id": field_id,
-                                "field_name": filter_item.get("fieldName") or metric.get("fieldName"),
-                                "metric_type": _metric_type(metric)})
+                                "field_name": (filter_item.get("fieldName")
+                                               or measure_instance.get("fieldName")
+                                               or source_metric.get("fieldName")),
+                                "source_metric_type": _source_metric_type(source_metric),
+                                "comparison_config": _comparison_config(measure_instance)})
         result_set_assets.append({
             "resource_id": view_id, "display_name": value.get("viewName"),
             "schema_id": value.get("schemaId"), "matched_metrics": matched,
@@ -114,6 +159,7 @@ def test_inventory_live_case_assets_in_112(environment, case_runner):
         "catalog_entry_count": len(catalog), "chart_count": len(charts),
         "custom_dimension_id": CUSTOM_DIMENSION_ID,
         "custom_dimension_assets": custom_dimension_assets,
+        "comparison_chart_assets": comparison_chart_assets,
         "result_set_filter_assets": result_set_assets,
     }
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

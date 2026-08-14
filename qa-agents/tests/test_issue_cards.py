@@ -58,15 +58,59 @@ def test_render_multica_issue_result_is_readable_and_bound(tmp_path: Path) -> No
     _, _, bundle, artifact = inputs(tmp_path)
     markdown = render_multica_issue_result_markdown(bundle, artifact)
 
-    assert "A06 运行结果" in markdown
-    for heading in ("## 目标", "## 背景", "## 职责", "## 范围", "## 输入材料", "## Agent 产出", "## 验收", "## 需要我审核"):
+    for heading in (
+        "## 目标",
+        "## 背景",
+        "## 范围",
+        "## 输入材料",
+        "## 产出",
+        "## 验收",
+        "## 需要你做什么",
+    ):
         assert heading in markdown
+    assert "## 职责" not in markdown
+    assert "## Agent 产出" not in markdown
+    assert "## 需要我审核" not in markdown
     assert "审核范围与口径" in markdown
     assert "`findings` (1)" in markdown
     assert "四个错误码已实现" in markdown
     assert "task-a06" in markdown
     assert "sha256:artifact" in markdown
     assert "Result binding hash" in markdown
+
+
+def test_render_multica_issue_result_prints_complete_case_design(tmp_path: Path) -> None:
+    _, _, bundle, artifact = inputs(tmp_path)
+    bundle["profile_id"] = "A08"
+    bundle["output_contract"] = "test-design-ir/1.1"
+    artifact["producer"]["component_id"] = "A08"
+    artifact["payload"] = {
+        "input_bundle_hash": "sha256:bundle",
+        "blocking_gaps": ["缺少稳定的隔离测试数据"],
+        "parent_cases": [
+            {
+                "id": "PC-BE-001",
+                "title": "自定义维度限制判定",
+                "layer": "backend",
+                "preconditions": ["已准备受限统计图"],
+                "test_data": {"locales": ["zh_CN", "en"]},
+                "steps": ["调用查看明细接口"],
+                "expected": [{"description": "返回专用错误码"}],
+                "execution_policy": {"allowed_modes": ["automated"]},
+            }
+        ],
+    }
+
+    markdown = render_multica_issue_result_markdown(bundle, artifact)
+
+    assert "### PC-BE-001 自定义维度限制判定" in markdown
+    assert "- 类型：backend" in markdown
+    assert "- 执行步骤：调用查看明细接口" in markdown
+    assert "- 预期结果：返回专用错误码" in markdown
+    assert "- 缺少稳定的隔离测试数据" in markdown
+    assert "sha256:" not in markdown
+    assert "source_ref" not in markdown
+    assert "coverage_matrix" not in markdown
 
 
 def test_sync_multica_issue_card_uses_stdin_and_marks_bound_issue_done(

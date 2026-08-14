@@ -1,6 +1,6 @@
 {
   "schema_version": "skill-registry/1.0",
-  "registry_version": "1.7.0",
+  "registry_version": "1.10.0",
   "skills_root": "skills",
   "forbidden_skills": ["frontend-playwright", "developer-unit-test"],
   "skills": [
@@ -17,6 +17,7 @@
     {"id":"bi-chart-builder","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","resource_types":["stat_chart"],"tools":[]},
     {"id":"bi-report-builder","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","resource_types":["report"],"tools":[]},
     {"id":"fxiaoke-112-auth-session","version":"1.0.0","agents":["N07","A15"],"side_effect":"validation_only","tools":[]},
+    {"id":"fxiaoke-personal-language-h5","version":"1.0.0","agents":["A15","A16"],"side_effect":"validation_only","tools":["case_runner","visible_browser_read"]},
     {"id":"data-intent-parser","version":"1.0.0","agents":["D01","A22"],"side_effect":"planning_only","tools":[]},
     {"id":"capability-catalog-resolver","version":"1.0.0","agents":["D01","A22"],"side_effect":"planning_only","tools":[]},
     {"id":"resource-dag-planner","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","tools":[]},
@@ -41,6 +42,17 @@
     {"id":"kdocs-authorized-snapshot","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["kdocs_cli","visible_browser_read"]},
     {"id":"lexiang-authorized-snapshot","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["visible_browser_read","same_origin_read"]},
     {"id":"fxiaoke-help-snapshot","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["approved_http_read"]},
-    {"id":"bug-finder-test-knowledge","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["query_bug_finder_knowledge"]}
+    {"id":"bug-finder-test-knowledge","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["query_bug_finder_knowledge"]},
+    {"id":"authorized-product-browser-session","version":"1.0.0","agents":["K01"],"side_effect":"validation_only","tools":["visible_browser_read"]},
+    {"id":"bi-knowledge-router","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":[]},
+    {"id":"bi-product-docs-router","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_approved_web_snapshot"]},
+    {"id":"repo-fs-bi","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
+    {"id":"repo-fs-bi-crm-report","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
+    {"id":"repo-fs-bi-dev-platform","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
+    {"id":"repo-fs-bi-udf-report","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
+    {"id":"repo-fs-bi-warehouse","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
+    {"id":"repo-fbi","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
+    {"id":"repo-bi-sdk","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
+    {"id":"repo-bi-xkcharts","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]}
   ]
 }

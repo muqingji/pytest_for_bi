@@ -6,13 +6,14 @@
       "id": "bi-product-whitepaper-kdocs",
       "kind": "official_product_whitepaper",
       "location": "https://365.kdocs.cn/l/cfO2un8c7Mz6",
-      "access_status": "authentication_required",
+      "access_status": "available_via_authorized_session",
       "observed_http_status": 200,
       "observed_effective_location": "https://365.kdocs.cn/passport/singlesign",
-      "collection_mode": "authorized_session_snapshot",
-      "trust_level": "approved_source_pending_snapshot",
+      "collection_mode": "realtime_query",
+      "trust_level": "approved_live_source",
       "collector_skill": "kdocs-authorized-snapshot/1.0.0",
-      "collector_status": "blocked_by_document_api_permission_403001_and_gui_unavailable"
+      "collector_status": "authorized_persistent_session_realtime_query_ready",
+      "session_skill": "authorized-product-browser-session/1.0.0"
     },
     {
       "id": "fxiaoke-product-help",
@@ -29,25 +30,27 @@
       "id": "lexiang-bi-feature-wiki",
       "kind": "internal_feature_wiki_category",
       "location": "https://lexiangla.com/docs?category_id=fcd477a0a8e811ecab26d2d68aa9b120&company_from=050524eee61811e783175254005b9a60",
-      "access_status": "authentication_required",
+      "access_status": "available_via_authorized_session",
       "observed_http_status": 200,
       "observed_effective_location": "https://www.fxiaoke.com/proj/page/loginv2",
-      "collection_mode": "authorized_session_category_crawl",
-      "trust_level": "historical_internal_source_pending_snapshot",
+      "collection_mode": "realtime_fuzzy_search_then_selected_detail",
+      "trust_level": "historical_internal_live_source",
       "collector_skill": "lexiang-authorized-snapshot/1.0.0",
-      "collector_status": "collector_ready_gui_session_unavailable"
+      "collector_status": "authorized_persistent_session_realtime_query_ready",
+      "session_skill": "authorized-product-browser-session/1.0.0"
     },
     {
       "id": "lexiang-bi-faq",
       "kind": "internal_bi_faq_category",
       "location": "https://lexiangla.com/docs?category_id=a107b4927f3911ecb3bbe2f4de7a462e&company_from=050524eee61811e783175254005b9a60",
-      "access_status": "authentication_required",
+      "access_status": "available_via_authorized_session",
       "observed_http_status": 200,
       "observed_effective_location": "https://www.fxiaoke.com/proj/page/loginv2",
-      "collection_mode": "authorized_session_category_crawl",
-      "trust_level": "historical_support_source_pending_snapshot",
+      "collection_mode": "realtime_fuzzy_search_then_selected_detail",
+      "trust_level": "historical_support_live_source",
       "collector_skill": "lexiang-authorized-snapshot/1.0.0",
-      "collector_status": "collector_ready_gui_session_unavailable"
+      "collector_status": "authorized_persistent_session_realtime_query_ready",
+      "session_skill": "authorized-product-browser-session/1.0.0"
     },
     {
       "id": "bi-business-source-registry",

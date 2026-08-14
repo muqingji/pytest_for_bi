@@ -25,11 +25,7 @@ def test_four_product_sources_have_explicit_collector_routes() -> None:
 
 
 def test_collectors_reject_unapproved_hosts(tmp_path: Path) -> None:
-    cases = [
-        ("kdocs-authorized-snapshot/scripts/capture.py", "https://example.com/doc"),
-        ("lexiang-authorized-snapshot/scripts/capture_category.py", "https://example.com/docs"),
-        ("fxiaoke-help-snapshot/scripts/capture_help.py", "https://example.com/help"),
-    ]
+    cases = [("fxiaoke-help-snapshot/scripts/capture_help.py", "https://example.com/help")]
     for relative, url in cases:
         result = subprocess.run(
             ["python3", str(ROOT / "skills" / relative), url, "--output", str(tmp_path / "out.json")],
@@ -53,6 +49,36 @@ def test_registry_authorizes_snapshot_skills_only_for_k01() -> None:
     assert {item["id"] for item in entries} == expected
     assert all(item["agents"] == ["K01"] for item in entries)
     assert all(item["side_effect"] == "artifact_only" for item in entries)
+
+
+def test_authorized_collectors_support_explicit_loopback_cdp() -> None:
+    script = (ROOT / "skills/lexiang-authorized-snapshot/scripts/realtime_query.js").read_text()
+    assert "connectOverCDP" in script
+    assert "credentials:\"same-origin\"" in script
+    assert "document.cookie" not in script
+    assert "localStorage" not in script
+
+
+def test_realtime_query_is_index_first_and_detail_is_explicit() -> None:
+    script = (ROOT / "skills/lexiang-authorized-snapshot/scripts/realtime_query.js").read_text()
+    assert 'command==="search"' in script
+    assert 'command==="detail"' in script
+    assert "slice(0,20)" in script
+    assert 'querySelector(".thumbnail_workspace")' in script
+    assert 'querySelectorAll(".thumbnail_slide")' in script
+    assert "full-category" not in script
+    assert not (ROOT / "skills/lexiang-authorized-snapshot/scripts/capture_category.py").exists()
+    assert not (ROOT / "skills/kdocs-authorized-snapshot/scripts/capture.py").exists()
+
+
+def test_product_sources_use_realtime_query_and_persistent_session() -> None:
+    value = json.loads((ROOT / "knowledge/product-test-knowledge-sources.json").read_text())
+    selected = [item for item in value["sources"] if item["id"] in {
+        "bi-product-whitepaper-kdocs", "lexiang-bi-feature-wiki", "lexiang-bi-faq"
+    }]
+    assert all("realtime" in item["collection_mode"] for item in selected)
+    assert all(item["session_skill"] == "authorized-product-browser-session/1.0.0" for item in selected)
+    assert all("snapshot" not in item for item in selected)
 
 
 def test_bug_finder_adapter_is_k01_only_and_historical_context() -> None:

@@ -77,22 +77,28 @@
       "id": "fbi-source",
       "kind": "business_source_read_only",
       "location": "git@git.firstshare.cn:fe/fbi.git",
+      "local_checkout": ".cache/frontend-sources/fbi",
+      "verified_commit": "b436e4eeaa8dd01ebab92201c2080317176f1948",
       "access_status": "available",
-      "scope": ["bi_frontend"]
+      "scope": ["bi_web_frontend", "resource_navigation", "route_parameter_generation"]
     },
     {
       "id": "bi-sdk-source",
       "kind": "business_source_read_only",
       "location": "git@git.firstshare.cn:fe-bi/bi-sdk.git",
+      "local_checkout": "/Users/liushanshan/code/web/bi-sdk",
+      "verified_commit": "de869775758af3be5987f6d9958fade3bdfa2094",
       "access_status": "available",
-      "scope": ["bi_sdk_frontend"]
+      "scope": ["bi_sdk_frontend", "app_h5_routes", "mobile_chart_detail", "mobile_joined_table_detail"]
     },
     {
       "id": "bi-xkcharts-source",
       "kind": "business_source_read_only",
       "location": "git@git.firstshare.cn:fe/bi-xkcharts.git",
+      "local_checkout": ".cache/frontend-sources/bi-xkcharts",
+      "verified_commit": "ddc342e4d5ea482ded8244663aabb8f2038c6634",
       "access_status": "available",
-      "scope": ["chart_frontend"]
+      "scope": ["chart_frontend", "chart_interaction", "drill_and_detail_behavior"]
     },
     {
       "id": "fs-bi-warehouse-source",

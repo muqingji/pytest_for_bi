@@ -1,0 +1,4 @@
+interface:
+  display_name: "Authorized Product Browser Session"
+  short_description: "Reuse a persistent local WPS and Lexiang login session"
+  default_prompt: "Start or verify the isolated authorized browser session for real-time product knowledge queries."

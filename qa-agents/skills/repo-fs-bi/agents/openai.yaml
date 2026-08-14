@@ -1,0 +1,4 @@
+interface:
+  display_name: "repo-fs-bi"
+  short_description: "Route verified BI knowledge from repo-fs-bi"
+  default_prompt: "Use repo-fs-bi to retrieve evidence-bound BI knowledge."

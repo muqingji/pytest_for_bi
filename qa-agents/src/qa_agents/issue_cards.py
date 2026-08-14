@@ -46,6 +46,78 @@ def _item_text(item: Mapping[str, Any]) -> str:
     return str(item_id or "Structured item")
 
 
+def _compact_value(value: Any) -> str:
+    if isinstance(value, Mapping):
+        return "; ".join(f"{key}={_compact_value(item)}" for key, item in value.items())
+    if isinstance(value, list):
+        return "；".join(_compact_value(item) for item in value)
+    return str(value).strip().replace("\n", " ")
+
+
+def _render_structured_item(item: Mapping[str, Any]) -> list[str]:
+    """Render useful Agent output fields instead of hiding them in an attachment."""
+
+    item_id = item.get("id") or item.get("requirement_id") or item.get("parent_case_id")
+    title = item.get("title") or item.get("summary") or item.get("objective") or _item_text(item)
+    heading = " ".join(part for part in (str(item_id or "").strip(), str(title).strip()) if part)
+    lines = [f"#### {heading or '结构化结果'}", ""]
+    labels = (
+        ("layer", "层级"),
+        ("risk", "风险"),
+        ("priority", "优先级"),
+        ("status", "状态"),
+        ("objective", "目标"),
+        ("description", "说明"),
+        ("preconditions", "前置条件"),
+        ("test_data", "测试数据"),
+        ("steps", "步骤"),
+        ("expected", "预期结果"),
+        ("cleanup", "清理"),
+        ("execution_policy", "执行方式"),
+        ("case_ids", "覆盖 Case"),
+        ("source_refs", "来源"),
+    )
+    rendered = False
+    for field, label in labels:
+        value = item.get(field)
+        if value in (None, "", [], {}):
+            continue
+        lines.append(f"- {label}：{_compact_value(value)}")
+        rendered = True
+    if not rendered:
+        lines.append(f"- 结果：{_item_text(item)}")
+    lines.append("")
+    return lines
+
+
+def _render_a08_cases(payload: Mapping[str, Any]) -> list[str]:
+    cases = payload.get("parent_cases", [])
+    lines = ["## 测试 Case", ""]
+    for case in cases:
+        if not isinstance(case, Mapping):
+            continue
+        lines.extend([f"### {case.get('id', '')} {case.get('title', '')}".strip(), ""])
+        layer = case.get("layer")
+        if layer:
+            lines.append(f"- 类型：{layer}")
+        datasets = case.get("test_data", {}).get("datasets", [])
+        lines.append(f"- 测试场景：{_compact_value(datasets)}")
+        lines.append(f"- 执行步骤：{_compact_value(case.get('steps', []))}")
+        expected = [
+            item.get("description", "")
+            for item in case.get("expected", [])
+            if isinstance(item, Mapping) and item.get("description")
+        ]
+        lines.append(f"- 预期结果：{_compact_value(expected)}")
+        lines.append("")
+    gaps = payload.get("blocking_gaps", [])
+    if gaps:
+        lines.extend(["## 暂不可直接执行的项", ""])
+        lines.extend(f"- {item}" for item in gaps)
+        lines.append("")
+    return lines
+
+
 def render_multica_issue_result_markdown(
     bundle: Mapping[str, Any], artifact: Mapping[str, Any]
 ) -> str:
@@ -82,9 +154,10 @@ def render_multica_issue_result_markdown(
         input_lines = [f"- 输入 Bundle: `{bundle.get('bundle_hash')}`"]
     reviews = review_items(artifact, card)
 
+    if bundle.get("profile_id") == "A08":
+        return "\n".join(_render_a08_cases(payload))
+
     lines = [
-        f"# {bundle.get('profile_id')} 运行结果",
-        "",
         "## 目标",
         "",
         str(card["goal"]),
@@ -93,43 +166,32 @@ def render_multica_issue_result_markdown(
         "",
         str(card["background"]),
         "",
-        "## 职责",
-        "",
-        *[f"- {item}" for item in card["responsibilities"]],
-        "",
         "## 范围",
         "",
-        "改这些：",
+        "包含：",
         *[f"- {item}" for item in card["in_scope"]],
         "",
-        "不改这些：",
+        "不包含：",
         *[f"- {item}" for item in card["out_of_scope"]],
         "",
         "## 输入材料",
         "",
         *input_lines,
         "",
-        "## Agent 产出",
+        "## 产出",
         "",
         *[f"- {item}" for item in card["deliverables"]],
-        f"- Workflow: `{artifact.get('workflow_run_id')}`",
-        f"- 输出契约: `{bundle.get('output_contract')}`",
-        f"- 最终状态: `{artifact.get('status')}`",
-        f"- 接受 Task: `{task_id}`",
-        f"- Artifact: `{artifact.get('artifact_hash')}`",
-        "",
-        "该结果已通过工具轨迹、权限、Schema、输入哈希和 Profile 语义 Gate。",
         "",
         "## 验收",
         "",
         *[f"- {item}" for item in card["acceptance"]],
         "- 现有业务仓库只读边界和既有通过现象不能被破坏。",
         "",
-        "## 需要我审核",
+        "## 需要你做什么",
         "",
         *([f"- {item}" for item in reviews] if reviews else ["- 无需人工审核；当前结果可按既定 Gate 自动流转。"]),
         "",
-        "## 结构化输出摘要",
+        "## 产出摘要",
         "",
     ]
     collections = 0
@@ -141,9 +203,9 @@ def render_multica_issue_result_markdown(
         lines.append("")
         for item in value[:20]:
             if isinstance(item, Mapping):
-                item_id = item.get("id") or item.get("requirement_id") or item.get("parent_case_id")
-                prefix = f"`{item_id}`: " if item_id else ""
-                lines.append(f"- {prefix}{_item_text(item)}")
+                lines.extend(_render_structured_item(item))
+            else:
+                lines.append(f"- {_compact_value(item)}")
         if len(value) > 20:
             lines.append(f"- 其余 {len(value) - 20} 项保留在内容寻址 Artifact 中。")
         lines.append("")
@@ -152,9 +214,14 @@ def render_multica_issue_result_markdown(
         lines.append("")
     lines.extend(
         [
-            "## 审计绑定",
+            "## 追溯信息",
             "",
             f"- Issue: `{issue_id}`",
+            f"- Workflow: `{artifact.get('workflow_run_id')}`",
+            f"- 输出契约: `{bundle.get('output_contract')}`",
+            f"- 最终状态: `{artifact.get('status')}`",
+            f"- 接受 Task: `{task_id}`",
+            f"- Artifact: `{artifact.get('artifact_hash')}`",
             f"- Input bundle: `{bundle.get('bundle_hash')}`",
             f"- Result binding hash: `{content_hash({'artifact_hash': artifact.get('artifact_hash'), 'issue_id': issue_id})}`",
         ]

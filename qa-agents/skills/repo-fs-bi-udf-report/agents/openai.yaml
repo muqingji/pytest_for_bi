@@ -1,0 +1,4 @@
+interface:
+  display_name: "repo-fs-bi-udf-report"
+  short_description: "Route verified BI knowledge from repo-fs-bi-udf-report"
+  default_prompt: "Use repo-fs-bi-udf-report to retrieve evidence-bound BI knowledge."

@@ -1,0 +1,26 @@
+{
+  "schema_version": "g01-multica-adapter-policy/1.0",
+  "gate_id": "G01",
+  "gate_policy_hash": "sha256:416a8050c9c5a0733cd003dfdcc0c0661752f5d1a5dd0318ae2afd1b1e2ca191",
+  "allowed_actor_ids": [
+    "muqj11262"
+  ],
+  "allowed_roles": [
+    "qa_owner"
+  ],
+  "allowed_multica_member_ids": [
+    "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54"
+  ],
+  "require_human_comment": true,
+  "multica": {
+    "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
+    "project_id": "cc8e17e3-80c8-4efd-8569-32c02a0363b0",
+    "assignee_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "initial_status": "in_review",
+    "decision_statuses": {
+      "approved": "done",
+      "request_changes": "blocked",
+      "rejected": "cancelled"
+    }
+  }
+}

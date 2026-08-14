@@ -3,9 +3,62 @@ from pathlib import Path
 
 import pytest
 
-from qa_agents.autopilot import initialize_autopilot, reconcile_autopilot
-from qa_agents.contracts import ArtifactEnvelope, ArtifactStatus, Producer
+from qa_agents.autopilot import (
+    SERVER_NODE_DEFINITIONS,
+    SERVER_STAGE_CARD_DEFINITIONS,
+    _advance_frontier,
+    _artifact_state,
+    initialize_autopilot,
+    reconcile_autopilot,
+)
+from qa_agents.contracts import ArtifactEnvelope, ArtifactStatus, Producer, content_hash
 from qa_agents.errors import ContractError
+
+
+def test_needs_human_with_only_agent_routes_is_automatic_return() -> None:
+    artifact = {
+        "status": "needs_human",
+        "payload": {"issues": [{"route_to": "A08"}, {"route_to": "A08"}]},
+        "blocking_questions": [],
+    }
+    assert _artifact_state(artifact) == "blocked"
+
+
+def test_needs_human_with_human_route_waits_for_human() -> None:
+    artifact = {
+        "status": "needs_human",
+        "payload": {"issues": [{"route_to": "human"}]},
+        "blocking_questions": [],
+    }
+    assert _artifact_state(artifact) == "waiting_human"
+
+
+def test_frontier_advances_past_skipped_g03_to_n07() -> None:
+    nodes = [
+        {"node_id": "G03", "stage": 18, "state": "skipped"},
+        {"node_id": "N07", "stage": 19, "state": "not_started"},
+        {"node_id": "N08", "stage": 20, "state": "not_started"},
+    ]
+
+    _advance_frontier(nodes)
+
+    assert nodes[1]["state"] == "queued"
+    assert nodes[2]["state"] == "not_started"
+
+
+def test_frontier_queues_all_parallel_nodes_and_stops_on_blocker() -> None:
+    nodes = [
+        {"node_id": "A02", "stage": 3, "state": "not_started"},
+        {"node_id": "A03", "stage": 3, "state": "not_started"},
+        {"node_id": "A06", "stage": 4, "state": "not_started"},
+    ]
+    _advance_frontier(nodes)
+    assert [item["state"] for item in nodes] == ["queued", "queued", "not_started"]
+
+    nodes[0]["state"] = "completed"
+    nodes[1]["state"] = "blocked"
+    _advance_frontier(nodes)
+    assert nodes[2]["state"] == "not_started"
 
 
 def _write(path: Path, value: dict) -> Path:
@@ -60,6 +113,8 @@ class FakeMultica:
                 "execution_mode": "run_only",
                 "status": "active",
             }
+        if command[1:3] == ["issue", "metadata"]:
+            return {"id": command[4]}
         project_id = command[command.index("--project") + 1]
         return {
             "id": f"issue-{self.number}",
@@ -106,6 +161,66 @@ def test_autopilot_reuses_requirement_parent_and_run_idempotently(tmp_path: Path
     assert registry["workflows"]["REQ-1"]["runs"][0]["status"] == "superseded"
 
 
+def test_precreated_stage_issues_are_reused_for_same_run(tmp_path: Path) -> None:
+    request = _request(tmp_path / "request.json")
+    config = json.loads(_config(tmp_path / "config.json").read_text())
+    config["precreate_nodes"] = True
+    config_path = _write(tmp_path / "config.json", config)
+    multica = FakeMultica()
+
+    initialize_autopilot(
+        request, config_path, tmp_path / "registry", tmp_path / "first", runner=multica
+    )
+    call_count = len(multica.calls)
+    initialize_autopilot(
+        request, config_path, tmp_path / "registry", tmp_path / "second", runner=multica
+    )
+
+    assert len(multica.calls) == call_count
+    first = json.loads((tmp_path / "first/workflow-center-spec.json").read_text())
+    second = json.loads((tmp_path / "second/workflow-center-spec.json").read_text())
+    assert all("issue_id" not in item for item in first["nodes"])
+    assert all("issue_id" not in item for item in second["nodes"])
+    card_calls = {
+        command[command.index("--title") + 1].split()[1]: command
+        for command in multica.calls
+        if command[1:3] == ["issue", "create"]
+        and command[command.index("--title") + 1].startswith("[REQ-1-r001]")
+        and "服务端 QA Run" not in command[command.index("--title") + 1]
+        and command[command.index("--title") + 1].split()[1].startswith("C")
+    }
+    assert set(card_calls) == {item[0] for item in SERVER_STAGE_CARD_DEFINITIONS}
+    assert len(card_calls) == 8
+    assert all("--assignee-id" not in command for command in card_calls.values())
+    assert len({item["stage_issue_id"] for item in first["nodes"]}) == 8
+    assert len(first["nodes"]) == len(SERVER_NODE_DEFINITIONS)
+    assert all(item.get("stage_card_id") for item in first["nodes"])
+
+
+def test_reconcile_refreshes_replaced_node_and_stage_bindings(tmp_path: Path) -> None:
+    request = _request(tmp_path / "request.json")
+    config = json.loads(_config(tmp_path / "config.json").read_text())
+    config["precreate_nodes"] = True
+    config_path = _write(tmp_path / "config.json", config)
+    initialize_autopilot(request, config_path, tmp_path / "registry", tmp_path / "initial", runner=FakeMultica())
+
+    registry_path = tmp_path / "registry/autopilot-registry.json"
+    registry = json.loads(registry_path.read_text())
+    run = registry["workflows"]["REQ-1"]["runs"][0]
+    run["node_issues"]["A03"] = {"id": "replacement-node", "identifier": "QAA-999"}
+    run["stage_issues"]["C1"] = {"id": "replacement-stage", "identifier": "QAA-998"}
+    registry["registry_hash"] = content_hash({k: v for k, v in registry.items() if k != "registry_hash"})
+    registry_path.write_text(json.dumps(registry), encoding="utf-8")
+
+    result = reconcile_autopilot(
+        tmp_path / "initial/workflow-center-spec.json", [], tmp_path / "reconciled"
+    )
+    spec = json.loads(Path(result["spec_path"]).read_text())
+    node = next(item for item in spec["nodes"] if item["node_id"] == "A03")
+    assert node["issue_identifier"] == "QAA-999"
+    assert node["stage_issue_identifier"] == "QAA-998"
+    card = next(item for item in spec["stage_cards"] if item["stage_card_id"] == "C1")
+    assert card["issue_identifier"] == "QAA-998"
 def test_autopilot_creates_parent_in_center_and_run_in_internal_project(tmp_path: Path) -> None:
     multica = FakeMultica()
     initialize_autopilot(
@@ -117,7 +232,7 @@ def test_autopilot_creates_parent_in_center_and_run_in_internal_project(tmp_path
     )
 
     parent, autopilot, run = multica.calls
-    assert parent[parent.index("--project") + 1] == "project-workflow"
+    assert parent[parent.index("--project") + 1] == "project-internal"
     assert "--parent" not in parent
     assert run[run.index("--project") + 1] == "project-internal"
     assert run[run.index("--parent") + 1] == "issue-1"
@@ -202,6 +317,11 @@ def test_reconcile_derives_nodes_and_human_actions_from_artifacts(tmp_path: Path
     assert nodes["A02"]["state"] == "completed"
     assert nodes["G01"]["state"] == "waiting_human"
     assert spec["actions"][0]["item_count"] == 2
+    approval_items = spec["actions"][0]["approval_items"]
+    assert [item["id"] for item in approval_items] == ["I1", "I2"]
+    assert spec["actions"][0]["item_count"] == len(approval_items)
+    assert all(item["summary"] for item in approval_items)
+    assert nodes["G01"]["approval_items"] == approval_items
 
     unchanged = reconcile_autopilot(
         tmp_path / "reconciled/workflow-center-spec.json",
@@ -210,6 +330,87 @@ def test_reconcile_derives_nodes_and_human_actions_from_artifacts(tmp_path: Path
     )
     assert unchanged["changed"] is False
     assert unchanged["revision"] == 2
+
+
+def test_a06_needs_human_merges_into_g01_without_second_action(tmp_path: Path) -> None:
+    multica = FakeMultica()
+    initialize_autopilot(
+        _request(tmp_path / "request.json"),
+        _config(tmp_path / "config.json"),
+        tmp_path / "registry",
+        tmp_path / "initial",
+        runner=multica,
+    )
+    artifacts = tmp_path / "artifacts"
+    for component, artifact_id, status, payload in (
+        (
+            "N01",
+            "n01-source-extraction-manifest",
+            ArtifactStatus.COMPLETED,
+            {"summary": "输入已冻结"},
+        ),
+        (
+            "A02",
+            "a02-requirement-analysis",
+            ArtifactStatus.COMPLETED_WITH_GAPS,
+            {"summary": "识别 2 个开放问题"},
+        ),
+        (
+            "A06",
+            "a06-alignment-result",
+            ArtifactStatus.NEEDS_HUMAN,
+            {"status": "needs_human", "findings": [{"id": "FIND-001", "severity": "high", "type": "conflict", "summary": "实现与需求冲突"}]},
+        ),
+        (
+            "G01",
+            "g01-scope-review",
+            ArtifactStatus.NEEDS_HUMAN,
+            {
+                "status": "needs_human",
+                "issues": [
+                    {
+                        "issue_id": "A02:AMB-001",
+                        "category": "需求待确认",
+                        "plain_summary": "需求文档里没有写清楚：提示优先级未规定",
+                        "confirm_action": "请确认或补充需求口径。",
+                        "severity": "high",
+                        "route_to": "A02",
+                        "requirement_ids": ["REQ-001"],
+                        "detail": {"id": "AMB-001"},
+                    }
+                ],
+            },
+        ),
+    ):
+        envelope = ArtifactEnvelope(
+            workflow_run_id="REQ-1-r001",
+            workflow_mode="new_requirement",
+            artifact_id=artifact_id,
+            source_snapshot_id="snapshot-1",
+            producer=Producer(component),
+            payload=payload,
+            status=status,
+        )
+        _write(artifacts / f"{artifact_id}.json", envelope.to_dict())
+
+    result = reconcile_autopilot(
+        tmp_path / "initial/workflow-center-spec.json",
+        [artifacts],
+        tmp_path / "reconciled",
+    )
+
+    spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
+    nodes = {item["node_id"]: item for item in spec["nodes"]}
+    # A06 不再单独等待人工，问题并入 G01 一次审批
+    assert nodes["A06"]["state"] == "completed"
+    assert nodes["G01"]["state"] == "waiting_human"
+    assert result["open_action_count"] == 1
+    assert spec["actions"][0]["gate_id"] == "G01"
+    approval = spec["actions"][0]["approval_items"][0]
+    assert approval["id"] == "A02:AMB-001"
+    assert approval["category"] == "需求待确认"
+    assert approval["confirm_action"].startswith("请确认")
+    assert approval["summary"].startswith("需求文档里没有写清楚")
 
 
 def test_autopilot_rejects_tampered_registry(tmp_path: Path) -> None:

@@ -610,9 +610,13 @@ def prepare_autonomous_test_data_plan(
     ) or producer.get("component_id") != "N25":
         raise ContractError("Autonomous data planning requires N25 compiled cases")
     compiled_payload = compiled.get("payload")
-    cases = compiled_payload.get("compiled_cases") if isinstance(compiled_payload, Mapping) else None
+    cases = (
+        compiled_payload.get("compiled_cases", compiled_payload.get("child_cases"))
+        if isinstance(compiled_payload, Mapping)
+        else None
+    )
     if not isinstance(cases, list) or not all(isinstance(item, Mapping) for item in cases):
-        raise ContractError("N25 compiled_cases must be a list of objects")
+        raise ContractError("N25 compiled_cases or child_cases must be a list of objects")
     sources = _read_object(source_manifest_path, "BI knowledge sources")
     catalog = _read_object(capability_catalog_path, "BI data capability catalog")
     policy = _read_object(policy_path, "test-data policy")

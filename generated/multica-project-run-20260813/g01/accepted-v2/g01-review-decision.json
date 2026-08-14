@@ -1,0 +1,292 @@
+{
+  "actor": {
+    "id": "muqj11262",
+    "role": "qa_owner",
+    "type": "human"
+  },
+  "decided_at": "2026-08-13T14:39:55+08:00",
+  "decision": "approved",
+  "decision_hash": "sha256:80f536baacf4fd5cf2f309b6060d2a5ed504b1cc3c6298f7017828caec601d44",
+  "gate_id": "G01",
+  "multica_event": {
+    "author_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "comment_id": "dd459917-ad6b-46a7-9a50-908fdc4eea00",
+    "event_id": "comment:dd459917-ad6b-46a7-9a50-908fdc4eea00",
+    "issue_id": "55909b70-ff84-43d8-80d6-49c39c9be7ce"
+  },
+  "reason": "QA Owner 已在 Multica QAA-54 评论中逐项回复全部 13 项问题并将 Gate 标记完成。",
+  "request_hash": "sha256:18e38b6cb6337d8ca19ad0bbaaa7beeedaa2ce97617bc7f56057b8305d2882d1",
+  "resolutions": [
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-001",
+      "owner": "muqj11262",
+      "rationale": "任意显示一个已命中的专用文案即可。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-002",
+      "owner": "muqj11262",
+      "rationale": "显示全部指标名称。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-003",
+      "owner": "muqj11262",
+      "rationale": "whatList 范围在构造数据时实时查询。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-004",
+      "owner": "muqj11262",
+      "rationale": "文案通用，拼表显示同样文案。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-005",
+      "owner": "muqj11262",
+      "rationale": "移动端与 Web 文案一致；同接口同参数时免重复移动端 UI 校验。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-006",
+      "owner": "muqj11262",
+      "rationale": "按人工评论冻结四类中英文文案。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-001",
+      "owner": "muqj11262",
+      "rationale": "中英文文案按 A02-06 的人工回复冻结。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-002",
+      "owner": "muqj11262",
+      "rationale": "拼表使用同一通用文案。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-003",
+      "owner": "muqj11262",
+      "rationale": "同时命中时任意展示一个已命中文案。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-004",
+      "owner": "muqj11262",
+      "rationale": "QA Owner 明确该项无需关注。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FND-003",
+      "owner": "muqj11262",
+      "rationale": "QA Owner 明确忽略该发现。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FND-005",
+      "owner": "muqj11262",
+      "rationale": "按移动端同接口同参数等价规则执行。"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FND-007",
+      "owner": "muqj11262",
+      "rationale": "全部相关口径已在人工评论中逐项回答。"
+    }
+  ],
+  "schema_version": "scope-review-decision/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "test_rules": {
+    "compatibility": {
+      "failure_response_shape": "unchanged_except_approved_codes_messages_and_parameters",
+      "historical_charts_and_tables": "evaluate_in_place_without_migration",
+      "non_target_error_codes": "unchanged",
+      "success_response": "unchanged"
+    },
+    "custom_dimension": {
+      "covered_locations": [
+        "dimension",
+        "data_range"
+      ],
+      "error_key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+      "preserve_existing_detection_order": true
+    },
+    "dynamic_relation": {
+      "error_key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+      "ignored_implementation_scope_finding": "A06:FND-003",
+      "scope": "query_actual_what_and_what_list_object_and_field_scope_when_building_test_data"
+    },
+    "entry_consistency": {
+      "assertions": [
+        "same_backend_reason",
+        "same_error_code",
+        "same_locale_message",
+        "same_metric_parameters"
+      ],
+      "joined_table_copy": "same_copy_as_chart",
+      "mobile_equivalence": "query_runtime_route_and_compare_api_and_parameters_first; skip_duplicate_mobile_ui_when_identical",
+      "required_entries": [
+        "web_chart",
+        "web_joined_table"
+      ]
+    },
+    "ignored_findings": [
+      "A03:BI-004",
+      "A06:FND-003"
+    ],
+    "localization": {
+      "errors": [
+        {
+          "code": "s307011534",
+          "en": "Custom dimension fields are used in the dimension or data range. Details view is not supported.",
+          "key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+          "parameters": [],
+          "zh_CN": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细"
+        },
+        {
+          "code": "s307011535",
+          "en": "The chart data range uses \"Metric Name\" with result set filtering. Details view is not supported.",
+          "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+          "parameters": [
+            "all_metric_display_names"
+          ],
+          "zh_CN": "统计图数据范围中设置了「指标名称」按结果集筛选，不支持查看明细"
+        },
+        {
+          "code": "s307011536",
+          "en": "Metrics created based on multiple relationships do not support Details view.",
+          "key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+          "parameters": [],
+          "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细"
+        },
+        {
+          "code": "s307011537",
+          "en": "Metrics created based on dynamic relationships do not support Details view.",
+          "key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+          "parameters": [],
+          "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细"
+        }
+      ],
+      "locale_source": "request_current_locale",
+      "parameter_transport": "actual_business_contract"
+    },
+    "metric_name": {
+      "multiple_metrics": "display_all_metric_names",
+      "resolution_order": [
+        "Filter.fieldName",
+        "field_metadata_by_fieldId",
+        "current_locale_dynamic_display_name"
+      ],
+      "unresolved_name": "preserve_actual_business_response"
+    },
+    "multi_relation": {
+      "error_key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+      "successful_existing_relation_resolution": "must_remain_successful"
+    },
+    "multiple_reasons": {
+      "concatenate": false,
+      "fixed_business_reason_priority": false,
+      "message_count": 1,
+      "permission_errors": "preserve_existing_behavior",
+      "selection": "any_one_of_the_actually_matched_specialized_messages"
+    },
+    "permission": {
+      "behavior": "preserve_actual_business_behavior",
+      "metric_name_visibility": "must_not_bypass_existing_permissions"
+    }
+  },
+  "workflow_run_id": "multica-project-20260813-01"
+}

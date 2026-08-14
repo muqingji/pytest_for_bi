@@ -224,7 +224,7 @@ def open_multica_scope_review(
                     "issue",
                     "create",
                     "--title",
-                    f"G01 Scope review {request['workflow_run_id']} [{short_hash}]",
+                    f"[{request['workflow_run_id']}] G01 范围与口径人工审核 [{short_hash}]",
                     "--description-file",
                     "g01-review-request.md",
                     "--attachment",

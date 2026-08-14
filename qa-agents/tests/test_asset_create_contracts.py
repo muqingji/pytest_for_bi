@@ -13,7 +13,8 @@ def _load(name: str) -> dict:
 
 def test_chart_contract_separates_case_metadata_identity_and_executor_fields() -> None:
     value = _load("bi-chart-create-contract.json")
-    assert value["status"] == "candidate_until_112_create_and_readback"
+    assert value["status"] == "verified_112"
+    assert value["verification_evidence"] == "generated/112-minimal-stat-chart-evidence.json"
     assert value["operation_id"] == "fs_bi_stat.stat_edit.creat_stat_view"
     assert value["readback_operation_id"] == "fs_bi_stat.stat_edit.get_chart_config"
     assert value["folder_provenance"]["on_missing_or_ambiguous"] == "not_ready"

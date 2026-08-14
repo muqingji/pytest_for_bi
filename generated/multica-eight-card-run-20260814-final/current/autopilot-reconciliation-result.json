@@ -1,0 +1,12 @@
+{
+  "artifact_node_count": 7,
+  "changed": false,
+  "open_action_count": 1,
+  "result_hash": "sha256:9753c12c023c6eb8d91ad20d974cf937a1ff5ab035a8fa409fc1e6ffc0ae7e18",
+  "revision": 10,
+  "schema_version": "autopilot-reconciliation-result/1.0",
+  "spec_hash": "sha256:14ad48a3a3eee3f084657a5aa6d6638d65af66b3ec6be34e4e2c48a0edefc2e7",
+  "spec_path": "../generated/multica-eight-card-run-20260814-final/current/workflow-center-spec.json",
+  "workflow_id": "REQ-DETAIL-DRILL-I18N",
+  "workflow_run_id": "detail-drill-i18n-8card-20260814-final-01"
+}

@@ -33,13 +33,16 @@
       "published_from": "qa-agents/multica/agent-instructions/a05-v1.1.1.md"
     },
     {
-      "instruction_version": "1.0.1",
+      "instruction_version": "1.0.2",
       "logical_id": "A06",
       "name": "A06 需求与变更对齐",
       "output_contract": "alignment-result/1.0",
       "remote_id": "0e2a8d5c-36b1-4458-9264-5c900075142a",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
-      "instruction_path": "qa-agents/multica/agent-instructions/a06-v1.0.1.md"
+      "instruction_path": "qa-agents/multica/agent-instructions/a06-v1.0.2.md",
+      "published_instruction_version": "1.0.2",
+      "published_at": "2026-08-14T09:33:06+00:00",
+      "published_from": "qa-agents/multica/agent-instructions/a06-v1.0.2.md"
     },
     {
       "instruction_version": "1.3.0",

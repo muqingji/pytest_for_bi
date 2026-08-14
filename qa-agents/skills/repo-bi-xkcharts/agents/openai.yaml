@@ -1,0 +1,4 @@
+interface:
+  display_name: "repo-bi-xkcharts"
+  short_description: "Route verified BI knowledge from repo-bi-xkcharts"
+  default_prompt: "Use repo-bi-xkcharts to retrieve evidence-bound BI knowledge."

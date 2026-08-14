@@ -1,0 +1,14 @@
+{
+  "case_id": "PC-001",
+  "placement": "dimension",
+  "resource_id": "BI_6a7e8290d45057000655715b",
+  "display_name": "客户自定义维度轴图-105047",
+  "category_id": "BI_6a7c5dea280b910007abfd5d",
+  "custom_dimension_id": "BI_02293bb8fb184b56b0502f25cf06e3d5",
+  "source_field_response_hash": "sha256:6149e49543584b84464528bbc85a26893317142571b03a0c160d849f8f652924",
+  "update_request_hash": "sha256:42bbb708f37fa68386e74c91ff34414bd71a5ad0ac84d8d739c9803ee8738374",
+  "readback_hash": "sha256:1d7fe5ab55db6e821841649a6812eebb88d0f98f83597375f5aa4d467424522b",
+  "crm_readback_hash": "sha256:8f8e3015db4f9816bb19778df96e34f335b8a9e1a73c9f5a5175d1cd2732cf8c",
+  "readiness": "active",
+  "reusable": true
+}

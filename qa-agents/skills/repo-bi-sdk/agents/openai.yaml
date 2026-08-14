@@ -1,0 +1,4 @@
+interface:
+  display_name: "repo-bi-sdk"
+  short_description: "Route verified BI knowledge from repo-bi-sdk"
+  default_prompt: "Use repo-bi-sdk to retrieve evidence-bound BI knowledge."

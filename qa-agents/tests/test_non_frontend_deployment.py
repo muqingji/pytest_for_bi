@@ -32,6 +32,7 @@ def test_deployed_instructions_are_fail_closed_and_side_effect_free() -> None:
 
 def test_k01_uses_dedicated_read_only_knowledge_instruction() -> None:
     module = load_deployer()
+    assert module.QA_AGENTS_ROOT == Path(__file__).parents[1]
     value = module.instructions(
         "K01", "product-test-knowledge-candidates/1.0", "knowledge role"
     )

@@ -7,9 +7,7 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-EVIDENCE_PATH = (
-    ROOT / "qa-agents/runs/pilot-001/retained-test-data-112-20260811-01.json"
-)
+EVIDENCE_PATH = ROOT / "generated/retained-test-data-112.json"
 
 
 def _variants() -> list[dict]:

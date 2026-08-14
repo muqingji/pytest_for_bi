@@ -1,7 +1,8 @@
 {
   "schema_version": "bi-asset-create-contract/1.0",
   "asset_type": "stat_chart",
-  "status": "candidate_until_112_create_and_readback",
+  "status": "verified_112",
+  "verification_evidence": "generated/112-minimal-stat-chart-evidence.json",
   "operation_id": "fs_bi_stat.stat_edit.creat_stat_view",
   "readback_operation_id": "fs_bi_stat.stat_edit.get_chart_config",
   "method": "POST",

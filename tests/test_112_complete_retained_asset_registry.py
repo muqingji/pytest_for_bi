@@ -9,9 +9,9 @@ import pytest
 ACCOUNT_SCHEMA_ID = "BI_5bcebcdc3060e20001e79977"
 SALES_ORDER_SCHEMA_ID = "BI_5be1351956fc11448cdde39e"
 REQUIREMENT_NAME = "统计图查看明细限制原因提示优化"
-OUTPUT = Path(__file__).resolve().parents[1] / (
-    "qa-agents/runs/confidence-20260811-01/backend-full-chain-20260812/"
-    "final/retained-test-assets.json"
+OUTPUT = Path(__file__).resolve().parents[1] / "generated/retained-test-assets.json"
+JOINED_TABLE_EVIDENCE = (
+    Path(__file__).resolve().parents[1] / "generated/112-joined-table-create-evidence.json"
 )
 
 METRICS = {
@@ -89,6 +89,18 @@ def test_complete_and_register_retained_assets_in_112(environment, case_runner) 
         "purpose": "验证自定义维度在维度、数据范围、下钻字段中的明细限制",
         "readiness": "active",
     }]
+    joined_table = json.loads(JOINED_TABLE_EVIDENCE.read_text())
+    assert joined_table["readiness"] == "active"
+    assets.append({
+        **joined_table,
+        "subject": "客户/销售订单",
+        "schema_id": SALES_ORDER_SCHEMA_ID,
+        "source_field_id": None,
+        "source_field_api_name": None,
+        "source_field_type": None,
+        "relation_topology": joined_table["join_type"],
+        "purpose": "验证拼表查看明细入口及客户销售订单关联配置",
+    })
 
     metric_response = case_runner.http_api.call(
         "fs_bi_stat.stat_schema.get_fields_by_schema_id",
@@ -114,4 +126,4 @@ def test_complete_and_register_retained_assets_in_112(environment, case_runner) 
         json.dumps({"requirement_name": REQUIREMENT_NAME, "asset_count": len(assets),
                     "assets": assets}, ensure_ascii=False, indent=2) + "\n"
     )
-    assert len(assets) == 7
+    assert len(assets) == 8

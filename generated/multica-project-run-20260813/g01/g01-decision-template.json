@@ -1,0 +1,108 @@
+{
+  "actor": {
+    "id": "",
+    "role": "",
+    "type": "human"
+  },
+  "decided_at": "",
+  "decision": "",
+  "gate_id": "G01",
+  "reason": "",
+  "request_hash": "sha256:18e38b6cb6337d8ca19ad0bbaaa7beeedaa2ce97617bc7f56057b8305d2882d1",
+  "resolutions": [
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-001",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-002",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-003",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-004",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-005",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-006",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A03:BI-001",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A03:BI-002",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A03:BI-003",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A03:BI-004",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A06:FND-003",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A06:FND-005",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A06:FND-007",
+      "owner": "",
+      "rationale": ""
+    }
+  ],
+  "schema_version": "scope-review-decision/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "workflow_run_id": "multica-project-20260813-01"
+}

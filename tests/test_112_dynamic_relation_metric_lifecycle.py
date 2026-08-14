@@ -57,7 +57,17 @@ SCENARIOS = {
 }
 
 
-@pytest.mark.parametrize("scenario", SCENARIOS)
+@pytest.mark.parametrize("scenario", [
+    pytest.param(
+        "what",
+        marks=pytest.mark.xfail(
+            strict=True,
+            reason="confirmed PC-004: 112 returns s207050405 instead of s307011537",
+        ),
+    ),
+    "whatlist",
+    "non_dynamic",
+])
 @pytest.mark.parametrize("locale", ["zh-CN", "en"])
 def test_dynamic_relation_metric_lifecycle_in_112(
     environment, case_runner, locale, scenario

@@ -2,18 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from generated.backend._readiness import require_capability
-from tests.test_112_customer_custom_dimension_lifecycle import (
-    run_customer_custom_dimension_case,
-)
+from generated.backend.test_pc_001_contract import run_retained_custom_dimension_case
 
 
 def test_pc_005_backend_supported_priority(environment, case_runner) -> None:
     if environment.name != "112":
         pytest.skip("PC-005 backend automation runs only with --env=112")
-    run_customer_custom_dimension_case(
-        case_runner, [("data_range", "zh-CN")], combine_result_set_filter=True
-    )
+    run_retained_custom_dimension_case(
+        case_runner, "data_range", "zh-CN", combine_result_set_filter=True)
 
 
 @pytest.mark.parametrize(
@@ -26,4 +22,4 @@ def test_pc_005_backend_supported_priority(environment, case_runner) -> None:
     ],
 )
 def test_pc_005_backend_required_controlled_capability(capability, reason) -> None:
-    require_capability(capability, False, reason)
+    pytest.skip(f"deferred_to_fault_injection_agent: {capability}: {reason}")

@@ -1,0 +1,214 @@
+{
+  "registry_hash": "sha256:8e6d67c6dc9078388506ffdda011b3064665ef37f701e7c76c2dfc03ecce2ae6",
+  "revision": 1,
+  "schema_version": "autopilot-registry/1.0",
+  "workflows": {
+    "REQ-DETAIL-DRILL-I18N": {
+      "active_run_id": "detail-drill-i18n-8card-20260814-live-01",
+      "autopilot": {
+        "execution_mode": "run_only",
+        "id": "20b145d6-db6d-4a90-84ae-484b7bb6b7e8",
+        "status": "active"
+      },
+      "parent_issue": {
+        "id": "2052e9fa-a20f-4167-b915-d2de16c2334e",
+        "identifier": "QAA-214"
+      },
+      "requirement_id": "REQ-DETAIL-DRILL-I18N",
+      "runs": [
+        {
+          "node_issues": {
+            "A02": {
+              "id": "908f757f-9362-4894-af49-5407da1b07a0",
+              "identifier": "QAA-226"
+            },
+            "A03": {
+              "id": "6906e490-e0ab-4b03-b545-9ad8afc6c2cf",
+              "identifier": "QAA-227"
+            },
+            "A05": {
+              "id": "43e793f9-1c05-4c17-b455-83e07ed48bee",
+              "identifier": "QAA-228"
+            },
+            "A06": {
+              "id": "fd3099b8-db92-42f9-8c83-87208cd9ac6f",
+              "identifier": "QAA-229"
+            },
+            "A08": {
+              "id": "7168cd14-ffce-461a-985b-c48508e60a57",
+              "identifier": "QAA-232"
+            },
+            "A09": {
+              "id": "3ed87e5d-1b92-40ab-9a96-c8b57801b0fc",
+              "identifier": "QAA-233"
+            },
+            "A11": {
+              "id": "43ee4a68-62ce-4c1a-a21e-c839e1293e4c",
+              "identifier": "QAA-237"
+            },
+            "A14": {
+              "id": "b2a41682-2ccf-41d5-bcf2-46a627f28818",
+              "identifier": "QAA-240"
+            },
+            "A15": {
+              "id": "c8572854-2a77-4497-9771-89d2d539b57e",
+              "identifier": "QAA-241"
+            },
+            "A18-BE": {
+              "id": "83eb3f40-406c-49f6-9a73-f81c89707489",
+              "identifier": "QAA-243"
+            },
+            "A18-CT": {
+              "id": "12bf12ce-bff0-4d63-8c3f-2f188f8e0d35",
+              "identifier": "QAA-244"
+            },
+            "A22": {
+              "id": "554cc74e-d5ef-4cee-bd59-a9c24a8b6600",
+              "identifier": "QAA-242"
+            },
+            "G01": {
+              "id": "a756f979-a0fa-4a62-bd2a-3d4aa974c9b1",
+              "identifier": "QAA-230"
+            },
+            "G02": {
+              "id": "a68609e5-f11c-4802-8108-945ecf84530b",
+              "identifier": "QAA-235"
+            },
+            "G03": {
+              "id": "9810d791-6650-4df8-9a3d-d5052e0ff573",
+              "identifier": "QAA-247"
+            },
+            "INPUT-FREEZE": {
+              "id": "31d5a628-1147-4e28-9e5f-4bf3a25d0bb0",
+              "identifier": "QAA-224"
+            },
+            "N00": {
+              "id": "d7c54070-f94d-4762-8866-b6c89739bec8",
+              "identifier": "QAA-225"
+            },
+            "N04": {
+              "id": "651cd95b-94fd-4436-87ae-8296d8b55ad8",
+              "identifier": "QAA-234"
+            },
+            "N05": {
+              "id": "63e4a9cf-8496-41a2-b9f4-662da4c0da27",
+              "identifier": "QAA-246"
+            },
+            "N07": {
+              "id": "9a032c4c-e2fb-4175-a177-2c9ff12663ac",
+              "identifier": "QAA-248"
+            },
+            "N08": {
+              "id": "52dc56ff-25f8-4cb6-899b-da8ef59e03db",
+              "identifier": "QAA-249"
+            },
+            "N09": {
+              "id": "835dbd75-29e1-4b0e-97fe-b4bb97197c8b",
+              "identifier": "QAA-253"
+            },
+            "N10": {
+              "id": "10e7dbce-4b47-40f0-a1e3-fbd6835059dc",
+              "identifier": "QAA-251"
+            },
+            "N11": {
+              "id": "9d88ad29-2d47-4b57-b208-ac0fba53b8f3",
+              "identifier": "QAA-255"
+            },
+            "N12": {
+              "id": "59c64b73-2607-4a36-b0fd-5195e596ab9f",
+              "identifier": "QAA-257"
+            },
+            "N13": {
+              "id": "933a3f77-e851-40a5-9762-1bea91ee970a",
+              "identifier": "QAA-258"
+            },
+            "N15": {
+              "id": "ac792caa-4a5a-43d9-a08e-3b0b3cd20d5a",
+              "identifier": "QAA-239"
+            },
+            "N17": {
+              "id": "955c22bd-9161-44a5-89f0-a5f1aa5c2f06",
+              "identifier": "QAA-250"
+            },
+            "N18": {
+              "id": "95233968-ce23-4696-a3ec-ed1b5c715fa6",
+              "identifier": "QAA-252"
+            },
+            "N19": {
+              "id": "31a06e2a-0939-42e3-8f04-c66948159359",
+              "identifier": "QAA-256"
+            },
+            "N20": {
+              "id": "d7d4344a-d33c-4ef8-a4de-96be1668fcae",
+              "identifier": "QAA-254"
+            },
+            "N23": {
+              "id": "641db541-9059-4d5c-ba93-fdb7454cc12f",
+              "identifier": "QAA-259"
+            },
+            "N24": {
+              "id": "36cb8f81-8bde-44a2-b626-425f2a066dfb",
+              "identifier": "QAA-231"
+            },
+            "N25": {
+              "id": "05fef4b2-253d-419c-ac1d-32e9acd82c9d",
+              "identifier": "QAA-236"
+            },
+            "N26": {
+              "id": "6b474e66-c751-4f9b-a637-ae5af6a393fb",
+              "identifier": "QAA-238"
+            },
+            "N27": {
+              "id": "52f3f22f-edc7-4e6b-bcfe-754ca594a7da",
+              "identifier": "QAA-245"
+            }
+          },
+          "run_issue": {
+            "id": "63565f39-91ff-4420-9bb2-5758d56e848d",
+            "identifier": "QAA-215"
+          },
+          "source_snapshot_id": "pilot-001-source-v1",
+          "stage_card_schema_version": "server-stage-cards/1.0",
+          "stage_issues": {
+            "C1": {
+              "id": "7949b8bc-04b1-418c-b657-498124949654",
+              "identifier": "QAA-216"
+            },
+            "C2": {
+              "id": "aa32acd0-6159-47c4-9d29-d318f27fe761",
+              "identifier": "QAA-217"
+            },
+            "C3": {
+              "id": "19b1c1e3-3de2-4db4-9333-d5738e85ad29",
+              "identifier": "QAA-218"
+            },
+            "C4": {
+              "id": "1ac42670-858f-4664-9365-581d007dee78",
+              "identifier": "QAA-219"
+            },
+            "C5": {
+              "id": "a245a021-5c4d-4d4d-9e23-75a4f0d72e3d",
+              "identifier": "QAA-220"
+            },
+            "C6": {
+              "id": "e494d4c7-8765-4ad0-918f-f475f54de46d",
+              "identifier": "QAA-221"
+            },
+            "C7": {
+              "id": "f35c374f-5ab7-48e0-a462-fdb220d203cb",
+              "identifier": "QAA-222"
+            },
+            "C8": {
+              "id": "729976af-87e2-4408-86bb-79ce12b9f417",
+              "identifier": "QAA-223"
+            }
+          },
+          "status": "active",
+          "workflow_run_id": "detail-drill-i18n-8card-20260814-live-01"
+        }
+      ],
+      "title": "统计图查看明细限制原因提示优化",
+      "workflow_id": "REQ-DETAIL-DRILL-I18N"
+    }
+  }
+}

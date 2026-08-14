@@ -21,6 +21,10 @@ from .contracts import (
 from .errors import ContractError, RetryableAgentError, SecurityPolicyError
 from .gates import validate_recorded_scope_review_decision
 from .human_correction import validate_human_correction_decision
+from .historical_behavior import (
+    assert_historical_regression_coverage,
+    validate_historical_behavior_packet,
+)
 from .security import SecurityPolicy
 from .storage import ArtifactStore
 
@@ -869,14 +873,17 @@ def prepare_multica_test_design_correction_input(
             "record_every_feedback_disposition": True,
         },
     }
+    allowed_input_keys = [
+        "validated_analysis",
+        "approved_scope",
+        "test_strategy",
+        "case_provider_draft",
+    ]
+    if "historical_behavior_packet" in previous_inputs:
+        allowed_input_keys.append("historical_behavior_packet")
     allowed_inputs = {
         key: previous_inputs[key]
-        for key in (
-            "validated_analysis",
-            "approved_scope",
-            "test_strategy",
-            "case_provider_draft",
-        )
+        for key in allowed_input_keys
     }
     allowed_inputs["approved_scope"] = {
         **dict(previous_scope),
@@ -995,14 +1002,23 @@ def prepare_multica_oracle_review_input(
 
     frozen_evidence = {
         key: a08_inputs[key]
-        for key in ("validated_analysis", "approved_scope", "test_strategy")
+        for key in (
+            "validated_analysis",
+            "approved_scope",
+            "test_strategy",
+            "historical_behavior_packet",
+        )
         if key in a08_inputs
     }
-    if set(frozen_evidence) != {
+    required_frozen_evidence = {
         "validated_analysis",
         "approved_scope",
         "test_strategy",
-    }:
+    }
+    if set(frozen_evidence) not in (
+        required_frozen_evidence,
+        required_frozen_evidence | {"historical_behavior_packet"},
+    ):
         raise ContractError("A09 frozen evidence is incomplete")
     bundle = {
         "schema_version": "multica-agent-input/1.0",
@@ -1649,8 +1665,13 @@ def _validate_test_design_semantics(
     validated = allowed_inputs.get("validated_analysis", {})
     approved_scope = allowed_inputs.get("approved_scope", {})
     strategy = allowed_inputs.get("test_strategy", {})
+    historical = allowed_inputs.get("historical_behavior_packet")
     if not all(isinstance(item, Mapping) for item in (validated, approved_scope, strategy)):
         raise ContractError("A08 approved inputs are invalid")
+    if historical is not None:
+        if not isinstance(historical, Mapping):
+            raise ContractError("A08 historical behavior knowledge packet is invalid")
+        validate_historical_behavior_packet(historical)
 
     requirements = validated.get("requirement_analysis", {}).get("requirements", [])
     requirement_ids = {str(item.get("id")) for item in requirements}
@@ -1760,6 +1781,8 @@ def _validate_test_design_semantics(
         raise ContractError("A08 test_rule_coverage maps a rule more than once")
     if set(covered_rules) != required_rule_ids or required_rule_ids != TEST_RULE_IDS:
         raise ContractError("A08 must cover every G01-approved test rule exactly once")
+    if historical is not None:
+        assert_historical_regression_coverage(payload, historical)
 
     if bundle.get("profile_version") in {"1.2.0", "1.2.1", "1.3.0"}:
         feedback = allowed_inputs.get("correction_feedback")

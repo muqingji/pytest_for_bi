@@ -595,14 +595,22 @@ def validate_test_data_plan(
                     if _SHA256.fullmatch(str(provenance.get("source_config_hash", ""))) is None:
                         raise SecurityPolicyError(f"{path} chart clone source hash is invalid")
                     post_setup = resource.get("post_setup")
-                    if not isinstance(post_setup, list) or len(post_setup) != 2:
-                        raise SecurityPolicyError(f"{path} chart clone requires move and rename")
-                    move = post_setup[0].get("request", {})
-                    rename = post_setup[1].get("request", {})
+                    if not isinstance(post_setup, list) or len(post_setup) != 3:
+                        raise SecurityPolicyError(f"{path} chart clone requires rename, origin readback and conditional move")
+                    rename = post_setup[0].get("request", {})
+                    origin_readback = post_setup[1]
+                    move_step = post_setup[2]
+                    move = move_step.get("request", {})
                     if move.get("api") != "fs_bi_crm.rpt_view_display.move_rpt_view" or str(
                         move.get("json", {}).get("targetCategoryID", "")
                     ) != category_id:
                         raise SecurityPolicyError(f"{path} chart clone move target does not match folder")
+                    if (origin_readback.get("request", {}).get("api") != "fs_bi_crm.stat_edit.get_stat_view"
+                            or origin_readback.get("extract", {}).get("chart_origin_category_id") != "Value.categoryID"):
+                        raise SecurityPolicyError(f"{path} chart clone requires live origin folder readback")
+                    if (move.get("json", {}).get("originCategoryID") != "{{ chart_origin_category_id }}"
+                            or move_step.get("condition", {}).get("operator") != "not_equals"):
+                        raise SecurityPolicyError(f"{path} chart clone move must be conditional on live origin folder")
                     if rename.get("api") != "fs_bi_crm.rpt_view_display.rename_rpt_view" or str(
                         rename.get("json", {}).get("viewName", "")
                     ) != str(resource.get("display_name", "")):
@@ -790,9 +798,9 @@ def prepare_test_data_plan(
     payload = compiled.get("payload")
     if not isinstance(payload, Mapping):
         raise ContractError("N25 compiled Case payload must be an object")
-    cases = payload.get("compiled_cases")
+    cases = payload.get("compiled_cases", payload.get("child_cases"))
     if not isinstance(cases, list):
-        raise ContractError("N25 compiled_cases must be a list")
+        raise ContractError("N25 compiled_cases or child_cases must be a list")
     policy = _read_object(policy_path, "test-data policy")
     security.assert_no_secret_values(policy)
 

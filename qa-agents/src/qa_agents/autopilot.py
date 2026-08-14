@@ -10,7 +10,13 @@ from pathlib import Path
 import subprocess
 from typing import Any
 
-from .contracts import artifact_hash_from_mapping, content_hash
+from .contracts import (
+    ArtifactEnvelope,
+    ArtifactStatus,
+    Producer,
+    artifact_hash_from_mapping,
+    content_hash,
+)
 from .errors import ContractError, InputError, RetryableAgentError
 from .security import SecurityPolicy
 from .storage import ArtifactStore
@@ -56,6 +62,40 @@ SERVER_NODE_DEFINITIONS = (
     ("N13", "报告反馈入口", 27),
     ("N23", "上线后验证授权审计", 28),
 )
+
+STAGE_CARD_SCHEMA_VERSION = "server-stage-cards/1.0"
+SERVER_STAGE_CARD_DEFINITIONS = (
+    ("C1", "需求分析与变更对齐", ("INPUT-FREEZE", "N00", "A02", "A03", "A05", "A06")),
+    ("C2", "范围确认与测试策略", ("G01", "N24")),
+    ("C3", "测试设计与审核", ("A08", "A09", "N04", "G02")),
+    ("C4", "Case 编译与执行计划", ("N25", "A11", "N26", "N15")),
+    (
+        "C5",
+        "自动化与测试数据准备",
+        ("A14", "A15", "A22", "A18-BE", "A18-CT", "N27", "N05", "G03"),
+    ),
+    ("C6", "环境预检与测试执行", ("N07", "N08", "N17", "N10")),
+    ("C7", "证据归一与质量决策", ("N18", "N09", "N20", "N11", "N19")),
+    ("C8", "报告与关闭", ("N12", "N13", "N23")),
+)
+
+
+def _stage_card_by_node() -> dict[str, tuple[str, str]]:
+    node_ids = {node_id for node_id, _label, _stage in SERVER_NODE_DEFINITIONS}
+    result: dict[str, tuple[str, str]] = {}
+    for card_id, title, card_nodes in SERVER_STAGE_CARD_DEFINITIONS:
+        for node_id in card_nodes:
+            if node_id in result:
+                raise ContractError(f"Server node is assigned to multiple stage cards: {node_id}")
+            result[node_id] = (card_id, title)
+    missing = node_ids - result.keys()
+    unknown = result.keys() - node_ids
+    if missing or unknown:
+        raise ContractError(
+            "Server stage-card mapping is incomplete: "
+            f"missing={sorted(missing)}, unknown={sorted(unknown)}"
+        )
+    return result
 
 ARTIFACT_NODE_MAP = {
     "n00-workflow-route": "N00",
@@ -111,6 +151,47 @@ ARTIFACT_STATE_MAP = {
     "failed_retryable": "blocked",
     "failed_fatal": "failed",
 }
+
+TERMINAL_NODE_STATES = {"completed", "skipped", "cancelled", "superseded"}
+ACTIVE_NODE_STATES = {"queued", "running", "waiting_human", "blocked", "failed"}
+
+
+def _artifact_state(artifact: Mapping[str, Any]) -> str:
+    status = str(artifact.get("status", ""))
+    if status != "needs_human":
+        try:
+            return ARTIFACT_STATE_MAP[status]
+        except KeyError as error:
+            raise ContractError(f"Autopilot Artifact status is unsupported: {status}") from error
+    payload = artifact.get("payload", {})
+    issues = payload.get("issues", []) if isinstance(payload, Mapping) else []
+    routes = {
+        str(item.get("route_to", ""))
+        for item in issues
+        if isinstance(item, Mapping) and item.get("route_to")
+    }
+    blocking_questions = artifact.get("blocking_questions", [])
+    if blocking_questions or "human" in routes or not routes:
+        return "waiting_human"
+    return "blocked"
+
+
+def _advance_frontier(nodes: Sequence[dict[str, Any]]) -> None:
+    """Queue the earliest unfinished stage after accepted Artifacts are projected."""
+
+    unfinished = [
+        item for item in nodes if str(item.get("state", "")) not in TERMINAL_NODE_STATES
+    ]
+    if not unfinished:
+        return
+    frontier_stage = min(int(item["stage"]) for item in unfinished)
+    frontier = [item for item in unfinished if int(item["stage"]) == frontier_stage]
+    if any(str(item.get("state", "")) in ACTIVE_NODE_STATES for item in frontier):
+        return
+    for item in frontier:
+        if item.get("state") == "not_started":
+            item["state"] = "queued"
+            item["result_summary"] = "上游节点已完成，等待调度"
 
 
 def _read_object(path: Path, label: str) -> dict[str, Any]:
@@ -189,13 +270,54 @@ def _issue(
     return {"id": issue_id, "identifier": identifier}
 
 
+def _discover_node_issues(
+    runner: CommandRunner, project_id: str, workspace_id: str, run_id: str
+) -> dict[str, dict[str, str]]:
+    result = runner(
+        [
+            "multica", "issue", "list", "--project", project_id,
+            "--limit", "100", "--output", "json", "--workspace-id", workspace_id,
+        ],
+        None,
+    )
+    if not isinstance(result, Mapping):
+        raise ContractError("Multica node Issue discovery did not return an object")
+    issues = result.get("issues", [])
+    if not isinstance(issues, list):
+        raise ContractError("Multica node Issue discovery returned invalid issues")
+    prefix = f"[{run_id}] "
+    known = {node_id for node_id, _label, _stage in SERVER_NODE_DEFINITIONS}
+    discovered: dict[str, dict[str, str]] = {}
+    timestamps: dict[str, str] = {}
+    for issue in issues:
+        if not isinstance(issue, Mapping):
+            continue
+        title = str(issue.get("title", ""))
+        if not title.startswith(prefix):
+            continue
+        node_id = title[len(prefix):].split(" ", 1)[0]
+        created_at = str(issue.get("created_at", ""))
+        if (
+            node_id in known
+            and issue.get("id")
+            and issue.get("identifier")
+            and created_at >= timestamps.get(node_id, "")
+        ):
+            discovered[node_id] = {
+                "id": str(issue["id"]), "identifier": str(issue["identifier"])
+            }
+            timestamps[node_id] = created_at
+    return discovered
+
+
 def _create_issue_command(
     *,
     title: str,
     project_id: str,
     workspace_id: str,
-    assignee_id: str,
+    assignee_id: str | None,
     parent_id: str | None = None,
+    status: str = "todo",
 ) -> list[str]:
     command = [
         "multica",
@@ -206,9 +328,7 @@ def _create_issue_command(
         "--project",
         project_id,
         "--status",
-        "todo",
-        "--assignee-id",
-        assignee_id,
+        status,
         "--priority",
         "high",
         "--output",
@@ -216,9 +336,46 @@ def _create_issue_command(
         "--workspace-id",
         workspace_id,
     ]
+    if assignee_id:
+        command.extend(["--assignee-id", assignee_id])
     if parent_id:
         command.extend(["--parent", parent_id])
     return command
+
+
+def _create_node_issue_command(
+    *, title: str, project_id: str, workspace_id: str, assignee_id: str | None,
+    parent_id: str, stage: int | None = None, attachments: Sequence[str] = ()
+) -> list[str]:
+    command = _create_issue_command(
+        title=title,
+        project_id=project_id,
+        workspace_id=workspace_id,
+        assignee_id=assignee_id,
+        parent_id=parent_id,
+        status="backlog",
+    )
+    if stage is not None:
+        command.extend(["--stage", str(stage)])
+    for attachment in attachments:
+        command.extend(["--attachment", attachment])
+    return command
+
+
+def _metadata_command(issue_id: str, key: str, value: str, workspace_id: str) -> list[str]:
+    return [
+        "multica", "issue", "metadata", "set", issue_id,
+        "--key", key, "--value", value, "--type", "string",
+        "--output", "json", "--workspace-id", workspace_id,
+    ]
+
+
+def _set_visibility_metadata(
+    runner: CommandRunner, issue: Mapping[str, Any], visible: bool, workspace_id: str
+) -> None:
+    runner(_metadata_command(
+        str(issue["id"]), "qa_visible_in_workflow_center", str(visible).lower(), workspace_id
+    ), None)
 
 
 def _create_autopilot_command(
@@ -232,7 +389,11 @@ def _create_autopilot_command(
 ) -> list[str]:
     description = (
         f"需求 {requirement_id} 的唯一 QA Autopilot。父工作流 {parent_identifier}。"
-        "只做 Artifact 驱动的 DAG 对账、节点状态推进和人工事项汇总；"
+        "按 Artifact 和实时 Issue run 单步推进 DAG：每次只调度最早未完成 stage，"
+        "同 stage 可并行但不得越过 blocked、failed 或人工 Gate；"
+        "queued、dispatched、deferred、running 必须投影为 in_progress，"
+        "全部尝试 failed 或 cancelled 必须投影为 blocked，完成或策略跳过后推进下一 stage；"
+        "每轮先对账再调度，节点 Issue 必须幂等复用，不得重复创建；"
         "不得代签人工 Gate，不得提交代码、创建 MR、Bug 或发布。"
     )
     return [
@@ -336,11 +497,11 @@ def initialize_autopilot(
                 active_runner,
                 _create_issue_command(
                     title=f"[{requirement_id}] {request['title']}",
-                    project_id=str(config["workflow_project_id"]),
+                    project_id=str(config["internal_project_id"]),
                     workspace_id=str(config["workspace_id"]),
                     assignee_id=str(config["workflow_lead_id"]),
                 ),
-                str(config["workflow_project_id"]),
+                str(config["internal_project_id"]),
             )
 
         if workflow.get("autopilot"):
@@ -370,16 +531,19 @@ def initialize_autopilot(
         if existing_run:
             run_issue = dict(existing_run["run_issue"])
         else:
+            run_project_id = str(
+                config.get("run_project_id") or config["internal_project_id"]
+            )
             run_issue = _issue(
                 active_runner,
                 _create_issue_command(
                     title=f"[{run_id}] 服务端 QA Run",
-                    project_id=str(config["internal_project_id"]),
+                    project_id=run_project_id,
                     workspace_id=str(config["workspace_id"]),
-                    assignee_id=str(config["workflow_lead_id"]),
+                    assignee_id=None,
                     parent_id=str(parent_issue["id"]),
                 ),
-                str(config["internal_project_id"]),
+                run_project_id,
             )
             for item in runs:
                 if item.get("status") == "active":
@@ -392,6 +556,63 @@ def initialize_autopilot(
                     "run_issue": run_issue,
                 }
             )
+
+        stage_issues = {
+            str(card_id): dict(issue)
+            for card_id, issue in (
+                existing_run.get("stage_issues", {}) if existing_run else {}
+            ).items()
+            if isinstance(issue, Mapping)
+        }
+        node_issues = {
+            str(node_id): dict(issue)
+            for node_id, issue in (
+                existing_run.get("node_issues", {}) if existing_run else {}
+            ).items()
+            if isinstance(issue, Mapping)
+        }
+        if config.get("recover_precreated_nodes", False):
+            run_project_id = str(config.get("run_project_id") or config["internal_project_id"])
+            discovered = _discover_node_issues(
+                active_runner, run_project_id, str(config["workspace_id"]), run_id
+            )
+            node_issues = {**node_issues, **discovered}
+        if config.get("precreate_nodes", False):
+            for card_id, title, _node_ids in SERVER_STAGE_CARD_DEFINITIONS:
+                if card_id in stage_issues:
+                    continue
+                stage_issues[card_id] = _issue(
+                    active_runner,
+                    _create_node_issue_command(
+                        title=f"[{run_id}] {card_id} {title}",
+                        project_id=str(config["workflow_project_id"]),
+                        workspace_id=str(config["workspace_id"]),
+                        # Stage cards are read-only projections. Assigning an Agent makes
+                        # Multica execute the display card as a model task.
+                        assignee_id=None,
+                        parent_id=str(run_issue["id"]),
+                    ),
+                    str(config["workflow_project_id"]),
+                )
+            for item in runs:
+                if item.get("workflow_run_id") == run_id:
+                    item["stage_card_schema_version"] = STAGE_CARD_SCHEMA_VERSION
+                    item["stage_issues"] = stage_issues
+                    item["node_issues"] = node_issues
+                    break
+
+        # Apply visibility at creation/recovery time as well as during the
+        # later workflow-center sync. This keeps partial initialization from
+        # leaking hidden execution Issues into the project board.
+        if config.get("initialize_visibility_metadata", False):
+            _set_visibility_metadata(active_runner, parent_issue, False, str(config["workspace_id"]))
+            _set_visibility_metadata(active_runner, run_issue, False, str(config["workspace_id"]))
+            for issue in stage_issues.values():
+                _set_visibility_metadata(active_runner, issue, True, str(config["workspace_id"]))
+            for issue in node_issues.values():
+                _set_visibility_metadata(active_runner, issue, False, str(config["workspace_id"]))
+
+        stage_by_node = _stage_card_by_node()
 
         workflows[requirement_id] = {
             "workflow_id": request["workflow_id"],
@@ -425,6 +646,23 @@ def initialize_autopilot(
         "run_issue": run_issue,
         "autopilot": requirement_autopilot,
         "autopilot_runs": [],
+        "stage_card_schema_version": STAGE_CARD_SCHEMA_VERSION,
+        "stage_cards": [
+            {
+                "stage_card_id": card_id,
+                "title": title,
+                "node_ids": list(node_ids),
+                **(
+                    {
+                        "issue_id": stage_issues[card_id]["id"],
+                        "issue_identifier": stage_issues[card_id]["identifier"],
+                    }
+                    if card_id in stage_issues
+                    else {}
+                ),
+            }
+            for card_id, title, node_ids in SERVER_STAGE_CARD_DEFINITIONS
+        ],
         "nodes": [
             {
                 "execution_id": f"{node_id}-{run_id}",
@@ -434,6 +672,16 @@ def initialize_autopilot(
                 "state": "queued" if node_id == "INPUT-FREEZE" else "not_started",
                 "completion": "0/1",
                 "result_summary": "等待上游节点",
+                "stage_card_id": stage_by_node[node_id][0],
+                "stage_card_title": stage_by_node[node_id][1],
+                **({
+                    "issue_id": node_issues[node_id]["id"],
+                    "issue_identifier": node_issues[node_id]["identifier"],
+                } if node_id in node_issues else {}),
+                **({
+                    "stage_issue_id": stage_issues[stage_by_node[node_id][0]]["id"],
+                    "stage_issue_identifier": stage_issues[stage_by_node[node_id][0]]["identifier"],
+                } if stage_by_node[node_id][0] in stage_issues else {}),
             }
             for node_id, label, stage in SERVER_NODE_DEFINITIONS
         ],
@@ -489,6 +737,132 @@ def _action_count(artifact: Mapping[str, Any]) -> int:
     return 1
 
 
+def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Extract structured approval items from a waiting-human Artifact.
+
+    Every item keeps the upstream evidence id and a human-readable summary so
+    the workflow center and stage cards can render exactly what must be
+    approved instead of a bare status string.
+    """
+
+    payload = artifact.get("payload", {})
+    if not isinstance(payload, Mapping):
+        return []
+    items: list[dict[str, Any]] = []
+    seen: set[str] = set()
+
+    def append(
+        item: Mapping[str, Any],
+        *,
+        title: str,
+        summary: str,
+        confirm_action: str = "",
+        category: str = "",
+    ) -> None:
+        item_id = str(item.get("issue_id") or item.get("id") or "").strip()
+        if not item_id:
+            item_id = f"{artifact['artifact_id']}-{len(items) + 1}"
+        if item_id in seen:
+            return
+        seen.add(item_id)
+        detail = item.get("detail")
+        requirement_ids = item.get("requirement_ids")
+        if not isinstance(requirement_ids, list) and isinstance(detail, Mapping):
+            requirement_ids = detail.get("requirement_ids")
+        items.append(
+            {
+                "id": item_id,
+                "title": title,
+                "summary": summary.strip() or title or "请查看 Artifact 获取详情",
+                "confirm_action": confirm_action.strip(),
+                "category": category.strip(),
+                "severity": str(item.get("severity") or "").strip(),
+                "requirement_ids": (
+                    [str(value) for value in requirement_ids if str(value).strip()]
+                    if isinstance(requirement_ids, list)
+                    else []
+                ),
+                "source_refs": [
+                    str(value) for value in item.get("source_refs", [])
+                    if isinstance(item.get("source_refs"), list)
+                ],
+            }
+        )
+
+    for finding in payload.get("findings", []):
+        if not isinstance(finding, Mapping):
+            continue
+        prefix = f"[{finding.get('type')}]" if finding.get("type") else ""
+        append(
+            finding,
+            title=prefix or "发现项",
+            summary=str(finding.get("summary") or "").strip(),
+        )
+    for item in payload.get("blocking_items", []):
+        if not isinstance(item, Mapping):
+            continue
+        append(
+            item,
+            title="阻塞项",
+            summary=str(item.get("summary") or item.get("recommendation") or "").strip(),
+        )
+    for field, label in (("ambiguities", "需求歧义"), ("needs_human", "需确认事项")):
+        for item in payload.get(field, []):
+            if not isinstance(item, Mapping):
+                continue
+            append(
+                item,
+                title=label,
+                summary=str(item.get("message") or "").strip(),
+            )
+    for item in payload.get("issues", []):
+        if not isinstance(item, Mapping):
+            continue
+        detail = item.get("detail")
+        append(
+            item,
+            title=str(item.get("category") or item.get("type") or "问题").strip() or "问题",
+            summary=str(
+                item.get("plain_summary")
+                or item.get("summary")
+                or (detail.get("summary") if isinstance(detail, Mapping) else "")
+                or (detail.get("message") if isinstance(detail, Mapping) else "")
+            ).strip(),
+            confirm_action=str(item.get("confirm_action") or "").strip(),
+            category=str(item.get("category") or "").strip(),
+        )
+    for field in ("tasks", "unresolved_items", "questions", "approval_items"):
+        for item in payload.get(field, []):
+            if not isinstance(item, Mapping):
+                continue
+            append(
+                item,
+                title=str(item.get("title") or "审批项").strip() or "审批项",
+                summary=str(item.get("summary") or item.get("message") or "").strip(),
+            )
+    for item in artifact.get("blocking_questions", []):
+        if not isinstance(item, Mapping):
+            continue
+        append(
+            item,
+            title="阻塞问题",
+            summary=str(item.get("question") or item.get("summary") or "").strip(),
+        )
+    if not items:
+        summary = _artifact_summary(artifact)
+        items.append(
+            {
+                "id": f"{artifact['artifact_id']}-approval",
+                "title": "审批确认",
+                "summary": summary,
+                "severity": "",
+                "requirement_ids": [],
+                "source_refs": [],
+            }
+        )
+    return items
+
+
 def reconcile_autopilot(
     spec_path: Path,
     artifact_roots: Sequence[Path],
@@ -506,6 +880,68 @@ def reconcile_autopilot(
             raise ContractError("Autopilot workflow spec schema_version is invalid")
         run_id = _text(spec, "workflow_run_id", "Autopilot workflow spec")
         snapshot_id = _text(spec, "source_snapshot_id", "Autopilot workflow spec")
+
+        # The registry is the durable binding source for execution Issues.  A
+        # retry may replace an Issue after the spec was first published; refresh
+        # those bindings before deriving node state so the projection cannot
+        # keep pointing at a cancelled predecessor.
+        registry_path = output_dir.parent / "registry" / "autopilot-registry.json"
+        registry = None
+        if registry_path.exists():
+            registry = _read_object(registry_path, "Autopilot registry")
+            _validate_registry(registry)
+        if isinstance(registry, Mapping):
+            workflow = registry.get("workflows", {}).get(str(spec.get("workflow_id")))
+            if isinstance(workflow, Mapping):
+                run = next(
+                    (
+                        item for item in workflow.get("runs", [])
+                        if isinstance(item, Mapping)
+                        and str(item.get("workflow_run_id")) == run_id
+                    ),
+                    None,
+                )
+                if isinstance(run, Mapping):
+                    registry_nodes = run.get("node_issues", {})
+                    registry_stages = run.get("stage_issues", {})
+                    refreshed_stage_cards = []
+                    for card in spec.get("stage_cards", []):
+                        card_item = dict(card)
+                        binding = (
+                            registry_stages.get(str(card_item.get("stage_card_id")))
+                            if isinstance(registry_stages, Mapping)
+                            else None
+                        )
+                        if isinstance(binding, Mapping) and binding.get("id"):
+                            card_item["issue_id"] = str(binding["id"])
+                            card_item["issue_identifier"] = str(binding.get("identifier", ""))
+                        refreshed_stage_cards.append(card_item)
+                    if isinstance(registry_nodes, Mapping):
+                        refreshed_nodes = []
+                        for node in spec.get("nodes", []):
+                            item = dict(node)
+                            binding = registry_nodes.get(str(item.get("node_id")))
+                            if isinstance(binding, Mapping) and binding.get("id"):
+                                item["issue_id"] = str(binding["id"])
+                                item["issue_identifier"] = str(
+                                    binding.get("identifier", "")
+                                )
+                            stage_binding = (
+                                registry_stages.get(str(item.get("stage_card_id")))
+                                if isinstance(registry_stages, Mapping)
+                                else None
+                            )
+                            if isinstance(stage_binding, Mapping) and stage_binding.get("id"):
+                                item["stage_issue_id"] = str(stage_binding["id"])
+                                item["stage_issue_identifier"] = str(
+                                    stage_binding.get("identifier", "")
+                                )
+                            refreshed_nodes.append(item)
+                        spec = {
+                            **spec,
+                            "nodes": refreshed_nodes,
+                            "stage_cards": refreshed_stage_cards,
+                        }
         selected: dict[str, dict[str, Any]] = {}
         for root in artifact_roots:
             if not root.exists():
@@ -548,18 +984,26 @@ def reconcile_autopilot(
             node_id = str(item.get("node_id", ""))
             artifact = selected.get(node_id)
             if artifact:
-                status = str(artifact.get("status", ""))
-                if status not in ARTIFACT_STATE_MAP:
-                    raise ContractError(f"Autopilot Artifact status is unsupported: {status}")
-                item["state"] = ARTIFACT_STATE_MAP[status]
+                item["state"] = _artifact_state(artifact)
+                if node_id == "G01" and artifact.get("status") == "needs_human":
+                    # G01 issue.route_to records the upstream correction owner;
+                    # it does not turn the Gate itself into an automatic return.
+                    item["state"] = "waiting_human"
                 item["completion"] = "1/1"
                 item["result_summary"] = _artifact_summary(artifact)
                 item["artifact_id"] = artifact["artifact_id"]
                 item["artifact_hash"] = artifact["artifact_hash"]
                 item["artifact_path"] = artifact["_path"]
+                if node_id == "A06" and item["state"] == "waiting_human":
+                    # A06 的待确认项统一并入 G01 范围与口径审核，一次审批；
+                    # A06 自身不再生成独立人工 action，避免二次审核。
+                    item["state"] = "completed"
+                    item["result_summary"] = "发现待确认项，已并入 G01 汇总审批"
                 if item["state"] == "waiting_human":
                     if not owner_id:
                         raise ContractError("Autopilot human_owner_member_id is required for actions")
+                    approval_items = _approval_items(artifact)
+                    item["approval_items"] = approval_items
                     actions.append(
                         {
                             "action_id": f"{node_id}-{run_id}",
@@ -567,13 +1011,19 @@ def reconcile_autopilot(
                             "title": f"{item.get('label', node_id)}处理",
                             "status": "open",
                             "owner_member_id": owner_id,
-                            "item_count": _action_count(artifact),
+                            "item_count": (
+                                len(approval_items)
+                                if approval_items
+                                else _action_count(artifact)
+                            ),
                             "summary": item["result_summary"],
+                            "approval_items": approval_items,
                             "issue_id": item.get("issue_id"),
                             "issue_identifier": item.get("issue_identifier"),
                         }
                     )
             nodes.append(item)
+        _advance_frontier(nodes)
         candidate = {**spec, "nodes": nodes, "actions": actions}
         candidate_core = {key: value for key, value in candidate.items() if key != "revision"}
         changed = candidate_core != previous_core
@@ -594,3 +1044,67 @@ def reconcile_autopilot(
         result["result_hash"] = content_hash(result)
         ArtifactStore(output_dir).write_json("autopilot-reconciliation-result.json", result)
         return result
+
+
+def run_deterministic_bootstrap(
+    request_path: Path, input_dir: Path, output_dir: Path
+) -> dict[str, Any]:
+    """Run INPUT-FREEZE and unambiguous N00 locally without a model Runtime."""
+
+    from .workflow import resolve_workflow_route
+
+    request = _read_object(request_path, "Autopilot request")
+    workflow_input = _read_object(input_dir / "workflow-input.json", "workflow input")
+    source_snapshot = _read_object(input_dir / "source-snapshot.json", "source snapshot")
+    run_id = _text(request, "workflow_run_id", "Autopilot request")
+    snapshot_id = _text(request, "source_snapshot_id", "Autopilot request")
+    if source_snapshot.get("snapshot_id") != snapshot_id:
+        raise ContractError("Deterministic bootstrap source snapshot does not match the Run")
+    route = resolve_workflow_route(workflow_input)
+    if route["unresolved_items"]:
+        raise ContractError("Deterministic bootstrap N00 requires A01 advice")
+    workflow_mode = str(route["template"])
+    store = ArtifactStore(output_dir)
+    artifacts = [
+        ArtifactEnvelope(
+            workflow_run_id=run_id,
+            workflow_mode=workflow_mode,
+            artifact_id="n01-source-extraction-manifest",
+            source_snapshot_id=snapshot_id,
+            producer=Producer(component_id="INPUT-FREEZE", runtime="deterministic-node"),
+            payload={
+                "schema_version": "source-extraction-manifest/1.0",
+                "files": ["workflow-input.json", "source-snapshot.json"],
+                "source_material_available": (input_dir / "source-material.json").exists(),
+                "oracle_available_to_agents": False,
+            },
+            status=ArtifactStatus.COMPLETED,
+        ),
+        ArtifactEnvelope(
+            workflow_run_id=run_id,
+            workflow_mode=workflow_mode,
+            artifact_id="n00-workflow-route",
+            source_snapshot_id=snapshot_id,
+            producer=Producer(component_id="N00", runtime="deterministic-node"),
+            payload={
+                "schema_version": "workflow-route/1.0",
+                "workflow_mode": workflow_mode,
+                "workflow_template": route["template"],
+                "execution_depth": route["execution_depth"],
+                "route_source": route["route_source"],
+            },
+            status=ArtifactStatus.COMPLETED,
+        ),
+    ]
+    for artifact in artifacts:
+        store.write_artifact(artifact)
+    result = {
+        "schema_version": "deterministic-bootstrap-result/1.0",
+        "workflow_run_id": run_id,
+        "source_snapshot_id": snapshot_id,
+        "completed_nodes": ["INPUT-FREEZE", "N00"],
+        "artifact_hashes": {item.artifact_id: item.artifact_hash for item in artifacts},
+    }
+    result["result_hash"] = content_hash(result)
+    store.write_json("deterministic-bootstrap-result.json", result)
+    return result

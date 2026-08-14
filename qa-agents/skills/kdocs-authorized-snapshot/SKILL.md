@@ -1,12 +1,10 @@
 ---
 name: kdocs-authorized-snapshot
-description: Capture approved WPS/KDocs product documents as sanitized, evidence-bound JSON snapshots. Use for 365.kdocs.cn or kdocs.cn sources when K01 needs read-only product knowledge and an authenticated kdocs-cli or visible Chrome session is available.
+description: Query the current authorized WPS/KDocs BI whitepaper in real time and retrieve only matching visible sections or slides. Use for current product rules and whitepaper evidence; never archive the full document.
 ---
 
-# KDocs Authorized Snapshot
+# KDocs Real-Time Knowledge
 
-Run `scripts/capture.py URL --output PATH`. It tries authenticated `kdocs-cli` first, then a visible Chrome session through `browser_snapshot.py`. Never print or persist tokens, cookies, authorization headers, or browser profiles.
+Verify `authorized-product-browser-session`, then run `../lexiang-authorized-snapshot/scripts/realtime_query.js kdocs-search KEYWORD`. Return only matching snippets with document title, live URL and retrieval time. Read additional selected material only when the query identifies a relevant section/slide.
 
-Accept only approved source URLs. Reject login/SSO pages, empty content, unsupported documents, and permission failures. Record the requested/effective URL, title, capture method, timestamp, content hash and sanitized text.
-
-This Skill is read-only and artifact-only. A successful snapshot is still a K01 candidate; deterministic provenance and freshness validation must pass before publication.
+Do not store a full document snapshot. Bind evidence to the live document URL, title, retrieval time and snippet hash. Treat absent matches as insufficient evidence, not as proof that a rule does not exist.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "纷享销客个人语言与 H5"
+  short_description: "切换 112 个人语言并验证 App H5 BI 入口"
+  default_prompt: "Use $fxiaoke-personal-language-h5 to switch the 112 user language and validate a BI App H5 flow."

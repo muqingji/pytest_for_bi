@@ -1,5 +1,3 @@
-from tests.test_112_customer_custom_dimension_lifecycle import (
-    test_customer_enum_custom_dimension_lifecycle_in_112,
-)
+"""PC-001 lifecycle creation is covered by the retained chart placement test."""
 
-__all__ = ["test_customer_enum_custom_dimension_lifecycle_in_112"]
+__all__ = []

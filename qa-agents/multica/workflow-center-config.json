@@ -3,7 +3,23 @@
   "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
   "workflow_project_id": "4fa45734-8f07-4e07-92ce-0bdd6bb3d29b",
   "internal_project_id": "c2c84f1f-20af-456d-9eca-c9fbbd253840",
+  "precreate_nodes": true,
   "workflow_lead_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
+  "node_agents": {
+    "A02": "c67247f6-c668-4d1d-ab01-c1d7d0503d5a",
+    "A03": "5bed44c7-d486-4664-a39f-2666409315b2",
+    "A05": "4864c5be-cdbe-4f92-af99-a5a0c82b7f3b",
+    "A06": "0e2a8d5c-36b1-4458-9264-5c900075142a",
+    "A08": "83c08d9f-1f32-49c9-88c7-c8de3bf51869",
+    "A09": "596cc65b-0917-4e0e-a046-084bb217c29a",
+    "A11": "1e794e8e-65da-4b55-9c28-a53c0f8ca33c",
+    "A14": "51c5fb7d-f703-4c5b-a136-ed10c3aec936",
+    "A15": "396ada02-41ef-448b-bb1f-911819ee47ae",
+    "A18-BE": "a49952a6-56f4-4ca1-81e9-ef93b593752a",
+    "A18-CT": "c85d37b8-79e8-4ae5-9479-ee3fa5a5786d",
+    "A22": "79335d2f-8525-448d-8804-792852f9446e"
+  },
+  "g01_policy": "qa-agents/policies/g01-review-policy.json",
   "properties": {
     "item_type": "工作项类型",
     "workflow_status": "工作流状态",

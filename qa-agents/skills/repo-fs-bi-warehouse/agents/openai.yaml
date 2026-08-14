@@ -1,0 +1,4 @@
+interface:
+  display_name: "repo-fs-bi-warehouse"
+  short_description: "Route verified BI knowledge from repo-fs-bi-warehouse"
+  default_prompt: "Use repo-fs-bi-warehouse to retrieve evidence-bound BI knowledge."

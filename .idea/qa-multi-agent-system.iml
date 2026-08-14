@@ -3,6 +3,7 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$/qa-agents">
       <sourceFolder url="file://$MODULE_DIR$/qa-agents/src" isTestSource="false" />
+      <excludeFolder url="file://$MODULE_DIR$/qa-agents/.venv" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

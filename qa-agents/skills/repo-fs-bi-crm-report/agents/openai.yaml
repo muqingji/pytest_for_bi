@@ -1,0 +1,4 @@
+interface:
+  display_name: "repo-fs-bi-crm-report"
+  short_description: "Route verified BI knowledge from repo-fs-bi-crm-report"
+  default_prompt: "Use repo-fs-bi-crm-report to retrieve evidence-bound BI knowledge."

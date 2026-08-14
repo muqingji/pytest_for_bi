@@ -11,6 +11,7 @@ from qa_agents.agents.base import AgentContext
 from qa_agents.automation import AutomationPolicy, check_automation_generation
 from qa_agents.errors import SecurityPolicyError
 from qa_agents.security import SecurityPolicy
+from qa_agents.knowledge_router import route_knowledge_query
 from qa_agents.skill_registry import SkillRegistry, route_backend_case, route_data_plan
 
 
@@ -79,3 +80,60 @@ def test_data_router_authorizes_registered_resource_skills_only() -> None:
     assert "bi-aggregate-metric/1.0.0" in authorization["required_skills"]
     assert "bi-result-set-filter/1.0.0" in authorization["required_skills"]
     assert authorization["allowed_tools"] == []
+
+
+def test_language_h5_skill_is_published_for_contract_and_e2e_agents() -> None:
+    registry = SkillRegistry.from_file(REGISTRY)
+    entry = registry.skills["fxiaoke-personal-language-h5"]
+    assert entry["agents"] == ["A15", "A16"]
+    assert entry["side_effect"] == "validation_only"
+    assert entry["tools"] == ["case_runner", "visible_browser_read"]
+
+
+def _knowledge_catalog() -> dict:
+    return json.loads((ROOT / "knowledge/bi-repository-knowledge-catalog.json").read_text())
+
+
+@pytest.mark.parametrize(("query", "expected"), [
+    ("移动端统计图查看明细错误码", {"repo-bi-sdk", "repo-fs-bi"}),
+    ("拼表创建和查看明细", {"repo-fs-bi-dev-platform", "repo-fs-bi"}),
+    ("ODS 同步延迟导致统计数据不一致", {"repo-fs-bi-warehouse", "repo-fs-bi"}),
+    ("复制统计图到目录", {"repo-fs-bi-crm-report", "repo-fs-bi"}),
+])
+def test_knowledge_router_selects_semantic_owners(query: str, expected: set[str]) -> None:
+    result = route_knowledge_query(
+        query, purpose="requirement_analysis", catalog=_knowledge_catalog(),
+        registry=SkillRegistry.from_file(REGISTRY), check_freshness=False,
+    )
+    selected = {ref.rsplit("/", 1)[0] for ref in result["required_skills"]}
+    assert expected <= selected
+    assert result["authority_order"][0] == "current_runtime_evidence"
+
+
+def test_knowledge_router_routes_product_docs_without_bug_history_as_oracle() -> None:
+    result = route_knowledge_query(
+        "历史产品规则和操作说明", purpose="historical_knowledge",
+        catalog=_knowledge_catalog(), registry=SkillRegistry.from_file(REGISTRY),
+    )
+    assert "bi-product-docs-router/1.0.0" in result["required_skills"]
+    assert not any("bug-finder" in ref for ref in result["required_skills"])
+
+
+def test_knowledge_router_rejects_unmatched_and_unpublished_sources() -> None:
+    registry = SkillRegistry.from_file(REGISTRY)
+    with pytest.raises(Exception, match="did not match"):
+        route_knowledge_query("完全无关的内容", purpose="test_case", catalog=_knowledge_catalog(), registry=registry)
+    catalog = _knowledge_catalog()
+    catalog["repositories"][0]["skill"] = "not-published"
+    with pytest.raises(SecurityPolicyError, match="not published"):
+        route_knowledge_query("统计图", purpose="test_data", catalog=catalog, registry=registry)
+
+
+def test_knowledge_router_marks_unreadable_checkout_unavailable(tmp_path: Path) -> None:
+    catalog = _knowledge_catalog()
+    catalog["repositories"][0]["local_checkout"] = str(tmp_path)
+    result = route_knowledge_query(
+        "统计图", purpose="test_case", catalog=catalog,
+        registry=SkillRegistry.from_file(REGISTRY),
+    )
+    assert result["repositories"][0]["freshness"] == "unavailable"

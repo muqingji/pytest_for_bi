@@ -1,0 +1,165 @@
+{
+  "artifact_hash": "sha256:7ce0f276b227bcfd53e839e82132b13fc5e75b76a0535a562d0758c67e097c99",
+  "artifact_id": "a05-backend-change-analysis",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-13T05:35:59+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:53b8d155906d3c227055d78b1c54afb4b1e0a6ffbfdb651d457303e33535b31d",
+      "location": "a05-input.json",
+      "source_id": "A05",
+      "source_type": "multica_agent_input"
+    }
+  ],
+  "facts": [
+    {
+      "attachment_id": "019ff99b-4a3a-71f1-b130-e2fdbb18b309",
+      "commands": [],
+      "issue_id": "837df7b6-b5ca-4836-af50-e536cac4d370",
+      "result": "not_available",
+      "task_id": "de5e75c9-14f8-4d16-bb9f-25f3935a6218",
+      "type": "multica_tool_trace_audit"
+    }
+  ],
+  "inferences": [],
+  "payload": {
+    "change_set_id": "changeset-fs-bi-c6b785344c69",
+    "changed_file_count": 10,
+    "domain": "backend",
+    "facts": [
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "backend-error-codes-added",
+        "path": "fs-bi-i18n/src/main/java/com/facishare/bi/i18n/i18nEnum/I18NErrorCodeEnum.java",
+        "source_refs": [
+          "fs-bi-i18n/src/main/java/com/facishare/bi/i18n/i18nEnum/I18NErrorCodeEnum.java"
+        ],
+        "summary": "Added four detail-query business error codes for custom-dimension reasons, result-set filters, multi-relation metrics, and dynamic-relation metrics, each with an error code, internationalization key, and Chinese fallback message."
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "result-set-filter-error-path",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/easy/stat/core/common/element/OperateMenuElement.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/easy/stat/core/common/element/OperateMenuElement.java"
+        ],
+        "summary": "When the gray-gated aggregate-filter check finds a grouped filter, it now throws RESULT_SET_FILTER_DETAIL_UNSUPPORTED and passes the filter field name as the replacement argument; empty filters, null configs, and multi-dimensional goal fields retain their prior bypass behavior."
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "custom-dimension-detail-reason",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/StatDetailQueryService.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/StatDetailQueryService.java"
+        ],
+        "summary": "validateCustomDimension continues checking filters, original dimensions, and drill values through customDimensionExpander, but now raises CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED with an empty message argument when any custom dimension is present."
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "business-object-count-limit",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/BusinessObjectTransConverter.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/BusinessObjectTransConverter.java"
+        ],
+        "summary": "Business-object detail conversion now reports more than three business objects with MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED, HTTP/status argument 403, and an empty message; existing three-object relation branches remain in place."
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "dynamic-relation-detection",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverter.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverter.java"
+        ],
+        "summary": "After normal relation lookups fail, the converter queries related-field metadata on the check object and then theme object; fields recognized as UDF what/what-list fields now raise DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED with status 403, while missing metadata and non-dynamic fields retain their prior fallback errors."
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": true,
+        "evidence_class": "business_source",
+        "id": "topology-node-limit",
+        "path": "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ch/StatDetailRptDwService.java",
+        "source_refs": [
+          "fs-bi-stat/src/main/java/com/facishare/bi/stat/service/detail/ch/StatDetailRptDwService.java"
+        ],
+        "summary": "ClickHouse detail topology validation now reports more than three nodes with MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED, status 403, and an empty message; conflicting edge relationships still throw StatDetailDegradeException."
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": false,
+        "evidence_class": "test_source",
+        "id": "business-object-regression-test",
+        "path": "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/BusinessObjectTransConverterTest.java",
+        "source_refs": [
+          "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/BusinessObjectTransConverterTest.java"
+        ],
+        "summary": "Added a regression test asserting that four business objects produce MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED."
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": false,
+        "evidence_class": "test_source",
+        "id": "dynamic-relation-regression-tests",
+        "path": "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverterTest.java",
+        "source_refs": [
+          "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ObjectRelationTransConverterTest.java"
+        ],
+        "summary": "Added tests for dynamic what-field and what-list-field errors, plus fallback behavior for non-dynamic and missing related fields."
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": false,
+        "evidence_class": "test_source",
+        "id": "topology-and-relation-regression-tests",
+        "path": "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ch/AggRuleCovertServiceTest.java",
+        "source_refs": [
+          "fs-bi-stat/src/test/java/com/facishare/bi/stat/service/detail/ch/AggRuleCovertServiceTest.java"
+        ],
+        "summary": "Extended tests for self-related topology node reuse, theme-slave md-field mapping, and the multi-relation error when topology contains more than three nodes."
+      },
+      {
+        "change_set_id": "changeset-fs-bi-c6b785344c69",
+        "eligible_for_business_alignment": false,
+        "evidence_class": "untrusted_documentation",
+        "id": "i18n-guidance-documentation",
+        "path": "AGENTS.md",
+        "source_refs": [
+          "AGENTS.md"
+        ],
+        "summary": "Added repository guidance describing Chinese/i18n handling, error-code usage, legacy matching constants, and compatibility constraints; this is documentation context only."
+      }
+    ],
+    "input_bundle_hash": "sha256:53b8d155906d3c227055d78b1c54afb4b1e0a6ffbfdb651d457303e33535b31d",
+    "schema_version": "change-analysis/1.0",
+    "source_snapshot_id": "pilot-001-source-v1",
+    "status": "completed",
+    "workflow_run_id": "multica-project-20260813-01"
+  },
+  "producer": {
+    "component_id": "A05",
+    "component_version": "0.1.0",
+    "inference_config_hash": "sha256:ea51962525f13e8914bee10405dea4a221e78ef15be6553f423212da02833db7",
+    "model_provider": "codex",
+    "model_snapshot": "gpt-5.6-sol",
+    "profile_version": "1.1.0",
+    "prompt_version": "1.1.1",
+    "runtime": "multica",
+    "tool_bundle_version": "multica-task:de5e75c9-14f8-4d16-bb9f-25f3935a6218"
+  },
+  "reason_code": null,
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "multica-project-20260813-01"
+}

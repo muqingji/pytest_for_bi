@@ -16,10 +16,7 @@ from tests.test_112_dynamic_relation_metric_lifecycle import SCENARIOS
 
 SALES_ORDER_SCHEMA_ID = "BI_5be1351956fc11448cdde39e"
 REQUIREMENT_NAME = "统计图查看明细限制原因提示优化"
-OUTPUT = Path(__file__).resolve().parents[1] / (
-    "qa-agents/runs/confidence-20260811-01/backend-full-chain-20260812/"
-    "final/retained-test-assets.json"
-)
+OUTPUT = Path(__file__).resolve().parents[1] / "generated/retained-test-assets.json"
 
 
 def _create_metric(case_runner, name, agg_object, agg_field, time_field, filters=None):

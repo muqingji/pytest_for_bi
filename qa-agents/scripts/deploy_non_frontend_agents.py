@@ -10,8 +10,9 @@ from pathlib import Path
 
 RUNTIME_ID = "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
 MODEL = "gpt-5.6-sol"
-MANIFEST = Path("multica/workspace-manifest.json")
-RECEIPT = Path("multica/non-frontend-agent-deployment.json")
+QA_AGENTS_ROOT = Path(__file__).resolve().parents[1]
+MANIFEST = QA_AGENTS_ROOT / "multica/workspace-manifest.json"
+RECEIPT = QA_AGENTS_ROOT / "multica/non-frontend-agent-deployment.json"
 
 SPECS = [
     ("K01", "产品测试知识治理", "product-test-knowledge-candidates/1.0", "从批准网页快照、只读业务代码和冻结 OpenAPI 提取带来源的候选知识，不发布未经校验的事实"),
@@ -47,7 +48,7 @@ def run(*args: str) -> dict:
 
 def instructions(logical_id: str, contract: str, role: str) -> str:
     if logical_id == "K01":
-        return Path("multica/agent-instructions/k01-v1.0.0.md").read_text(
+        return (QA_AGENTS_ROOT / "multica/agent-instructions/k01-v1.0.0.md").read_text(
             encoding="utf-8"
         )
     return f"""你是 {logical_id} 独立 QA Agent。职责：{role}。

@@ -67,6 +67,58 @@ RUN_MULTICA_STATUS = {
     "needs_action": "in_progress",
 }
 
+NODE_MULTICA_STATUS = {
+    "not_started": "backlog",
+    "queued": "todo",
+    "running": "in_progress",
+    "waiting_human": "in_review",
+    "blocked": "blocked",
+    "failed": "blocked",
+    "completed": "done",
+    "skipped": "done",
+    "cancelled": "cancelled",
+    "superseded": "cancelled",
+}
+
+SERVER_NODE_DETAILS = {
+    "INPUT-FREEZE": "冻结需求、技术方案和 ChangeSet，校验输入完整性与权限边界。",
+    "N00": "按触发类型和组织策略确定工作流模板、执行深度与节点路由。",
+    "A02": "把冻结需求拆成原子需求、验收条件、歧义和需要人工确认的事项。",
+    "A03": "分析技术方案、组件依赖、可测性缺口、阻塞项和测试能力边界。",
+    "A05": "分析后端 ChangeSet 的事实、影响范围、变更归属和实现偏差。",
+    "A06": "对需求、技术方案与后端变更做映射对齐，输出遗漏、冲突和未实现项。",
+    "G01": "人工审核测试范围、风险等级、必测内容和需求口径。",
+    "N24": "确定性生成测试策略、风险等级、必测层级与 Gate 策略。",
+    "A08": "按冻结需求和测试策略设计 Test Case IR 与覆盖矩阵。",
+    "A09": "审查 Oracle 规则、测试防范覆盖、遗漏和修正建议。",
+    "N04": "确定性校验 Test Case IR 的结构、来源、Oracle 和覆盖规则。",
+    "G02": "人工审核 Test Case IR 的预期结果和测试覆盖。",
+    "N25": "把父级 Case 编译成可执行子 Case，并建立父子与能力映射。",
+    "A11": "审查父子 Case 拆分后的覆盖完整性、冲突和遗漏。",
+    "N26": "按资产、风险和策略确定本次要执行的测试 Case。",
+    "N15": "编译生成、更新、直接执行、人工执行或跳过的执行计划。",
+    "A14": "生成后端 API、集成和功能自动化测试候选。",
+    "A15": "基于冻结 OpenAPI 生成契约自动化测试候选。",
+    "A22": "从 Case 提取测试数据意图、业务状态和资源目标。",
+    "A18-BE": "独立审查后端自动化候选的断言、隔离、清理和权限。",
+    "A18-CT": "独立审查契约自动化候选的 Schema、操作和兼容判断。",
+    "N27": "校验测试数据计划的安全性、可复现性和能力边界。",
+    "N05": "对自动化候选执行格式、lint、编译和安全扫描。",
+    "G03": "人工审核自动化代码质量、风险和发布边界。",
+    "N07": "检查测试环境、账号、数据和资源是否满足执行条件。",
+    "N08": "受控执行自动化测试并收集运行证据。",
+    "N17": "执行人工与探索测试，并记录过程和结果。",
+    "N10": "按重试预算处理环境失败，给出继续、暂停或阻塞结论。",
+    "N18": "采集自动化与人工执行的运行质量信号。",
+    "N09": "标准化执行证据并对失败做聚类和根因归纳。",
+    "N20": "跨运行识别和合并重复缺陷。",
+    "N11": "根据证据、缺陷和风险确定性生成质量结论。",
+    "N19": "审计质量豁免申请及授权范围。",
+    "N12": "发布质量报告并留存发布证据。",
+    "N13": "记录报告反馈并归档后续动作。",
+    "N23": "按授权执行上线后验证并记录审计结论。",
+}
+
 
 def _read_object(path: Path, label: str) -> dict[str, Any]:
     try:
@@ -123,7 +175,7 @@ def _validated_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(nodes, list) or not nodes:
         raise ContractError("Requirement workflow requires at least one node")
     execution_ids: set[str] = set()
-    bound_issue_ids: set[str] = set()
+    bound_issue_cards: dict[str, str] = {}
     normalized_nodes: list[dict[str, Any]] = []
     for index, node in enumerate(nodes):
         if not isinstance(node, Mapping):
@@ -144,9 +196,9 @@ def _validated_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
                 raise ContractError(
                     f"Workflow node {execution_id} cannot reuse a parent or Run Issue"
                 )
-            if issue_id in bound_issue_ids:
+            if issue_id in bound_issue_cards:
                 raise ContractError(f"Requirement workflow has duplicate node issue_id: {issue_id}")
-            bound_issue_ids.add(issue_id)
+            bound_issue_cards[issue_id] = str(node.get("stage_card_id", ""))
         normalized_nodes.append(dict(node))
     actions = spec.get("actions", [])
     if not isinstance(actions, list):
@@ -168,6 +220,21 @@ def _validated_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
         item_count = action.get("item_count")
         if not isinstance(item_count, int) or item_count < 1:
             raise ContractError(f"Workflow action {action_id} item_count must be positive")
+        approval_items = action.get("approval_items")
+        if approval_items is not None:
+            if not isinstance(approval_items, list):
+                raise ContractError(f"Workflow action {action_id} approval_items must be a list")
+            for item_index, approval in enumerate(approval_items):
+                if not isinstance(approval, Mapping):
+                    raise ContractError(
+                        f"Workflow action {action_id} approval_items[{item_index}] must be an object"
+                    )
+                for field in ("id", "title", "summary"):
+                    _required_text(
+                        approval,
+                        field,
+                        f"Workflow action {action_id} approval_items[{item_index}]",
+                    )
         normalized_actions.append(dict(action))
     run_history = spec.get("run_history", [])
     if not isinstance(run_history, list) or not all(
@@ -323,6 +390,25 @@ def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
                     "",
                 ]
             )
+            approval_items = action.get("approval_items")
+            if approval_items:
+                lines.extend([f"#### 审批项（{len(approval_items)}）", ""])
+                for index, approval in enumerate(approval_items, start=1):
+                    category = str(approval.get("category") or approval.get("title") or "待确认").strip()
+                    lines.append(f"{index}. **{category}**（`{approval['id']}`）")
+                    lines.append(f"   {approval['summary']}")
+                    confirm_action = str(approval.get("confirm_action") or "").strip()
+                    if confirm_action:
+                        lines.append(f"   需要确认：{confirm_action}")
+                    requirement_ids = approval.get("requirement_ids") or []
+                    if requirement_ids:
+                        lines.append(
+                            f"   涉及需求：" + "、".join(f"`{value}`" for value in requirement_ids)
+                        )
+                    lines.append("")
+            else:
+                lines.append("- 审批项：请打开审核入口查看具体审批项。")
+                lines.append("")
     else:
         lines.extend(["## 需要你处理", "", "当前没有需要你处理的事项。", ""])
 
@@ -542,6 +628,136 @@ def _ensure_run_issue_state(
         raise ContractError("Workflow center Run Issue state update was not confirmed")
 
 
+def _stage_card_status(nodes: list[Mapping[str, Any]]) -> str:
+    states = {str(node.get("state", "")) for node in nodes}
+    if states & {"queued", "running"}:
+        return "in_progress"
+    if "waiting_human" in states:
+        return "in_review"
+    if states & {"blocked", "failed"}:
+        return "blocked"
+    if states and states <= TERMINAL_NODE_STATES:
+        if states <= {"cancelled", "superseded"}:
+            return "cancelled"
+        return "done"
+    return "backlog"
+
+
+def _render_stage_card_markdown(
+    card_id: str, title: str, nodes: list[Mapping[str, Any]]
+) -> str:
+    counts: dict[str, int] = defaultdict(int)
+    for node in nodes:
+        counts[str(node.get("state", "not_started"))] += 1
+    active = [
+        str(node.get("node_id") or node.get("execution_id"))
+        for node in nodes
+        if node.get("state") in {"queued", "running", "waiting_human", "blocked", "failed"}
+    ]
+    artifacts = [
+        f"- `{node.get('artifact_id')}` `{node.get('artifact_hash')}`"
+        for node in nodes
+        if node.get("artifact_id") and node.get("artifact_hash")
+    ]
+    failures = [
+        f"- `{node.get('node_id')}`：{node.get('result_summary', '等待处理')}"
+        for node in nodes
+        if node.get("state") in {"blocked", "failed"}
+    ]
+    human_lines: list[str] = []
+    for node in nodes:
+        if node.get("state") != "waiting_human":
+            continue
+        human_lines.append(
+            f"- 审核 `{node.get('node_id')}`：{node.get('result_summary', '请完成审核')}"
+        )
+        approval_items = node.get("approval_items") or []
+        for approval in approval_items:
+            category = str(approval.get("category") or approval.get("title") or "待确认").strip()
+            human_lines.append(f"  - **{category}**（`{approval['id']}`）")
+            human_lines.append(f"    {approval['summary']}")
+            confirm_action = str(approval.get("confirm_action") or "").strip()
+            if confirm_action:
+                human_lines.append(f"    需要确认：{confirm_action}")
+            requirement_ids = approval.get("requirement_ids") or []
+            if requirement_ids:
+                human_lines.append(
+                    "    涉及需求：" + "、".join(f"`{value}`" for value in requirement_ids)
+                )
+        if not approval_items:
+            human_lines.append("  - 审批项：请打开审核入口查看具体审批项。")
+    human = human_lines
+    progress = "、".join(
+        f"{NODE_STATUS_LABELS.get(state, state)} {count}"
+        for state, count in sorted(counts.items())
+    )
+    node_list = " -> ".join(str(node.get("node_id")) for node in nodes)
+    node_details = [
+        f"- `{node.get('node_id')}`："
+        f"{SERVER_NODE_DETAILS.get(str(node.get('node_id')), str(node.get('label', '')))}"
+        for node in nodes
+    ]
+    return "\n".join(
+        [
+            f"# {card_id} {title}",
+            "",
+            "## 目标",
+            f"完成“{title}”阶段并保留全部内部节点审计。",
+            "",
+            "## 输入",
+            "上游已验收 Artifact、当前需求快照和本阶段节点依赖。",
+            "",
+            "## 执行内容",
+            node_list,
+            "",
+            *node_details,
+            "",
+            "## 当前进度",
+            f"共 {len(nodes)} 个内部节点：{progress}。",
+            f"当前节点：{'、'.join(active) if active else '无'}。",
+            "",
+            "## 产出",
+            *(artifacts or ["暂无已验收 Artifact。"]),
+            "",
+            "## 异常处理",
+            *(failures or ["当前无阻塞异常；回流和重试只更新本卡。"]),
+            "",
+            "## 人工操作",
+            *(human or ["当前无需人工操作。"]),
+            "",
+            "## 完成标准",
+            "本阶段所有已路由节点完成或按策略跳过；人工 Gate 必须具有有效 Decision Artifact。",
+        ]
+    )
+
+
+def _stage_cards(projection: Mapping[str, Any]) -> list[dict[str, Any]]:
+    grouped: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    titles: dict[str, str] = {}
+    issues: dict[str, tuple[str, str]] = {}
+    for node in projection["nodes"]:
+        card_id = str(node.get("stage_card_id", "")).strip()
+        if not card_id:
+            continue
+        grouped[card_id].append(node)
+        titles[card_id] = str(node.get("stage_card_title") or card_id)
+        issue_id = str(node.get("stage_issue_id", "")).strip()
+        if issue_id:
+            issues[card_id] = (issue_id, str(node.get("stage_issue_identifier", "")))
+    return [
+        {
+            "stage_card_id": card_id,
+            "title": titles[card_id],
+            "nodes": nodes,
+            "status": _stage_card_status(nodes),
+            "description": _render_stage_card_markdown(card_id, titles[card_id], nodes),
+            "issue_id": issues.get(card_id, ("", ""))[0],
+            "issue_identifier": issues.get(card_id, ("", ""))[1],
+        }
+        for card_id, nodes in sorted(grouped.items())
+    ]
+
+
 @contextmanager
 def _workflow_sync_lock(output_dir: Path):
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -621,7 +837,7 @@ def _sync_multica_workflow_center_unlocked(
             "--title",
             f"[{projection['requirement_id']}] {projection['title']}",
             "--project",
-            str(config["workflow_project_id"]),
+            str(config["internal_project_id"]),
             "--status",
             str(projection["multica_status"]),
             "--output",
@@ -664,20 +880,16 @@ def _sync_multica_workflow_center_unlocked(
     for name, value in parent_properties.items():
         active_runner(_property_command(parent_id, name, value, workspace_id), None)
 
-    action_issue_ids = {
-        str(action.get("issue_id"))
-        for action in projection["actions"]
-        if action.get("issue_id")
-    }
     classified_nodes = 0
     internal_project_id = str(config["internal_project_id"])
+    run_project_id = str(config.get("run_project_id") or internal_project_id)
     run_issue = projection.get("run_issue")
     if isinstance(run_issue, Mapping):
         run_issue_id = str(run_issue["id"])
         _ensure_run_issue_state(
             active_runner,
             run_issue_id,
-            internal_project_id,
+            run_project_id,
             RUN_MULTICA_STATUS[str(projection["overall_status"])],
             workspace_id,
         )
@@ -695,42 +907,119 @@ def _sync_multica_workflow_center_unlocked(
             ),
             None,
         )
-    for node in projection["nodes"]:
-        issue_id = str(node.get("issue_id", "")).strip()
+    stage_cards = _stage_cards(projection)
+    if not stage_cards:
+        action_issue_ids = {
+            str(action.get("issue_id"))
+            for action in projection["actions"]
+            if action.get("issue_id")
+        }
+        for node in projection["nodes"]:
+            issue_id = str(node.get("issue_id", "")).strip()
+            if not issue_id:
+                continue
+            item_type = "human_action" if issue_id in action_issue_ids else "node_execution"
+            status = NODE_MULTICA_STATUS[str(node["state"])]
+            if item_type == "human_action":
+                action = next(
+                    item for item in projection["actions"]
+                    if str(item.get("issue_id")) == issue_id
+                )
+                status = "in_review" if action["status"] == "open" else "done"
+            else:
+                _ensure_issue_project(
+                    active_runner, issue_id, internal_project_id, workspace_id
+                )
+            _ensure_run_issue_state(
+                active_runner, issue_id, internal_project_id, status, workspace_id
+            )
+            metadata = {
+                "qa_item_type": item_type,
+                "qa_workflow_id": str(projection["workflow_id"]),
+                "qa_workflow_run_id": str(projection["workflow_run_id"]),
+                "qa_node_id": str(node.get("node_id") or node["execution_id"]),
+                "qa_visible_in_workflow_center": "false",
+            }
+            for command in _metadata_commands(issue_id, metadata, workspace_id):
+                active_runner(command, None)
+            item_label = "人工处理" if item_type == "human_action" else "内部节点"
+            active_runner(
+                _property_command(
+                    issue_id, str(properties["item_type"]), item_label, workspace_id
+                ),
+                None,
+            )
+            classified_nodes += 1
+    if stage_cards:
+        action_issue_ids = {
+            str(action.get("issue_id"))
+            for action in projection["actions"]
+            if action.get("issue_id")
+        }
+        for node in projection["nodes"]:
+            issue_id = str(node.get("issue_id", "")).strip()
+            if not issue_id:
+                continue
+            item_type = "human_action" if issue_id in action_issue_ids else "node_execution"
+            node_state = str(node["state"])
+            status = "in_progress" if node_state == "queued" else NODE_MULTICA_STATUS[node_state]
+            _ensure_run_issue_state(
+                active_runner, issue_id, run_project_id, status, workspace_id
+            )
+            metadata = {
+                "qa_item_type": item_type,
+                "qa_workflow_id": str(projection["workflow_id"]),
+                "qa_workflow_run_id": str(projection["workflow_run_id"]),
+                "qa_node_id": str(node.get("node_id") or node["execution_id"]),
+                "qa_stage_card_id": str(node.get("stage_card_id", "")),
+                "qa_visible_in_workflow_center": "false",
+            }
+            for command in _metadata_commands(issue_id, metadata, workspace_id):
+                active_runner(command, None)
+            active_runner(
+                _property_command(
+                    issue_id,
+                    str(properties["item_type"]),
+                    "人工处理" if item_type == "human_action" else "内部节点",
+                    workspace_id,
+                ),
+                None,
+            )
+            classified_nodes += 1
+    for card in stage_cards:
+        issue_id = str(card["issue_id"]).strip()
         if not issue_id:
             continue
-        item_type = "human_action" if issue_id in action_issue_ids else "node_execution"
-        if item_type == "human_action":
-            action = next(
-                item for item in projection["actions"] if str(item.get("issue_id")) == issue_id
-            )
-            action_status = "in_review" if action["status"] == "open" else "done"
-            _ensure_run_issue_state(
-                active_runner,
-                issue_id,
-                internal_project_id,
-                action_status,
-                workspace_id,
-            )
-        else:
-            _ensure_issue_project(
-                active_runner, issue_id, internal_project_id, workspace_id
-            )
+        updated = _run_object(
+            active_runner,
+            [
+                "multica", "issue", "update", issue_id,
+                "--description-stdin",
+                "--title", f"[{projection['workflow_run_id']}] {card['stage_card_id']} {card['title']}",
+                "--project", str(config["workflow_project_id"]),
+                "--status", str(card["status"]),
+                "--output", "json",
+                "--workspace-id", workspace_id,
+            ],
+            str(card["description"]),
+            "stage-card update",
+        )
+        if updated.get("id") != issue_id or updated.get("status") != card["status"]:
+            raise ContractError("Workflow center stage-card update was not confirmed")
         metadata = {
-            "qa_item_type": item_type,
+            "qa_item_type": "stage_card",
             "qa_workflow_id": str(projection["workflow_id"]),
             "qa_workflow_run_id": str(projection["workflow_run_id"]),
-            "qa_node_id": str(node.get("node_id") or node["execution_id"]),
-            "qa_visible_in_workflow_center": "false",
+            "qa_stage_card_id": str(card["stage_card_id"]),
+            "qa_node_ids": ",".join(str(node.get("node_id")) for node in card["nodes"]),
+            "qa_visible_in_workflow_center": "true",
         }
         for command in _metadata_commands(issue_id, metadata, workspace_id):
             active_runner(command, None)
-        item_label = "人工处理" if item_type == "human_action" else "内部节点"
         active_runner(
-            _property_command(issue_id, str(properties["item_type"]), item_label, workspace_id),
+            _property_command(issue_id, str(properties["item_type"]), "内部节点", workspace_id),
             None,
         )
-        classified_nodes += 1
 
     result = {
         "schema_version": "workflow-center-sync-result/1.0",
@@ -743,6 +1032,7 @@ def _sync_multica_workflow_center_unlocked(
         "action_required": projection["action_required"],
         "action_count": projection["action_count"],
         "classified_node_count": classified_nodes,
+        "stage_card_count": len(stage_cards),
         "projection_hash": projection["projection_hash"],
     }
     result["result_hash"] = content_hash(result)

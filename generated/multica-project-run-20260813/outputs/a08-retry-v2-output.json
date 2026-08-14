@@ -1,0 +1,826 @@
+{
+  "schema_version": "test-design-ir/1.1",
+  "workflow_run_id": "multica-project-20260813-01",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "input_bundle_hash": "sha256:574ce7df0db72598f085b4bf001d0bc1eab627b47cc5783b30ed7de22f7ff9cc",
+  "status": "completed_with_gaps",
+  "test_intents": [
+    {
+      "id": "INT-001",
+      "objective": "验证查看明细失败时按实际命中的受限场景返回一个专用原因，而非统一提示。",
+      "risk": "critical",
+      "required_layers": ["backend", "contract", "e2e"],
+      "source_refs": ["REQ-001", "RULE-MULTIPLE-REASONS"]
+    },
+    {
+      "id": "INT-002",
+      "objective": "验证维度或数据范围使用自定义维度时返回专用错误，且不扩展至未批准位置。",
+      "risk": "critical",
+      "required_layers": ["backend", "contract", "e2e"],
+      "source_refs": ["REQ-002", "RULE-CUSTOM-DIMENSION", "RULE-I18N-CUSTOM-DIMENSION"]
+    },
+    {
+      "id": "INT-003",
+      "objective": "验证结果集统计指标筛选的指标名解析、多个指标名传递和中英文参数化提示。",
+      "risk": "critical",
+      "required_layers": ["backend", "contract", "e2e"],
+      "source_refs": ["REQ-003", "RULE-SINGLE-METRIC", "RULE-I18N-RESULT-SET"]
+    },
+    {
+      "id": "INT-004",
+      "objective": "验证多关联指标仅在既有关系解析失败条件下返回多关联专用错误，成功关系解析不受影响。",
+      "risk": "critical",
+      "required_layers": ["backend", "contract", "e2e"],
+      "source_refs": ["REQ-004", "RULE-MULTI-RELATION", "RULE-I18N-MULTI-RELATION"]
+    },
+    {
+      "id": "INT-005",
+      "objective": "验证特殊 what/whatlist 动态关联的实际对象和字段范围、专用错误及非目标关系回归。",
+      "risk": "critical",
+      "required_layers": ["backend", "contract", "e2e"],
+      "source_refs": ["REQ-005", "RULE-DYNAMIC-RELATION", "RULE-I18N-DYNAMIC-RELATION"]
+    },
+    {
+      "id": "INT-006",
+      "objective": "验证统计图与拼表复用相同限制原因、错误码、多语文案和指标参数。",
+      "risk": "critical",
+      "required_layers": ["backend", "contract", "e2e"],
+      "source_refs": ["REQ-006", "RULE-ENTRY-CONSISTENCY"]
+    },
+    {
+      "id": "INT-007",
+      "objective": "验证 Web 与移动端的运行时路由、请求参数、错误响应和展示文案一致。",
+      "risk": "critical",
+      "required_layers": ["backend", "contract", "e2e"],
+      "source_refs": ["REQ-007", "RULE-ENTRY-CONSISTENCY"]
+    }
+  ],
+  "parent_cases": [
+    {
+      "id": "PC-BE-001",
+      "title": "自定义维度位置判定与专用原因",
+      "intent_ids": ["INT-001", "INT-002"],
+      "layer": "backend",
+      "required_layers": ["backend"],
+      "risk": "critical",
+      "priority": "P0",
+      "source_refs": ["REQ-001", "REQ-002", "RULE-CUSTOM-DIMENSION", "TF-003"],
+      "preconditions": [
+        "使用隔离租户和具备图表查看明细权限的测试用户。",
+        "后端测试可观测限制原因、错误 key 和错误码。",
+        "准备普通字段与自定义维度字段，且除当前数据集声明的位置外不命中其他限制。"
+      ],
+      "test_data": {
+        "namespace": "a08_multica-project-20260813-01_PC-BE-001",
+        "locales": ["zh_CN", "en"],
+        "datasets": [
+          "统计图维度包含自定义维度，数据范围仅含普通字段",
+          "统计图数据范围包含自定义维度，维度仅含普通字段",
+          "维度和数据范围均不含自定义维度的对照图表"
+        ],
+        "excluded_scenarios": ["仅下钻字段包含自定义维度"]
+      },
+      "steps": [
+        "分别构造自定义维度位于维度和数据范围的请求，并调用真实查看明细服务。",
+        "采集每次调用的限制原因、错误 key、错误码和响应。",
+        "调用不含自定义维度的对照请求，确认不会因本规则被拒绝。"
+      ],
+      "expected": [
+        {
+          "id": "EXP-BE-001-01",
+          "description": "维度位置命中自定义维度限制。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_exception.error_code",
+            "matcher": "equals",
+            "source_ref": "RULE-CUSTOM-DIMENSION",
+            "expected_value": "s307011534"
+          }
+        },
+        {
+          "id": "EXP-BE-001-02",
+          "description": "数据范围位置命中同一自定义维度限制。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_exception.error_key",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "expected_value": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED"
+          }
+        },
+        {
+          "id": "EXP-BE-001-03",
+          "description": "无自定义维度的对照请求不返回自定义维度专用错误。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_response.error_code",
+            "matcher": "not_equals",
+            "source_ref": "RULE-CUSTOM-DIMENSION",
+            "expected_value": "s307011534"
+          }
+        }
+      ],
+      "cleanup": [
+        "删除隔离命名空间内创建的图表、字段和测试数据。",
+        "恢复测试用户权限并清除图表配置缓存。"
+      ],
+      "execution_policy": {
+        "allowed_modes": ["automated", "manual"],
+        "automation_review": "required",
+        "blocking_gaps": ["未提供可执行测试框架、隔离数据夹具和错误观测入口。"]
+      },
+      "automation_candidate": true
+    },
+    {
+      "id": "PC-BE-002",
+      "title": "结果集筛选指标名称解析与多指标传递",
+      "intent_ids": ["INT-001", "INT-003"],
+      "layer": "backend",
+      "required_layers": ["backend"],
+      "risk": "critical",
+      "priority": "P0",
+      "source_refs": ["REQ-003", "RULE-SINGLE-METRIC", "TF-004", "TF-005"],
+      "preconditions": [
+        "使用具备指标元数据读取权限的隔离测试用户。",
+        "真实后端调用可采集 Filter.fieldName、fieldId 元数据查询结果、当前语言动态展示名和异常参数。",
+        "各数据集仅命中结果集筛选限制。"
+      ],
+      "test_data": {
+        "namespace": "a08_multica-project-20260813-01_PC-BE-002",
+        "locales": ["zh_CN", "en"],
+        "datasets": [
+          "普通指标按结果集筛选且 Filter.fieldName 为营收或 Gross Revenue",
+          "聚合指标按结果集筛选且 fieldName 缺失、fieldId 元数据名称有效",
+          "计算指标按结果集筛选且前两级名称缺失、当前语言动态展示名有效",
+          "同环比指标按结果集筛选且名称可解析",
+          "两个按结果集筛选指标，名称分别为营收和订单数"
+        ],
+        "skip_not_applicable": ["所有名称来源均为空的指标"]
+      },
+      "steps": [
+        "依次使用普通、聚合、计算和同环比指标调用真实查看明细服务。",
+        "分别验证名称从 Filter.fieldName、fieldId 元数据和当前语言动态展示名解析。",
+        "使用两个受限指标调用服务并采集传给业务异常的指标名称参数集合。"
+      ],
+      "expected": [
+        {
+          "id": "EXP-BE-002-01",
+          "description": "四类指标均返回结果集筛选专用错误。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_exception.error_code",
+            "matcher": "all_equal",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "expected_value": "s307011535"
+          }
+        },
+        {
+          "id": "EXP-BE-002-02",
+          "description": "单指标名称严格按 fieldName、fieldId 元数据、当前语言动态展示名顺序解析。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_exception.metric_name_parameters",
+            "matcher": "equals",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "expected_value": ["请求中非空 fieldName", "fieldId 元数据展示名", "当前语言动态展示名"]
+          }
+        },
+        {
+          "id": "EXP-BE-002-03",
+          "description": "多个受限指标的所有展示名均进入实际业务异常参数，不遗漏且不泄露无权限名称。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_exception.metric_name_parameters",
+            "matcher": "contains",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "expected_value": ["营收", "订单数"]
+          }
+        }
+      ],
+      "cleanup": [
+        "删除测试指标、筛选配置和图表。",
+        "清除指标元数据及多语言名称缓存。"
+      ],
+      "execution_policy": {
+        "allowed_modes": ["automated", "manual"],
+        "automation_review": "required",
+        "blocking_gaps": ["未提供指标元数据夹具、异常参数观测点和错误码平台联调环境。"]
+      },
+      "automation_candidate": true
+    },
+    {
+      "id": "PC-BE-003",
+      "title": "多关联与动态关联真实范围及关系解析回归",
+      "intent_ids": ["INT-001", "INT-004", "INT-005"],
+      "layer": "backend",
+      "required_layers": ["backend"],
+      "risk": "critical",
+      "priority": "P0",
+      "source_refs": ["REQ-004", "REQ-005", "RULE-DYNAMIC-RELATION", "RULE-MULTI-RELATION", "TF-006", "TF-007", "TF-008"],
+      "preconditions": [
+        "从真实运行时元数据查询 what、whatlist、对象和字段范围，不以 G01 代替实现 Oracle。",
+        "可控制关系解析成功和既有已知关系不支持失败。",
+        "准备工单主题下业务流程、业务流程任务、服务记录任意字段样本，以及普通关系负样本。"
+      ],
+      "test_data": {
+        "namespace": "a08_multica-project-20260813-01_PC-BE-003",
+        "locales": ["zh_CN", "en"],
+        "datasets": [
+          "业务对象数或拓扑满足实际多关联判定且关系解析返回既有已知不支持错误",
+          "工单主题下业务流程任意字段的动态关联指标",
+          "工单主题下业务流程任务任意字段的动态关联指标",
+          "工单主题下服务记录任意字段的动态关联指标",
+          "普通 what 或 whatlist 关系负样本",
+          "候选多关联或动态关联但关系解析成功的样本"
+        ]
+      },
+      "steps": [
+        "查询测试环境的实际对象、字段 ID、whatFieldType 和关系元数据并绑定测试数据。",
+        "对多关联和三个动态关联正样本注入既有已知关系不支持结果后调用查看明细。",
+        "对普通关系负样本调用相同入口。",
+        "令候选受限关系解析成功并调用查看明细，比较改造前后的成功结果。"
+      ],
+      "expected": [
+        {
+          "id": "EXP-BE-003-01",
+          "description": "多关联正样本仅在既有关系解析失败时返回多关联专用错误。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_exception.error_code",
+            "matcher": "equals",
+            "source_ref": "RULE-MULTI-RELATION",
+            "expected_value": "s307011536"
+          }
+        },
+        {
+          "id": "EXP-BE-003-02",
+          "description": "三个批准的动态关联对象范围均返回动态关联专用错误。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_exception.error_code",
+            "matcher": "all_equal",
+            "source_ref": "RULE-DYNAMIC-RELATION",
+            "expected_value": "s307011537"
+          }
+        },
+        {
+          "id": "EXP-BE-003-03",
+          "description": "普通关系负样本不返回动态关联专用错误。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_response.error_code",
+            "matcher": "not_equals",
+            "source_ref": "RULE-DYNAMIC-RELATION",
+            "expected_value": "s307011537"
+          }
+        },
+        {
+          "id": "EXP-BE-003-04",
+          "description": "关系解析成功时保持成功，不被候选原因预判禁用。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_response.success_payload",
+            "matcher": "equals",
+            "source_ref": "RULE-MULTI-RELATION",
+            "expected_value": "baseline_success_payload"
+          }
+        }
+      ],
+      "cleanup": [
+        "移除关系故障注入并恢复元数据服务。",
+        "删除隔离对象、指标和图表，清除关系元数据缓存。"
+      ],
+      "execution_policy": {
+        "allowed_modes": ["automated", "manual"],
+        "automation_review": "required",
+        "blocking_gaps": ["未提供实际 what/whatlist 测试元数据、关系故障注入能力和稳定对象字段样本。"]
+      },
+      "automation_candidate": true
+    },
+    {
+      "id": "PC-BE-004",
+      "title": "多原因单提示、权限优先与非目标异常透传",
+      "intent_ids": ["INT-001", "INT-003", "INT-004", "INT-005"],
+      "layer": "backend",
+      "required_layers": ["backend"],
+      "risk": "critical",
+      "priority": "P0",
+      "source_refs": ["RULE-MULTIPLE-REASONS", "RULE-PERMISSION-PRIORITY", "TF-008", "TF-010"],
+      "preconditions": [
+        "可组合至少两个专用限制原因。",
+        "可注入权限、参数、超时和元数据服务异常。",
+        "可采集最终错误码、消息数量、业务异常参数和原始异常类型。"
+      ],
+      "test_data": {
+        "namespace": "a08_multica-project-20260813-01_PC-BE-004",
+        "locales": ["zh_CN", "en"],
+        "datasets": [
+          "同时命中自定义维度和结果集筛选",
+          "同时命中动态关联和多关联",
+          "受限图表但当前用户无查看明细权限",
+          "关系查询参数错误",
+          "关系查询超时",
+          "关系元数据服务异常"
+        ]
+      },
+      "steps": [
+        "分别提交两组多原因请求并采集最终响应。",
+        "以无权限用户提交受限请求并与既有权限错误基线比较。",
+        "依次注入参数、超时和元数据服务异常并调用关系入口。",
+        "检查返回消息数量、错误码及消息内容。"
+      ],
+      "expected": [
+        {
+          "id": "EXP-BE-004-01",
+          "description": "多原因请求仅返回一个实际命中的合法专用提示，不拼接多个原因且不固定断言优先顺序。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_response.specialized_message_count",
+            "matcher": "equals",
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "expected_value": 1
+          }
+        },
+        {
+          "id": "EXP-BE-004-02",
+          "description": "无权限用户保持既有权限错误，指标名称不可绕过权限泄露。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_response.permission_error",
+            "matcher": "equals",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "expected_value": "baseline_permission_error_without_hidden_metric_name"
+          }
+        },
+        {
+          "id": "EXP-BE-004-03",
+          "description": "参数、超时和元数据服务异常原样透传，不映射为关联专用错误。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "backend_response.error_identity",
+            "matcher": "equals",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "expected_value": "corresponding_pre_change_error_identity"
+          }
+        }
+      ],
+      "cleanup": [
+        "撤销所有故障注入和权限变更。",
+        "删除组合限制图表并清理缓存。"
+      ],
+      "execution_policy": {
+        "allowed_modes": ["automated", "manual"],
+        "automation_review": "required",
+        "blocking_gaps": ["未提供权限基线快照、可控故障注入和异常身份观测能力。"]
+      },
+      "automation_candidate": true
+    },
+    {
+      "id": "PC-CT-001",
+      "title": "四类错误码、中英文模板与参数契约",
+      "intent_ids": ["INT-001", "INT-002", "INT-003", "INT-004", "INT-005"],
+      "layer": "contract",
+      "required_layers": ["contract"],
+      "risk": "critical",
+      "priority": "P0",
+      "source_refs": ["RULE-I18N-CUSTOM-DIMENSION", "RULE-I18N-RESULT-SET", "RULE-I18N-MULTI-RELATION", "RULE-I18N-DYNAMIC-RELATION", "TF-005", "TF-009"],
+      "preconditions": [
+        "错误码平台联调环境已配置四个批准的错误 key、错误码和模板。",
+        "请求语言来自当前请求 locale。",
+        "通过真实接口或集成测试采集解码后的 JSON 响应和模板参数。"
+      ],
+      "test_data": {
+        "namespace": "a08_multica-project-20260813-01_PC-CT-001",
+        "locales": ["zh_CN", "en"],
+        "datasets": [
+          "自定义维度限制",
+          "结果集筛选且 zh_CN 指标展示名为营收",
+          "结果集筛选且 en 指标展示名为 Gross Revenue",
+          "多关联限制",
+          "动态关联限制"
+        ]
+      },
+      "steps": [
+        "分别以 zh_CN 和 en 调用四类受限场景的真实接口。",
+        "解码 JSON 并采集 errorCode、errorKey、message 和 metricName 参数。",
+        "逐字符比较中英文消息，确认英文双引号为普通字符且不存在字面反斜杠。",
+        "验证结果集场景通过实际业务契约传输全部指标展示名。"
+      ],
+      "expected": [
+        {
+          "id": "EXP-CT-001-01",
+          "description": "自定义维度中文响应精确为批准模板。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "decoded_json.message.zh_CN",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "expected_value": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细"
+          }
+        },
+        {
+          "id": "EXP-CT-001-02",
+          "description": "自定义维度英文响应精确为批准模板。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "decoded_json.message.en",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "expected_value": "Custom dimension fields are used in the dimension or data range. Details view is not supported."
+          }
+        },
+        {
+          "id": "EXP-CT-001-03",
+          "description": "结果集筛选中文响应使用实际指标展示名。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "decoded_json.message.zh_CN",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "expected_value": "统计图数据范围中设置了「营收」按结果集筛选，不支持查看明细"
+          }
+        },
+        {
+          "id": "EXP-CT-001-04",
+          "description": "结果集筛选英文响应使用普通双引号包围实际指标展示名。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "decoded_json.message.en",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "expected_value": "The chart data range uses \"Gross Revenue\" with result set filtering. Details view is not supported."
+          }
+        },
+        {
+          "id": "EXP-CT-001-05",
+          "description": "多关联中英文消息及错误码与批准契约一致。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "decoded_json.multi_relation_tuple",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "expected_value": {
+              "code": "s307011536",
+              "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细",
+              "en": "Metrics created based on multiple relationships do not support Details view."
+            }
+          }
+        },
+        {
+          "id": "EXP-CT-001-06",
+          "description": "动态关联中英文消息及错误码与批准契约一致。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "decoded_json.dynamic_relation_tuple",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "expected_value": {
+              "code": "s307011537",
+              "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细",
+              "en": "Metrics created based on dynamic relationships do not support Details view."
+            }
+          }
+        }
+      ],
+      "cleanup": [
+        "删除接口测试创建的图表、指标和筛选配置。",
+        "保留共享错误码配置，仅清理隔离测试缓存和请求记录。"
+      ],
+      "execution_policy": {
+        "allowed_modes": ["automated", "manual"],
+        "automation_review": "required",
+        "blocking_gaps": ["未证明错误码平台模板、List 参数渲染和真实接口响应采集能力可用。"]
+      },
+      "automation_candidate": true
+    },
+    {
+      "id": "PC-CT-002",
+      "title": "历史数据实时新逻辑与接口兼容性",
+      "intent_ids": ["INT-001", "INT-002", "INT-003", "INT-004", "INT-005", "INT-006"],
+      "layer": "contract",
+      "required_layers": ["contract"],
+      "risk": "critical",
+      "priority": "P0",
+      "source_refs": ["RULE-HISTORICAL-COMPATIBILITY", "TF-008", "TF-009"],
+      "preconditions": [
+        "保存改造前创建的历史统计图和拼表快照，且不执行数据迁移。",
+        "准备成功查询、目标受限失败和非目标失败基线。",
+        "可比较请求、SQL、分页、成功载荷和失败响应结构。"
+      ],
+      "test_data": {
+        "namespace": "a08_multica-project-20260813-01_PC-CT-002",
+        "locales": ["zh_CN", "en"],
+        "datasets": [
+          "历史自定义维度统计图",
+          "历史结果集筛选统计图和拼表",
+          "历史多关联与动态关联指标",
+          "历史成功查看明细图表",
+          "小时分钟过滤、复杂虚拟指标、权限及普通关系异常负样本"
+        ]
+      },
+      "steps": [
+        "不迁移历史配置，直接用当前服务查询历史统计图和拼表。",
+        "记录目标场景当前错误码和消息。",
+        "比较成功请求的查询参数、SQL、分页和成功响应基线。",
+        "比较非目标失败的错误码、异常类型和响应结构基线。"
+      ],
+      "expected": [
+        {
+          "id": "EXP-CT-002-01",
+          "description": "历史目标场景实时使用新专用逻辑，无需迁移。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "historical_assets.current_error_codes",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "expected_value": ["s307011534", "s307011535", "s307011536", "s307011537"]
+          }
+        },
+        {
+          "id": "EXP-CT-002-02",
+          "description": "历史成功查询的参数、SQL、分页和响应保持不变。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "success_contract_diff",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "expected_value": "no_difference"
+          }
+        },
+        {
+          "id": "EXP-CT-002-03",
+          "description": "非目标错误码及异常身份保持不变。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "non_target_failure_contract_diff",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "expected_value": "no_difference"
+          }
+        },
+        {
+          "id": "EXP-CT-002-04",
+          "description": "失败响应结构除批准的错误码、消息和参数外无变化。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "failure_response_schema_diff",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "expected_value": "approved_fields_only"
+          }
+        }
+      ],
+      "cleanup": [
+        "恢复历史资产只读快照状态。",
+        "删除本次产生的查询记录和隔离缓存，不修改历史配置。"
+      ],
+      "execution_policy": {
+        "allowed_modes": ["automated", "manual"],
+        "automation_review": "required",
+        "blocking_gaps": ["未提供脱敏历史资产、改造前契约基线和 SQL/分页观测点。"]
+      },
+      "automation_candidate": true
+    },
+    {
+      "id": "PC-E2E-001",
+      "title": "Web 统计图与拼表限制提示一致性",
+      "intent_ids": ["INT-001", "INT-002", "INT-003", "INT-004", "INT-005", "INT-006"],
+      "layer": "e2e",
+      "required_layers": ["e2e"],
+      "risk": "critical",
+      "priority": "P0",
+      "source_refs": ["REQ-006", "RULE-ENTRY-CONSISTENCY", "TF-010"],
+      "preconditions": [
+        "Web 测试环境同时提供统计图和拼表查看明细入口。",
+        "相同业务数据可分别绑定到统计图和拼表。",
+        "浏览器网络采集可观测请求参数、错误码、消息和指标参数。"
+      ],
+      "test_data": {
+        "namespace": "a08_multica-project-20260813-01_PC-E2E-001",
+        "locales": ["zh_CN", "en"],
+        "datasets": [
+          "自定义维度限制的统计图与拼表配对资产",
+          "结果集筛选限制的统计图与拼表配对资产",
+          "多关联限制的统计图与拼表配对资产",
+          "动态关联限制的统计图与拼表配对资产"
+        ]
+      },
+      "steps": [
+        "分别从 Web 统计图和拼表入口对四类配对资产执行查看明细。",
+        "采集每个入口的后端原因、错误码、locale 消息和指标参数。",
+        "逐场景比较两个入口的接口响应和最终可见提示。",
+        "确认拼表结果集筛选沿用统计图的批准文案。"
+      ],
+      "expected": [
+        {
+          "id": "EXP-E2E-001-01",
+          "description": "统计图和拼表的后端原因、错误码、locale 消息及指标参数逐场景全部一致。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "web_chart_and_joined_table_response_tuples",
+            "matcher": "all_equal",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "expected_value": "same_reason_code_locale_message_and_metric_parameters"
+          }
+        },
+        {
+          "id": "EXP-E2E-001-02",
+          "description": "两个入口均只展示一个与实际命中原因对应的提示。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "web_visible_specialized_message_count",
+            "matcher": "equals",
+            "source_ref": "REQ-006",
+            "expected_value": 1
+          }
+        },
+        {
+          "id": "EXP-E2E-001-03",
+          "description": "拼表结果集筛选展示与统计图完全相同的批准文案。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "joined_table_result_set_message",
+            "matcher": "equals",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "expected_value": "统计图数据范围中设置了「营收」按结果集筛选，不支持查看明细"
+          }
+        }
+      ],
+      "cleanup": [
+        "删除配对统计图、拼表、指标和筛选配置。",
+        "清理浏览器会话、locale 设置和服务端缓存。"
+      ],
+      "execution_policy": {
+        "allowed_modes": ["automated", "manual"],
+        "automation_review": "required",
+        "blocking_gaps": ["未提供 Web E2E 入口、浏览器自动化框架和配对统计图/拼表夹具。"]
+      },
+      "automation_candidate": true
+    },
+    {
+      "id": "PC-E2E-002",
+      "title": "Web 与移动端运行时路由和展示一致性",
+      "intent_ids": ["INT-001", "INT-002", "INT-003", "INT-004", "INT-005", "INT-007"],
+      "layer": "e2e",
+      "required_layers": ["e2e"],
+      "risk": "critical",
+      "priority": "P0",
+      "source_refs": ["REQ-007", "RULE-ENTRY-CONSISTENCY", "TF-010"],
+      "preconditions": [
+        "Web 和移动端使用同一隔离账号、locale 和业务资产。",
+        "可采集两端实际运行时路由、API 请求参数、响应和可见提示。",
+        "移动端重复 UI 路径仅在确认路由、API 和参数完全相同时允许合并验证。"
+      ],
+      "test_data": {
+        "namespace": "a08_multica-project-20260813-01_PC-E2E-002",
+        "locales": ["zh_CN", "en"],
+        "datasets": [
+          "自定义维度限制资产",
+          "结果集筛选限制资产",
+          "多关联限制资产",
+          "动态关联限制资产",
+          "Web 与移动端相同权限和相同 locale 会话"
+        ]
+      },
+      "steps": [
+        "查询并记录 Web 与移动端查看明细的实际运行时路由。",
+        "分别在两端触发四类受限场景并采集 API、参数、错误码、消息和指标参数。",
+        "先比较两端路由、API 与参数；完全相同时合并重复移动 UI 变体，否则逐路由执行。",
+        "在 zh_CN 和 en 下比较两端最终可见提示。"
+      ],
+      "expected": [
+        {
+          "id": "EXP-E2E-002-01",
+          "description": "Web 与移动端对相同资产产生相同限制原因、错误码和指标参数。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "cross_client_response_tuples",
+            "matcher": "all_equal",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "expected_value": "same_backend_reason_error_code_and_metric_parameters"
+          }
+        },
+        {
+          "id": "EXP-E2E-002-02",
+          "description": "两端在相同 locale 下展示完全相同的批准消息。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "cross_client_visible_messages",
+            "matcher": "all_equal",
+            "source_ref": "REQ-007",
+            "expected_value": "same_locale_message"
+          }
+        },
+        {
+          "id": "EXP-E2E-002-03",
+          "description": "仅当移动端与 Web 使用相同运行时路由、API 和参数时才跳过重复移动 UI 变体。",
+          "oracle": {
+            "type": "deterministic",
+            "observation_point": "mobile_equivalence_decision",
+            "matcher": "equals",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "expected_value": "skip_duplicate_ui_only_after_route_api_and_parameters_match"
+          }
+        }
+      ],
+      "cleanup": [
+        "删除跨端测试资产并退出测试账号。",
+        "恢复两端 locale、权限和网络采集设置。"
+      ],
+      "execution_policy": {
+        "allowed_modes": ["manual"],
+        "automation_review": "required",
+        "notes": ["在移动端运行时路由和可观测入口确认前先执行人工 E2E；确认等价后再评审自动化合并方案。"],
+        "blocking_gaps": ["未提供移动端运行时路由、移动 UI 自动化能力和跨端网络采集入口。"]
+      },
+      "automation_candidate": true
+    }
+  ],
+  "coverage_matrix": [
+    {
+      "requirement_id": "REQ-001",
+      "case_ids": ["PC-BE-001", "PC-BE-002", "PC-BE-003", "PC-BE-004", "PC-CT-001", "PC-CT-002", "PC-E2E-001", "PC-E2E-002"]
+    },
+    {
+      "requirement_id": "REQ-002",
+      "case_ids": ["PC-BE-001", "PC-CT-001", "PC-CT-002", "PC-E2E-001", "PC-E2E-002"]
+    },
+    {
+      "requirement_id": "REQ-003",
+      "case_ids": ["PC-BE-002", "PC-BE-004", "PC-CT-001", "PC-CT-002", "PC-E2E-001", "PC-E2E-002"]
+    },
+    {
+      "requirement_id": "REQ-004",
+      "case_ids": ["PC-BE-003", "PC-BE-004", "PC-CT-001", "PC-CT-002", "PC-E2E-001", "PC-E2E-002"]
+    },
+    {
+      "requirement_id": "REQ-005",
+      "case_ids": ["PC-BE-003", "PC-BE-004", "PC-CT-001", "PC-CT-002", "PC-E2E-001", "PC-E2E-002"]
+    },
+    {
+      "requirement_id": "REQ-006",
+      "case_ids": ["PC-CT-002", "PC-E2E-001"]
+    },
+    {
+      "requirement_id": "REQ-007",
+      "case_ids": ["PC-E2E-002"]
+    }
+  ],
+  "test_rule_coverage": [
+    {
+      "rule_id": "RULE-MULTIPLE-REASONS",
+      "case_ids": ["PC-BE-004"]
+    },
+    {
+      "rule_id": "RULE-SINGLE-METRIC",
+      "case_ids": ["PC-BE-002"]
+    },
+    {
+      "rule_id": "RULE-ENTRY-CONSISTENCY",
+      "case_ids": ["PC-E2E-001", "PC-E2E-002"]
+    },
+    {
+      "rule_id": "RULE-CUSTOM-DIMENSION",
+      "case_ids": ["PC-BE-001"]
+    },
+    {
+      "rule_id": "RULE-DYNAMIC-RELATION",
+      "case_ids": ["PC-BE-003"]
+    },
+    {
+      "rule_id": "RULE-MULTI-RELATION",
+      "case_ids": ["PC-BE-003"]
+    },
+    {
+      "rule_id": "RULE-PERMISSION-PRIORITY",
+      "case_ids": ["PC-BE-004"]
+    },
+    {
+      "rule_id": "RULE-HISTORICAL-COMPATIBILITY",
+      "case_ids": ["PC-CT-002"]
+    },
+    {
+      "rule_id": "RULE-I18N-CUSTOM-DIMENSION",
+      "case_ids": ["PC-CT-001"]
+    },
+    {
+      "rule_id": "RULE-I18N-RESULT-SET",
+      "case_ids": ["PC-CT-001"]
+    },
+    {
+      "rule_id": "RULE-I18N-MULTI-RELATION",
+      "case_ids": ["PC-CT-001"]
+    },
+    {
+      "rule_id": "RULE-I18N-DYNAMIC-RELATION",
+      "case_ids": ["PC-CT-001"]
+    }
+  ],
+  "blocking_gaps": [
+    "Case Provider 状态为 incompatible，未采用或伪造候选 Case。",
+    "未提供可执行测试框架、自动化入口、隔离数据准备和清理机制。",
+    "未提供错误码平台联调环境、真实接口异常参数观测点和关系故障注入能力。",
+    "未提供 Web/移动端运行时路由及跨端 E2E 自动化能力。",
+    "所有错误码、文案和行为仍须由真实接口或集成测试 Oracle 验证，不能仅凭 G01 批准判定实现正确。"
+  ]
+}

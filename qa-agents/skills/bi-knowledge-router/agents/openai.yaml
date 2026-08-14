@@ -1,0 +1,4 @@
+interface:
+  display_name: "bi-knowledge-router"
+  short_description: "Route verified BI knowledge from bi-knowledge-router"
+  default_prompt: "Use bi-knowledge-router to retrieve evidence-bound BI knowledge."
