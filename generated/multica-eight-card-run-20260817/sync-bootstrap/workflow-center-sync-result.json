@@ -1,0 +1,19 @@
+{
+  "action_count": 0,
+  "action_required": false,
+  "classified_node_count": 0,
+  "overall_status": "queued",
+  "parent_issue_id": "881ab21a-569a-46e7-9a1e-39f841d4ed87",
+  "parent_status": "todo",
+  "progress": {
+    "completed": 2,
+    "percent": 6,
+    "total": 36
+  },
+  "projection_hash": "sha256:2536fac1a369705d16c8ce34a6cc5ec7794320214da6878c1e68f50ed671d109",
+  "result_hash": "sha256:3a7c79e3ed12ee424aabf2524c52145e82ba10f20d1c69b52f202eaec101d635",
+  "schema_version": "workflow-center-sync-result/1.0",
+  "stage_card_count": 8,
+  "workflow_id": "REQ-DETAIL-DRILL-I18N",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-01"
+}

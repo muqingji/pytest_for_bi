@@ -1,0 +1,35 @@
+{
+  "schema_version": "human-test-design-correction-policy/1.0",
+  "node_id": "human_test_design_correction",
+  "allowed_actor_ids": [
+    "muqj11262"
+  ],
+  "allowed_roles": [
+    "qa_owner"
+  ],
+  "allowed_multica_member_ids": [
+    "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54"
+  ],
+  "allowed_decisions": [
+    "directed_correction",
+    "terminate"
+  ],
+  "automatic_budget_reset": false,
+  "required_revalidation": [
+    "A09",
+    "N04"
+  ],
+  "temporary_policy": true,
+  "production_release_authority": false,
+  "multica": {
+    "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
+    "project_id": "f2f893a2-55dc-414d-87d9-a483e51765d6",
+    "assignee_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "identity_evidence_mode": "assigned_member_pilot",
+    "initial_status": "in_review",
+    "decision_statuses": {
+      "done": "directed_correction",
+      "cancelled": "terminate"
+    }
+  }
+}

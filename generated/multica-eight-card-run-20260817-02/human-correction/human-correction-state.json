@@ -1,0 +1,12 @@
+{
+  "issue_id": "7a6c629c-100b-4a8b-9eb2-1fab1f24635d",
+  "next_node": null,
+  "node_id": "human_test_design_correction",
+  "observed_multica_status": "in_review",
+  "processed_event_id": null,
+  "request_hash": "sha256:df052a48587ea905305d7bb0756bea95291378d69c9e2f0da9a101a0802bd819",
+  "schema_version": "human-test-design-correction-state/1.0",
+  "state": "waiting_for_review",
+  "state_hash": "sha256:2694a672ab1bb7e30e8ac617ff039dfc64e5d301ee466527c3b80602bf5c7db9",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

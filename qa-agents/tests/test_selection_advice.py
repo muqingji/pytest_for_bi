@@ -239,6 +239,40 @@ def test_selection_backward_compatible_without_assets_or_policy() -> None:
     assert selection["unresolved_items"] == []
 
 
+def test_case_alias_resolves_existing_automation_for_selection_and_plan() -> None:
+    cases = [child_case("CASE-NEW")]
+    assets = {
+        "automation_assets": {
+            "CASE-OLD": {
+                "status": "active",
+                "impacted": False,
+                "commit": "tests/test_existing.py",
+                "case_aliases": ["CASE-NEW"],
+            }
+        }
+    }
+    selection = select_cases(cases, assets)
+    plan = compile_execution_plan(selection, cases, assets)
+
+    assert selection["selected_cases"][0]["reason_code"] == "active_existing_automation"
+    assert plan["actions"][0]["action"] == "run_existing"
+    assert plan["actions"][0]["automation_ref"] == "tests/test_existing.py"
+
+
+def test_ambiguous_case_alias_requires_human_instead_of_guessing() -> None:
+    cases = [child_case("CASE-NEW")]
+    assets = {
+        "automation_assets": {
+            "CASE-OLD-1": {"status": "active", "case_aliases": ["CASE-NEW"]},
+            "CASE-OLD-2": {"status": "active", "case_aliases": ["CASE-NEW"]},
+        }
+    }
+    selection = select_cases(cases, assets)
+
+    assert selection["selected_cases"][0]["selection"] == "needs_human"
+    assert selection["unresolved_items"][0]["advisory_topic"] == "uncertain_asset_mapping"
+
+
 # ------------------------------------------------------------- advice folding
 
 

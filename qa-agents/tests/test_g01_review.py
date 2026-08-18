@@ -225,6 +225,10 @@ class FakeG01Multica:
             return dict(self.issue)
         if args[:2] == ["issue", "update"]:
             return dict(self.issue)
+        if args[:2] == ["issue", "assign"]:
+            self.issue["assignee_type"] = "member"
+            self.issue["assignee_id"] = args[args.index("--to-id") + 1]
+            return dict(self.issue)
         if args[:3] == ["issue", "metadata", "set"]:
             self.issue["metadata"][args[args.index("--key") + 1]] = args[
                 args.index("--value") + 1
@@ -298,6 +302,104 @@ def review_comment(
             f"{rows}"
         ),
     }
+
+
+def test_g01_comment_parses_structured_test_rules(tmp_path: Path) -> None:
+    request, output, gate_policy_path, adapter_policy_path, multica = prepare_multica_review(
+        tmp_path
+    )
+    comment = review_comment(request)
+    comment["content"] = comment["content"].replace(
+        "Test Rules | 按当前冻结口径执行测试设计",
+        'Test Rules | {"multiple_reasons":{"message_count":1}}',
+    )
+    multica.comments = [comment]
+
+    outcome = sync_multica_scope_review(
+        output / "g01-review-request.json",
+        gate_policy_path,
+        adapter_policy_path,
+        output,
+        runner=multica,
+    )
+
+    decision = json.loads((output / DECISION_FILE).read_text(encoding="utf-8"))
+    assert outcome["decision"] == "approved"
+    assert decision["test_rules"] == {"multiple_reasons": {"message_count": 1}}
+
+
+def test_concise_comment_returns_unclear_question_to_a06(tmp_path: Path) -> None:
+    request, output, gate_policy_path, adapter_policy_path, multica = prepare_multica_review(tmp_path)
+    replies = []
+    for item in request["issues"]:
+        answer = "没看明白，请重新说明" if item["issue_id"].startswith("A03:") else "按当前实现确认"
+        replies.append(f"- `{item['issue_id']}`：{answer}")
+    multica.comments = [{
+        "id": "concise-1", "creator_id": MEMBER_ID, "creator_type": "member",
+        "created_at": "2026-08-11T08:05:00Z", "content": "\n".join(replies),
+    }]
+
+    outcome = sync_multica_scope_review(
+        output / "g01-review-request.json", gate_policy_path, adapter_policy_path, output, runner=multica
+    )
+
+    assert outcome["decision"] == "request_changes"
+    assert outcome["resume_at"] == "A06"
+    assert outcome["return_routes"][0]["target_node"] == "A06"
+    assert multica.issue["status"] == "blocked"
+
+
+def test_binding_unassigned_existing_card_assigns_reviewer(tmp_path: Path) -> None:
+    artifacts = write_gate_artifacts(tmp_path / "run")
+    output = tmp_path / "g01"
+    request = prepare_request(artifacts, output)
+    ArtifactStore(output).write_text("g01-review-request.md", render_scope_review_markdown(request))
+    gate_policy_path = ArtifactStore(tmp_path / "policies").write_json("g01-policy.json", POLICY)
+    adapter_policy_path = write_adapter_policy(tmp_path / "policies")
+    multica = FakeG01Multica()
+    multica.issue["assignee_type"] = None
+    multica.issue["assignee_id"] = None
+
+    open_multica_scope_review(
+        output / "g01-review-request.json", gate_policy_path, adapter_policy_path,
+        output, issue_id=multica.issue["id"], runner=multica,
+    )
+
+    assert multica.issue["assignee_id"] == MEMBER_ID
+    assert any(call[:2] == ["issue", "assign"] for call in multica.calls)
+
+
+def test_sync_does_not_reuse_previous_request_decision_comment(tmp_path: Path) -> None:
+    request, output, gate_policy_path, adapter_policy_path, multica = prepare_multica_review(tmp_path)
+    old_comment = review_comment(request)
+    multica.comments = [old_comment]
+    multica.issue["metadata"]["qa_decision_comment_id"] = old_comment["id"]
+
+    state = sync_multica_scope_review(
+        output / "g01-review-request.json", gate_policy_path, adapter_policy_path, output, runner=multica
+    )
+
+    assert state["state"] == "waiting_for_review"
+    assert not (output / DECISION_FILE).exists()
+
+
+def test_sync_ignores_comment_older_than_processed_decision(tmp_path: Path) -> None:
+    request, output, gate_policy_path, adapter_policy_path, multica = prepare_multica_review(tmp_path)
+    round1_comment = review_comment(request)
+    round1_comment["id"] = "comment-round1"
+    round1_comment["created_at"] = "2026-08-11T08:00:00Z"
+    round2_comment = review_comment(request)
+    round2_comment["id"] = "comment-round2"
+    round2_comment["created_at"] = "2026-08-11T09:00:00Z"
+    multica.comments = [round1_comment, round2_comment]
+    multica.issue["metadata"]["qa_decision_comment_id"] = round2_comment["id"]
+
+    state = sync_multica_scope_review(
+        output / "g01-review-request.json", gate_policy_path, adapter_policy_path, output, runner=multica
+    )
+
+    assert state["state"] == "waiting_for_review"
+    assert not (output / DECISION_FILE).exists()
 
 
 def test_prepare_g01_request_and_validate_complete_human_approval(tmp_path: Path) -> None:

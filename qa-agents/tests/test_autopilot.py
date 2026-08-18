@@ -7,7 +7,9 @@ from qa_agents.autopilot import (
     SERVER_NODE_DEFINITIONS,
     SERVER_STAGE_CARD_DEFINITIONS,
     _advance_frontier,
+    _approval_items,
     _artifact_state,
+    _artifact_summary,
     initialize_autopilot,
     reconcile_autopilot,
 )
@@ -31,6 +33,70 @@ def test_needs_human_with_human_route_waits_for_human() -> None:
         "blocking_questions": [],
     }
     assert _artifact_state(artifact) == "waiting_human"
+
+
+def test_needs_human_with_exhausted_budget_routes_to_human_gate() -> None:
+    artifact = {
+        "status": "needs_human",
+        "payload": {"next_node": "human", "issues": [{"route_to": "A08"}]},
+        "blocking_questions": [],
+    }
+    assert _artifact_state(artifact) == "waiting_human"
+
+
+def test_artifact_summary_needs_human_lists_blocking_issues() -> None:
+    artifact = {
+        "artifact_id": "a09-oracle-coverage-review",
+        "payload": {
+            "status": "needs_human",
+            "issues": [
+                {"id": "A09-ISSUE-007", "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE"},
+                {"id": "A09-ISSUE-008", "issue_code": "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT"},
+            ]
+        },
+    }
+    summary = _artifact_summary(artifact)
+    assert "2 个阻塞问题" in summary
+    assert "A09-ISSUE-007" in summary
+    assert "A09-ISSUE-008" in summary
+
+
+def test_artifact_summary_falls_back_to_status_without_issues() -> None:
+    artifact = {"artifact_id": "a09-oracle-coverage-review", "payload": {"status": "needs_human"}}
+    assert _artifact_summary(artifact) == "needs_human"
+
+
+def test_approval_items_carry_issue_message_and_recommendation() -> None:
+    artifact = {
+        "status": "needs_human",
+        "payload": {
+            "next_node": "human",
+            "issues": [
+                {
+                    "id": "A09-ISSUE-007",
+                    "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
+                    "category": "oracle",
+                    "human_title": "预期结果写错了",
+                    "plain_summary": "预期结果指向不存在的字段，用例无法校验。",
+                    "case_id": "TC-E2E-001",
+                    "expected_id": "EXP-E2E-001-01",
+                    "message": "expected_value 指向不存在的 test_data 路径，无法解析。",
+                    "recommendation": "改为可直接解析的结构化期望矩阵。",
+                    "route_to": "A08",
+                }
+            ],
+        },
+        "blocking_questions": [],
+    }
+    items = _approval_items(artifact)
+    assert len(items) == 1
+    assert items[0]["summary"] == "预期结果指向不存在的字段，用例无法校验。"
+    assert items[0]["issue_code"] == "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE"
+    assert items[0]["human_title"] == "预期结果写错了"
+    assert items[0]["plain_summary"] == "预期结果指向不存在的字段，用例无法校验。"
+    assert items[0]["case_id"] == "TC-E2E-001"
+    assert items[0]["expected_id"] == "EXP-E2E-001-01"
+    assert items[0]["recommendation"] == "改为可直接解析的结构化期望矩阵。"
 
 
 def test_frontier_advances_past_skipped_g03_to_n07() -> None:
@@ -284,6 +350,12 @@ def test_reconcile_derives_nodes_and_human_actions_from_artifacts(tmp_path: Path
             {"summary": "识别 2 个开放问题"},
         ),
         (
+            "A03",
+            "a03-technical-testability-analysis",
+            ArtifactStatus.NEEDS_HUMAN,
+            {"status": "needs_human", "blocking_items": [{"id": "BI-001", "summary": "文案待确认"}]},
+        ),
+        (
             "G01",
             "g01-scope-review",
             ArtifactStatus.NEEDS_HUMAN,
@@ -309,12 +381,13 @@ def test_reconcile_derives_nodes_and_human_actions_from_artifacts(tmp_path: Path
 
     assert result["changed"] is True
     assert result["revision"] == 2
-    assert result["artifact_node_count"] == 3
+    assert result["artifact_node_count"] == 4
     assert result["open_action_count"] == 1
     spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
     nodes = {item["node_id"]: item for item in spec["nodes"]}
     assert nodes["INPUT-FREEZE"]["state"] == "completed"
     assert nodes["A02"]["state"] == "completed"
+    assert nodes["A03"]["state"] == "completed"
     assert nodes["G01"]["state"] == "waiting_human"
     assert spec["actions"][0]["item_count"] == 2
     approval_items = spec["actions"][0]["approval_items"]
@@ -401,7 +474,7 @@ def test_a06_needs_human_merges_into_g01_without_second_action(tmp_path: Path) -
 
     spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
     nodes = {item["node_id"]: item for item in spec["nodes"]}
-    # A06 不再单独等待人工，问题并入 G01 一次审批
+    # Stage 1 分析节点不再单独等待人工，问题并入 G01 一次审批
     assert nodes["A06"]["state"] == "completed"
     assert nodes["G01"]["state"] == "waiting_human"
     assert result["open_action_count"] == 1

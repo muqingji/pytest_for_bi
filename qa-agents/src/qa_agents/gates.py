@@ -25,10 +25,22 @@ RETURN_DISPOSITION_TARGETS = {
 # 审批条目分类与通俗表达：面向 QA Owner 的审核表直接展示中文，
 # 不要求先看懂内部术语才能判断要确认什么。
 CATEGORY_BY_SOURCE = {
-    "A02": "需求待确认",
-    "A03": "技术方案待确认",
-    "A06": "实现与测试范围待确认",
+    "A02": "待确认需求",
+    "A03": "待确认技术方案",
+    "A06": "待确认测试范围",
 }
+
+_TOPIC_MARKERS = (
+    ("multiple_limit_priority", ("多个受限", "多个限制", "同时命中", "提示优先级")),
+    ("multiple_metric_names", ("多个按结果集", "全部指标", "展示数量", "指标名称的展示")),
+    ("what_whatlist", ("whatlist", "动态关联")),
+    ("custom_dimension_copy", ("自定义维度", "最终中英文文案")),
+    ("result_filter_copy", ("结果集筛选", "固定写", "端无关文案")),
+    ("i18n_copy", ("多语言", "目标语言", "英文译文", "语言回退")),
+    ("cross_client_consistency", ("移动端", "web", "拼表入口", "端最终提示")),
+    ("error_code_evidence", ("错误码", "模板", "配置并发布")),
+    ("test_evidence", ("测试证据", "端到端验证", "可执行测试")),
+)
 
 FINDING_TYPE_LABELS = {
     "conflict": "实现与需求/技术方案冲突",
@@ -114,6 +126,195 @@ def _requirement_ids(item: Mapping[str, Any]) -> list[str]:
     return [str(value) for value in raw if str(value).strip()]
 
 
+def _dedupe_topic(issue: Mapping[str, Any]) -> str | None:
+    explicit = str(issue.get("dedupe_key", ""))
+    if explicit and explicit != str(issue.get("issue_id", "")):
+        return explicit
+    detail = issue.get("detail", {})
+    text = " ".join(
+        str(value).lower()
+        for value in (
+            issue.get("plain_summary", ""),
+            detail.get("message", "") if isinstance(detail, Mapping) else "",
+            detail.get("summary", "") if isinstance(detail, Mapping) else "",
+            detail.get("recommendation", "") if isinstance(detail, Mapping) else "",
+        )
+    )
+    for topic, markers in _TOPIC_MARKERS:
+        if any(marker in text for marker in markers):
+            return topic
+    return None
+
+
+def _merge_duplicate_issues(issues: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse known cross-agent topics while retaining complete provenance."""
+
+    merged: list[dict[str, Any]] = []
+    by_topic: dict[str, dict[str, Any]] = {}
+    for issue in issues:
+        issue_id = str(issue["issue_id"])
+        source = str(issue["source"])
+        issue["related_issue_ids"] = [issue_id]
+        issue["sources"] = [source]
+        topic = _dedupe_topic(issue)
+        issue["dedupe_key"] = topic or issue_id
+        if not topic or topic not in by_topic:
+            merged.append(issue)
+            if topic:
+                by_topic[topic] = issue
+            continue
+        primary = by_topic[topic]
+        primary["related_issue_ids"].append(issue_id)
+        if source not in primary["sources"]:
+            primary["sources"].append(source)
+        primary["requirement_ids"] = list(
+            dict.fromkeys([*primary["requirement_ids"], *issue["requirement_ids"]])
+        )
+        primary.setdefault("related_details", []).append(
+            {"issue_id": issue_id, "source": source, "detail": issue["detail"]}
+        )
+    return merged
+
+
+def scope_followup_issues(
+    issues: list[dict[str, Any]],
+    previous_request: Mapping[str, Any],
+    previous_decision: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Keep only returned topics and present their newest A06 explanation."""
+
+    returned_ids = {
+        str(item.get("issue_id", ""))
+        for item in previous_decision.get("resolutions", [])
+        if isinstance(item, Mapping)
+        and str(item.get("disposition", "")) in RETURN_DISPOSITION_TARGETS
+    }
+    previous_by_id = {
+        str(item.get("issue_id", "")): item
+        for item in previous_request.get("issues", [])
+        if isinstance(item, Mapping)
+    }
+    returned_topics = {
+        topic
+        for item in previous_decision.get("resolutions", [])
+        if isinstance(item, Mapping)
+        and str(item.get("issue_id", "")) in returned_ids
+        if (topic := str(item.get("topic_key", "")) or _dedupe_topic(previous_by_id.get(str(item.get("issue_id", "")), {})))
+    }
+    returned_topic_by_id = {
+        issue_id: _dedupe_topic(previous_by_id.get(issue_id, {}))
+        for issue_id in returned_ids
+    }
+    matched_topics: set[str] = set()
+    followups: list[dict[str, Any]] = []
+    for issue in issues:
+        topic = _dedupe_topic(issue)
+        related_ids = set(issue.get("related_issue_ids", []))
+        exact_topic_match = any(
+            returned_topic_by_id.get(issue_id) in {None, topic}
+            for issue_id in related_ids & returned_ids
+        )
+        if not (exact_topic_match or (topic and topic in returned_topics)):
+            continue
+        related = next(
+            (
+                item for item in issue.get("related_details", [])
+                if isinstance(item, Mapping) and item.get("source") == "A06"
+            ),
+            None,
+        )
+        if related and isinstance(related.get("detail"), Mapping):
+            detail = dict(related["detail"])
+            followup = {
+                **issue,
+                "issue_id": str(related["issue_id"]),
+                "issue_code": detail.get("type", "alignment_conflict"),
+                "source": "A06",
+                "route_to": "A06",
+                "severity": detail.get("severity", issue.get("severity", "high")),
+                "category": CATEGORY_BY_SOURCE["A06"],
+                "plain_summary": _plain_summary("A06", detail),
+                "confirm_action": _confirm_action("A06", detail),
+                "requirement_ids": _requirement_ids(detail),
+                "detail": detail,
+            }
+        else:
+            followup = dict(issue)
+        followup["followup_of"] = sorted(returned_ids & related_ids) or sorted(
+            issue_id
+            for issue_id, returned_topic in returned_topic_by_id.items()
+            if topic and returned_topic == topic
+        )
+        followup["review_reason"] = "上一轮回复为没看明白，A06 已重新解释；仅需复核本项。"
+        followups.append(followup)
+        if topic:
+            matched_topics.add(topic)
+    for issue_id in returned_ids:
+        previous = previous_by_id.get(issue_id)
+        if not previous:
+            continue
+        topic = _dedupe_topic(previous)
+        if topic and topic in matched_topics:
+            continue
+        followups.append(
+            {
+                **dict(previous),
+                "issue_id": f"A06:FOLLOWUP-{issue_id.replace(':', '-')}",
+                "source": "A06",
+                "route_to": "A06",
+                "category": CATEGORY_BY_SOURCE["A06"],
+                "dedupe_key": topic or issue_id,
+                "followup_of": [issue_id],
+                "review_reason": "上一轮回复为没看明白；仅需复核本项的新解释。",
+            }
+        )
+    return followups
+
+
+def scope_carry_forward(
+    issues: list[dict[str, Any]],
+    prior_decisions: list[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Keep only G01 issues whose scope was never resolved in a prior decision.
+
+    Confirmed scope must not be re-asked when the review request is rebuilt:
+    items whose id, dedupe topic or related ids were already decided are dropped
+    so the next review round only surfaces genuinely new findings. Returned
+    items are re-asked by ``scope_followup_issues`` and are intentionally
+    excluded here because they are already part of the decided scope.
+    """
+
+    seen_ids: set[str] = set()
+    seen_topics: set[str] = set()
+    for decision in prior_decisions:
+        for resolution in decision.get("resolutions", []):
+            if not isinstance(resolution, Mapping):
+                continue
+            issue_id = str(resolution.get("issue_id", "")).strip()
+            if issue_id:
+                seen_ids.add(issue_id)
+            topic = str(resolution.get("topic_key", "")).strip()
+            if topic and topic != issue_id:
+                seen_topics.add(topic)
+    kept: list[dict[str, Any]] = []
+    for issue in issues:
+        issue_id = str(issue.get("issue_id", "")).strip()
+        topic = _dedupe_topic(issue)
+        related = {
+            str(value)
+            for value in issue.get("related_issue_ids", [])
+            if isinstance(value, str) and value.strip()
+        }
+        if topic and topic in seen_topics:
+            continue
+        if issue_id and issue_id in seen_ids:
+            continue
+        if related & seen_ids:
+            continue
+        kept.append(issue)
+    return kept
+
+
 def scope_gate_issues(
     requirement_analysis: Mapping[str, Any],
     technical_analysis: Mapping[str, Any],
@@ -165,7 +366,7 @@ def scope_gate_issues(
                 "detail": dict(finding),
             }
         )
-    return issues
+    return _merge_duplicate_issues(issues)
 
 
 def _read_artifact(path: Path, expected_id: str, security: SecurityPolicy) -> dict[str, Any]:

@@ -1,0 +1,27 @@
+{
+  "action": "continue",
+  "decision": "approved",
+  "decision_hash": "sha256:8b482b6012b193d78583f3df75a738441def71c50171759428f9939a4f8ae3f5",
+  "gate_id": "G01",
+  "invalidation": {
+    "include_all_descendants": false,
+    "roots": []
+  },
+  "next_node": "N24",
+  "outcome_hash": "sha256:a6e2a8308ab04aba2a0a61f985a5fc9564d1fc65a6d5123957786d18ae8f6702",
+  "request_hash": "sha256:a3fedf0ac006e982870c716b868cfe98da41bc77669bbc14be6336445f07d4a5",
+  "resume_at": null,
+  "return_routes": [],
+  "review_policy": {
+    "approval_mode": "qa_owner_single_signoff",
+    "policy_hash": "sha256:416a8050c9c5a0733cd003dfdcc0c0661752f5d1a5dd0318ae2afd1b1e2ca191",
+    "policy_scope": "pilot_test_design_only",
+    "production_release_authority": false,
+    "schema_version": "g01-review-policy/1.1",
+    "temporary_policy": true
+  },
+  "schema_version": "scope-review-outcome/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

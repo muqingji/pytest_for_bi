@@ -1,0 +1,1370 @@
+{
+  "actions": [
+    {
+      "action_id": "A03-detail-drill-i18n-8card-20260817-01",
+      "approval_items": [
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-001",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#待确认项"
+          ],
+          "summary": "自定义维度校验实际包含下钻字段，但当前 PRD 文案仅包含维度和数据范围，最终中英文文案未确认。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-002",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#待确认项"
+          ],
+          "summary": "结果集筛选提示固定写统计图，但需求同时覆盖拼表，使用端口径和最终中英文文案未确认。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-003",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#专用错误定义",
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#发布建议"
+          ],
+          "summary": "四个专用错误码均处于待申请状态，错误码平台中的中英文模板也未建立。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-004",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#异常与占位符机制"
+          ],
+          "summary": "BIBizException(errorCode, List<String>) 与错误码平台模板的实际占位符约定尚未联调确认。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-005",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#关联原因识别"
+          ],
+          "summary": "方案要求动态关联使用稳定对象或 field ID、whatFieldType 和关系元数据判定，但输入未列出 PRD 指定目标关系的完整稳定标识映射。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-006",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#提示选择顺序",
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#待确认项"
+          ],
+          "summary": "同一图表同时命中多个不支持条件时的首个提示优先级尚未形成产品验收口径。",
+          "title": "阻塞项"
+        }
+      ],
+      "gate_id": "A03",
+      "issue_id": null,
+      "issue_identifier": null,
+      "item_count": 6,
+      "owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+      "status": "open",
+      "summary": "needs_human",
+      "title": "技术方案与可测性分析处理"
+    },
+    {
+      "action_id": "G01-detail-drill-i18n-8card-20260817-01",
+      "approval_items": [
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-001",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：同一次查看明细同时命中多个不支持场景时，提示优先级以及是否需要合并展示未说明。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-002",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：数据范围中存在多个按结果集筛选的统计指标时，“指标名称”展示一个、全部还是按优先级选择未说明。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-003",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：提示的展示载体、位置、持续时间、关闭方式以及重复触发行为未说明。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-004",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：除列出的四类场景外，其他不支持查看明细的场景应继续使用通用提示还是需要新增场景化提示未说明。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-005",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：需求未说明该逻辑是否受用户角色、数据权限或功能权限影响。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-006",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：需求只给出中文提示文案，未说明是否需要提供其他语言版本、语言切换行为及翻译内容。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-007",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：指标名称为空、已删除、无权限查看、过长或包含特殊字符时的提示替代值和截断规则未说明。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-008",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：“特殊 what/whatlist 类型”“动态关联关系”的准确类型枚举和判定边界未提供。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：确认采用覆盖维度、下钻字段和数据范围的端到端一致文案，并冻结中英文模板。",
+          "id": "A03:BI-001",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：自定义维度校验实际包含下钻字段，但当前 需求文档 文案仅包含维度和数据范围，最终中英文文案未确认。 建议：确认采用覆盖维度、下钻字段和数据范围的端到端一致文案，并冻结中英文模板。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：确认采用端无关的“数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细”口径，并冻结中英文模板。",
+          "id": "A03:BI-002",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：结果集筛选提示固定写统计图，但需求同时覆盖拼表，使用端口径和最终中英文文案未确认。 建议：确认采用端无关的“数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细”口径，并冻结中英文模板。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：申请四个互不复用的错误码，同步配置国际化 key、默认中文及中英文平台模板，并与 国际化错误码枚举 同批交付。",
+          "id": "A03:BI-003",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：四个专用错误码均处于待申请状态，错误码平台中的中英文模板也未建立。 建议：申请四个互不复用的错误码，同步配置国际化 key、默认中文及中英文平台模板，并与 国际化错误码枚举 同批交付。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：使用最小中英文联调用例验证 {0} 的替换、参数顺序、缺参行为和指标动态多语名称，再冻结模板配置。",
+          "id": "A03:BI-004",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：BIBizException(errorCode, List<String>) 与错误码平台模板的实际占位符约定尚未联调确认。 建议：使用最小中英文联调用例验证 {0} 的替换、参数顺序、缺参行为和指标动态多语名称，再冻结模板配置。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：由产品和后端冻结工单主题、业务流程、业务流程任务、服务记录等目标关系的对象ID、field ID、whatFieldType 和关系路径白名单。",
+          "id": "A03:BI-005",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：方案要求动态关联使用稳定对象或 field ID、whatFieldType 和关系元数据判定，但输入未列出 需求文档 指定目标关系的完整稳定标识映射。 建议：由产品和后端冻结工单主题、业务流程、业务流程任务、服务记录等目标关系的对象ID、field ID、whatFieldType 和关系路径白名单。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：确认采用自定义维度、结果集指标筛选、特殊动态关联、多关联关系、原对象关系异常的顺序，并将其固化为组合场景测试断言。",
+          "id": "A03:BI-006",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：同一图表同时命中多个不支持条件时的首个提示优先级尚未形成产品验收口径。 建议：确认采用自定义维度、结果集指标筛选、特殊动态关联、多关联关系、原对象关系异常的顺序，并将其固化为组合场景测试断言。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-001",
+          "requirement_ids": [
+            "REQ-001",
+            "REQ-002",
+            "REQ-003",
+            "REQ-004",
+            "REQ-005"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "只实现了一部分：生产代码已新增并接入四个专用错误码，但输入未提供错误码平台的最终中英文模板，无法证明用户实际看到的文案满足冻结需求。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-002",
+          "requirement_ids": [
+            "REQ-002"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "只实现了一部分：自定义维度的三个既有判定分支已切换专用错误码，但实现还覆盖下钻维度，而需求文案仅提到维度和数据范围，最终文案口径尚未确认。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-003",
+          "requirement_ids": [
+            "REQ-003"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "只实现了一部分：结果集筛选分支已传入筛选字段名，但没有实现事实证明字段名缺失时按字段元数据和当前语言名称继续解析、禁止空名称并降级原错误码，也没有最终占位符渲染证据。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-004",
+          "requirement_ids": [
+            "REQ-004"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案冲突：多关联实现以业务对象数或 ClickHouse 拓扑节点数超过三个直接判定，而技术方案要求依据指标已选关联路径和对象关系元数据判定，并仅在原对象关系失败时映射专用提示。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-005",
+          "requirement_ids": [
+            "REQ-005"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案冲突：动态关联实现仅根据查询到的字段为 what 或 WhatList 动态关联 类型切换错误码，未证明联合稳定对象或字段 ID、whatFieldType 和关系元数据限定到业务流程、业务流程任务或服务记录，判定范围可能宽于需求和技术方案。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-006",
+          "requirement_ids": [
+            "REQ-006",
+            "REQ-007"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "缺少实现证据：没有合格的业务实现事实证明统计图与拼表均进入同一限制判定，也没有事实证明 Web 与移动端获得一致错误码和当前语言文案。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-007",
+          "requirement_ids": [
+            "REQ-001"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "存在超出需求范围的变更：员工或部门主题的既有对象关系异常保留原错误码却将原国际化消息替换为空字符串；该分支不属于四类目标场景，并与非目标场景保持不变的设计约束不一致。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-008",
+          "requirement_ids": [
+            "REQ-001"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案存在差异：多个限制原因同时命中时的提示优先级或合并规则尚未冻结；技术方案中的拟定顺序不能作为已批准验收口径。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-009",
+          "requirement_ids": [
+            "REQ-001",
+            "REQ-002",
+            "REQ-003",
+            "REQ-004",
+            "REQ-005"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案存在差异：需求仅冻结中文文案，目标语言范围、翻译来源以及错误码平台中英文模板仍需人工确认。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-010",
+          "requirement_ids": [
+            "REQ-002",
+            "REQ-003"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "缺少实现证据：变更集中没有直接覆盖自定义维度和结果集筛选错误码切换的测试，未满足技术方案对目标原因和非目标回归的完整验证要求。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-011",
+          "requirement_ids": [
+            "REQ-003"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案存在差异：多个结果集筛选指标同时存在以及指标名为空、不可见、过长或包含特殊字符时的名称选择和降级规则尚未冻结。",
+          "title": "实现与测试范围待确认"
+        }
+      ],
+      "gate_id": "G01",
+      "issue_id": null,
+      "issue_identifier": null,
+      "item_count": 25,
+      "owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+      "status": "open",
+      "summary": "pending",
+      "title": "范围与口径人工审核处理"
+    }
+  ],
+  "autopilot": {
+    "execution_mode": "run_only",
+    "id": "2a1bd760-af02-4b1b-a9ee-0248d47a9239",
+    "status": "active"
+  },
+  "autopilot_runs": [],
+  "human_owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+  "nodes": [
+    {
+      "artifact_hash": "sha256:ea8ef038d246a2900a8386d5352adc2753b572f8faa69d550a8eb1851bc1176f",
+      "artifact_id": "n01-source-extraction-manifest",
+      "artifact_path": "generated/multica-eight-card-run-20260817/bootstrap/artifacts/n01-source-extraction-manifest.json",
+      "completion": "1/1",
+      "execution_id": "INPUT-FREEZE-detail-drill-i18n-8card-20260817-01",
+      "label": "需求、方案与 ChangeSet 冻结",
+      "node_id": "INPUT-FREEZE",
+      "result_summary": "Artifact n01-source-extraction-manifest accepted",
+      "stage": 1,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "4334a71a-e5cd-4277-af8f-37fa7c155063",
+      "stage_issue_identifier": "QAA-277",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:26dc9295f1b576d7c37bdc35fe21f4a007b26e2625f308f5f78b3bbad804db49",
+      "artifact_id": "n00-workflow-route",
+      "artifact_path": "generated/multica-eight-card-run-20260817/bootstrap/artifacts/n00-workflow-route.json",
+      "completion": "1/1",
+      "execution_id": "N00-detail-drill-i18n-8card-20260817-01",
+      "label": "工作流模板与深度选择",
+      "node_id": "N00",
+      "result_summary": "Artifact n00-workflow-route accepted",
+      "stage": 2,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "4334a71a-e5cd-4277-af8f-37fa7c155063",
+      "stage_issue_identifier": "QAA-277",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:ddfe2389ebcb77783727072820d78176dbec34966a74c5fae5e90727cc12614c",
+      "artifact_id": "a02-requirement-analysis",
+      "artifact_path": "generated/multica-eight-card-run-20260817/artifacts-auto/artifacts/a02-requirement-analysis.json",
+      "completion": "1/1",
+      "execution_id": "A02-detail-drill-i18n-8card-20260817-01",
+      "label": "需求分析",
+      "node_id": "A02",
+      "result_summary": "completed_with_gaps",
+      "stage": 3,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "4334a71a-e5cd-4277-af8f-37fa7c155063",
+      "stage_issue_identifier": "QAA-277",
+      "state": "completed"
+    },
+    {
+      "approval_items": [
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-001",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#待确认项"
+          ],
+          "summary": "自定义维度校验实际包含下钻字段，但当前 PRD 文案仅包含维度和数据范围，最终中英文文案未确认。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-002",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#待确认项"
+          ],
+          "summary": "结果集筛选提示固定写统计图，但需求同时覆盖拼表，使用端口径和最终中英文文案未确认。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-003",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#专用错误定义",
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#发布建议"
+          ],
+          "summary": "四个专用错误码均处于待申请状态，错误码平台中的中英文模板也未建立。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-004",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#异常与占位符机制"
+          ],
+          "summary": "BIBizException(errorCode, List<String>) 与错误码平台模板的实际占位符约定尚未联调确认。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-005",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#关联原因识别"
+          ],
+          "summary": "方案要求动态关联使用稳定对象或 field ID、whatFieldType 和关系元数据判定，但输入未列出 PRD 指定目标关系的完整稳定标识映射。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-006",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#提示选择顺序",
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#待确认项"
+          ],
+          "summary": "同一图表同时命中多个不支持条件时的首个提示优先级尚未形成产品验收口径。",
+          "title": "阻塞项"
+        }
+      ],
+      "artifact_hash": "sha256:08fbbd06c5c51ec0cc112c806b477601e73e95cc1fd77cf58dfa64f0b1b02261",
+      "artifact_id": "a03-technical-testability-analysis",
+      "artifact_path": "generated/multica-eight-card-run-20260817/artifacts-auto/artifacts/a03-technical-testability-analysis.json",
+      "completion": "1/1",
+      "execution_id": "A03-detail-drill-i18n-8card-20260817-01",
+      "label": "技术方案与可测性分析",
+      "node_id": "A03",
+      "result_summary": "needs_human",
+      "stage": 3,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "4334a71a-e5cd-4277-af8f-37fa7c155063",
+      "stage_issue_identifier": "QAA-277",
+      "state": "waiting_human"
+    },
+    {
+      "artifact_hash": "sha256:53395d7685c71f16526df5797e7606fb77dfb7a5aaf0387fd58d0773ddb2909f",
+      "artifact_id": "a05-backend-change-analysis",
+      "artifact_path": "generated/multica-eight-card-run-20260817/artifacts-auto/artifacts/a05-backend-change-analysis.json",
+      "completion": "1/1",
+      "execution_id": "A05-detail-drill-i18n-8card-20260817-01",
+      "label": "服务端变更分析",
+      "node_id": "A05",
+      "result_summary": "completed_with_gaps",
+      "stage": 3,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "4334a71a-e5cd-4277-af8f-37fa7c155063",
+      "stage_issue_identifier": "QAA-277",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:ce750a2a67f60214c0842680defc47ee13dfd96c07677515168307c71b1298ba",
+      "artifact_id": "a06-alignment-result",
+      "artifact_path": "generated/multica-eight-card-run-20260817/artifacts-auto/artifacts/a06-alignment-result.json",
+      "completion": "1/1",
+      "execution_id": "A06-detail-drill-i18n-8card-20260817-01",
+      "label": "需求与变更对齐",
+      "node_id": "A06",
+      "result_summary": "发现待确认项，已并入 G01 汇总审批",
+      "stage": 4,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "4334a71a-e5cd-4277-af8f-37fa7c155063",
+      "stage_issue_identifier": "QAA-277",
+      "state": "completed"
+    },
+    {
+      "approval_items": [
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-001",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：同一次查看明细同时命中多个不支持场景时，提示优先级以及是否需要合并展示未说明。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-002",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：数据范围中存在多个按结果集筛选的统计指标时，“指标名称”展示一个、全部还是按优先级选择未说明。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-003",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：提示的展示载体、位置、持续时间、关闭方式以及重复触发行为未说明。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-004",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：除列出的四类场景外，其他不支持查看明细的场景应继续使用通用提示还是需要新增场景化提示未说明。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-005",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：需求未说明该逻辑是否受用户角色、数据权限或功能权限影响。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-006",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：需求只给出中文提示文案，未说明是否需要提供其他语言版本、语言切换行为及翻译内容。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-007",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：指标名称为空、已删除、无权限查看、过长或包含特殊字符时的提示替代值和截断规则未说明。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "需求待确认",
+          "confirm_action": "请确认或补充需求口径；确认后 A02 会重新分析并更新需求事实。",
+          "id": "A02:AMB-008",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "需求文档里没有写清楚：“特殊 what/whatlist 类型”“动态关联关系”的准确类型枚举和判定边界未提供。",
+          "title": "需求待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：确认采用覆盖维度、下钻字段和数据范围的端到端一致文案，并冻结中英文模板。",
+          "id": "A03:BI-001",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：自定义维度校验实际包含下钻字段，但当前 需求文档 文案仅包含维度和数据范围，最终中英文文案未确认。 建议：确认采用覆盖维度、下钻字段和数据范围的端到端一致文案，并冻结中英文模板。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：确认采用端无关的“数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细”口径，并冻结中英文模板。",
+          "id": "A03:BI-002",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：结果集筛选提示固定写统计图，但需求同时覆盖拼表，使用端口径和最终中英文文案未确认。 建议：确认采用端无关的“数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细”口径，并冻结中英文模板。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：申请四个互不复用的错误码，同步配置国际化 key、默认中文及中英文平台模板，并与 国际化错误码枚举 同批交付。",
+          "id": "A03:BI-003",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：四个专用错误码均处于待申请状态，错误码平台中的中英文模板也未建立。 建议：申请四个互不复用的错误码，同步配置国际化 key、默认中文及中英文平台模板，并与 国际化错误码枚举 同批交付。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：使用最小中英文联调用例验证 {0} 的替换、参数顺序、缺参行为和指标动态多语名称，再冻结模板配置。",
+          "id": "A03:BI-004",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：BIBizException(errorCode, List<String>) 与错误码平台模板的实际占位符约定尚未联调确认。 建议：使用最小中英文联调用例验证 {0} 的替换、参数顺序、缺参行为和指标动态多语名称，再冻结模板配置。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：由产品和后端冻结工单主题、业务流程、业务流程任务、服务记录等目标关系的对象ID、field ID、whatFieldType 和关系路径白名单。",
+          "id": "A03:BI-005",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：方案要求动态关联使用稳定对象或 field ID、whatFieldType 和关系元数据判定，但输入未列出 需求文档 指定目标关系的完整稳定标识映射。 建议：由产品和后端冻结工单主题、业务流程、业务流程任务、服务记录等目标关系的对象ID、field ID、whatFieldType 和关系路径白名单。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "技术方案待确认",
+          "confirm_action": "请确认技术方案的处理方式：确认采用自定义维度、结果集指标筛选、特殊动态关联、多关联关系、原对象关系异常的顺序，并将其固化为组合场景测试断言。",
+          "id": "A03:BI-006",
+          "requirement_ids": [],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "技术方案里有待确认项：同一图表同时命中多个不支持条件时的首个提示优先级尚未形成产品验收口径。 建议：确认采用自定义维度、结果集指标筛选、特殊动态关联、多关联关系、原对象关系异常的顺序，并将其固化为组合场景测试断言。",
+          "title": "技术方案待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-001",
+          "requirement_ids": [
+            "REQ-001",
+            "REQ-002",
+            "REQ-003",
+            "REQ-004",
+            "REQ-005"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "只实现了一部分：生产代码已新增并接入四个专用错误码，但输入未提供错误码平台的最终中英文模板，无法证明用户实际看到的文案满足冻结需求。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-002",
+          "requirement_ids": [
+            "REQ-002"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "只实现了一部分：自定义维度的三个既有判定分支已切换专用错误码，但实现还覆盖下钻维度，而需求文案仅提到维度和数据范围，最终文案口径尚未确认。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-003",
+          "requirement_ids": [
+            "REQ-003"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "只实现了一部分：结果集筛选分支已传入筛选字段名，但没有实现事实证明字段名缺失时按字段元数据和当前语言名称继续解析、禁止空名称并降级原错误码，也没有最终占位符渲染证据。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-004",
+          "requirement_ids": [
+            "REQ-004"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案冲突：多关联实现以业务对象数或 ClickHouse 拓扑节点数超过三个直接判定，而技术方案要求依据指标已选关联路径和对象关系元数据判定，并仅在原对象关系失败时映射专用提示。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-005",
+          "requirement_ids": [
+            "REQ-005"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案冲突：动态关联实现仅根据查询到的字段为 what 或 WhatList 动态关联 类型切换错误码，未证明联合稳定对象或字段 ID、whatFieldType 和关系元数据限定到业务流程、业务流程任务或服务记录，判定范围可能宽于需求和技术方案。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-006",
+          "requirement_ids": [
+            "REQ-006",
+            "REQ-007"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "缺少实现证据：没有合格的业务实现事实证明统计图与拼表均进入同一限制判定，也没有事实证明 Web 与移动端获得一致错误码和当前语言文案。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-007",
+          "requirement_ids": [
+            "REQ-001"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "存在超出需求范围的变更：员工或部门主题的既有对象关系异常保留原错误码却将原国际化消息替换为空字符串；该分支不属于四类目标场景，并与非目标场景保持不变的设计约束不一致。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-008",
+          "requirement_ids": [
+            "REQ-001"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案存在差异：多个限制原因同时命中时的提示优先级或合并规则尚未冻结；技术方案中的拟定顺序不能作为已批准验收口径。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-009",
+          "requirement_ids": [
+            "REQ-001",
+            "REQ-002",
+            "REQ-003",
+            "REQ-004",
+            "REQ-005"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案存在差异：需求仅冻结中文文案，目标语言范围、翻译来源以及错误码平台中英文模板仍需人工确认。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-010",
+          "requirement_ids": [
+            "REQ-002",
+            "REQ-003"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "缺少实现证据：变更集中没有直接覆盖自定义维度和结果集筛选错误码切换的测试，未满足技术方案对目标原因和非目标回归的完整验证要求。",
+          "title": "实现与测试范围待确认"
+        },
+        {
+          "category": "实现与测试范围待确认",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:FND-011",
+          "requirement_ids": [
+            "REQ-003"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案存在差异：多个结果集筛选指标同时存在以及指标名为空、不可见、过长或包含特殊字符时的名称选择和降级规则尚未冻结。",
+          "title": "实现与测试范围待确认"
+        }
+      ],
+      "artifact_hash": "sha256:137127cb5208b4a584f0bcd2327768521f13c9167c6671e27314e5f90da00a35",
+      "artifact_id": "g01-scope-review",
+      "artifact_path": "generated/multica-eight-card-run-20260817/artifacts-auto/artifacts/g01-scope-review.json",
+      "completion": "1/1",
+      "execution_id": "G01-detail-drill-i18n-8card-20260817-01",
+      "label": "范围与口径人工审核",
+      "node_id": "G01",
+      "result_summary": "pending",
+      "stage": 5,
+      "stage_card_id": "C2",
+      "stage_card_title": "范围确认与测试策略",
+      "stage_issue_id": "b4a84999-c3ae-4694-b806-860ad499b4c6",
+      "stage_issue_identifier": "QAA-278",
+      "state": "waiting_human"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N24-detail-drill-i18n-8card-20260817-01",
+      "label": "风险与测试策略",
+      "node_id": "N24",
+      "result_summary": "等待上游节点",
+      "stage": 6,
+      "stage_card_id": "C2",
+      "stage_card_title": "范围确认与测试策略",
+      "stage_issue_id": "b4a84999-c3ae-4694-b806-860ad499b4c6",
+      "stage_issue_identifier": "QAA-278",
+      "state": "not_started"
+    },
+    {
+      "artifact_hash": "sha256:9820eb263b179582435d9550539fe29245b8655f3035aaabc9bbccb65a33946f",
+      "artifact_id": "a08-test-design-ir",
+      "artifact_path": "generated/multica-eight-card-run-20260817/artifacts-auto/artifacts/a08-test-design-ir.json",
+      "completion": "1/1",
+      "execution_id": "A08-detail-drill-i18n-8card-20260817-01",
+      "label": "测试设计",
+      "node_id": "A08",
+      "result_summary": "completed_with_gaps",
+      "stage": 7,
+      "stage_card_id": "C3",
+      "stage_card_title": "测试设计与审核",
+      "stage_issue_id": "9f6ac8ae-1fd0-4d1b-bac9-7dcfc6f8d682",
+      "stage_issue_identifier": "QAA-279",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:066b9f896f8920af16519bd1a5679ad6f7ecc29694338c359e4574bc5d8508b5",
+      "artifact_id": "a09-oracle-coverage-review",
+      "artifact_path": "generated/multica-eight-card-run-20260817/artifacts-auto/artifacts/a09-oracle-coverage-review.json",
+      "completion": "1/1",
+      "execution_id": "A09-detail-drill-i18n-8card-20260817-01",
+      "label": "Oracle 与覆盖审查",
+      "node_id": "A09",
+      "result_summary": "needs_human",
+      "stage": 8,
+      "stage_card_id": "C3",
+      "stage_card_title": "测试设计与审核",
+      "stage_issue_id": "9f6ac8ae-1fd0-4d1b-bac9-7dcfc6f8d682",
+      "stage_issue_identifier": "QAA-279",
+      "state": "blocked"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N04-detail-drill-i18n-8card-20260817-01",
+      "label": "Test Case IR 校验",
+      "node_id": "N04",
+      "result_summary": "等待上游节点",
+      "stage": 9,
+      "stage_card_id": "C3",
+      "stage_card_title": "测试设计与审核",
+      "stage_issue_id": "9f6ac8ae-1fd0-4d1b-bac9-7dcfc6f8d682",
+      "stage_issue_identifier": "QAA-279",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "G02-detail-drill-i18n-8card-20260817-01",
+      "label": "Test Case IR 人工审核",
+      "node_id": "G02",
+      "result_summary": "等待上游节点",
+      "stage": 10,
+      "stage_card_id": "C3",
+      "stage_card_title": "测试设计与审核",
+      "stage_issue_id": "9f6ac8ae-1fd0-4d1b-bac9-7dcfc6f8d682",
+      "stage_issue_identifier": "QAA-279",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N25-detail-drill-i18n-8card-20260817-01",
+      "label": "父子 Case 编译",
+      "node_id": "N25",
+      "result_summary": "等待上游节点",
+      "stage": 11,
+      "stage_card_id": "C4",
+      "stage_card_title": "Case 编译与执行计划",
+      "stage_issue_id": "0093cdcd-63aa-4003-a1ce-073ba5227f1c",
+      "stage_issue_identifier": "QAA-280",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A11-detail-drill-i18n-8card-20260817-01",
+      "label": "拆分覆盖审查",
+      "node_id": "A11",
+      "result_summary": "等待上游节点",
+      "stage": 12,
+      "stage_card_id": "C4",
+      "stage_card_title": "Case 编译与执行计划",
+      "stage_issue_id": "0093cdcd-63aa-4003-a1ce-073ba5227f1c",
+      "stage_issue_identifier": "QAA-280",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N26-detail-drill-i18n-8card-20260817-01",
+      "label": "测试选择",
+      "node_id": "N26",
+      "result_summary": "等待上游节点",
+      "stage": 13,
+      "stage_card_id": "C4",
+      "stage_card_title": "Case 编译与执行计划",
+      "stage_issue_id": "0093cdcd-63aa-4003-a1ce-073ba5227f1c",
+      "stage_issue_identifier": "QAA-280",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N15-detail-drill-i18n-8card-20260817-01",
+      "label": "执行计划编译",
+      "node_id": "N15",
+      "result_summary": "等待上游节点",
+      "stage": 14,
+      "stage_card_id": "C4",
+      "stage_card_title": "Case 编译与执行计划",
+      "stage_issue_id": "0093cdcd-63aa-4003-a1ce-073ba5227f1c",
+      "stage_issue_identifier": "QAA-280",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A14-detail-drill-i18n-8card-20260817-01",
+      "label": "服务端自动化生成",
+      "node_id": "A14",
+      "result_summary": "等待上游节点",
+      "stage": 15,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "1f2dca3f-ef0b-4524-879d-dae9cdc3fcd6",
+      "stage_issue_identifier": "QAA-281",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A15-detail-drill-i18n-8card-20260817-01",
+      "label": "契约自动化生成",
+      "node_id": "A15",
+      "result_summary": "等待上游节点",
+      "stage": 15,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "1f2dca3f-ef0b-4524-879d-dae9cdc3fcd6",
+      "stage_issue_identifier": "QAA-281",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A22-detail-drill-i18n-8card-20260817-01",
+      "label": "112 测试数据规划",
+      "node_id": "A22",
+      "result_summary": "等待上游节点",
+      "stage": 15,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "1f2dca3f-ef0b-4524-879d-dae9cdc3fcd6",
+      "stage_issue_identifier": "QAA-281",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A18-BE-detail-drill-i18n-8card-20260817-01",
+      "label": "服务端自动化独立复核",
+      "node_id": "A18-BE",
+      "result_summary": "等待上游节点",
+      "stage": 16,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "1f2dca3f-ef0b-4524-879d-dae9cdc3fcd6",
+      "stage_issue_identifier": "QAA-281",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A18-CT-detail-drill-i18n-8card-20260817-01",
+      "label": "契约自动化独立复核",
+      "node_id": "A18-CT",
+      "result_summary": "等待上游节点",
+      "stage": 16,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "1f2dca3f-ef0b-4524-879d-dae9cdc3fcd6",
+      "stage_issue_identifier": "QAA-281",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N27-detail-drill-i18n-8card-20260817-01",
+      "label": "测试数据计划安全校验",
+      "node_id": "N27",
+      "result_summary": "等待上游节点",
+      "stage": 16,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "1f2dca3f-ef0b-4524-879d-dae9cdc3fcd6",
+      "stage_issue_identifier": "QAA-281",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N05-detail-drill-i18n-8card-20260817-01",
+      "label": "自动化确定性代码检查",
+      "node_id": "N05",
+      "result_summary": "等待上游节点",
+      "stage": 17,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "1f2dca3f-ef0b-4524-879d-dae9cdc3fcd6",
+      "stage_issue_identifier": "QAA-281",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "G03-detail-drill-i18n-8card-20260817-01",
+      "label": "自动化代码人工审核",
+      "node_id": "G03",
+      "result_summary": "等待上游节点",
+      "stage": 18,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "1f2dca3f-ef0b-4524-879d-dae9cdc3fcd6",
+      "stage_issue_identifier": "QAA-281",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N07-detail-drill-i18n-8card-20260817-01",
+      "label": "环境、数据与资源预检",
+      "node_id": "N07",
+      "result_summary": "等待上游节点",
+      "stage": 19,
+      "stage_card_id": "C6",
+      "stage_card_title": "环境预检与测试执行",
+      "stage_issue_id": "78593135-9cfc-4e36-9ba9-96178e9e41b9",
+      "stage_issue_identifier": "QAA-282",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N08-detail-drill-i18n-8card-20260817-01",
+      "label": "受控自动化执行",
+      "node_id": "N08",
+      "result_summary": "等待上游节点",
+      "stage": 20,
+      "stage_card_id": "C6",
+      "stage_card_title": "环境预检与测试执行",
+      "stage_issue_id": "78593135-9cfc-4e36-9ba9-96178e9e41b9",
+      "stage_issue_identifier": "QAA-282",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N17-detail-drill-i18n-8card-20260817-01",
+      "label": "人工与探索测试执行",
+      "node_id": "N17",
+      "result_summary": "等待上游节点",
+      "stage": 20,
+      "stage_card_id": "C6",
+      "stage_card_title": "环境预检与测试执行",
+      "stage_issue_id": "78593135-9cfc-4e36-9ba9-96178e9e41b9",
+      "stage_issue_identifier": "QAA-282",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N10-detail-drill-i18n-8card-20260817-01",
+      "label": "环境失败重试预算",
+      "node_id": "N10",
+      "result_summary": "等待上游节点",
+      "stage": 21,
+      "stage_card_id": "C6",
+      "stage_card_title": "环境预检与测试执行",
+      "stage_issue_id": "78593135-9cfc-4e36-9ba9-96178e9e41b9",
+      "stage_issue_identifier": "QAA-282",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N18-detail-drill-i18n-8card-20260817-01",
+      "label": "运行质量信号采集",
+      "node_id": "N18",
+      "result_summary": "等待上游节点",
+      "stage": 21,
+      "stage_card_id": "C7",
+      "stage_card_title": "证据归一与质量决策",
+      "stage_issue_id": "ef84281a-732f-4bc3-af48-f4858b7637a4",
+      "stage_issue_identifier": "QAA-283",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N09-detail-drill-i18n-8card-20260817-01",
+      "label": "执行证据标准化与失败聚类",
+      "node_id": "N09",
+      "result_summary": "等待上游节点",
+      "stage": 22,
+      "stage_card_id": "C7",
+      "stage_card_title": "证据归一与质量决策",
+      "stage_issue_id": "ef84281a-732f-4bc3-af48-f4858b7637a4",
+      "stage_issue_identifier": "QAA-283",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N20-detail-drill-i18n-8card-20260817-01",
+      "label": "跨运行缺陷去重",
+      "node_id": "N20",
+      "result_summary": "等待上游节点",
+      "stage": 23,
+      "stage_card_id": "C7",
+      "stage_card_title": "证据归一与质量决策",
+      "stage_issue_id": "ef84281a-732f-4bc3-af48-f4858b7637a4",
+      "stage_issue_identifier": "QAA-283",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N11-detail-drill-i18n-8card-20260817-01",
+      "label": "确定性质量决策",
+      "node_id": "N11",
+      "result_summary": "等待上游节点",
+      "stage": 24,
+      "stage_card_id": "C7",
+      "stage_card_title": "证据归一与质量决策",
+      "stage_issue_id": "ef84281a-732f-4bc3-af48-f4858b7637a4",
+      "stage_issue_identifier": "QAA-283",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N19-detail-drill-i18n-8card-20260817-01",
+      "label": "质量豁免审计",
+      "node_id": "N19",
+      "result_summary": "等待上游节点",
+      "stage": 25,
+      "stage_card_id": "C7",
+      "stage_card_title": "证据归一与质量决策",
+      "stage_issue_id": "ef84281a-732f-4bc3-af48-f4858b7637a4",
+      "stage_issue_identifier": "QAA-283",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N12-detail-drill-i18n-8card-20260817-01",
+      "label": "质量报告发布",
+      "node_id": "N12",
+      "result_summary": "等待上游节点",
+      "stage": 26,
+      "stage_card_id": "C8",
+      "stage_card_title": "报告与关闭",
+      "stage_issue_id": "28199f7a-f869-43bf-8629-f4518ead5813",
+      "stage_issue_identifier": "QAA-284",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N13-detail-drill-i18n-8card-20260817-01",
+      "label": "报告反馈入口",
+      "node_id": "N13",
+      "result_summary": "等待上游节点",
+      "stage": 27,
+      "stage_card_id": "C8",
+      "stage_card_title": "报告与关闭",
+      "stage_issue_id": "28199f7a-f869-43bf-8629-f4518ead5813",
+      "stage_issue_identifier": "QAA-284",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N23-detail-drill-i18n-8card-20260817-01",
+      "label": "上线后验证授权审计",
+      "node_id": "N23",
+      "result_summary": "等待上游节点",
+      "stage": 28,
+      "stage_card_id": "C8",
+      "stage_card_title": "报告与关闭",
+      "stage_issue_id": "28199f7a-f869-43bf-8629-f4518ead5813",
+      "stage_issue_identifier": "QAA-284",
+      "state": "not_started"
+    }
+  ],
+  "parent_issue": {
+    "id": "881ab21a-569a-46e7-9a1e-39f841d4ed87",
+    "identifier": "QAA-275"
+  },
+  "requirement_id": "REQ-DETAIL-DRILL-I18N",
+  "revision": 6,
+  "run_history": [],
+  "run_issue": {
+    "id": "5024d85d-8142-4078-9bc6-d5788e3232df",
+    "identifier": "QAA-276"
+  },
+  "schema_version": "requirement-workflow/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "stage_card_schema_version": "server-stage-cards/1.0",
+  "stage_cards": [
+    {
+      "issue_id": "4334a71a-e5cd-4277-af8f-37fa7c155063",
+      "issue_identifier": "QAA-277",
+      "node_ids": [
+        "INPUT-FREEZE",
+        "N00",
+        "A02",
+        "A03",
+        "A05",
+        "A06"
+      ],
+      "stage_card_id": "C1",
+      "title": "需求分析与变更对齐"
+    },
+    {
+      "issue_id": "b4a84999-c3ae-4694-b806-860ad499b4c6",
+      "issue_identifier": "QAA-278",
+      "node_ids": [
+        "G01",
+        "N24"
+      ],
+      "stage_card_id": "C2",
+      "title": "范围确认与测试策略"
+    },
+    {
+      "issue_id": "9f6ac8ae-1fd0-4d1b-bac9-7dcfc6f8d682",
+      "issue_identifier": "QAA-279",
+      "node_ids": [
+        "A08",
+        "A09",
+        "N04",
+        "G02"
+      ],
+      "stage_card_id": "C3",
+      "title": "测试设计与审核"
+    },
+    {
+      "issue_id": "0093cdcd-63aa-4003-a1ce-073ba5227f1c",
+      "issue_identifier": "QAA-280",
+      "node_ids": [
+        "N25",
+        "A11",
+        "N26",
+        "N15"
+      ],
+      "stage_card_id": "C4",
+      "title": "Case 编译与执行计划"
+    },
+    {
+      "issue_id": "1f2dca3f-ef0b-4524-879d-dae9cdc3fcd6",
+      "issue_identifier": "QAA-281",
+      "node_ids": [
+        "A14",
+        "A15",
+        "A22",
+        "A18-BE",
+        "A18-CT",
+        "N27",
+        "N05",
+        "G03"
+      ],
+      "stage_card_id": "C5",
+      "title": "自动化与测试数据准备"
+    },
+    {
+      "issue_id": "78593135-9cfc-4e36-9ba9-96178e9e41b9",
+      "issue_identifier": "QAA-282",
+      "node_ids": [
+        "N07",
+        "N08",
+        "N17",
+        "N10"
+      ],
+      "stage_card_id": "C6",
+      "title": "环境预检与测试执行"
+    },
+    {
+      "issue_id": "ef84281a-732f-4bc3-af48-f4858b7637a4",
+      "issue_identifier": "QAA-283",
+      "node_ids": [
+        "N18",
+        "N09",
+        "N20",
+        "N11",
+        "N19"
+      ],
+      "stage_card_id": "C7",
+      "title": "证据归一与质量决策"
+    },
+    {
+      "issue_id": "28199f7a-f869-43bf-8629-f4518ead5813",
+      "issue_identifier": "QAA-284",
+      "node_ids": [
+        "N12",
+        "N13",
+        "N23"
+      ],
+      "stage_card_id": "C8",
+      "title": "报告与关闭"
+    }
+  ],
+  "title": "统计图查看明细限制原因提示优化",
+  "workflow_definition_version": "server-requirement/1.1-eight-stage-cards",
+  "workflow_id": "REQ-DETAIL-DRILL-I18N",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-01"
+}

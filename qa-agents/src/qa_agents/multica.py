@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 import shlex
 import subprocess
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 
 from .change_set import normalize_change_set
 from .contracts import (
@@ -184,6 +184,8 @@ PROFILE_OUTPUTS = {
                 "expected_id",
                 "source_refs",
                 "recommendation",
+                "plain_summary",
+                "human_title",
             },
             "coverage_dimensions": {
                 "dimension",
@@ -218,6 +220,8 @@ PROFILE_OUTPUTS = {
                 "case_id",
                 "source_refs",
                 "recommendation",
+                "plain_summary",
+                "human_title",
             },
             "parent_case_coverage": {
                 "parent_case_id",
@@ -516,6 +520,73 @@ def _test_rule_obligations(test_rules: Mapping[str, Any]) -> list[dict[str, Any]
     return obligations
 
 
+def _default_prior_test_rules_paths(output_dir: Path) -> list[Path]:
+    """Locate archived G01 decisions that may carry structured test_rules."""
+
+    root = output_dir.parent
+    paths = [
+        *root.glob("g01*/g01-review-decision.json"),
+        *root.glob("g01*/history/*/g01-review-decision.json"),
+    ]
+    if root.parent != root:
+        paths.extend(root.parent.glob("*/g01*/g01-review-decision.json"))
+        paths.extend(root.parent.glob("*/g01*/history/*/g01-review-decision.json"))
+    return sorted({Path(path) for path in paths}, key=str)
+
+
+def _resolve_structured_test_rules(
+    decision: Mapping[str, Any],
+    prior_test_rules_paths: Sequence[Path],
+) -> tuple[Mapping[str, Any] | None, dict[str, Any] | None]:
+    """Resolve structured test_rules for A08 when G01 recorded concise rules.
+
+    The concise decision stores ``test_rules`` as a plain string (e.g. "按逐项
+    回复冻结的口径执行测试设计"). The per-item resolutions freeze the scope but do
+    not carry the structured rule table. When available, reuse the structured
+    rules from the most recent approved G01 decision bound to the same source
+    snapshot so the A08 Agent still receives an explicit rule set. The fallback
+    is recorded as provenance inside the bundle; it never rewrites the archived
+    decision itself.
+    """
+
+    test_rules = decision.get("test_rules")
+    if isinstance(test_rules, Mapping):
+        return dict(test_rules), None
+    snapshot_id = str(decision.get("source_snapshot_id", ""))
+    candidates: list[tuple[str, Mapping[str, Any], str, str]] = []
+    for path in prior_test_rules_paths:
+        try:
+            value = _read(path)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(value, Mapping):
+            continue
+        if str(value.get("decision", "")) != "approved":
+            continue
+        if str(value.get("source_snapshot_id", "")) != snapshot_id:
+            continue
+        rules = value.get("test_rules")
+        if not isinstance(rules, Mapping):
+            continue
+        candidates.append(
+            (
+                str(value.get("decided_at", "")),
+                dict(rules),
+                str(value.get("decision_hash", "")),
+                str(value.get("workflow_run_id", "")),
+            )
+        )
+    if not candidates:
+        return None, None
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    _, rules, decision_hash, run_id = candidates[0]
+    return rules, {
+        "mode": "prior_frozen_scope",
+        "workflow_run_id": run_id,
+        "decision_hash": decision_hash,
+    }
+
+
 def prepare_multica_test_design_input(
     requirement_artifact_path: Path,
     technical_artifact_path: Path,
@@ -527,6 +598,7 @@ def prepare_multica_test_design_input(
     output_dir: Path,
     *,
     security: SecurityPolicy | None = None,
+    prior_test_rules_paths: Sequence[Path] | None = None,
 ) -> dict[str, Any]:
     """Compile G01-approved evidence and N24 strategy into A08's only input."""
 
@@ -592,8 +664,21 @@ def prepare_multica_test_design_input(
         raise ContractError("A08 N24 strategy does not bind the current G01 decision")
 
     test_rules = decision.get("test_rules")
+    test_rule_instruction = None
+    test_rule_fallback = None
     if not isinstance(test_rules, Mapping):
-        raise ContractError("A08 requires structured G01 test_rules")
+        test_rule_instruction = str(test_rules).strip() if test_rules else None
+        prior_paths = list(
+            prior_test_rules_paths or _default_prior_test_rules_paths(output_dir)
+        )
+        test_rules, test_rule_fallback = _resolve_structured_test_rules(
+            decision, prior_paths
+        )
+        if not isinstance(test_rules, Mapping):
+            raise ContractError(
+                "A08 requires structured G01 test_rules; the recorded decision is "
+                "concise and no structured rules are available for this snapshot"
+            )
     obligations = _test_rule_obligations(test_rules)
     allowed_inputs = {
         "validated_analysis": {
@@ -610,6 +695,16 @@ def prepare_multica_test_design_input(
             "review_policy": request["review_policy"],
             "test_rules": dict(test_rules),
             "test_rule_obligations": obligations,
+            **(
+                {"test_rule_instruction": test_rule_instruction}
+                if test_rule_instruction
+                else {}
+            ),
+            **(
+                {"test_rule_fallback": test_rule_fallback}
+                if test_rule_fallback
+                else {}
+            ),
         },
         "test_strategy": artifacts["test_strategy"]["payload"],
         "case_provider_draft": {
@@ -1915,6 +2010,10 @@ def _validate_oracle_review_semantics(
             raise ContractError(f"A09 issues[{index}] references an unknown expected result")
         if issue.get("route_to") not in allowed_routes:
             raise ContractError(f"A09 issues[{index}] has an invalid route")
+        if not str(issue.get("plain_summary") or "").strip():
+            raise ContractError(
+                f"A09 issues[{index}] requires a human-readable plain_summary"
+            )
         if issue.get("severity") in {"error", "blocking"}:
             blocking_count += 1
     if not all(issue_ids) or len(issue_ids) != len(set(issue_ids)):
@@ -2015,6 +2114,10 @@ def _validate_split_review_semantics(
             raise ContractError(f"A11 issues[{index}] references an unknown Case")
         if issue.get("route_to") not in allowed_routes:
             raise ContractError(f"A11 issues[{index}] has an invalid route")
+        if not str(issue.get("plain_summary") or "").strip():
+            raise ContractError(
+                f"A11 issues[{index}] requires a human-readable plain_summary"
+            )
         if issue.get("severity") in {"error", "blocking"}:
             blocking_count += 1
     if not all(issue_ids) or len(issue_ids) != len(set(issue_ids)):

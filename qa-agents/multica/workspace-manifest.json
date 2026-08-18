@@ -92,7 +92,7 @@
       "output_contract": "workflow-coordination/1.0",
       "remote_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "runtime_status": "active",
       "last_checked": "2026-08-11T08:51:23Z",
       "note": "Rebound from Claude runtime c12c5f20 after an Autopilot 401 to online Codex runtime 5a1ecc9c; verified by completed run 3bed99d5 on 2026-08-11."
@@ -105,7 +105,7 @@
       "remote_id": "bd32f18b-fb32-4e0c-85f1-c96e5adbc39b",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:26+00:00"
     },
@@ -117,7 +117,7 @@
       "remote_id": "1388561a-a00c-4c84-ac9a-5b6247ed9b6b",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:26+00:00"
     },
@@ -129,7 +129,7 @@
       "remote_id": "54cdf04c-1941-467c-b688-6863fcfa4bea",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:26+00:00"
     },
@@ -141,7 +141,7 @@
       "remote_id": "51c5fb7d-f703-4c5b-a136-ed10c3aec936",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:26+00:00"
     },
@@ -153,7 +153,7 @@
       "remote_id": "396ada02-41ef-448b-bb1f-911819ee47ae",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:26+00:00"
     },
@@ -165,7 +165,7 @@
       "remote_id": "8ae4eb68-470f-4ea1-a2bc-f538b236a724",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:27+00:00"
     },
@@ -177,7 +177,7 @@
       "remote_id": "7c3ddfa7-168c-41bb-9cb6-e8105c1fcbd5",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:27+00:00"
     },
@@ -189,7 +189,7 @@
       "remote_id": "15dacd87-0dc4-4b48-ad8e-a95c9bdbb63a",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:27+00:00"
     },
@@ -201,7 +201,7 @@
       "remote_id": "91caafd3-ed6f-4646-83c2-41bba333c112",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:27+00:00"
     },
@@ -213,7 +213,7 @@
       "remote_id": "87e21b4c-1a20-4ed1-b5bd-ee1747469be5",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:27+00:00"
     },
@@ -225,7 +225,7 @@
       "remote_id": "efcddbf6-c4a3-4802-a6e6-b7c8d05c3011",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:27+00:00"
     },
@@ -237,7 +237,7 @@
       "remote_id": "a49952a6-56f4-4ca1-81e9-ef93b593752a",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:27+00:00"
     },
@@ -249,7 +249,7 @@
       "remote_id": "c85d37b8-79e8-4ae5-9479-ee3fa5a5786d",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:28+00:00"
     },
@@ -261,7 +261,7 @@
       "remote_id": "75b200aa-a092-4dfa-ab70-b6a990ec4048",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:28+00:00"
     },
@@ -273,7 +273,7 @@
       "remote_id": "f7cf3505-19a7-46ec-a059-2a7223b50ae5",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:28+00:00"
     },
@@ -285,7 +285,7 @@
       "remote_id": "e523d32c-dcf4-439b-b70e-4a8f0d558fb9",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:28+00:00"
     },
@@ -297,7 +297,7 @@
       "remote_id": "e484fca1-1155-4bed-8a02-43e522444931",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:28+00:00"
     },
@@ -309,7 +309,7 @@
       "remote_id": "bd81ffc9-888a-43cb-8bbb-93c615ff8b70",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:28+00:00"
     },
@@ -321,7 +321,7 @@
       "remote_id": "b99ffeb4-8fbb-410d-8d8a-4adbc97adab1",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:28+00:00"
     },
@@ -333,7 +333,7 @@
       "remote_id": "56127dc9-aaa2-4153-b240-844cd86ca6b8",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:28+00:00"
     },
@@ -345,7 +345,7 @@
       "remote_id": "3774014d-fb6b-4140-b487-f2a2d2da04c8",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:28+00:00"
     },
@@ -357,7 +357,7 @@
       "remote_id": "79335d2f-8525-448d-8804-792852f9446e",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T03:38:28+00:00"
     },
@@ -369,7 +369,7 @@
       "remote_id": "f10fa301-3123-4201-9ab6-9161f3e4ac35",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
-      "model": "gpt-5.6-sol",
+      "model": "deepseek-v4-flash",
       "permission_mode": "private",
       "deployed_at": "2026-08-12T07:33:50+00:00"
     }
@@ -491,8 +491,8 @@
   "runtimes": [
     {
       "id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
-      "model": "gpt-5.6-sol",
-      "provider": "codex",
+      "model": "deepseek-v4-flash",
+      "provider": "deepseek",
       "status": "active",
       "last_seen": "2026-08-10T11:51:39Z"
     },

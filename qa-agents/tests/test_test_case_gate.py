@@ -32,6 +32,8 @@ def rejected_a09_output(bundle: dict) -> dict:
             {
                 "id": "A09-001",
                 "issue_code": "ORACLE_REQUIRED_FIELDS_MISSING",
+                "human_title": "预期结果字段缺失",
+                "plain_summary": "用例的预期结果缺少必要字段，无法执行校验。",
                 "severity": "error",
                 "category": "oracle",
                 "message": "Oracle lacks type and source_ref",

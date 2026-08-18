@@ -168,6 +168,25 @@ def test_e2e_profile_generates_reviews_and_passes_n05() -> None:
     assert check["passed"] is True
 
 
+def test_generator_splits_manual_oracles_without_dropping_automated_subset() -> None:
+    mixed = case("backend")
+    mixed["expected"].append(
+        {
+            "id": "EXP-MANUAL",
+            "description": "人工确认终端视觉结果",
+            "oracle": {"matcher": "manual_confirmation"},
+        }
+    )
+    generation, review, check = run_profile("A14", [mixed])
+
+    mapping = generation.payload["manifest"]["case_mappings"][0]
+    assert mapping["expected_ids"] == ["EXP-01"]
+    assert mapping["manual_expected_ids"] == ["EXP-MANUAL"]
+    assert "EXP-MANUAL" not in generation.payload["code_candidates"][0]["content"]
+    assert review.payload["approved"] is True
+    assert check["passed"] is True
+
+
 def test_non_functional_profiles_generate_and_review() -> None:
     expected = {
         "performance": ("A17-PERF", "A18-PERF"),

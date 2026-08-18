@@ -1,8 +1,8 @@
 {
   "schema_version": "multica-workflow-center/1.0",
   "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
-  "workflow_project_id": "4fa45734-8f07-4e07-92ce-0bdd6bb3d29b",
-  "internal_project_id": "c2c84f1f-20af-456d-9eca-c9fbbd253840",
+  "workflow_project_id": "569e2a49-4ae2-4926-88a1-d916b0376afd",
+  "internal_project_id": "f2f893a2-55dc-414d-87d9-a483e51765d6",
   "precreate_nodes": true,
   "workflow_lead_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
   "node_agents": {
@@ -29,18 +29,18 @@
   },
   "views": {
     "workflow_center": {
-      "project_id": "4fa45734-8f07-4e07-92ce-0bdd6bb3d29b",
+      "project_id": "569e2a49-4ae2-4926-88a1-d916b0376afd",
       "metadata": "qa_item_type=workflow"
     },
     "my_actions": {
-      "project_id": "4fa45734-8f07-4e07-92ce-0bdd6bb3d29b",
+      "project_id": "569e2a49-4ae2-4926-88a1-d916b0376afd",
       "metadata": [
         "qa_item_type=workflow",
         "\"qa_action_required=\"\"true\"\"\""
       ]
     },
     "internal_execution": {
-      "project_id": "c2c84f1f-20af-456d-9eca-c9fbbd253840"
+      "project_id": "f2f893a2-55dc-414d-87d9-a483e51765d6"
     }
   }
 }

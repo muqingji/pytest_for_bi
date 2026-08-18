@@ -394,17 +394,7 @@ def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
             if approval_items:
                 lines.extend([f"#### 审批项（{len(approval_items)}）", ""])
                 for index, approval in enumerate(approval_items, start=1):
-                    category = str(approval.get("category") or approval.get("title") or "待确认").strip()
-                    lines.append(f"{index}. **{category}**（`{approval['id']}`）")
-                    lines.append(f"   {approval['summary']}")
-                    confirm_action = str(approval.get("confirm_action") or "").strip()
-                    if confirm_action:
-                        lines.append(f"   需要确认：{confirm_action}")
-                    requirement_ids = approval.get("requirement_ids") or []
-                    if requirement_ids:
-                        lines.append(
-                            f"   涉及需求：" + "、".join(f"`{value}`" for value in requirement_ids)
-                        )
+                    lines.extend(_approval_lines(approval, index))
                     lines.append("")
             else:
                 lines.append("- 审批项：请打开审核入口查看具体审批项。")
@@ -643,6 +633,104 @@ def _stage_card_status(nodes: list[Mapping[str, Any]]) -> str:
     return "backlog"
 
 
+_HUMAN_ISSUE_TITLES = {
+    "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE": "预期结果无法解析",
+    "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT": "中英文测试数据冲突",
+    "RULE_CONFLICT": "规则冲突",
+    "MISSING_EXPECTATION": "缺少期望值",
+    "AMBIGUOUS_REQUIREMENT": "需求表述歧义",
+    "COVERAGE_GAP": "覆盖缺口",
+    "BLOCKING_GAP": "阻塞性缺口",
+}
+
+_HUMAN_CATEGORY_LABELS = {
+    "oracle": "Oracle 期望值",
+    "test_data": "测试数据",
+    "ambiguity": "需求歧义",
+    "ambiguities": "需求歧义",
+    "coverage": "覆盖缺口",
+    "conflict": "规则冲突",
+    "missing": "缺失项",
+    "blocker": "阻塞项",
+    "question": "待确认事项",
+    "needs_human": "待确认事项",
+}
+
+_RESULT_SUMMARY_LABELS = {
+    "completed": "已完成",
+    "completed_with_gaps": "已完成，存在缺口（由下游审查修正）",
+    "needs_human": "需人工确认",
+    "accepted": "已验收",
+}
+
+
+def _first_sentence(text: str, limit: int = 120) -> str:
+    """Keep the leading sentence so long technical messages stay readable."""
+    if len(text) <= limit:
+        return text
+    for separator in ("。", "；", "；", "\n", ". "):
+        position = text.find(separator)
+        if 0 < position <= limit:
+            return text[: position + len(separator)]
+    return text[:limit].rstrip() + "…"
+
+
+def _issue_plain_problem(approval: Mapping[str, Any]) -> str:
+    """Human-friendly one-liner for known issue codes; empty when unknown."""
+    issue_code = str(approval.get("issue_code") or "").strip()
+    case_id = str(approval.get("case_id") or "").strip()
+    expected_id = str(approval.get("expected_id") or "").strip()
+    if issue_code == "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE":
+        return (
+            f"用例 `{expected_id or 'EXP-*'}` 的预期结果指向了一个不存在的字段路径，"
+            "自动执行时拿不到明确期望值，这条用例目前无法完成校验。"
+        )
+    if issue_code == "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT":
+        return (
+            f"用例 `{case_id or 'TC-*'}` 同时用中英文执行，但测试数据固定写死了中文名称，"
+            "英文场景也会取到中文结果，和期望的英文名称对不上。"
+        )
+    return ""
+
+
+def _approval_title(approval: Mapping[str, Any]) -> str:
+    human_title = str(approval.get("human_title") or "").strip()
+    if human_title:
+        return human_title
+    issue_code = str(approval.get("issue_code") or "").strip()
+    if issue_code:
+        category = str(approval.get("category") or "").strip()
+        label = _HUMAN_CATEGORY_LABELS.get(
+            category.lower(), category or "问题"
+        )
+        return _HUMAN_ISSUE_TITLES.get(issue_code, f"{label}问题（{issue_code}）")
+    category = str(approval.get("category") or approval.get("title") or "待确认").strip()
+    return _HUMAN_CATEGORY_LABELS.get(category.lower(), category)
+
+
+def _approval_lines(approval: Mapping[str, Any], index: int) -> list[str]:
+    lines = [f"{index}. **{_approval_title(approval)}**（`{approval['id']}`）"]
+    problem = str(approval.get("plain_summary") or "").strip()
+    if not problem:
+        problem = _issue_plain_problem(approval)
+    if not problem:
+        summary = str(approval.get("summary") or "").strip()
+        if summary:
+            problem = _first_sentence(summary)
+    if problem:
+        lines.append(f"   - 问题：{problem}")
+    recommendation = str(approval.get("recommendation") or "").strip()
+    if recommendation:
+        lines.append(f"   - 建议修正：{recommendation}")
+    confirm_action = str(approval.get("confirm_action") or "").strip()
+    if confirm_action:
+        lines.append(f"   - 需要确认：{confirm_action}")
+    requirement_ids = approval.get("requirement_ids") or []
+    if requirement_ids:
+        lines.append("   - 涉及需求：" + "、".join(f"`{value}`" for value in requirement_ids))
+    return lines
+
+
 def _render_stage_card_markdown(
     card_id: str, title: str, nodes: list[Mapping[str, Any]]
 ) -> str:
@@ -654,38 +742,77 @@ def _render_stage_card_markdown(
         for node in nodes
         if node.get("state") in {"queued", "running", "waiting_human", "blocked", "failed"}
     ]
-    artifacts = [
-        f"- `{node.get('artifact_id')}` `{node.get('artifact_hash')}`"
+    artifacts: list[str] = []
+    for node in nodes:
+        if not (node.get("artifact_id") and node.get("artifact_hash")):
+            continue
+        label = str(node.get("label") or node.get("node_id") or "")
+        state_label = NODE_STATUS_LABELS.get(
+            str(node.get("state")), str(node.get("state"))
+        )
+        summary = str(node.get("result_summary") or "").strip()
+        if node.get("state") == "waiting_human":
+            summary = "待人工授权修正，见下方人工操作"
+        elif summary in _RESULT_SUMMARY_LABELS:
+            summary = _RESULT_SUMMARY_LABELS[summary]
+        line = f"- `{node.get('artifact_id')}`（{label} · {state_label}）"
+        if summary:
+            line += f"：{summary}"
+        line += f"  `{node.get('artifact_hash')}`"
+        artifacts.append(line)
+    human_entries = {
+        str(entry.get("issue_identifier") or entry.get("issue_id") or "").strip()
         for node in nodes
-        if node.get("artifact_id") and node.get("artifact_hash")
-    ]
-    failures = [
-        f"- `{node.get('node_id')}`：{node.get('result_summary', '等待处理')}"
-        for node in nodes
-        if node.get("state") in {"blocked", "failed"}
-    ]
+        if node.get("state") == "waiting_human"
+        if isinstance(node.get("human_action_entry"), Mapping)
+        for entry in [node["human_action_entry"]]
+        if str(entry.get("issue_identifier") or entry.get("issue_id") or "").strip()
+    }
+    failures = []
+    for node in nodes:
+        if node.get("state") not in {"blocked", "failed"}:
+            continue
+        line = f"- `{node.get('node_id')}`：{node.get('result_summary', '等待处理')}"
+        if human_entries:
+            line += f"（处理入口：{'、'.join(f'`{entry}`' for entry in sorted(human_entries))}，见下方人工操作）"
+        failures.append(line)
     human_lines: list[str] = []
     for node in nodes:
         if node.get("state") != "waiting_human":
             continue
-        human_lines.append(
-            f"- 审核 `{node.get('node_id')}`：{node.get('result_summary', '请完成审核')}"
-        )
         approval_items = node.get("approval_items") or []
-        for approval in approval_items:
-            category = str(approval.get("category") or approval.get("title") or "待确认").strip()
-            human_lines.append(f"  - **{category}**（`{approval['id']}`）")
-            human_lines.append(f"    {approval['summary']}")
-            confirm_action = str(approval.get("confirm_action") or "").strip()
-            if confirm_action:
-                human_lines.append(f"    需要确认：{confirm_action}")
-            requirement_ids = approval.get("requirement_ids") or []
-            if requirement_ids:
+        if approval_items:
+            label = str(node.get("label") or "").strip()
+            label_text = f"（{label}）" if label else ""
+            if isinstance(node.get("human_action_entry"), Mapping):
                 human_lines.append(
-                    "    涉及需求：" + "、".join(f"`{value}`" for value in requirement_ids)
+                    f"- 来源：`{node.get('node_id')}`{label_text} 审查发现 "
+                    f"{len(approval_items)} 个问题，需你决策是否授权修正。"
                 )
-        if not approval_items:
+            else:
+                human_lines.append(
+                    f"- 来源：`{node.get('node_id')}`{label_text}，共 "
+                    f"{len(approval_items)} 个待确认事项，请逐条确认后继续。"
+                )
+            for index, approval in enumerate(approval_items, start=1):
+                human_lines.extend(_approval_lines(approval, index))
+        else:
+            human_lines.append(
+                f"- 审核 `{node.get('node_id')}`：{node.get('result_summary', '请完成审核')}"
+            )
             human_lines.append("  - 审批项：请打开审核入口查看具体审批项。")
+        entry = node.get("human_action_entry")
+        if isinstance(entry, Mapping):
+            identifier = str(entry.get("issue_identifier") or entry.get("issue_id") or "").strip()
+            if identifier:
+                status = str(entry.get("status") or "待处理")
+                human_lines.append(f"- 操作：打开 `{identifier}`（人工修正 Issue，状态 {status}）：")
+                human_lines.append(
+                    "  - 置为 **done**：授权修正，系统自动修改用例并重新校验，流程自动继续。"
+                )
+                human_lines.append(
+                    "  - 置为 **cancelled**：不修正，终止当前流程。"
+                )
     human = human_lines
     progress = "、".join(
         f"{NODE_STATUS_LABELS.get(state, state)} {count}"
@@ -744,18 +871,29 @@ def _stage_cards(projection: Mapping[str, Any]) -> list[dict[str, Any]]:
         issue_id = str(node.get("stage_issue_id", "")).strip()
         if issue_id:
             issues[card_id] = (issue_id, str(node.get("stage_issue_identifier", "")))
-    return [
-        {
+    cards: list[dict[str, Any]] = []
+    upstream_blocker = ""
+    for card_id, nodes in sorted(grouped.items()):
+        status = _stage_card_status(nodes)
+        description = _render_stage_card_markdown(card_id, titles[card_id], nodes)
+        if upstream_blocker:
+            status = "backlog"
+            description += (
+                "\n\n## 上游阻塞\n"
+                f"等待 `{upstream_blocker}` 解除；本阶段尚未形成可验收完成态。"
+            )
+        cards.append({
             "stage_card_id": card_id,
             "title": titles[card_id],
             "nodes": nodes,
-            "status": _stage_card_status(nodes),
-            "description": _render_stage_card_markdown(card_id, titles[card_id], nodes),
+            "status": status,
+            "description": description,
             "issue_id": issues.get(card_id, ("", ""))[0],
             "issue_identifier": issues.get(card_id, ("", ""))[1],
-        }
-        for card_id, nodes in sorted(grouped.items())
-    ]
+        })
+        if status == "blocked" and not upstream_blocker:
+            upstream_blocker = card_id
+    return cards
 
 
 @contextmanager

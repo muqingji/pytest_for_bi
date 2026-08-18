@@ -1,0 +1,109 @@
+{
+  "schema_version": "n25-split-correction/1.0",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-01",
+  "source_artifact_hash": "sha256:ed485b244b7b1cd83bfc70ff62b8a2aae1c1b50cd80f651b5942d7071c5aac87",
+  "approval": {
+    "issue_id": "4eaf3363-9365-432b-9518-688537e22493",
+    "issue_identifier": "QAA-298",
+    "status": "done"
+  },
+  "case_rules": {
+    "TC-A08-001": {
+      "required_layers": ["backend", "contract"],
+      "expected_layers": {
+        "EXP-001-01": ["contract"],
+        "EXP-001-02": ["contract"],
+        "EXP-001-03": ["contract"],
+        "EXP-001-04": ["contract"],
+        "EXP-001-05": ["contract"],
+        "EXP-001-06": ["backend"],
+        "EXP-001-07": ["backend"]
+      },
+      "cleanup_oracle": {"matcher": "namespace_empty"}
+    },
+    "TC-A08-002": {
+      "required_layers": ["backend", "contract"],
+      "expected_layers": {
+        "EXP-002-01": ["contract"],
+        "EXP-002-02": ["contract"],
+        "EXP-002-03": ["contract"],
+        "EXP-002-04": ["contract"],
+        "EXP-002-05": ["backend"],
+        "EXP-002-06": ["backend"],
+        "EXP-002-07": ["backend"],
+        "EXP-002-08": ["backend"]
+      },
+      "cleanup_oracle": {"matcher": "namespace_empty"}
+    },
+    "TC-A08-003": {
+      "required_layers": ["backend", "contract"],
+      "expected_layers": {
+        "EXP-003-01": ["contract"],
+        "EXP-003-02A": ["backend"],
+        "EXP-003-02B": ["backend"],
+        "EXP-003-02C": ["backend"],
+        "EXP-003-03": ["backend"],
+        "EXP-003-04": ["contract"],
+        "EXP-003-05": ["contract"],
+        "EXP-003-06": ["backend"],
+        "EXP-003-07": ["backend"]
+      },
+      "cleanup_oracle": {"matcher": "namespace_empty"}
+    },
+    "TC-A08-004": {
+      "required_layers": ["backend", "contract"],
+      "expected_layers": {
+        "EXP-004-01": ["contract"],
+        "EXP-004-02": ["contract"],
+        "EXP-004-03": ["contract"],
+        "EXP-004-04": ["backend"],
+        "EXP-004-05": ["backend"],
+        "EXP-004-06": ["backend"],
+        "EXP-004-07": ["backend"]
+      },
+      "cleanup_oracle": {"matcher": "namespace_empty"}
+    },
+    "TC-A08-005": {
+      "required_layers": ["backend", "contract"],
+      "expected_layers": {
+        "EXP-005-01": ["contract"],
+        "EXP-005-02": ["contract"],
+        "EXP-005-03": ["contract"],
+        "EXP-005-04": ["backend"],
+        "EXP-005-05": ["backend"],
+        "EXP-005-06": ["backend"],
+        "EXP-005-07": ["backend"]
+      },
+      "cleanup_oracle": {"matcher": "namespace_empty"}
+    },
+    "TC-A08-006": {
+      "required_layers": ["contract", "e2e"],
+      "expected_layers": {
+        "EXP-006-01": ["contract"],
+        "EXP-006-02": ["e2e"],
+        "EXP-006-03": ["contract"],
+        "EXP-006-04": ["e2e"],
+        "EXP-006-05": ["e2e"],
+        "EXP-006-06": ["e2e"],
+        "EXP-006-07": ["e2e"]
+      },
+      "cleanup_oracle": {"matcher": "namespace_empty"}
+    },
+    "TC-A08-007": {
+      "required_layers": ["e2e"],
+      "expected_layers": {
+        "EXP-007-01": ["e2e"],
+        "EXP-007-02": ["e2e"],
+        "EXP-007-03": ["e2e"],
+        "EXP-007-04A": ["e2e"],
+        "EXP-007-04B": ["e2e"],
+        "EXP-007-04C": ["e2e"],
+        "EXP-007-04D": ["e2e"],
+        "EXP-007-05": ["e2e"],
+        "EXP-007-06": ["e2e"]
+      },
+      "cleanup_oracle": {"matcher": "namespace_empty"}
+    }
+  },
+  "correction_hash": "sha256:a1fe2f3cce06d882b952794aef937c5e74d485ee027e557d99ead54930b97e9c"
+}

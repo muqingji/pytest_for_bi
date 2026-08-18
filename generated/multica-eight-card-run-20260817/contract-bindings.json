@@ -1,0 +1,13 @@
+{
+  "schema_version": "contract-case-bindings/1.0",
+  "source_commit": "87604735d0817257e8e6256829d9a08f1d40d441",
+  "contract_location": "idl/http/generated/fs-bi/fs-bi-stat.openapi.json",
+  "bindings": [
+    {"case_id": "TC-A08-001-CONTRACT", "method": "POST", "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/query", "operation_id": "fs_bi_stat.stat_base.data_query_da655ba1"},
+    {"case_id": "TC-A08-002-CONTRACT", "method": "POST", "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/query", "operation_id": "fs_bi_stat.stat_base.data_query_da655ba1"},
+    {"case_id": "TC-A08-003-CONTRACT", "method": "POST", "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/query", "operation_id": "fs_bi_stat.stat_base.data_query_da655ba1"},
+    {"case_id": "TC-A08-004-CONTRACT", "method": "POST", "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/query", "operation_id": "fs_bi_stat.stat_base.data_query_da655ba1"},
+    {"case_id": "TC-A08-005-CONTRACT", "method": "POST", "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/query", "operation_id": "fs_bi_stat.stat_base.data_query_da655ba1"},
+    {"case_id": "TC-A08-006-CONTRACT", "method": "POST", "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/query", "operation_id": "fs_bi_stat.stat_base.data_query_da655ba1"}
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "actor": {
+    "id": "muqj11262",
+    "multica_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "role": "qa_owner",
+    "type": "human"
+  },
+  "decided_at": "2026-08-17T05:00:23+00:00",
+  "decision": "approved",
+  "decision_hash": "sha256:f09c5e5d470b4e6a4ed80c16919c3251f8bfcefb96a48dbed8f70382c5a9b8e6",
+  "gate_id": "G02",
+  "multica_event": {
+    "event_id": "sha256:441431892ea4783e6dd7d6c8c215e7670745933ec495913d1469db49b2b73c0c",
+    "identity_evidence_mode": "assigned_member_pilot",
+    "issue_id": "df42fdd2-68fd-4f96-891b-65436c71ba34",
+    "status": "done",
+    "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46"
+  },
+  "reason": "G02 decision recorded by Multica status transition to done",
+  "request_hash": "sha256:fdfb13b4ab13208b11130e3d56b9fc53869ea37a0dda5c29fd7ae8078b2ed538",
+  "review_key": "sha256:9368576dcc4359e6da681d11a48a43465cca3001b3d9263e7c086f137d30262f",
+  "schema_version": "test-case-ir-review-decision/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-01"
+}

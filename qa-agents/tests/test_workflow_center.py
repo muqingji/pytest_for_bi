@@ -7,10 +7,28 @@ from qa_agents.errors import ContractError
 from qa_agents.storage import ArtifactStore
 from qa_agents.workflow_center import (
     _render_stage_card_markdown,
+    _stage_cards,
     build_workflow_projection,
     render_workflow_center_markdown,
     sync_multica_workflow_center,
 )
+
+
+def test_stage_cards_do_not_report_downstream_done_after_upstream_block() -> None:
+    projection = {
+        "nodes": [
+            {"node_id": "G03", "state": "blocked", "stage_card_id": "C5", "stage_card_title": "代码审核"},
+            {"node_id": "N08", "state": "completed", "stage_card_id": "C6", "stage_card_title": "执行"},
+            {"node_id": "N11", "state": "completed", "stage_card_id": "C7", "stage_card_title": "质量"},
+            {"node_id": "N12", "state": "completed", "stage_card_id": "C8", "stage_card_title": "报告"},
+        ]
+    }
+
+    cards = {card["stage_card_id"]: card for card in _stage_cards(projection)}
+    assert cards["C5"]["status"] == "blocked"
+    for card_id in ("C6", "C7", "C8"):
+        assert cards[card_id]["status"] == "backlog"
+        assert "等待 `C5` 解除" in cards[card_id]["description"]
 
 
 WORKSPACE_ID = "workspace-1"
@@ -182,7 +200,8 @@ def test_human_action_renders_approval_items_in_cockpit_and_stage_card() -> None
 
     g01_node = next(node for node in projection["nodes"] if node["node_id"] == "G01")
     stage_markdown = _render_stage_card_markdown("C1", "范围确认", [g01_node])
-    assert "审核 `G01`" in stage_markdown
+    assert "来源：`G01`" in stage_markdown
+    assert "共 2 个待确认事项，请逐条确认后继续。" in stage_markdown
     assert "**实现与测试范围待确认**（`A06:FIND-004`）" in stage_markdown
     assert "需要确认：请确认是接受当前实现口径还是补齐实现证据。" in stage_markdown
     assert "涉及需求：`REQ-005`" in stage_markdown
@@ -195,6 +214,123 @@ def test_human_action_without_approval_items_renders_fallback_hint() -> None:
     g01_node = next(node for node in projection["nodes"] if node["node_id"] == "G01")
     stage_markdown = _render_stage_card_markdown("C1", "范围确认", [g01_node])
     assert "审批项：请打开审核入口查看具体审批项。" in stage_markdown
+
+
+def test_stage_card_renders_human_correction_issues_and_entry() -> None:
+    node = {
+        "node_id": "N04",
+        "stage": 10,
+        "stage_card_id": "C3",
+        "stage_card_title": "测试设计与审核",
+        "state": "waiting_human",
+        "label": "Test Case IR 校验",
+        "result_summary": "Artifact n04-test-case-ir-validation accepted",
+        "approval_items": [
+            {
+                "id": "A09-ISSUE-007",
+                "title": "oracle",
+                "category": "oracle",
+                "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
+                "case_id": "TC-E2E-001",
+                "expected_id": "EXP-E2E-001-01",
+                "summary": "EXP-E2E-001-01 的 expected_value 指向不存在的 test_data 路径。",
+                "recommendation": "改为可直接解析的结构化期望矩阵。",
+                "severity": "blocking",
+                "requirement_ids": ["REQ-006"],
+                "source_refs": [],
+            }
+        ],
+        "human_action_entry": {
+            "issue_id": "7a6c629c-100b-4a8b-9eb2-1fab1f24635d",
+            "issue_identifier": "QAA-325",
+            "status": "in_review",
+        },
+    }
+    markdown = _render_stage_card_markdown("C3", "测试设计与审核", [node])
+    assert "1. **预期结果无法解析**（`A09-ISSUE-007`）" in markdown
+    assert "审查发现 1 个问题，需你决策是否授权修正。" in markdown
+    assert "问题：用例 `EXP-E2E-001-01` 的预期结果指向了一个不存在的字段路径" in markdown
+    assert "建议修正：改为可直接解析的结构化期望矩阵。" in markdown
+    assert "操作：打开 `QAA-325`（人工修正 Issue，状态 in_review）：" in markdown
+    assert "置为 **done**：授权修正，系统自动修改用例并重新校验，流程自动继续。" in markdown
+    assert "置为 **cancelled**：不修正，终止当前流程。" in markdown
+
+
+def test_stage_card_prefers_human_title_and_plain_summary() -> None:
+    node = {
+        "node_id": "N04",
+        "stage": 10,
+        "stage_card_id": "C3",
+        "stage_card_title": "测试设计与审核",
+        "state": "waiting_human",
+        "label": "Test Case IR 校验",
+        "result_summary": "Artifact n04-test-case-ir-validation accepted",
+        "approval_items": [
+            {
+                "id": "A09-ISSUE-007",
+                "title": "oracle",
+                "category": "oracle",
+                "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
+                "human_title": "预期结果写错了",
+                "plain_summary": "预期结果指向一个不存在的字段，这条用例无法校验。",
+                "case_id": "TC-E2E-001",
+                "expected_id": "EXP-E2E-001-01",
+                "summary": "EXP-E2E-001-01 的 expected_value 指向不存在的 test_data 路径。",
+                "recommendation": "改为可直接解析的结构化期望矩阵。",
+                "severity": "blocking",
+                "requirement_ids": ["REQ-006"],
+                "source_refs": [],
+            }
+        ],
+        "human_action_entry": {
+            "issue_id": "7a6c629c-100b-4a8b-9eb2-1fab1f24635d",
+            "issue_identifier": "QAA-325",
+            "status": "in_review",
+        },
+    }
+    markdown = _render_stage_card_markdown("C3", "测试设计与审核", [node])
+    assert "1. **预期结果写错了**（`A09-ISSUE-007`）" in markdown
+    assert "问题：预期结果指向一个不存在的字段，这条用例无法校验。" in markdown
+    assert "EXP-E2E-001-01 的 expected_value 指向不存在的 test_data 路径。" not in markdown
+
+
+def test_stage_card_exception_section_points_to_human_entry() -> None:
+    blocked = {
+        "node_id": "A09",
+        "stage": 8,
+        "stage_card_id": "C3",
+        "stage_card_title": "测试设计与审核",
+        "state": "blocked",
+        "label": "Oracle 与覆盖审查",
+        "result_summary": "发现 2 个阻塞问题需人工定向修正（A09-ISSUE-007、A09-ISSUE-008）",
+    }
+    waiting = {
+        "node_id": "N04",
+        "stage": 9,
+        "stage_card_id": "C3",
+        "stage_card_title": "测试设计与审核",
+        "state": "waiting_human",
+        "label": "Test Case IR 校验",
+        "result_summary": "Artifact n04-test-case-ir-validation accepted",
+        "human_action_entry": {
+            "issue_id": "7a6c629c-100b-4a8b-9eb2-1fab1f24635d",
+            "issue_identifier": "QAA-325",
+            "status": "in_review",
+        },
+    }
+    markdown = _render_stage_card_markdown("C3", "测试设计与审核", [blocked, waiting])
+    assert "A09" in markdown
+    assert "发现 2 个阻塞问题需人工定向修正" in markdown
+    assert "处理入口：`QAA-325`，见下方人工操作" in markdown
+    assert "操作：打开 `QAA-325`（人工修正 Issue，状态 in_review）：" in markdown
+
+    blocked["artifact_id"] = "a09-oracle-coverage-review"
+    blocked["artifact_hash"] = "sha256:9c1345ccedccd16367ced8a057e95515387ca8e0db9bdc200ef5153daebbc712"
+    waiting["artifact_id"] = "n04-test-case-ir-validation"
+    waiting["artifact_hash"] = "sha256:4bce713d1297625be0fc5288847458b21baa08ab97a5ce7a5677ed151ccb5d09"
+    markdown = _render_stage_card_markdown("C3", "测试设计与审核", [blocked, waiting])
+    assert "`a09-oracle-coverage-review`（Oracle 与覆盖审查 · 阻塞）" in markdown
+    assert "`n04-test-case-ir-validation`（Test Case IR 校验 · 等待人工）：待人工授权修正，见下方人工操作" in markdown
 
 
 @pytest.mark.parametrize(

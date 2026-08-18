@@ -302,7 +302,7 @@
     {
       "artifact_hash": "sha256:ea8ef038d246a2900a8386d5352adc2753b572f8faa69d550a8eb1851bc1176f",
       "artifact_id": "n01-source-extraction-manifest",
-      "artifact_path": "../generated/multica-eight-card-run-20260814-final/bootstrap/artifacts/n01-source-extraction-manifest.json",
+      "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260814-final/bootstrap/artifacts/n01-source-extraction-manifest.json",
       "completion": "1/1",
       "execution_id": "INPUT-FREEZE-detail-drill-i18n-8card-20260814-final-01",
       "label": "需求、方案与 ChangeSet 冻结",
@@ -318,7 +318,7 @@
     {
       "artifact_hash": "sha256:26dc9295f1b576d7c37bdc35fe21f4a007b26e2625f308f5f78b3bbad804db49",
       "artifact_id": "n00-workflow-route",
-      "artifact_path": "../generated/multica-eight-card-run-20260814-final/bootstrap/artifacts/n00-workflow-route.json",
+      "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260814-final/bootstrap/artifacts/n00-workflow-route.json",
       "completion": "1/1",
       "execution_id": "N00-detail-drill-i18n-8card-20260814-final-01",
       "label": "工作流模板与深度选择",
@@ -334,7 +334,7 @@
     {
       "artifact_hash": "sha256:901a4b8ac51f74066ac45b957e006e8fe30c40f06e154cf74745fc84bb38d8d0",
       "artifact_id": "a02-requirement-analysis",
-      "artifact_path": "../generated/multica-eight-card-run-20260814-final/artifacts-auto/artifacts/a02-requirement-analysis.json",
+      "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260814-final/artifacts-auto/artifacts/a02-requirement-analysis.json",
       "completion": "1/1",
       "execution_id": "A02-detail-drill-i18n-8card-20260814-final-01",
       "issue_id": "4295181c-7e3d-437b-a427-c5d711bae779",
@@ -352,7 +352,7 @@
     {
       "artifact_hash": "sha256:65dbe0b1533adb2b6a23cc9ac91cbc95f398acbd38a817776ddc478b8f9cf216",
       "artifact_id": "a03-technical-testability-analysis",
-      "artifact_path": "../generated/multica-eight-card-run-20260814-final/artifacts-auto/artifacts/a03-technical-testability-analysis.json",
+      "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260814-final/artifacts-auto/artifacts/a03-technical-testability-analysis.json",
       "completion": "1/1",
       "execution_id": "A03-detail-drill-i18n-8card-20260814-final-01",
       "issue_id": "5795efa5-ec16-4f80-9027-26b474fa3b6e",
@@ -370,7 +370,7 @@
     {
       "artifact_hash": "sha256:f5f007157f582a89d6bce8b5211b0b783c12cc67df165755a426704f5d9dd5fb",
       "artifact_id": "a05-backend-change-analysis",
-      "artifact_path": "../generated/multica-eight-card-run-20260814-final/artifacts-auto/artifacts/a05-backend-change-analysis.json",
+      "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260814-final/artifacts-auto/artifacts/a05-backend-change-analysis.json",
       "completion": "1/1",
       "execution_id": "A05-detail-drill-i18n-8card-20260814-final-01",
       "issue_id": "229270b3-5f38-4a25-a366-97cce6169b21",
@@ -388,7 +388,7 @@
     {
       "artifact_hash": "sha256:4ba47094f60014889962f4779086c9ef146073689d9fc65391be1d2ace65a93b",
       "artifact_id": "a06-alignment-result",
-      "artifact_path": "../generated/multica-eight-card-run-20260814-final/artifacts-auto/artifacts/a06-alignment-result.json",
+      "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260814-final/artifacts-auto/artifacts/a06-alignment-result.json",
       "completion": "1/1",
       "execution_id": "A06-detail-drill-i18n-8card-20260814-final-01",
       "issue_id": "9cdc1986-73ec-4576-9ee6-b5195e2489e7",
@@ -685,7 +685,7 @@
       ],
       "artifact_hash": "sha256:a5bff1ae159b3bb82a8e37ff860790fbc5fedb7ef01f1aa19dca0729368a4ba3",
       "artifact_id": "g01-scope-review",
-      "artifact_path": "../generated/multica-eight-card-run-20260814-final/artifacts-auto/artifacts/g01-scope-review.json",
+      "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260814-final/artifacts-auto/artifacts/g01-scope-review.json",
       "completion": "1/1",
       "execution_id": "G01-detail-drill-i18n-8card-20260814-final-01",
       "issue_id": "cc46af5f-1447-4a1c-ac11-25c491f247a9",
@@ -1083,7 +1083,7 @@
     "identifier": "QAA-260"
   },
   "requirement_id": "REQ-DETAIL-DRILL-I18N",
-  "revision": 10,
+  "revision": 11,
   "run_history": [],
   "run_issue": {
     "id": "c3fbc764-ad3b-4d3d-aea0-60b5f9679190",

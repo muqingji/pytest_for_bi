@@ -205,7 +205,7 @@ qa-agents/runs/pilot-001/multica-alignment-report.md
 报告。当前真实试点报告显示 6 条需求映射、11 个对齐问题，结论为 `needs_human`，下一步
 必须进入 G01。
 
-当前有效 Runtime 是 Codex `gpt-5.6-sol`。旧 Claude Runtime 因认证 401 不可用，具体远端
+当前有效 Runtime 是 DeepSeek `deepseek-v4-flash`。旧 Claude Runtime 因认证 401 不可用，具体远端
 绑定状态记录在 `multica/workspace-manifest.json`，编排器不得自动回退到失效 Runtime。
 
 ## G01 审核与 N24
@@ -358,6 +358,12 @@ N04 在自动预算耗尽后生成内容寻址人工修正请求，并在 Multic
 `in_review` Issue。`done` 授权请求中全部定向修正并恢复到 A08；`cancelled` 终止流程；其他
 状态保持暂停。人工恢复不会重置自动预算，A08 输入使用 Profile v1.3.0，并在生成后强制重新
 经过 A09 和 N04。
+
+`sync_eight_card_progress.py` 已把该流程接入同步循环：N04 `next_node=human` 且预算耗尽时
+自动 `prepare-human-correction` 并 `open-human-correction-multica`，后续同步轮次自动
+`sync-human-correction-multica`，`done` 授权后自动派发 A08 v1.3.0 人工恢复，恢复产物摄入后
+自动重新派发 A09 复审并重算 N04（`correction_attempt=3`）。摄入循环按节点只处理最新
+completed run，并对已摄入 run 幂等跳过，避免重复执行导致 Artifact hash 抖动。
 
 ```bash
 make -C qa-agents prepare-human-correction-pilot

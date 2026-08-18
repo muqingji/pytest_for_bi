@@ -755,6 +755,7 @@ def prepare_test_data_plan(
     namespace: str,
     knowledge_sources_path: Path | None = None,
     capability_catalog_path: Path | None = None,
+    execution_plan_path: Path | None = None,
     skip_by_policy: bool = False,
     existing_data_case_ids: set[str] | None = None,
     deferred_frontend_case_ids: set[str] | None = None,
@@ -769,6 +770,12 @@ def prepare_test_data_plan(
     if (knowledge_sources_path is None) != (capability_catalog_path is None):
         raise ContractError(
             "Autonomous data planning requires both knowledge sources and capability catalog"
+        )
+    if execution_plan_path is not None and (
+        skip_by_policy or knowledge_sources_path is not None or capability_catalog_path is not None
+    ):
+        raise ContractError(
+            "Existing-automation-managed data planning is exclusive with skip and autonomous inputs"
         )
     if knowledge_sources_path is not None and capability_catalog_path is not None:
         from .data_planning import prepare_autonomous_test_data_plan
@@ -817,7 +824,77 @@ def prepare_test_data_plan(
         identity[2],
         (str(compiled_cases_path), str(policy_path)),
     )
-    if skip_by_policy:
+    if execution_plan_path is not None:
+        execution_plan = _read_object(execution_plan_path, "N15 execution plan Artifact")
+        if (
+            execution_plan.get("schema_version") != "artifact-envelope/1.0"
+            or execution_plan.get("artifact_id") != "n15-execution-plan"
+            or execution_plan.get("artifact_hash") != artifact_hash_from_mapping(execution_plan)
+        ):
+            raise ContractError("Existing-data planning requires a valid N15 execution plan Artifact")
+        if (
+            execution_plan.get("workflow_run_id"),
+            execution_plan.get("workflow_mode"),
+            execution_plan.get("source_snapshot_id"),
+        ) != identity:
+            raise ContractError("N15 execution plan belongs to a different workflow run")
+        actions = execution_plan.get("payload", {}).get("actions", [])
+        actions_by_case = {
+            str(item.get("case_id", "")): item
+            for item in actions if isinstance(item, Mapping)
+        }
+        case_ids = {str(item.get("id", "")) for item in cases}
+        invalid = sorted(
+            case_id for case_id in case_ids
+            if actions_by_case.get(case_id, {}).get("action") != "run_existing"
+            or not str(actions_by_case.get(case_id, {}).get("automation_ref", ""))
+        )
+        if invalid:
+            raise ContractError(
+                "Existing automation does not manage test data for Cases: " + ", ".join(invalid)
+            )
+        executable = sorted(case_ids)
+        a22 = ArtifactEnvelope(
+            workflow_run_id=identity[0], workflow_mode=identity[1],
+            artifact_id="a22-test-data-plan", source_snapshot_id=identity[2],
+            producer=Producer(component_id="A22", runtime="deterministic"),
+            payload={
+                "schema_version": PLAN_CONTRACT,
+                "environment": environment,
+                "namespace": namespace,
+                "planning_mode": "existing_automation_managed",
+                "case_plans": [],
+                "paused_cases": [],
+                "unresolved_requirements": [],
+                "executable_case_ids": executable,
+                "automation_bindings": {
+                    case_id: str(actions_by_case[case_id]["automation_ref"])
+                    for case_id in executable
+                },
+                "execution_plan_hash": execution_plan["artifact_hash"],
+            },
+            status=ArtifactStatus.COMPLETED,
+            evidence_refs=(EvidenceRef(
+                source_type="artifact", source_id="n15-execution-plan",
+                location=execution_plan_path.name,
+                content_hash=str(execution_plan["artifact_hash"]),
+            ),),
+        )
+        validation = {
+            "schema_version": "test-data-plan-validation/1.0",
+            "valid": True,
+            "decision": "existing_automation_managed",
+            "next_node": "N07",
+            "environment": environment,
+            "namespace": namespace,
+            "validated_resource_count": 0,
+            "write_authorized": False,
+            "planning_mode": "existing_automation_managed",
+            "execution_plan_hash": execution_plan["artifact_hash"],
+            "executable_case_ids": executable,
+            "deferred_cases": [],
+        }
+    elif skip_by_policy:
         if environment not in {str(item) for item in policy.get("allowed_environments", [])}:
             raise SecurityPolicyError(
                 f"test-data policy skip is not allowed in environment {environment!r}"

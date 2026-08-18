@@ -39,17 +39,34 @@ def run_customer_custom_dimension_case(
     )
     assert fields_response.status_code == 200
     assert fields_response.body.get("Result", {}).get("FailureCode") == 0
-    source_field = next(
-        (
-            item
-            for item in _walk(fields_response.body)
-            if item.get("dbFieldName") == ACCOUNT_LEVEL_API_NAME
-            and str(item.get("type", "")).lower().replace("-", "_")
-            in {"select_one", "selectone"}
-            and item.get("fieldId")
-        ),
-        None,
+    enum_fields = [
+        item
+        for item in _walk(fields_response.body)
+        if str(item.get("type", "")).lower().replace("-", "_")
+        in {"select_one", "selectone"}
+        and item.get("fieldId")
+        and item.get("dbFieldName")
+    ]
+    enum_fields.sort(
+        key=lambda item: (item.get("dbFieldName") != ACCOUNT_LEVEL_API_NAME, str(item["dbFieldName"]))
     )
+    source_field = None
+    option_codes: list[str] = []
+    for candidate in enum_fields:
+        ui_response = case_runner.http_client.post(
+            "/FHH/EM1HBIUDF/rptUdfViewEditController/getUIType",
+            json_body={
+                "fieldID": candidate["fieldId"],
+                "udfFieldId": candidate.get("udfFieldId", ""),
+            },
+        )
+        assert ui_response.status_code == 200
+        assert ui_response.body.get("Result", {}).get("FailureCode") == 0
+        candidate_codes = _live_option_codes(ui_response.body.get("Value", {}))
+        if len(candidate_codes) >= 2:
+            source_field = candidate
+            option_codes = candidate_codes
+            break
     field_shapes = sorted(
         {
             tuple(sorted(item.keys()))
@@ -57,10 +74,10 @@ def run_customer_custom_dimension_case(
             if any("field" in str(key).lower() or "api" in str(key).lower() for key in item)
         }
     )
-    assert source_field is not None, f"AccountObj.account_level select_one field is unavailable; shapes={field_shapes[:8]}"
-    option_codes = _live_option_codes(source_field)
-    if len(option_codes) < 2:
-        pytest.skip("AccountObj.account_level has fewer than two live enum options; not_ready")
+    assert source_field is not None, (
+        "AccountObj has no select_one field with at least two live enum options; "
+        f"shapes={field_shapes[:8]}"
+    )
     split = max(1, len(option_codes) // 2)
     dimension_config = json.dumps({
         "groups": [

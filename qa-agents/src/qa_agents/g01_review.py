@@ -136,7 +136,8 @@ def _validate_issue(
     multica = adapter["multica"]
     if issue.get("workspace_id") != multica["workspace_id"]:
         raise SecurityPolicyError("G01 issue belongs to another Multica workspace")
-    if issue.get("project_id") != multica["project_id"]:
+    allowed_project_ids = set(multica.get("review_project_ids", [multica["project_id"]]))
+    if issue.get("project_id") not in allowed_project_ids:
         raise SecurityPolicyError("G01 issue belongs to another Multica project")
     if issue.get("assignee_type") != "member":
         raise SecurityPolicyError("G01 issue must be assigned to a human member")
@@ -215,6 +216,12 @@ def open_multica_scope_review(
             )
             if not isinstance(bound, Mapping) or bound.get("id") != issue_id:
                 raise ContractError("Multica did not return the requested G01 issue")
+            if bound.get("assignee_type") != "member" or bound.get("assignee_id") not in adapter["allowed_multica_member_ids"]:
+                runner(
+                    ["issue", "assign", issue_id, "--to-id", multica["assignee_member_id"], "--output", "json", *workspace_args],
+                    request_path.parent,
+                )
+                bound = {**bound, "assignee_type": "member", "assignee_id": multica["assignee_member_id"]}
             _validate_issue(bound, adapter, require_metadata=False)
             created = bound
         else:
@@ -325,7 +332,44 @@ def _is_protocol_comment(comment: Mapping[str, Any]) -> bool:
     )
 
 
-def _parse_comment_table(content: str) -> tuple[dict[str, str], list[dict[str, str]]]:
+_UNCLEAR_MARKERS = ("没看明白", "看不明白", "不清楚", "未看明白")
+
+
+def _is_concise_comment(comment: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
+    content = str(comment.get("content", ""))
+    return any(str(item.get("issue_id", "")) in content for item in request.get("issues", []))
+
+
+def _parse_concise_responses(content: str, request: Mapping[str, Any]) -> list[dict[str, str]]:
+    issue_ids = [str(item["issue_id"]) for item in request.get("issues", [])]
+    occurrences: list[tuple[int, str]] = []
+    for issue_id in issue_ids:
+        start = content.find(issue_id)
+        if start >= 0:
+            occurrences.append((start, issue_id))
+    occurrences.sort()
+    found = {issue_id for _, issue_id in occurrences}
+    missing = [issue_id for issue_id in issue_ids if issue_id not in found]
+    if missing:
+        raise ContractError(f"G01 concise review is missing issues: {', '.join(missing)}")
+    rows: list[dict[str, str]] = []
+    for index, (start, issue_id) in enumerate(occurrences):
+        reply_start = start + len(issue_id)
+        reply_end = occurrences[index + 1][0] if index + 1 < len(occurrences) else len(content)
+        reply = content[reply_start:reply_end].strip(" `：:-\n\t")
+        if not reply:
+            raise ContractError(f"G01 concise review has a blank response: {issue_id}")
+        unclear = any(marker in reply for marker in _UNCLEAR_MARKERS)
+        rows.append({
+            "issue_id": issue_id,
+            "disposition": "return_to_a06" if unclear else "confirmed",
+            "rationale": reply,
+            "owner": "A06 需求与变更对齐" if unclear else "QA Owner",
+        })
+    return rows
+
+
+def _parse_comment_table(content: str) -> tuple[dict[str, Any], list[dict[str, str]]]:
     aliases = {
         "G01 Decision Protocol": "protocol",
         "G01 决策协议": "protocol",
@@ -338,7 +382,7 @@ def _parse_comment_table(content: str) -> tuple[dict[str, str], list[dict[str, s
         "Test Rules": "test_rules",
         "测试规则": "test_rules",
     }
-    headers: dict[str, str] = {}
+    headers: dict[str, Any] = {}
     resolutions: list[dict[str, str]] = []
     seen_ids: set[str] = set()
     for raw_line in content.splitlines():
@@ -352,7 +396,15 @@ def _parse_comment_table(content: str) -> tuple[dict[str, str], list[dict[str, s
             key = aliases[columns[0]]
             if key in headers:
                 raise ContractError(f"G01 review comment repeats field: {columns[0]}")
-            headers[key] = columns[1]
+            value: Any = columns[1]
+            if key == "test_rules" and value.lstrip().startswith("{"):
+                try:
+                    value = json.loads(value)
+                except json.JSONDecodeError as error:
+                    raise ContractError("G01 review Test Rules must be valid JSON") from error
+                if not isinstance(value, dict):
+                    raise ContractError("G01 review Test Rules JSON must be an object")
+            headers[key] = value
             continue
         if len(columns) == 4 and columns[0] not in {"Issue ID", "问题 ID"}:
             issue_id, disposition, rationale, owner = columns
@@ -373,7 +425,10 @@ def _parse_comment_table(content: str) -> tuple[dict[str, str], list[dict[str, s
     missing = sorted(required - headers.keys())
     if missing:
         raise ContractError(f"G01 review comment is missing fields: {', '.join(missing)}")
-    blank = sorted(key for key in required if not headers[key].strip())
+    blank = sorted(
+        key for key in required
+        if not isinstance(headers[key], str) or not headers[key].strip()
+    )
     if blank:
         raise ContractError(f"G01 review comment has blank fields: {', '.join(blank)}")
     if headers["protocol"] != PROTOCOL_VERSION:
@@ -402,9 +457,19 @@ def _comment_decision(
         raise ContractError("G01 decision comment created_at is invalid") from error
     if parsed_at.tzinfo is None:
         raise ContractError("G01 decision comment created_at must include a timezone")
-    headers, rows = _parse_comment_table(str(comment.get("content", "")))
-    if headers["request_hash"] != request["request_hash"]:
-        raise ContractError("G01 decision comment request hash is stale")
+    content = str(comment.get("content", ""))
+    if _is_protocol_comment(comment):
+        headers, rows = _parse_comment_table(content)
+        if headers["request_hash"] != request["request_hash"]:
+            raise ContractError("G01 decision comment request hash is stale")
+    else:
+        rows = _parse_concise_responses(content, request)
+        has_return = any(row["disposition"] == "return_to_a06" for row in rows)
+        headers = {
+            "decision": "request_changes" if has_return else "approved",
+            "reason": "存在未理解问题，自动回流 A06 重新对齐" if has_return else "已逐项回复并确认",
+            "test_rules": "按逐项回复冻结的口径执行测试设计",
+        }
     actor = {
         "type": "human",
         "id": adapter["allowed_actor_ids"][0],
@@ -414,7 +479,18 @@ def _comment_decision(
     approvals = [
         {"type": "human", "id": actor["id"], "role": actor["role"]}
     ]
-    resolutions = [{**row, "approvals": approvals} for row in rows]
+    request_issues = {
+        str(item.get("issue_id", "")): item for item in request.get("issues", [])
+    }
+    resolutions = [
+        {
+            **row,
+            "approvals": approvals,
+            "topic_key": request_issues.get(row["issue_id"], {}).get("dedupe_key", row["issue_id"]),
+            "review_summary": request_issues.get(row["issue_id"], {}).get("plain_summary", ""),
+        }
+        for row in rows
+    ]
     event_id = content_hash(
         {
             "issue_id": issue["id"],
@@ -535,7 +611,19 @@ def sync_multica_scope_review(
         ],
         request_path.parent,
     )
-    candidates = [item for item in _comment_values(comment_payload) if _is_protocol_comment(item)]
+    processed_comment_id = str(metadata.get("qa_decision_comment_id", ""))
+    processed_at = ""
+    if processed_comment_id:
+        for item in _comment_values(comment_payload):
+            if str(item.get("id", "")) == processed_comment_id:
+                processed_at = str(item.get("created_at", ""))
+                break
+    candidates = [
+        item for item in _comment_values(comment_payload)
+        if str(item.get("id", "")) != processed_comment_id
+        and (not processed_at or str(item.get("created_at", "")) >= processed_at)
+        and (_is_protocol_comment(item) or _is_concise_comment(item, request))
+    ]
     if not candidates:
         observed_status = str(issue.get("status", ""))
         if observed_status in set(multica["decision_statuses"].values()):

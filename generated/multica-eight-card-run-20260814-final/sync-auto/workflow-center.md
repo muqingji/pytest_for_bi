@@ -180,6 +180,6 @@
 
 - Workflow ID：`REQ-DETAIL-DRILL-I18N`
 - Parent Issue：`QAA-260`
-- Projection：`sha256:b521f095c3ae4f520120e10e175e79c1564a77e79789eb1c30f28d090ddcdefb`
+- Projection：`sha256:3d736ac8ed9b6282db7a96bb6baae37a788a19494eb93fdb28e0ac0f26589ffd`
 
 节点任务和重跑记录保留在内部执行项目；本卡只展示需求级总体状态、进度和人工事项。

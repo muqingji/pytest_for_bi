@@ -1,0 +1,77 @@
+{
+  "decision": "pending",
+  "decision_contract": "scope-review-decision/1.0",
+  "gate_id": "G01",
+  "issue_count": 1,
+  "issues": [
+    {
+      "category": "待确认测试范围",
+      "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+      "dedupe_key": "A06:ALN-F012",
+      "detail": {
+        "id": "ALN-F012",
+        "implementation_ids": [
+          "A05-F008"
+        ],
+        "requirement_ids": [
+          "REQ-001"
+        ],
+        "severity": "medium",
+        "source_refs": [
+          "REQ-001",
+          "TF-008",
+          "A05-F008"
+        ],
+        "summary": "员工或部门主题特殊分支将原本显式生成的本地化消息改为空字符串，但冻结需求和技术目标未要求修改该非目标错误分支，存在兼容性风险。",
+        "technical_fact_ids": [
+          "TF-008"
+        ],
+        "type": "out_of_scope_change"
+      },
+      "issue_code": "out_of_scope_change",
+      "issue_id": "A06:ALN-F012",
+      "plain_summary": "存在超出需求范围的变更：员工或部门主题特殊分支将原本显式生成的本地化消息改为空字符串，但冻结需求和技术目标未要求修改该非目标错误分支，存在兼容性风险。",
+      "related_issue_ids": [
+        "A06:ALN-F012"
+      ],
+      "requirement_ids": [
+        "REQ-001"
+      ],
+      "review_reason": "新增待确认项，此前未审核过；请确认口径。",
+      "route_to": "A06",
+      "severity": "medium",
+      "source": "A06",
+      "sources": [
+        "A06"
+      ]
+    }
+  ],
+  "request_hash": "sha256:4bebd0ddfed312cdb99f865cb38474579d8e6ce023733069f40281d5de9f05a2",
+  "review_policy": {
+    "approval_mode": "qa_owner_single_signoff",
+    "policy_hash": "sha256:416a8050c9c5a0733cd003dfdcc0c0661752f5d1a5dd0318ae2afd1b1e2ca191",
+    "policy_scope": "pilot_test_design_only",
+    "production_release_authority": false,
+    "schema_version": "g01-review-policy/1.1",
+    "temporary_policy": true
+  },
+  "schema_version": "scope-review-request/1.1",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "needs_human",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:91e4018207ea73a8e2b5772c5f097bc258dc270d510eaaf7839e54864af0275e",
+      "artifact_id": "a02-requirement-analysis"
+    },
+    {
+      "artifact_hash": "sha256:067afe476fcc97bd69efd4b8934bd09ad0d45c278704a9195c41ffd8f32fd153",
+      "artifact_id": "a03-technical-testability-analysis"
+    },
+    {
+      "artifact_hash": "sha256:4777118b53fb12d41d86931eec4ae2c7234663f388673279f370b8c1cd1c09ab",
+      "artifact_id": "a06-alignment-result"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

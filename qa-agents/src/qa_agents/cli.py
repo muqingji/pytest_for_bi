@@ -521,6 +521,7 @@ def build_parser() -> argparse.ArgumentParser:
     test_data_parser.add_argument("--output", type=Path, required=True)
     test_data_parser.add_argument("--knowledge-sources", type=Path)
     test_data_parser.add_argument("--capability-catalog", type=Path)
+    test_data_parser.add_argument("--execution-plan", type=Path)
     test_data_parser.add_argument("--skip-by-policy", action="store_true")
     test_data_parser.add_argument("--existing-data-case-id", action="append", default=[])
     test_data_parser.add_argument("--deferred-frontend-case-id", action="append", default=[])
@@ -991,6 +992,7 @@ def _run(argv: list[str] | None = None) -> int:
             namespace=args.namespace,
             knowledge_sources_path=args.knowledge_sources,
             capability_catalog_path=args.capability_catalog,
+            execution_plan_path=args.execution_plan,
             skip_by_policy=args.skip_by_policy,
             existing_data_case_ids=set(args.existing_data_case_id),
             deferred_frontend_case_ids=set(args.deferred_frontend_case_id),

@@ -351,3 +351,40 @@ def test_policy_skip_defers_only_cases_that_need_missing_data(tmp_path: Path) ->
     assert result["n27_artifact"]["status"] == "skipped_by_policy"
     assert result["executable_case_ids"] == ["CASE-EXISTING"]
     assert result["deferred_cases"][0]["route"] == "deferred_data_construction"
+
+
+def test_existing_automation_managed_plan_is_completed_and_hash_bound(tmp_path: Path) -> None:
+    compiled = ArtifactEnvelope(
+        workflow_run_id="run-1", workflow_mode="new_requirement",
+        artifact_id="n25-compiled-test-cases", source_snapshot_id="snapshot-1",
+        producer=Producer("N25", runtime="deterministic"),
+        payload={"schema_version": "n25-compiled-test-cases/1.0", "compiled_cases": [_case()]},
+    )
+    execution = ArtifactEnvelope(
+        workflow_run_id="run-1", workflow_mode="new_requirement",
+        artifact_id="n15-execution-plan", source_snapshot_id="snapshot-1",
+        producer=Producer("N15", runtime="deterministic"),
+        payload={
+            "schema_version": "execution-plan/1.0",
+            "actions": [{
+                "case_id": "CASE-DETAIL", "action": "run_existing",
+                "automation_ref": "tests/test_existing.py",
+            }],
+        },
+    )
+    compiled_path = tmp_path / "n25.json"
+    execution_path = tmp_path / "n15.json"
+    compiled_path.write_text(json.dumps(compiled.to_dict()), encoding="utf-8")
+    execution_path.write_text(json.dumps(execution.to_dict()), encoding="utf-8")
+
+    result = prepare_test_data_plan(
+        compiled_path, ROOT / "policies/test-data-policy.json", tmp_path / "out",
+        environment="112", namespace="qa-run-1-detail",
+        execution_plan_path=execution_path,
+    )
+
+    assert result["ready_for_execution"] is True
+    assert result["a22_artifact"]["status"] == "completed"
+    n27 = json.loads((tmp_path / "out/artifacts/n27-test-data-plan-validation.json").read_text())
+    assert n27["payload"]["decision"] == "existing_automation_managed"
+    assert n27["payload"]["execution_plan_hash"] == execution.artifact_hash

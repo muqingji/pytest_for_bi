@@ -1,0 +1,93 @@
+{
+  "budget": {
+    "automatic_budget_reset": false,
+    "correction_attempt": 2,
+    "max_correction_attempts": 2,
+    "next_attempt": 3
+  },
+  "created_at": "2026-08-18T03:12:45+00:00",
+  "decision": "pending",
+  "decision_contract": "human-test-design-correction-decision/1.0",
+  "directives": [
+    {
+      "case_id": "TC-E2E-001",
+      "directive_id": "A09-ISSUE-007",
+      "expected_id": "EXP-E2E-001-01",
+      "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
+      "message": "EXP-E2E-001-01 的 expected_value 指向 test_data.matrix.code_messages_and_parameters，但 matrix 是数组且各行仅定义 code、messages 和可选 parameters，不存在 code_messages_and_parameters 路径；equals 无法取得明确期望值执行。correction_resolutions 对 A09-ISSUE-004 标记 fixed，但该 Oracle 仍未完成可执行修正。",
+      "recommendation": "将 expected_value 改为可直接解析的结构化四行期望矩阵，或引用真实存在的 test_data.matrix，并明确按 reason 和 locale 比较 code、messages、parameters；source_ref 应引用 G01 或对应冻结 I18N 规则。",
+      "route_to": "A08",
+      "severity": "blocking",
+      "source_refs": [
+        "REQ-006",
+        "RULE-ENTRY-CONSISTENCY",
+        "A09-ISSUE-004"
+      ]
+    },
+    {
+      "case_id": "TC-BE-002",
+      "directive_id": "A09-ISSUE-008",
+      "expected_id": "EXP-BE-002-03",
+      "issue_code": "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT",
+      "message": "TC-BE-002 同时以 zh_CN 和 en 执行，但 RS-01 固定提供非空 fieldName=销售额。按冻结解析顺序，en 请求也会优先取得销售额，无法同时满足 EXP-BE-002-03 期望的 Revenue；EXP-BE-002-04 也只给出中文分支值，未建立当前语言英文名称解析的确定期望。",
+      "recommendation": "按 locale 分别定义 Filter.fieldName、字段元数据和动态多语名称输入及期望参数，确保每个分支严格遵循冻结优先级；可将英文动态名称场景置于前两级均为空的独立数据行。",
+      "route_to": "A08",
+      "severity": "blocking",
+      "source_refs": [
+        "REQ-003",
+        "RULE-SINGLE-METRIC",
+        "RULE-I18N-RESULT-SET"
+      ]
+    }
+  ],
+  "multica_control": {
+    "assignee_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "decision_statuses": {
+      "cancelled": "terminate",
+      "done": "directed_correction"
+    },
+    "identity_evidence_mode": "assigned_member_pilot",
+    "initial_status": "in_review",
+    "project_id": "f2f893a2-55dc-414d-87d9-a483e51765d6",
+    "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46"
+  },
+  "node_id": "human_test_design_correction",
+  "outcome_contract": "human-test-design-correction-outcome/1.0",
+  "policy": {
+    "allowed_actor_ids": [
+      "muqj11262"
+    ],
+    "allowed_multica_member_ids": [
+      "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54"
+    ],
+    "allowed_roles": [
+      "qa_owner"
+    ],
+    "policy_hash": "sha256:671e2e5d6210603373cad84cb45bd4a38cf6a71bbabb8edf6228ff498419882e",
+    "production_release_authority": false,
+    "required_revalidation": [
+      "A09",
+      "N04"
+    ]
+  },
+  "request_hash": "sha256:df052a48587ea905305d7bb0756bea95291378d69c9e2f0da9a101a0802bd819",
+  "schema_version": "human-test-design-correction-request/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "needs_human",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:9aa3e990fd3181865e8a0254ae348c93445c6e288578f33993a1ca968fb2535a",
+      "artifact_id": "a08-test-design-ir"
+    },
+    {
+      "artifact_hash": "sha256:9c1345ccedccd16367ced8a057e95515387ca8e0db9bdc200ef5153daebbc712",
+      "artifact_id": "a09-oracle-coverage-review"
+    },
+    {
+      "artifact_hash": "sha256:4bce713d1297625be0fc5288847458b21baa08ab97a5ce7a5677ed151ccb5d09",
+      "artifact_id": "n04-test-case-ir-validation"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

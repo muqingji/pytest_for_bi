@@ -22,6 +22,17 @@ OUTCOME_FILE = "human-correction-outcome.json"
 STATE_FILE = "human-correction-state.json"
 
 
+def _first_plain_sentence(text: str, limit: int = 120) -> str:
+    """Keep the leading sentence of a technical message for display."""
+    if len(text) <= limit:
+        return text
+    for separator in ("。", "；", "；", "\n", ". "):
+        position = text.find(separator)
+        if 0 < position <= limit:
+            return text[: position + len(separator)]
+    return text[:limit].rstrip() + "…"
+
+
 def _read(path: Path, label: str) -> dict[str, Any]:
     try:
         value = json.loads(path.read_text(encoding="utf-8"))
@@ -129,9 +140,11 @@ def _bound_inputs(
             {
                 "directive_id": issue_id,
                 "issue_code": issue.get("issue_code"),
+                "human_title": issue.get("human_title"),
                 "severity": issue.get("severity", "error"),
                 "case_id": issue.get("case_id"),
                 "expected_id": issue.get("expected_id"),
+                "plain_summary": issue.get("plain_summary"),
                 "message": issue.get("message"),
                 "recommendation": recommendation,
                 "source_refs": list(issue.get("source_refs", [])),
@@ -144,21 +157,30 @@ def _bound_inputs(
 def render_human_correction_markdown(request: Mapping[str, Any]) -> str:
     directives = []
     for item in request["directives"]:
-        directives.append(
-            f"## {item['directive_id']} - {item['issue_code']}\n\n"
-            f"Severity: `{item['severity']}`\n\n"
-            f"Problem: {item['message']}\n\n"
-            f"Required correction: {item['recommendation']}\n"
-        )
+        title = str(item.get("human_title") or "").strip()
+        headline = title or str(item.get("issue_code") or item["directive_id"])
+        lines = [f"### {item['directive_id']} - {headline}", ""]
+        plain = str(item.get("plain_summary") or "").strip()
+        problem = plain or _first_plain_sentence(str(item.get("message") or ""))
+        if problem:
+            lines.append(f"- 问题：{problem}")
+        if item.get("recommendation"):
+            lines.append(f"- 修正方案：{item['recommendation']}")
+        message = str(item.get("message") or "").strip()
+        if message and message != problem:
+            lines.append(f"- 技术细节：{message}")
+        directives.append("\n".join(lines))
     return (
-        "# Human Test Design Correction\n\n"
-        f"Workflow: `{request['workflow_run_id']}`\n\n"
-        f"Automatic budget: `{request['budget']['correction_attempt']}/"
-        f"{request['budget']['max_correction_attempts']}` (not reset)\n\n"
-        "Move this Issue to `done` to authorize all correction directives below and create a new "
-        "A08 revision. Move it to `cancelled` to terminate the workflow. Keeping `in_review` "
-        "leaves the workflow paused.\n\n"
-        + "\n".join(directives)
+        "# 测试设计人工修正\n\n"
+        f"- 工作流：`{request['workflow_run_id']}`\n"
+        f"- 修正预算：`{request['budget']['correction_attempt']}/"
+        f"{request['budget']['max_correction_attempts']}`（不重置）\n\n"
+        "请决定是否授权以下修正：\n\n"
+        "- 将本 Issue 置为 **done**：授权全部修正，系统将生成新的 A08 修正版并重新校验，"
+        "流程自动继续。\n"
+        "- 置为 **cancelled**：终止当前流程。\n"
+        "- 保持 **in_review**：流程保持暂停。\n\n"
+        + "\n\n".join(directives)
     )
 
 

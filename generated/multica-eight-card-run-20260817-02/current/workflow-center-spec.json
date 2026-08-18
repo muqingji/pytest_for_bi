@@ -1,0 +1,787 @@
+{
+  "actions": [
+    {
+      "action_id": "N04-detail-drill-i18n-8card-20260817-02",
+      "approval_items": [
+        {
+          "case_id": "TC-E2E-001",
+          "category": "oracle",
+          "confirm_action": "",
+          "expected_id": "EXP-E2E-001-01",
+          "human_title": "",
+          "id": "A09-ISSUE-007",
+          "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
+          "plain_summary": "",
+          "recommendation": "将 expected_value 改为可直接解析的结构化四行期望矩阵，或引用真实存在的 test_data.matrix，并明确按 reason 和 locale 比较 code、messages、parameters；source_ref 应引用 G01 或对应冻结 I18N 规则。",
+          "requirement_ids": [],
+          "severity": "blocking",
+          "source_refs": [
+            "REQ-006",
+            "RULE-ENTRY-CONSISTENCY",
+            "A09-ISSUE-004"
+          ],
+          "summary": "EXP-E2E-001-01 的 expected_value 指向 test_data.matrix.code_messages_and_parameters，但 matrix 是数组且各行仅定义 code、messages 和可选 parameters，不存在 code_messages_and_parameters 路径；equals 无法取得明确期望值执行。correction_resolutions 对 A09-ISSUE-004 标记 fixed，但该 Oracle 仍未完成可执行修正。",
+          "title": "oracle"
+        },
+        {
+          "case_id": "TC-BE-002",
+          "category": "test_data",
+          "confirm_action": "",
+          "expected_id": "EXP-BE-002-03",
+          "human_title": "",
+          "id": "A09-ISSUE-008",
+          "issue_code": "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT",
+          "plain_summary": "",
+          "recommendation": "按 locale 分别定义 Filter.fieldName、字段元数据和动态多语名称输入及期望参数，确保每个分支严格遵循冻结优先级；可将英文动态名称场景置于前两级均为空的独立数据行。",
+          "requirement_ids": [],
+          "severity": "blocking",
+          "source_refs": [
+            "REQ-003",
+            "RULE-SINGLE-METRIC",
+            "RULE-I18N-RESULT-SET"
+          ],
+          "summary": "TC-BE-002 同时以 zh_CN 和 en 执行，但 RS-01 固定提供非空 fieldName=销售额。按冻结解析顺序，en 请求也会优先取得销售额，无法同时满足 EXP-BE-002-03 期望的 Revenue；EXP-BE-002-04 也只给出中文分支值，未建立当前语言英文名称解析的确定期望。",
+          "title": "test_data"
+        }
+      ],
+      "gate_id": "N04",
+      "issue_id": null,
+      "issue_identifier": null,
+      "item_count": 2,
+      "owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+      "status": "open",
+      "summary": "Artifact n04-test-case-ir-validation accepted",
+      "title": "Test Case IR 校验处理"
+    }
+  ],
+  "autopilot": {
+    "execution_mode": "run_only",
+    "id": "693f864d-87cc-40f3-85c1-5be92a4e0a0f",
+    "status": "active"
+  },
+  "autopilot_runs": [],
+  "human_owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+  "nodes": [
+    {
+      "artifact_hash": "sha256:ea8ef038d246a2900a8386d5352adc2753b572f8faa69d550a8eb1851bc1176f",
+      "artifact_id": "n01-source-extraction-manifest",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/bootstrap/artifacts/n01-source-extraction-manifest.json",
+      "completion": "1/1",
+      "execution_id": "INPUT-FREEZE-detail-drill-i18n-8card-20260817-02",
+      "label": "需求、方案与 ChangeSet 冻结",
+      "node_id": "INPUT-FREEZE",
+      "result_summary": "Artifact n01-source-extraction-manifest accepted",
+      "stage": 1,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "bd6c685a-1f12-48ee-8dd7-13bdea357aba",
+      "stage_issue_identifier": "QAA-306",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:26dc9295f1b576d7c37bdc35fe21f4a007b26e2625f308f5f78b3bbad804db49",
+      "artifact_id": "n00-workflow-route",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/bootstrap/artifacts/n00-workflow-route.json",
+      "completion": "1/1",
+      "execution_id": "N00-detail-drill-i18n-8card-20260817-02",
+      "label": "工作流模板与深度选择",
+      "node_id": "N00",
+      "result_summary": "Artifact n00-workflow-route accepted",
+      "stage": 2,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "bd6c685a-1f12-48ee-8dd7-13bdea357aba",
+      "stage_issue_identifier": "QAA-306",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:fb4741e4d2371c89259b42876290def2169476bad895e953fd395f77a1d8ab3b",
+      "artifact_id": "a02-requirement-analysis",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a02-requirement-analysis.json",
+      "completion": "1/1",
+      "execution_id": "A02-detail-drill-i18n-8card-20260817-02",
+      "label": "需求分析",
+      "node_id": "A02",
+      "result_summary": "completed_with_gaps",
+      "stage": 3,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "bd6c685a-1f12-48ee-8dd7-13bdea357aba",
+      "stage_issue_identifier": "QAA-306",
+      "state": "completed"
+    },
+    {
+      "approval_items": [
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-001",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#待确认项"
+          ],
+          "summary": "自定义维度校验实际覆盖下钻字段，但 PRD 文案仅写“维度或数据范围”，最终中英文文案未确认。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-002",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#待确认项"
+          ],
+          "summary": "结果集筛选提示固定写“统计图”，但需求同时覆盖拼表，最终中英文文案未确认。",
+          "title": "阻塞项"
+        },
+        {
+          "category": "",
+          "confirm_action": "",
+          "id": "BI-003",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#专用错误定义",
+            "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/dev/tech-review-backend.md#发布建议"
+          ],
+          "summary": "四类专用业务错误码仍为待申请状态，且必须与中英文模板和 I18NErrorCodeEnum 同批发布。",
+          "title": "阻塞项"
+        }
+      ],
+      "artifact_hash": "sha256:74045e26bee30ced794329ee9638042e506dbc3c55c72b41cca10527d9284e72",
+      "artifact_id": "a03-technical-testability-analysis",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a03-technical-testability-analysis.json",
+      "completion": "1/1",
+      "execution_id": "A03-detail-drill-i18n-8card-20260817-02",
+      "label": "技术方案与可测性分析",
+      "node_id": "A03",
+      "result_summary": "发现待确认项，已并入 G01 汇总审批",
+      "stage": 3,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "bd6c685a-1f12-48ee-8dd7-13bdea357aba",
+      "stage_issue_identifier": "QAA-306",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:be24895b2f3e966cad718ca35d556069ba17479c61de62b35fe5c98c3b4621ab",
+      "artifact_id": "a05-backend-change-analysis",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a05-backend-change-analysis.json",
+      "completion": "1/1",
+      "execution_id": "A05-detail-drill-i18n-8card-20260817-02",
+      "label": "服务端变更分析",
+      "node_id": "A05",
+      "result_summary": "completed_with_gaps",
+      "stage": 3,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "bd6c685a-1f12-48ee-8dd7-13bdea357aba",
+      "stage_issue_identifier": "QAA-306",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:920fd843d21e57a9f7614876f5ca15f4b47898be40fe7fcd13c2132f5810c548",
+      "artifact_id": "a06-alignment-result",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a06-alignment-result.json",
+      "completion": "1/1",
+      "execution_id": "A06-detail-drill-i18n-8card-20260817-02",
+      "label": "需求与变更对齐",
+      "node_id": "A06",
+      "result_summary": "发现待确认项，已并入 G01 汇总审批",
+      "stage": 4,
+      "stage_card_id": "C1",
+      "stage_card_title": "需求分析与变更对齐",
+      "stage_issue_id": "bd6c685a-1f12-48ee-8dd7-13bdea357aba",
+      "stage_issue_identifier": "QAA-306",
+      "state": "completed"
+    },
+    {
+      "approval_items": [
+        {
+          "category": "待确认测试范围",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "id": "A06:ALN-F012",
+          "requirement_ids": [
+            "REQ-001"
+          ],
+          "severity": "medium",
+          "source_refs": [],
+          "summary": "存在超出需求范围的变更：员工或部门主题特殊分支将原本显式生成的本地化消息改为空字符串，但冻结需求和技术目标未要求修改该非目标错误分支，存在兼容性风险。",
+          "title": "待确认测试范围"
+        }
+      ],
+      "artifact_hash": "sha256:d213f47e16e35ad615cce72d203ffb10efc914dbce31a1b626854f75c9a9ac39",
+      "artifact_id": "g01-scope-review",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/g01-scope-review.json",
+      "completion": "1/1",
+      "execution_id": "G01-detail-drill-i18n-8card-20260817-02",
+      "label": "范围与口径人工审核",
+      "node_id": "G01",
+      "result_summary": "not_required",
+      "stage": 5,
+      "stage_card_id": "C2",
+      "stage_card_title": "范围确认与测试策略",
+      "stage_issue_id": "bd0191c9-bc0a-48af-873f-4b2d1da22ef7",
+      "stage_issue_identifier": "QAA-307",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:d895bf00d1f5db12e9b4ad8f6db9dd5478db0c285b42b08e36429693c4e29055",
+      "artifact_id": "n24-test-strategy",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n24-test-strategy.json",
+      "completion": "1/1",
+      "execution_id": "N24-detail-drill-i18n-8card-20260817-02",
+      "label": "风险与测试策略",
+      "node_id": "N24",
+      "result_summary": "Artifact n24-test-strategy accepted",
+      "stage": 6,
+      "stage_card_id": "C2",
+      "stage_card_title": "范围确认与测试策略",
+      "stage_issue_id": "bd0191c9-bc0a-48af-873f-4b2d1da22ef7",
+      "stage_issue_identifier": "QAA-307",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:9aa3e990fd3181865e8a0254ae348c93445c6e288578f33993a1ca968fb2535a",
+      "artifact_id": "a08-test-design-ir",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a08-test-design-ir.json",
+      "completion": "1/1",
+      "execution_id": "A08-detail-drill-i18n-8card-20260817-02",
+      "label": "测试设计",
+      "node_id": "A08",
+      "result_summary": "completed_with_gaps",
+      "stage": 7,
+      "stage_card_id": "C3",
+      "stage_card_title": "测试设计与审核",
+      "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
+      "stage_issue_identifier": "QAA-308",
+      "state": "completed"
+    },
+    {
+      "artifact_hash": "sha256:9c1345ccedccd16367ced8a057e95515387ca8e0db9bdc200ef5153daebbc712",
+      "artifact_id": "a09-oracle-coverage-review",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a09-oracle-coverage-review.json",
+      "completion": "1/1",
+      "execution_id": "A09-detail-drill-i18n-8card-20260817-02",
+      "label": "Oracle 与覆盖审查",
+      "node_id": "A09",
+      "result_summary": "发现 2 个阻塞问题需人工定向修正（A09-ISSUE-007、A09-ISSUE-008）",
+      "stage": 8,
+      "stage_card_id": "C3",
+      "stage_card_title": "测试设计与审核",
+      "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
+      "stage_issue_identifier": "QAA-308",
+      "state": "blocked"
+    },
+    {
+      "approval_items": [
+        {
+          "case_id": "TC-E2E-001",
+          "category": "oracle",
+          "confirm_action": "",
+          "expected_id": "EXP-E2E-001-01",
+          "human_title": "",
+          "id": "A09-ISSUE-007",
+          "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
+          "plain_summary": "",
+          "recommendation": "将 expected_value 改为可直接解析的结构化四行期望矩阵，或引用真实存在的 test_data.matrix，并明确按 reason 和 locale 比较 code、messages、parameters；source_ref 应引用 G01 或对应冻结 I18N 规则。",
+          "requirement_ids": [],
+          "severity": "blocking",
+          "source_refs": [
+            "REQ-006",
+            "RULE-ENTRY-CONSISTENCY",
+            "A09-ISSUE-004"
+          ],
+          "summary": "EXP-E2E-001-01 的 expected_value 指向 test_data.matrix.code_messages_and_parameters，但 matrix 是数组且各行仅定义 code、messages 和可选 parameters，不存在 code_messages_and_parameters 路径；equals 无法取得明确期望值执行。correction_resolutions 对 A09-ISSUE-004 标记 fixed，但该 Oracle 仍未完成可执行修正。",
+          "title": "oracle"
+        },
+        {
+          "case_id": "TC-BE-002",
+          "category": "test_data",
+          "confirm_action": "",
+          "expected_id": "EXP-BE-002-03",
+          "human_title": "",
+          "id": "A09-ISSUE-008",
+          "issue_code": "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT",
+          "plain_summary": "",
+          "recommendation": "按 locale 分别定义 Filter.fieldName、字段元数据和动态多语名称输入及期望参数，确保每个分支严格遵循冻结优先级；可将英文动态名称场景置于前两级均为空的独立数据行。",
+          "requirement_ids": [],
+          "severity": "blocking",
+          "source_refs": [
+            "REQ-003",
+            "RULE-SINGLE-METRIC",
+            "RULE-I18N-RESULT-SET"
+          ],
+          "summary": "TC-BE-002 同时以 zh_CN 和 en 执行，但 RS-01 固定提供非空 fieldName=销售额。按冻结解析顺序，en 请求也会优先取得销售额，无法同时满足 EXP-BE-002-03 期望的 Revenue；EXP-BE-002-04 也只给出中文分支值，未建立当前语言英文名称解析的确定期望。",
+          "title": "test_data"
+        }
+      ],
+      "artifact_hash": "sha256:4bce713d1297625be0fc5288847458b21baa08ab97a5ce7a5677ed151ccb5d09",
+      "artifact_id": "n04-test-case-ir-validation",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n04-test-case-ir-validation.json",
+      "completion": "1/1",
+      "execution_id": "N04-detail-drill-i18n-8card-20260817-02",
+      "human_action_entry": {
+        "issue_id": "7a6c629c-100b-4a8b-9eb2-1fab1f24635d",
+        "issue_identifier": "QAA-325",
+        "status": "in_review"
+      },
+      "label": "Test Case IR 校验",
+      "node_id": "N04",
+      "result_summary": "Artifact n04-test-case-ir-validation accepted",
+      "stage": 9,
+      "stage_card_id": "C3",
+      "stage_card_title": "测试设计与审核",
+      "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
+      "stage_issue_identifier": "QAA-308",
+      "state": "waiting_human"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "G02-detail-drill-i18n-8card-20260817-02",
+      "label": "Test Case IR 人工审核",
+      "node_id": "G02",
+      "result_summary": "等待上游节点",
+      "stage": 10,
+      "stage_card_id": "C3",
+      "stage_card_title": "测试设计与审核",
+      "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
+      "stage_issue_identifier": "QAA-308",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N25-detail-drill-i18n-8card-20260817-02",
+      "label": "父子 Case 编译",
+      "node_id": "N25",
+      "result_summary": "等待上游节点",
+      "stage": 11,
+      "stage_card_id": "C4",
+      "stage_card_title": "Case 编译与执行计划",
+      "stage_issue_id": "00602199-1ddc-491f-bbb4-a0be0282ea94",
+      "stage_issue_identifier": "QAA-309",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A11-detail-drill-i18n-8card-20260817-02",
+      "label": "拆分覆盖审查",
+      "node_id": "A11",
+      "result_summary": "等待上游节点",
+      "stage": 12,
+      "stage_card_id": "C4",
+      "stage_card_title": "Case 编译与执行计划",
+      "stage_issue_id": "00602199-1ddc-491f-bbb4-a0be0282ea94",
+      "stage_issue_identifier": "QAA-309",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N26-detail-drill-i18n-8card-20260817-02",
+      "label": "测试选择",
+      "node_id": "N26",
+      "result_summary": "等待上游节点",
+      "stage": 13,
+      "stage_card_id": "C4",
+      "stage_card_title": "Case 编译与执行计划",
+      "stage_issue_id": "00602199-1ddc-491f-bbb4-a0be0282ea94",
+      "stage_issue_identifier": "QAA-309",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N15-detail-drill-i18n-8card-20260817-02",
+      "label": "执行计划编译",
+      "node_id": "N15",
+      "result_summary": "等待上游节点",
+      "stage": 14,
+      "stage_card_id": "C4",
+      "stage_card_title": "Case 编译与执行计划",
+      "stage_issue_id": "00602199-1ddc-491f-bbb4-a0be0282ea94",
+      "stage_issue_identifier": "QAA-309",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A14-detail-drill-i18n-8card-20260817-02",
+      "label": "服务端自动化生成",
+      "node_id": "A14",
+      "result_summary": "等待上游节点",
+      "stage": 15,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A15-detail-drill-i18n-8card-20260817-02",
+      "label": "契约自动化生成",
+      "node_id": "A15",
+      "result_summary": "等待上游节点",
+      "stage": 15,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A22-detail-drill-i18n-8card-20260817-02",
+      "label": "112 测试数据规划",
+      "node_id": "A22",
+      "result_summary": "等待上游节点",
+      "stage": 15,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A18-BE-detail-drill-i18n-8card-20260817-02",
+      "label": "服务端自动化独立复核",
+      "node_id": "A18-BE",
+      "result_summary": "等待上游节点",
+      "stage": 16,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "A18-CT-detail-drill-i18n-8card-20260817-02",
+      "label": "契约自动化独立复核",
+      "node_id": "A18-CT",
+      "result_summary": "等待上游节点",
+      "stage": 16,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N27-detail-drill-i18n-8card-20260817-02",
+      "label": "测试数据计划安全校验",
+      "node_id": "N27",
+      "result_summary": "等待上游节点",
+      "stage": 16,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N05-detail-drill-i18n-8card-20260817-02",
+      "label": "自动化确定性代码检查",
+      "node_id": "N05",
+      "result_summary": "等待上游节点",
+      "stage": 17,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "G03-detail-drill-i18n-8card-20260817-02",
+      "label": "自动化代码人工审核",
+      "node_id": "G03",
+      "result_summary": "等待上游节点",
+      "stage": 18,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N07-detail-drill-i18n-8card-20260817-02",
+      "label": "环境、数据与资源预检",
+      "node_id": "N07",
+      "result_summary": "等待上游节点",
+      "stage": 19,
+      "stage_card_id": "C6",
+      "stage_card_title": "环境预检与测试执行",
+      "stage_issue_id": "a71bc6d2-ad05-4c0e-a571-67c9f24351fc",
+      "stage_issue_identifier": "QAA-311",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N08-detail-drill-i18n-8card-20260817-02",
+      "label": "受控自动化执行",
+      "node_id": "N08",
+      "result_summary": "等待上游节点",
+      "stage": 20,
+      "stage_card_id": "C6",
+      "stage_card_title": "环境预检与测试执行",
+      "stage_issue_id": "a71bc6d2-ad05-4c0e-a571-67c9f24351fc",
+      "stage_issue_identifier": "QAA-311",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N17-detail-drill-i18n-8card-20260817-02",
+      "label": "人工与探索测试执行",
+      "node_id": "N17",
+      "result_summary": "等待上游节点",
+      "stage": 20,
+      "stage_card_id": "C6",
+      "stage_card_title": "环境预检与测试执行",
+      "stage_issue_id": "a71bc6d2-ad05-4c0e-a571-67c9f24351fc",
+      "stage_issue_identifier": "QAA-311",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N10-detail-drill-i18n-8card-20260817-02",
+      "label": "环境失败重试预算",
+      "node_id": "N10",
+      "result_summary": "等待上游节点",
+      "stage": 21,
+      "stage_card_id": "C6",
+      "stage_card_title": "环境预检与测试执行",
+      "stage_issue_id": "a71bc6d2-ad05-4c0e-a571-67c9f24351fc",
+      "stage_issue_identifier": "QAA-311",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N18-detail-drill-i18n-8card-20260817-02",
+      "label": "运行质量信号采集",
+      "node_id": "N18",
+      "result_summary": "等待上游节点",
+      "stage": 21,
+      "stage_card_id": "C7",
+      "stage_card_title": "证据归一与质量决策",
+      "stage_issue_id": "a294e5d6-a8de-42f0-bf21-caaad5e88685",
+      "stage_issue_identifier": "QAA-312",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N09-detail-drill-i18n-8card-20260817-02",
+      "label": "执行证据标准化与失败聚类",
+      "node_id": "N09",
+      "result_summary": "等待上游节点",
+      "stage": 22,
+      "stage_card_id": "C7",
+      "stage_card_title": "证据归一与质量决策",
+      "stage_issue_id": "a294e5d6-a8de-42f0-bf21-caaad5e88685",
+      "stage_issue_identifier": "QAA-312",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N20-detail-drill-i18n-8card-20260817-02",
+      "label": "跨运行缺陷去重",
+      "node_id": "N20",
+      "result_summary": "等待上游节点",
+      "stage": 23,
+      "stage_card_id": "C7",
+      "stage_card_title": "证据归一与质量决策",
+      "stage_issue_id": "a294e5d6-a8de-42f0-bf21-caaad5e88685",
+      "stage_issue_identifier": "QAA-312",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N11-detail-drill-i18n-8card-20260817-02",
+      "label": "确定性质量决策",
+      "node_id": "N11",
+      "result_summary": "等待上游节点",
+      "stage": 24,
+      "stage_card_id": "C7",
+      "stage_card_title": "证据归一与质量决策",
+      "stage_issue_id": "a294e5d6-a8de-42f0-bf21-caaad5e88685",
+      "stage_issue_identifier": "QAA-312",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N19-detail-drill-i18n-8card-20260817-02",
+      "label": "质量豁免审计",
+      "node_id": "N19",
+      "result_summary": "等待上游节点",
+      "stage": 25,
+      "stage_card_id": "C7",
+      "stage_card_title": "证据归一与质量决策",
+      "stage_issue_id": "a294e5d6-a8de-42f0-bf21-caaad5e88685",
+      "stage_issue_identifier": "QAA-312",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N12-detail-drill-i18n-8card-20260817-02",
+      "label": "质量报告发布",
+      "node_id": "N12",
+      "result_summary": "等待上游节点",
+      "stage": 26,
+      "stage_card_id": "C8",
+      "stage_card_title": "报告与关闭",
+      "stage_issue_id": "09b7a7ba-31cf-4672-b6b2-047b347e4166",
+      "stage_issue_identifier": "QAA-313",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N13-detail-drill-i18n-8card-20260817-02",
+      "label": "报告反馈入口",
+      "node_id": "N13",
+      "result_summary": "等待上游节点",
+      "stage": 27,
+      "stage_card_id": "C8",
+      "stage_card_title": "报告与关闭",
+      "stage_issue_id": "09b7a7ba-31cf-4672-b6b2-047b347e4166",
+      "stage_issue_identifier": "QAA-313",
+      "state": "not_started"
+    },
+    {
+      "completion": "0/1",
+      "execution_id": "N23-detail-drill-i18n-8card-20260817-02",
+      "label": "上线后验证授权审计",
+      "node_id": "N23",
+      "result_summary": "等待上游节点",
+      "stage": 28,
+      "stage_card_id": "C8",
+      "stage_card_title": "报告与关闭",
+      "stage_issue_id": "09b7a7ba-31cf-4672-b6b2-047b347e4166",
+      "stage_issue_identifier": "QAA-313",
+      "state": "not_started"
+    }
+  ],
+  "parent_issue": {
+    "id": "8d38ef5f-b622-4167-857c-79c7393a0e0f",
+    "identifier": "QAA-304"
+  },
+  "requirement_id": "REQ-DETAIL-DRILL-I18N-RERUN-20260817-02",
+  "revision": 41,
+  "run_history": [],
+  "run_issue": {
+    "id": "277d9c07-16bc-4462-8f83-ff8434a84b9e",
+    "identifier": "QAA-305"
+  },
+  "schema_version": "requirement-workflow/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "stage_card_schema_version": "server-stage-cards/1.0",
+  "stage_cards": [
+    {
+      "issue_id": "bd6c685a-1f12-48ee-8dd7-13bdea357aba",
+      "issue_identifier": "QAA-306",
+      "node_ids": [
+        "INPUT-FREEZE",
+        "N00",
+        "A02",
+        "A03",
+        "A05",
+        "A06"
+      ],
+      "stage_card_id": "C1",
+      "title": "需求分析与变更对齐"
+    },
+    {
+      "issue_id": "bd0191c9-bc0a-48af-873f-4b2d1da22ef7",
+      "issue_identifier": "QAA-307",
+      "node_ids": [
+        "G01",
+        "N24"
+      ],
+      "stage_card_id": "C2",
+      "title": "范围确认与测试策略"
+    },
+    {
+      "issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
+      "issue_identifier": "QAA-308",
+      "node_ids": [
+        "A08",
+        "A09",
+        "N04",
+        "G02"
+      ],
+      "stage_card_id": "C3",
+      "title": "测试设计与审核"
+    },
+    {
+      "issue_id": "00602199-1ddc-491f-bbb4-a0be0282ea94",
+      "issue_identifier": "QAA-309",
+      "node_ids": [
+        "N25",
+        "A11",
+        "N26",
+        "N15"
+      ],
+      "stage_card_id": "C4",
+      "title": "Case 编译与执行计划"
+    },
+    {
+      "issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "issue_identifier": "QAA-310",
+      "node_ids": [
+        "A14",
+        "A15",
+        "A22",
+        "A18-BE",
+        "A18-CT",
+        "N27",
+        "N05",
+        "G03"
+      ],
+      "stage_card_id": "C5",
+      "title": "自动化与测试数据准备"
+    },
+    {
+      "issue_id": "a71bc6d2-ad05-4c0e-a571-67c9f24351fc",
+      "issue_identifier": "QAA-311",
+      "node_ids": [
+        "N07",
+        "N08",
+        "N17",
+        "N10"
+      ],
+      "stage_card_id": "C6",
+      "title": "环境预检与测试执行"
+    },
+    {
+      "issue_id": "a294e5d6-a8de-42f0-bf21-caaad5e88685",
+      "issue_identifier": "QAA-312",
+      "node_ids": [
+        "N18",
+        "N09",
+        "N20",
+        "N11",
+        "N19"
+      ],
+      "stage_card_id": "C7",
+      "title": "证据归一与质量决策"
+    },
+    {
+      "issue_id": "09b7a7ba-31cf-4672-b6b2-047b347e4166",
+      "issue_identifier": "QAA-313",
+      "node_ids": [
+        "N12",
+        "N13",
+        "N23"
+      ],
+      "stage_card_id": "C8",
+      "title": "报告与关闭"
+    }
+  ],
+  "title": "统计图查看明细限制原因提示优化",
+  "workflow_definition_version": "server-requirement/1.1-eight-stage-cards",
+  "workflow_id": "REQ-DETAIL-DRILL-I18N-RERUN-20260817-02",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

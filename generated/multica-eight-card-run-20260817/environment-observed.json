@@ -1,0 +1,16 @@
+{
+  "schema_version": "environment-observation/1.0",
+  "environment": "112",
+  "requester_id": "muqj11262",
+  "deployment_commits": [],
+  "dependencies": [],
+  "test_accounts": [],
+  "feature_flags": [],
+  "tenant_configs": [],
+  "test_data": [],
+  "runtime": {"timezone": "Asia/Shanghai", "language": "zh-CN"},
+  "test_namespaces": [
+    {"namespace": "qa-detail-drill-20260817-01", "cleanup_policy": {"required": true}}
+  ],
+  "resource_locks": []
+}

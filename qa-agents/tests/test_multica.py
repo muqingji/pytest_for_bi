@@ -1045,6 +1045,78 @@ def test_prepare_and_ingest_multica_a09_input(tmp_path: Path) -> None:
     assert artifact["payload"]["code_coverage_reviewed"] is False
 
 
+def test_ingest_a09_rejects_blocking_issue_without_plain_summary(
+    tmp_path: Path,
+) -> None:
+    bundle = prepare_a09_bundle(tmp_path)
+    output = valid_a09_output(bundle)
+    output["approved"] = False
+    output["status"] = "needs_human"
+    output["issues"] = [
+        {
+            "id": "A09-001",
+            "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
+            "severity": "blocking",
+            "category": "oracle",
+            "message": "expected_value 指向不存在的路径。",
+            "path": "allowed_inputs",
+            "route_to": "A08",
+            "case_id": "CASE-001",
+            "expected_id": "EXP-001",
+            "source_refs": ["REQ-001"],
+            "recommendation": "改为可解析期望值。",
+        }
+    ]
+    with pytest.raises(ContractError, match="plain_summary"):
+        ingest_multica_output(
+            tmp_path / "inputs" / "a09-input.json",
+            json.dumps(output, ensure_ascii=False),
+            tmp_path / "stage5",
+            task_id="task-a09",
+            issue_id="issue-a09",
+            attachment_id="attachment-a09",
+            model_provider="codex",
+            model_snapshot="gpt-test",
+            prompt_version="1.1.0",
+        )
+
+
+def test_ingest_a09_accepts_issue_with_plain_summary(tmp_path: Path) -> None:
+    bundle = prepare_a09_bundle(tmp_path)
+    output = valid_a09_output(bundle)
+    output["approved"] = False
+    output["status"] = "needs_human"
+    output["issues"] = [
+        {
+            "id": "A09-001",
+            "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
+            "human_title": "预期结果写错了",
+            "plain_summary": "预期结果指向不存在的字段，用例无法校验。",
+            "severity": "blocking",
+            "category": "oracle",
+            "message": "expected_value 指向不存在的路径。",
+            "path": "allowed_inputs",
+            "route_to": "A08",
+            "case_id": "CASE-001",
+            "expected_id": "EXP-001",
+            "source_refs": ["REQ-001"],
+            "recommendation": "改为可解析期望值。",
+        }
+    ]
+    artifact = ingest_multica_output(
+        tmp_path / "inputs" / "a09-input.json",
+        json.dumps(output, ensure_ascii=False),
+        tmp_path / "stage5",
+        task_id="task-a09",
+        issue_id="issue-a09",
+        attachment_id="attachment-a09",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.1.0",
+    )
+    assert artifact["payload"]["issues"][0]["plain_summary"]
+
+
 def test_ingest_a09_rejects_code_coverage_claim(tmp_path: Path) -> None:
     bundle = prepare_a09_bundle(tmp_path)
     output = valid_a09_output(bundle)
@@ -1162,6 +1234,8 @@ def valid_a11_output(bundle: dict) -> dict:
             "severity": "warning",
             "category": "layer_boundary",
             "message": "cross-layer responsibility is unchanged",
+            "plain_summary": "该用例拆分层后各层职责未收窄，需要补充分层职责说明。",
+            "human_title": "拆分后分层职责未收窄",
             "path": "compiled_child_cases",
             "route_to": "N25",
             "case_id": parent_id,
@@ -1345,6 +1419,8 @@ def test_ingest_a11_rejects_approval_mismatch_with_blocking_issue(tmp_path: Path
             "case_id": children[0]["id"],
             "source_refs": [{"type": "compiled_case", "id": children[0]["id"]}],
             "recommendation": "补充用例",
+            "plain_summary": "拆分后的子用例没有覆盖到全部层级，需要补用例。",
+            "human_title": "子用例覆盖不完整",
         }
     )
 
@@ -1440,6 +1516,8 @@ def test_ingest_a11_accepts_reported_global_cross_layer_duplicate(tmp_path: Path
         "case_id": None,
         "source_refs": ["REQ-001"],
         "recommendation": "Scope each layer responsibility",
+        "plain_summary": "多个父用例在拆分后职责完全重复，需要明确各自分层职责。",
+        "human_title": "拆分后职责重复",
     }]
     output["approved"] = False
     output["status"] = "needs_human"
@@ -1450,3 +1528,179 @@ def test_ingest_a11_accepts_reported_global_cross_layer_duplicate(tmp_path: Path
     artifact = ingest_a11(bundle, output, tmp_path)
     assert artifact["payload"]["approved"] is False
     assert artifact["status"] == "needs_human"
+
+
+def _concise_n24(output_dir: Path, a06_artifact_path: Path, decision_hash: str) -> None:
+    a06 = json.loads(a06_artifact_path.read_text(encoding="utf-8"))
+    envelope = ArtifactEnvelope(
+        workflow_run_id="multica-pilot-001",
+        workflow_mode="new_requirement",
+        artifact_id="n24-test-strategy",
+        source_snapshot_id="pilot-001-source-v1",
+        producer=Producer("N24"),
+        payload={
+            "schema_version": "test-strategy/1.0",
+            "risk_level": "critical",
+            "risk_score": 42,
+            "required_layers": ["backend", "contract", "e2e"],
+            "required_non_functional": [],
+            "human_gates": {"test_case_ir_review": "required"},
+            "unresolved_items": [],
+            "reasons": [],
+            "policy_version": "risk-policy/1.0",
+        },
+        status=ArtifactStatus.COMPLETED,
+        evidence_refs=(
+            EvidenceRef(
+                source_type="artifact",
+                source_id="a06-alignment-result",
+                location="payload",
+                content_hash=a06["artifact_hash"],
+            ),
+            EvidenceRef(
+                source_type="human_gate_decision",
+                source_id="G01",
+                location="g01-review-decision.json",
+                content_hash=decision_hash,
+            ),
+        ),
+    )
+    ArtifactStore(output_dir).write_artifact(envelope)
+
+
+def test_a08_input_falls_back_to_prior_structured_test_rules(tmp_path: Path) -> None:
+    """Concise G01 test_rules fall back to the snapshot's frozen structured rules."""
+
+    prior_dir = tmp_path / "prior"
+    prior_dir.mkdir()
+    prior_decision = {
+        "schema_version": "scope-review-decision/1.0",
+        "gate_id": "G01",
+        "workflow_run_id": "multica-pilot-000",
+        "source_snapshot_id": "pilot-001-source-v1",
+        "decision": "approved",
+        "decided_at": "2026-08-17T08:00:00+00:00",
+        "test_rules": {
+            "multiple_reasons": {"message_count": 1},
+            "metric_name": {"filter": "all_metric_display_names"},
+            "entry_consistency": {
+                "required_entries": ["web_chart", "web_joined_table"]
+            },
+            "custom_dimension": {
+                "error_key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED"
+            },
+            "dynamic_relation": {
+                "error_key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED"
+            },
+            "multi_relation": {
+                "error_key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED"
+            },
+            "permission": {"preserve_detection_order": True},
+            "compatibility": {"success_response": "unchanged"},
+            "localization": {
+                "errors": [
+                    {
+                        "key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+                        "code": "s307011534",
+                        "zh_CN": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细",
+                        "en": "Custom dimension fields are used in the dimension or data range. Details view is not supported.",
+                        "parameters": [],
+                    },
+                    {
+                        "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+                        "code": "s307011535",
+                        "zh_CN": "统计图数据范围中设置了「指标名称」按结果集筛选，不支持查看明细",
+                        "en": "The chart data range uses Metric Name with result set filtering. Details view is not supported.",
+                        "parameters": ["all_metric_display_names"],
+                    },
+                    {
+                        "key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+                        "code": "s307011536",
+                        "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细",
+                        "en": "Metrics created based on multiple relationships do not support Details view.",
+                        "parameters": [],
+                    },
+                    {
+                        "key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+                        "code": "s307011537",
+                        "zh_CN": "基于动态关联关系创建的统计指标，暂不支持查看明细",
+                        "en": "Metrics created based on dynamic relationships do not support Details view.",
+                        "parameters": [],
+                    },
+                ]
+            },
+        },
+        "decision_hash": "sha256:prior-structured",
+    }
+    write_json(prior_dir / "g01-review-decision.json", prior_decision)
+
+    concise_dir = tmp_path / "g01"
+    concise_dir.mkdir()
+    fixture_request = read_json(PILOT_RUN / "g01" / "g01-review-request.json")
+    write_json(concise_dir / "g01-review-request.json", fixture_request)
+    concise_decision = read_json(PILOT_RUN / "g01" / "g01-review-decision.json")
+    concise_decision["test_rules"] = "按逐项回复冻结的口径执行测试设计"
+    concise_decision["decision_hash"] = content_hash(
+        {key: value for key, value in concise_decision.items() if key != "decision_hash"}
+    )
+    write_json(concise_dir / "g01-review-decision.json", concise_decision)
+    _concise_n24(
+        tmp_path / "n24",
+        PILOT_RUN / "multica-stage2" / "artifacts" / "a06-alignment-result.json",
+        concise_decision["decision_hash"],
+    )
+
+    bundle = prepare_multica_test_design_input(
+        PILOT_RUN / "multica-stage1" / "artifacts" / "a02-requirement-analysis.json",
+        PILOT_RUN / "multica-stage1" / "artifacts" / "a03-technical-testability-analysis.json",
+        PILOT_RUN / "multica-stage2" / "artifacts" / "a06-alignment-result.json",
+        tmp_path / "n24" / "artifacts" / "n24-test-strategy.json",
+        concise_dir / "g01-review-request.json",
+        concise_dir / "g01-review-decision.json",
+        ROOT / "policies" / "g01-review-policy.json",
+        tmp_path / "inputs",
+        prior_test_rules_paths=[prior_dir / "g01-review-decision.json"],
+    )
+
+    scope = bundle["allowed_inputs"]["approved_scope"]
+    assert scope["test_rule_instruction"] == "按逐项回复冻结的口径执行测试设计"
+    assert scope["test_rule_fallback"]["mode"] == "prior_frozen_scope"
+    assert scope["test_rules"]["localization"]["errors"][0]["key"] == (
+        "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED"
+    )
+    assert any(
+        item["id"] == "RULE-I18N-CUSTOM-DIMENSION"
+        for item in scope["test_rule_obligations"]
+    )
+
+
+def test_a08_input_rejects_concise_rules_without_structured_fallback(
+    tmp_path: Path,
+) -> None:
+    concise_dir = tmp_path / "g01"
+    concise_dir.mkdir()
+    fixture_request = read_json(PILOT_RUN / "g01" / "g01-review-request.json")
+    write_json(concise_dir / "g01-review-request.json", fixture_request)
+    concise_decision = read_json(PILOT_RUN / "g01" / "g01-review-decision.json")
+    concise_decision["test_rules"] = "按逐项回复冻结的口径执行测试设计"
+    concise_decision["decision_hash"] = content_hash(
+        {key: value for key, value in concise_decision.items() if key != "decision_hash"}
+    )
+    write_json(concise_dir / "g01-review-decision.json", concise_decision)
+    _concise_n24(
+        tmp_path / "n24",
+        PILOT_RUN / "multica-stage2" / "artifacts" / "a06-alignment-result.json",
+        concise_decision["decision_hash"],
+    )
+
+    with pytest.raises(ContractError, match="no structured rules are available"):
+        prepare_multica_test_design_input(
+            PILOT_RUN / "multica-stage1" / "artifacts" / "a02-requirement-analysis.json",
+            PILOT_RUN / "multica-stage1" / "artifacts" / "a03-technical-testability-analysis.json",
+            PILOT_RUN / "multica-stage2" / "artifacts" / "a06-alignment-result.json",
+            tmp_path / "n24" / "artifacts" / "n24-test-strategy.json",
+            concise_dir / "g01-review-request.json",
+            concise_dir / "g01-review-decision.json",
+            ROOT / "policies" / "g01-review-policy.json",
+            tmp_path / "inputs",
+        )

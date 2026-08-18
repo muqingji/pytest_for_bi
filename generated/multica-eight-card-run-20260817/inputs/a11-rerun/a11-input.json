@@ -1,0 +1,1656 @@
+{
+  "allowed_inputs": {
+    "compiled_child_cases": [
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "受限调用不进入明细查询。",
+            "id": "EXP-001-06",
+            "matcher": "equals",
+            "source_ref": "REQ-001",
+            "type": "deterministic"
+          },
+          {
+            "description": "清理后唯一命名空间内无临时资源和故障注入。",
+            "id": "EXP-001-07",
+            "matcher": "equals",
+            "source_ref": "TF-011",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-001-BACKEND",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-001"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-A08-001",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001",
+          "RULE-MULTIPLE-REASONS",
+          "RULE-PERMISSION-PRIORITY",
+          "TF-011",
+          "TF-014"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "受限原因选择、多原因单提示与权限行为"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "每次受限响应的消息数恰好为一。",
+            "id": "EXP-001-01",
+            "matcher": "equals",
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          },
+          {
+            "description": "返回的 code-message 对属于本次实际命中的合法集合。",
+            "id": "EXP-001-02",
+            "matcher": "member_of",
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          },
+          {
+            "description": "响应中不存在由多个原因拼接产生的额外消息。",
+            "id": "EXP-001-03",
+            "matcher": "equals",
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          },
+          {
+            "description": "权限响应与版本化变更前证据逐字段一致。",
+            "id": "EXP-001-04",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "human_review"
+          },
+          {
+            "description": "权限响应正文和参数不泄露指标展示名，且不出现四个专用错误码。",
+            "id": "EXP-001-05",
+            "matcher": "equals",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-001-CONTRACT",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-001"
+        ],
+        "layer": "contract",
+        "parent_case_id": "TC-A08-001",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001",
+          "RULE-MULTIPLE-REASONS",
+          "RULE-PERMISSION-PRIORITY",
+          "TF-011",
+          "TF-014"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "受限原因选择、多原因单提示与权限行为"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "每行进入原有对应分支，分支先后轨迹与版本化变更前证据一致。",
+            "id": "EXP-002-05",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-CUSTOM-DIMENSION",
+            "type": "human_review"
+          },
+          {
+            "description": "时分筛选响应与版本化变更前证据逐字段一致。",
+            "id": "EXP-002-06",
+            "matcher": "manual_confirmation",
+            "source_ref": "TF-004",
+            "type": "human_review"
+          },
+          {
+            "description": "普通维度对照成功且返回分页和明细结果结构。",
+            "id": "EXP-002-07",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "清理后命名空间无残留。",
+            "id": "EXP-002-08",
+            "matcher": "equals",
+            "source_ref": "TF-004",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-002-BACKEND",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-002"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-A08-002",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-002",
+          "RULE-CUSTOM-DIMENSION",
+          "RULE-I18N-CUSTOM-DIMENSION",
+          "TF-004",
+          "FND-002"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "自定义维度三位置、检测顺序及时分筛选兼容"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "三位置均返回专用错误码。",
+            "id": "EXP-002-01",
+            "matcher": "all_equal",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "错误 key 和参数精确匹配批准契约。",
+            "id": "EXP-002-02",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "中文文案精确匹配批准模板。",
+            "id": "EXP-002-03",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "英文文案精确匹配批准模板。",
+            "id": "EXP-002-04",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-002-CONTRACT",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-002"
+        ],
+        "layer": "contract",
+        "parent_case_id": "TC-A08-002",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-002",
+          "RULE-CUSTOM-DIMENSION",
+          "RULE-I18N-CUSTOM-DIMENSION",
+          "TF-004",
+          "FND-002"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "自定义维度三位置、检测顺序及时分筛选兼容"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "来源冲突时优先使用 Filter.fieldName。",
+            "id": "EXP-003-02A",
+            "matcher": "equals",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "Filter.fieldName 缺失时使用 fieldId 元数据名称。",
+            "id": "EXP-003-02B",
+            "matcher": "equals",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "前两级缺失时使用当前语言动态名称。",
+            "id": "EXP-003-02C",
+            "matcher": "equals",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "多个受限指标的全部非空名称进入参数契约。",
+            "id": "EXP-003-03",
+            "matcher": "equals",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "无结果集筛选对照成功返回分页和结果结构。",
+            "id": "EXP-003-06",
+            "matcher": "equals",
+            "source_ref": "TF-005",
+            "type": "deterministic"
+          },
+          {
+            "description": "清理后无测试指标、筛选器或元数据残留。",
+            "id": "EXP-003-07",
+            "matcher": "equals",
+            "source_ref": "TF-006",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-003-BACKEND",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-003"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-A08-003",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-003",
+          "RULE-SINGLE-METRIC",
+          "RULE-I18N-RESULT-SET",
+          "TF-005",
+          "TF-006",
+          "TF-007",
+          "TF-008",
+          "FND-003"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "结果集筛选名称解析优先级、全部名称参数与本地化"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "四种指标类型均返回结果集筛选专用错误。",
+            "id": "EXP-003-01",
+            "matcher": "all_equal",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "中文最终消息精确替换实际指标名称。",
+            "id": "EXP-003-04",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "英文最终消息使用普通英文双引号并精确替换实际指标名称。",
+            "id": "EXP-003-05",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-003-CONTRACT",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-003"
+        ],
+        "layer": "contract",
+        "parent_case_id": "TC-A08-003",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-003",
+          "RULE-SINGLE-METRIC",
+          "RULE-I18N-RESULT-SET",
+          "TF-005",
+          "TF-006",
+          "TF-007",
+          "TF-008",
+          "FND-003"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "结果集筛选名称解析优先级、全部名称参数与本地化"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "4/3、3/4、3/3 三行均逐行满足结构化期望，数量本身不触发多关联原因。",
+            "id": "EXP-004-04",
+            "matcher": "equals",
+            "source_ref": "TF-010",
+            "type": "deterministic"
+          },
+          {
+            "description": "原关系成功时接口成功并返回分页、行数据和既有结果结构。",
+            "id": "EXP-004-05",
+            "matcher": "equals",
+            "source_ref": "RULE-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "成功响应与版本化变更前证据逐字段一致。",
+            "id": "EXP-004-06",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-MULTI-RELATION",
+            "type": "human_review"
+          },
+          {
+            "description": "清理后关系路径、元数据和故障注入无残留。",
+            "id": "EXP-004-07",
+            "matcher": "equals",
+            "source_ref": "TF-011",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-004-BACKEND",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-004"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-A08-004",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-004",
+          "RULE-MULTI-RELATION",
+          "RULE-I18N-MULTI-RELATION",
+          "TF-009",
+          "TF-010",
+          "TF-011",
+          "FND-004"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "多关联结构矩阵、失败映射与成功关系回归"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "正向失败行返回多关联专用错误。",
+            "id": "EXP-004-01",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "中文消息精确匹配批准模板。",
+            "id": "EXP-004-02",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "英文消息精确匹配批准模板。",
+            "id": "EXP-004-03",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-004-CONTRACT",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-004"
+        ],
+        "layer": "contract",
+        "parent_case_id": "TC-A08-004",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-004",
+          "RULE-MULTI-RELATION",
+          "RULE-I18N-MULTI-RELATION",
+          "TF-009",
+          "TF-010",
+          "TF-011",
+          "FND-004"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "多关联结构矩阵、失败映射与成功关系回归"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "测试数据没有工单主题、业务范围或稳定标识白名单过滤。",
+            "id": "EXP-005-04",
+            "matcher": "equals",
+            "source_ref": "RULE-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "四类非关系异常分别与其版本化变更前响应逐字段一致。",
+            "id": "EXP-005-05",
+            "matcher": "manual_confirmation",
+            "source_ref": "TF-011",
+            "type": "human_review"
+          },
+          {
+            "description": "四类非关系异常均不映射为动态关联专用错误。",
+            "id": "EXP-005-06",
+            "matcher": "equals",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "清理后动态关联夹具和故障注入无残留。",
+            "id": "EXP-005-07",
+            "matcher": "equals",
+            "source_ref": "TF-011",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-005-BACKEND",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-005"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-A08-005",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-005",
+          "RULE-DYNAMIC-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION",
+          "TF-011"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "what 与 what-list 动态关联全范围判定及异常透传"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "所有实际 what 和 what-list 对象及字段范围均返回动态关联专用错误。",
+            "id": "EXP-005-01",
+            "matcher": "all_equal",
+            "source_ref": "RULE-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "中文消息精确匹配批准模板。",
+            "id": "EXP-005-02",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "英文消息精确匹配批准模板。",
+            "id": "EXP-005-03",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-005-CONTRACT",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-005"
+        ],
+        "layer": "contract",
+        "parent_case_id": "TC-A08-005",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-005",
+          "RULE-DYNAMIC-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION",
+          "TF-011"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "what 与 what-list 动态关联全范围判定及异常透传"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "历史统计图和历史拼表的四类目标场景逐行、逐语言精确返回对应 code、key、实际参数和渲染后消息。",
+            "id": "EXP-006-01",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "正常历史响应包含分页、结果行和已有明细字段展示能力。",
+            "id": "EXP-006-03",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-006-CONTRACT",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-006"
+        ],
+        "layer": "contract",
+        "parent_case_id": "TC-A08-006",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-006",
+          "RULE-HISTORICAL-COMPATIBILITY",
+          "RULE-PERMISSION-PRIORITY",
+          "TF-011",
+          "TF-012",
+          "TF-013",
+          "FND-007"
+        ],
+        "steps_count": 6,
+        "test_data_present": true,
+        "title": "历史统计图与拼表、正常明细及非目标契约回归"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "正常历史查看明细成功且不返回四个新增限制错误码。",
+            "id": "EXP-006-02",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "正常历史响应与版本化变更前证据逐字段一致。",
+            "id": "EXP-006-04",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "human_review"
+          },
+          {
+            "description": "每类非目标异常与其独立版本化基线逐字段一致。",
+            "id": "EXP-006-05",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "human_review"
+          },
+          {
+            "description": "权限响应不泄露指标名且不被目标专用错误覆盖。",
+            "id": "EXP-006-06",
+            "matcher": "equals",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "历史原始配置未迁移或改写，临时副本和故障注入已清除。",
+            "id": "EXP-006-07",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-006-E2E",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-006"
+        ],
+        "layer": "e2e",
+        "parent_case_id": "TC-A08-006",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-006",
+          "RULE-HISTORICAL-COMPATIBILITY",
+          "RULE-PERMISSION-PRIORITY",
+          "TF-011",
+          "TF-012",
+          "TF-013",
+          "FND-007"
+        ],
+        "steps_count": 6,
+        "test_data_present": true,
+        "title": "历史统计图与拼表、正常明细及非目标契约回归"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "同一场景四入口的后端原因、错误码、错误 key、参数和当前语言消息一致。",
+            "id": "EXP-007-01",
+            "matcher": "all_equal",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "deterministic"
+          },
+          {
+            "description": "四入口可见消息与各自真实后端消息一致。",
+            "id": "EXP-007-02",
+            "matcher": "all_equal",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "deterministic"
+          },
+          {
+            "description": "移动端与 Web 的运行时路由、后端接口和请求参数语义等价。",
+            "id": "EXP-007-03",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "human_review"
+          },
+          {
+            "description": "自定义维度四入口中英文契约精确匹配批准值。",
+            "id": "EXP-007-04A",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "结果集筛选按 locale 在四入口分别使用该语言实际参数并精确渲染消息。",
+            "id": "EXP-007-04B",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "多关联四入口中英文契约精确匹配批准值。",
+            "id": "EXP-007-04C",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "动态关联四入口中英文契约精确匹配批准值。",
+            "id": "EXP-007-04D",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "正常配置四入口均成功，包含分页、结果行和已有明细字段。",
+            "id": "EXP-007-05",
+            "matcher": "all_equal",
+            "source_ref": "REQ-007",
+            "type": "deterministic"
+          },
+          {
+            "description": "清理后四入口测试资源、会话覆盖和缓存无残留。",
+            "id": "EXP-007-06",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "human_review"
+          }
+        ],
+        "id": "TC-A08-007-E2E",
+        "inherits_parent": {
+          "cleanup": true,
+          "cleanup_oracle": true,
+          "execution_policy": true,
+          "expected_oracle_ids": true,
+          "preconditions": true,
+          "source_refs": true,
+          "test_data": true
+        },
+        "intent_ids": [
+          "INT-006",
+          "INT-007"
+        ],
+        "layer": "e2e",
+        "parent_case_id": "TC-A08-007",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-006",
+          "REQ-007",
+          "RULE-ENTRY-CONSISTENCY",
+          "RULE-I18N-CUSTOM-DIMENSION",
+          "RULE-I18N-RESULT-SET",
+          "RULE-I18N-MULTI-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION",
+          "TF-013",
+          "FND-006"
+        ],
+        "steps_count": 6,
+        "test_data_present": true,
+        "title": "Web 与移动端统计图、拼表四入口一致性"
+      }
+    ],
+    "oracle_rule_library": {
+      "allowed_oracle_types": [
+        "deterministic",
+        "human_review"
+      ],
+      "blocking_issue_categories": [
+        "schema",
+        "oracle",
+        "coverage",
+        "test_data",
+        "cleanup",
+        "risk_strategy",
+        "upstream_conflict"
+      ],
+      "case_contract": {
+        "execution_policy_allowed_modes_min_items": 1,
+        "expected_min_items": 1,
+        "steps_min_items": 1,
+        "test_data_type": "object"
+      },
+      "code_coverage_reviewed": false,
+      "coverage_statuses": [
+        "covered",
+        "partial",
+        "missing",
+        "not_applicable"
+      ],
+      "forbidden_inputs": [
+        "evaluation_oracle_registry",
+        "golden_answer",
+        "expected_agent_output"
+      ],
+      "manual_oracle": {
+        "matcher": "manual_confirmation",
+        "required_allowed_mode": "manual"
+      },
+      "purpose": "Generic Test Case IR Oracle and test-defense review rules; contains no evaluation answers",
+      "required_coverage_dimensions": [
+        "requirements",
+        "acceptance_criteria",
+        "business_rules",
+        "risk_layers",
+        "happy_path",
+        "exceptions",
+        "boundaries",
+        "permissions",
+        "state_transitions",
+        "data_consistency",
+        "compatibility",
+        "localization",
+        "entry_client_consistency",
+        "cleanup_isolation"
+      ],
+      "required_oracle_fields": [
+        "type",
+        "observation_point",
+        "matcher",
+        "source_ref"
+      ],
+      "routing": {
+        "cleanup": "A08",
+        "coverage": "A08",
+        "oracle": "A08",
+        "risk_strategy": "A07",
+        "schema": "A08",
+        "test_data": "A08",
+        "upstream_conflict": "A06/G01"
+      },
+      "schema_version": "oracle-rule-library/1.0"
+    },
+    "parent_test_cases": [
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "每次受限响应的消息数恰好为一。",
+            "id": "EXP-001-01",
+            "matcher": "equals",
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          },
+          {
+            "description": "返回的 code-message 对属于本次实际命中的合法集合。",
+            "id": "EXP-001-02",
+            "matcher": "member_of",
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          },
+          {
+            "description": "响应中不存在由多个原因拼接产生的额外消息。",
+            "id": "EXP-001-03",
+            "matcher": "equals",
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          },
+          {
+            "description": "权限响应与版本化变更前证据逐字段一致。",
+            "id": "EXP-001-04",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "human_review"
+          },
+          {
+            "description": "权限响应正文和参数不泄露指标展示名，且不出现四个专用错误码。",
+            "id": "EXP-001-05",
+            "matcher": "equals",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "受限调用不进入明细查询。",
+            "id": "EXP-001-06",
+            "matcher": "equals",
+            "source_ref": "REQ-001",
+            "type": "deterministic"
+          },
+          {
+            "description": "清理后唯一命名空间内无临时资源和故障注入。",
+            "id": "EXP-001-07",
+            "matcher": "equals",
+            "source_ref": "TF-011",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-001",
+        "intent_ids": [
+          "INT-001"
+        ],
+        "layer": "backend",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001",
+          "RULE-MULTIPLE-REASONS",
+          "RULE-PERMISSION-PRIORITY",
+          "TF-011",
+          "TF-014"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "受限原因选择、多原因单提示与权限行为"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "三位置均返回专用错误码。",
+            "id": "EXP-002-01",
+            "matcher": "all_equal",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "错误 key 和参数精确匹配批准契约。",
+            "id": "EXP-002-02",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "中文文案精确匹配批准模板。",
+            "id": "EXP-002-03",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "英文文案精确匹配批准模板。",
+            "id": "EXP-002-04",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "每行进入原有对应分支，分支先后轨迹与版本化变更前证据一致。",
+            "id": "EXP-002-05",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-CUSTOM-DIMENSION",
+            "type": "human_review"
+          },
+          {
+            "description": "时分筛选响应与版本化变更前证据逐字段一致。",
+            "id": "EXP-002-06",
+            "matcher": "manual_confirmation",
+            "source_ref": "TF-004",
+            "type": "human_review"
+          },
+          {
+            "description": "普通维度对照成功且返回分页和明细结果结构。",
+            "id": "EXP-002-07",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "清理后命名空间无残留。",
+            "id": "EXP-002-08",
+            "matcher": "equals",
+            "source_ref": "TF-004",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-002",
+        "intent_ids": [
+          "INT-002"
+        ],
+        "layer": "contract",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-002",
+          "RULE-CUSTOM-DIMENSION",
+          "RULE-I18N-CUSTOM-DIMENSION",
+          "TF-004",
+          "FND-002"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "自定义维度三位置、检测顺序及时分筛选兼容"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "四种指标类型均返回结果集筛选专用错误。",
+            "id": "EXP-003-01",
+            "matcher": "all_equal",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "来源冲突时优先使用 Filter.fieldName。",
+            "id": "EXP-003-02A",
+            "matcher": "equals",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "Filter.fieldName 缺失时使用 fieldId 元数据名称。",
+            "id": "EXP-003-02B",
+            "matcher": "equals",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "前两级缺失时使用当前语言动态名称。",
+            "id": "EXP-003-02C",
+            "matcher": "equals",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "多个受限指标的全部非空名称进入参数契约。",
+            "id": "EXP-003-03",
+            "matcher": "equals",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "中文最终消息精确替换实际指标名称。",
+            "id": "EXP-003-04",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "英文最终消息使用普通英文双引号并精确替换实际指标名称。",
+            "id": "EXP-003-05",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "无结果集筛选对照成功返回分页和结果结构。",
+            "id": "EXP-003-06",
+            "matcher": "equals",
+            "source_ref": "TF-005",
+            "type": "deterministic"
+          },
+          {
+            "description": "清理后无测试指标、筛选器或元数据残留。",
+            "id": "EXP-003-07",
+            "matcher": "equals",
+            "source_ref": "TF-006",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-003",
+        "intent_ids": [
+          "INT-003"
+        ],
+        "layer": "contract",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-003",
+          "RULE-SINGLE-METRIC",
+          "RULE-I18N-RESULT-SET",
+          "TF-005",
+          "TF-006",
+          "TF-007",
+          "TF-008",
+          "FND-003"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "结果集筛选名称解析优先级、全部名称参数与本地化"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "正向失败行返回多关联专用错误。",
+            "id": "EXP-004-01",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "中文消息精确匹配批准模板。",
+            "id": "EXP-004-02",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "英文消息精确匹配批准模板。",
+            "id": "EXP-004-03",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "4/3、3/4、3/3 三行均逐行满足结构化期望，数量本身不触发多关联原因。",
+            "id": "EXP-004-04",
+            "matcher": "equals",
+            "source_ref": "TF-010",
+            "type": "deterministic"
+          },
+          {
+            "description": "原关系成功时接口成功并返回分页、行数据和既有结果结构。",
+            "id": "EXP-004-05",
+            "matcher": "equals",
+            "source_ref": "RULE-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "成功响应与版本化变更前证据逐字段一致。",
+            "id": "EXP-004-06",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-MULTI-RELATION",
+            "type": "human_review"
+          },
+          {
+            "description": "清理后关系路径、元数据和故障注入无残留。",
+            "id": "EXP-004-07",
+            "matcher": "equals",
+            "source_ref": "TF-011",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-004",
+        "intent_ids": [
+          "INT-004"
+        ],
+        "layer": "backend",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-004",
+          "RULE-MULTI-RELATION",
+          "RULE-I18N-MULTI-RELATION",
+          "TF-009",
+          "TF-010",
+          "TF-011",
+          "FND-004"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "多关联结构矩阵、失败映射与成功关系回归"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "所有实际 what 和 what-list 对象及字段范围均返回动态关联专用错误。",
+            "id": "EXP-005-01",
+            "matcher": "all_equal",
+            "source_ref": "RULE-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "中文消息精确匹配批准模板。",
+            "id": "EXP-005-02",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "英文消息精确匹配批准模板。",
+            "id": "EXP-005-03",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "测试数据没有工单主题、业务范围或稳定标识白名单过滤。",
+            "id": "EXP-005-04",
+            "matcher": "equals",
+            "source_ref": "RULE-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "四类非关系异常分别与其版本化变更前响应逐字段一致。",
+            "id": "EXP-005-05",
+            "matcher": "manual_confirmation",
+            "source_ref": "TF-011",
+            "type": "human_review"
+          },
+          {
+            "description": "四类非关系异常均不映射为动态关联专用错误。",
+            "id": "EXP-005-06",
+            "matcher": "equals",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "清理后动态关联夹具和故障注入无残留。",
+            "id": "EXP-005-07",
+            "matcher": "equals",
+            "source_ref": "TF-011",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-005",
+        "intent_ids": [
+          "INT-005"
+        ],
+        "layer": "backend",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [
+          "backend",
+          "contract"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-005",
+          "RULE-DYNAMIC-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION",
+          "TF-011"
+        ],
+        "steps_count": 4,
+        "test_data_present": true,
+        "title": "what 与 what-list 动态关联全范围判定及异常透传"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "历史统计图和历史拼表的四类目标场景逐行、逐语言精确返回对应 code、key、实际参数和渲染后消息。",
+            "id": "EXP-006-01",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "正常历史查看明细成功且不返回四个新增限制错误码。",
+            "id": "EXP-006-02",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "正常历史响应包含分页、结果行和已有明细字段展示能力。",
+            "id": "EXP-006-03",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "正常历史响应与版本化变更前证据逐字段一致。",
+            "id": "EXP-006-04",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "human_review"
+          },
+          {
+            "description": "每类非目标异常与其独立版本化基线逐字段一致。",
+            "id": "EXP-006-05",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "human_review"
+          },
+          {
+            "description": "权限响应不泄露指标名且不被目标专用错误覆盖。",
+            "id": "EXP-006-06",
+            "matcher": "equals",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "历史原始配置未迁移或改写，临时副本和故障注入已清除。",
+            "id": "EXP-006-07",
+            "matcher": "equals",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-A08-006",
+        "intent_ids": [
+          "INT-006"
+        ],
+        "layer": "contract",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [
+          "contract",
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-006",
+          "RULE-HISTORICAL-COMPATIBILITY",
+          "RULE-PERMISSION-PRIORITY",
+          "TF-011",
+          "TF-012",
+          "TF-013",
+          "FND-007"
+        ],
+        "steps_count": 6,
+        "test_data_present": true,
+        "title": "历史统计图与拼表、正常明细及非目标契约回归"
+      },
+      {
+        "cleanup_oracle_present": true,
+        "cleanup_present": true,
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ]
+        },
+        "expected": [
+          {
+            "description": "同一场景四入口的后端原因、错误码、错误 key、参数和当前语言消息一致。",
+            "id": "EXP-007-01",
+            "matcher": "all_equal",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "deterministic"
+          },
+          {
+            "description": "四入口可见消息与各自真实后端消息一致。",
+            "id": "EXP-007-02",
+            "matcher": "all_equal",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "deterministic"
+          },
+          {
+            "description": "移动端与 Web 的运行时路由、后端接口和请求参数语义等价。",
+            "id": "EXP-007-03",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "human_review"
+          },
+          {
+            "description": "自定义维度四入口中英文契约精确匹配批准值。",
+            "id": "EXP-007-04A",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "结果集筛选按 locale 在四入口分别使用该语言实际参数并精确渲染消息。",
+            "id": "EXP-007-04B",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "多关联四入口中英文契约精确匹配批准值。",
+            "id": "EXP-007-04C",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "动态关联四入口中英文契约精确匹配批准值。",
+            "id": "EXP-007-04D",
+            "matcher": "equals",
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "正常配置四入口均成功，包含分页、结果行和已有明细字段。",
+            "id": "EXP-007-05",
+            "matcher": "all_equal",
+            "source_ref": "REQ-007",
+            "type": "deterministic"
+          },
+          {
+            "description": "清理后四入口测试资源、会话覆盖和缓存无残留。",
+            "id": "EXP-007-06",
+            "matcher": "manual_confirmation",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "human_review"
+          }
+        ],
+        "id": "TC-A08-007",
+        "intent_ids": [
+          "INT-006",
+          "INT-007"
+        ],
+        "layer": "e2e",
+        "preconditions_count": 2,
+        "priority": "P0",
+        "required_layers": [
+          "e2e"
+        ],
+        "risk": "critical",
+        "source_refs": [
+          "REQ-006",
+          "REQ-007",
+          "RULE-ENTRY-CONSISTENCY",
+          "RULE-I18N-CUSTOM-DIMENSION",
+          "RULE-I18N-RESULT-SET",
+          "RULE-I18N-MULTI-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION",
+          "TF-013",
+          "FND-006"
+        ],
+        "steps_count": 6,
+        "test_data_present": true,
+        "title": "Web 与移动端统计图、拼表四入口一致性"
+      }
+    ]
+  },
+  "bundle_hash": "sha256:6a42e7c877d9a4f6b188590699fbbc3323a607b4b494cb791403c26ed07971c4",
+  "integrity": {
+    "business_repository_write_allowed": false,
+    "credentials_embedded": false,
+    "evaluation_oracle_registry_included": false,
+    "external_side_effects_allowed": false
+  },
+  "output_contract": "split-review/1.0",
+  "profile_id": "A11",
+  "profile_version": "1.0.0",
+  "schema_version": "multica-agent-input/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:ed485b244b7b1cd83bfc70ff62b8a2aae1c1b50cd80f651b5942d7071c5aac87",
+      "artifact_id": "a08-test-design-ir"
+    },
+    {
+      "artifact_hash": "sha256:cabe7c7aea27dee70a33175026054d776522b6a21e5a3106c9cbf7315e4aa980",
+      "artifact_id": "n25-compiled-test-cases"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-01"
+}

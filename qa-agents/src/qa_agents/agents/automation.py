@@ -367,17 +367,20 @@ class DomainAutomationAgent(BaseAgent):
             case_skills = [str(item) for item in authorization.get("required_skills", [])] if isinstance(authorization, Mapping) else []
             used_skills.extend(case_skills)
             allowed_modes = set(case.get("execution_policy", {}).get("allowed_modes", []))
-            expected_ids = [str(item.get("id", "")) for item in case.get("expected", [])]
-            manual_oracle = any(
-                item.get("oracle", {}).get("matcher") == "manual_confirmation"
-                for item in case.get("expected", [])
-            )
+            automated_expected = [
+                item for item in case.get("expected", [])
+                if item.get("oracle", {}).get("matcher") != "manual_confirmation"
+            ]
+            expected_ids = [str(item.get("id", "")) for item in automated_expected]
+            manual_expected_ids = [
+                str(item.get("id", "")) for item in case.get("expected", [])
+                if item.get("oracle", {}).get("matcher") == "manual_confirmation"
+            ]
             if (
                 case.get("layer") != self.profile.layer
                 or not case.get("automation_candidate")
                 or "automated" not in allowed_modes
                 or not expected_ids
-                or manual_oracle
             ):
                 rejected.append(
                     {"case_id": case_id, "reason_code": "case_not_machine_executable"}
@@ -396,7 +399,7 @@ class DomainAutomationAgent(BaseAgent):
                 "preconditions": list(case.get("preconditions", [])),
                 "test_data": dict(case.get("test_data", {})),
                 "steps": list(case.get("steps", [])),
-                "expected": list(case.get("expected", [])),
+                "expected": automated_expected,
                 "cleanup": list(case.get("cleanup", [])),
             }
             for lifecycle_key in (
@@ -425,7 +428,12 @@ class DomainAutomationAgent(BaseAgent):
                 {"path": path, "content": content, "content_hash": content_hash(content)}
             )
             mappings.append(
-                {"case_id": case_id, "expected_ids": expected_ids, "candidate_path": path}
+                {
+                    "case_id": case_id,
+                    "expected_ids": expected_ids,
+                    "manual_expected_ids": manual_expected_ids,
+                    "candidate_path": path,
+                }
             )
 
         if not candidates:
@@ -555,9 +563,20 @@ class DomainAutomationReviewAgent(BaseAgent):
                     {"issue_code": "candidate_file_missing", "case_id": case_id, "route_to": route}
                 )
                 continue
-            expected_ids = {str(item.get("id")) for item in case.get("expected", [])}
+            all_expected_ids = {str(item.get("id")) for item in case.get("expected", [])}
+            expected_ids = {
+                str(item.get("id")) for item in case.get("expected", [])
+                if item.get("oracle", {}).get("matcher") != "manual_confirmation"
+            }
+            manual_expected_ids = all_expected_ids - expected_ids
             mapped_ids = set(mapping.get("expected_ids", []))
-            if expected_ids != mapped_ids:
+            mapped_manual_ids = set(mapping.get("manual_expected_ids", []))
+            if (
+                expected_ids != mapped_ids
+                or manual_expected_ids != mapped_manual_ids
+                or mapped_ids & mapped_manual_ids
+                or mapped_ids | mapped_manual_ids != all_expected_ids
+            ):
                 issues.append(
                     {
                         "issue_code": "oracle_mapping_incomplete",

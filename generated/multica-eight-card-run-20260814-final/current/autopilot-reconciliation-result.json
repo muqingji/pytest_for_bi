@@ -2,11 +2,11 @@
   "artifact_node_count": 7,
   "changed": false,
   "open_action_count": 1,
-  "result_hash": "sha256:9753c12c023c6eb8d91ad20d974cf937a1ff5ab035a8fa409fc1e6ffc0ae7e18",
-  "revision": 10,
+  "result_hash": "sha256:140d1c993eb6fbd6a366d5987088e3ca1cf7b9ca7f8e9af920d8855a48d8fb16",
+  "revision": 11,
   "schema_version": "autopilot-reconciliation-result/1.0",
-  "spec_hash": "sha256:14ad48a3a3eee3f084657a5aa6d6638d65af66b3ec6be34e4e2c48a0edefc2e7",
-  "spec_path": "../generated/multica-eight-card-run-20260814-final/current/workflow-center-spec.json",
+  "spec_hash": "sha256:18d8e6d9becc1b065a10bd29861ba1e99b3725b4e6c4d2d66a95acad0a1cd75f",
+  "spec_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260814-final/current/workflow-center-spec.json",
   "workflow_id": "REQ-DETAIL-DRILL-I18N",
   "workflow_run_id": "detail-drill-i18n-8card-20260814-final-01"
 }

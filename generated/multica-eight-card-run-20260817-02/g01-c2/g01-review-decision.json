@@ -1,0 +1,273 @@
+{
+  "actor": {
+    "id": "muqj11262",
+    "multica_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "role": "qa_owner",
+    "type": "human"
+  },
+  "decided_at": "2026-08-17T08:11:12+00:00",
+  "decision": "request_changes",
+  "decision_hash": "sha256:cf11c908ae0d9b506053262fbced7955855e99b861dbf0c5141a7260b803ec60",
+  "gate_id": "G01",
+  "multica_event": {
+    "comment_id": "5582d2c5-76db-4648-a10e-6967552f7b4b",
+    "event_id": "sha256:02f4cb512c295bb078ad2233c8752763d0318ffa788c4a80f064e6d584b40ed4",
+    "issue_id": "bd0191c9-bc0a-48af-873f-4b2d1da22ef7",
+    "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46"
+  },
+  "reason": "存在未理解问题，自动回流 A06 重新对齐",
+  "request_hash": "sha256:4704368c411051837cee2081b919bff08d7db06398efc8438da11c5d3229d5cb",
+  "resolutions": [
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-001",
+      "owner": "QA Owner",
+      "rationale": "按当前实现即可，任意展示一个提示语"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-002",
+      "owner": "QA Owner",
+      "rationale": "显示全部的指标"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-003",
+      "owner": "QA Owner",
+      "rationale": "what/whatlist是两种字段类型，都需要判断，这种数据怎么构造，你可以去乐享、代码库等实际去查询"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-004",
+      "owner": "QA Owner",
+      "rationale": "没有这种场景"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-005",
+      "owner": "QA Owner",
+      "rationale": "下面是对应的文案：`  \n\n\n1. 自定义维度做维度/数据范围查看明细时，提示：“维度或数据范围中使用了自定义维度字段，暂不支持查看明细”（Custom dimension fields are used in the dimension or data range. Details view is not supported.）；\n2. 图数据范围中使用了普通指标/聚合指标/计算指标/同环比指标，查看明细时，提示：“统计图查询明细暂不支持按结果集的统计指标筛选”改为“统计图数据范围中设置了「指标名称」按结果集筛选，不支持查看明细”（The chart data range uses \"Metric Name\" with result set filtering. Details view is not supported.）\n3. 统计指标使用多关联关系，提示：“基于多关联关系创建的统计指标，暂不支持查看明细”（Metrics created based on multiple relationships do not support Details view.）\n4. 特殊what/whatlist类型的查看明细，提示：“基于动态关联关系创建的统计指标，不支持查看明细”（Metrics created based on dynamic relationships do not support Details view.）"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A02:AMB-006",
+      "owner": "QA Owner",
+      "rationale": "移动端与 web端展示效果一致"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "return_to_a06",
+      "issue_id": "A03:BI-001",
+      "owner": "A06 需求与变更对齐",
+      "rationale": "没看明白"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-002",
+      "owner": "QA Owner",
+      "rationale": "预期所有提示文案中都要去掉“统计图”这三个字` ，这拼表和统计图就能共用一个文案"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A03:BI-003",
+      "owner": "QA Owner",
+      "rationale": "这个你不用关注"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:ALN-F001",
+      "owner": "QA Owner",
+      "rationale": "已在上面回复"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:ALN-F002",
+      "owner": "QA Owner",
+      "rationale": "不用关注"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "return_to_a06",
+      "issue_id": "A06:ALN-F003",
+      "owner": "A06 需求与变更对齐",
+      "rationale": "没看明白"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:ALN-F004",
+      "owner": "QA Owner",
+      "rationale": "这个处理是通用的，处理完`业务流程、业务流程任务、服务记录都会生效"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:ALN-F005",
+      "owner": "QA Owner",
+      "rationale": "改动一处，统计图、拼表、移动端都会生效"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:ALN-F006",
+      "owner": "QA Owner",
+      "rationale": "应该是其他需求改造，先不用关注"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:ALN-F007",
+      "owner": "QA Owner",
+      "rationale": "重复问题，已再上面解答"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:ALN-F008",
+      "owner": "QA Owner",
+      "rationale": "重复问题，已在上面解答"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:ALN-F009",
+      "owner": "QA Owner",
+      "rationale": "重复问题，已在上面解答"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "return_to_a06",
+      "issue_id": "A06:ALN-F010",
+      "owner": "A06 需求与变更对齐",
+      "rationale": "没看明白"
+    }
+  ],
+  "schema_version": "scope-review-decision/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "test_rules": "按逐项回复冻结的口径执行测试设计",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

@@ -1,0 +1,27 @@
+{
+  "allowed_inputs": {
+    "frozen_requirement": {
+      "content": "6. 下钻查看明细提示文案优化\n            1. 背景和现状描述：目前针对统计指标会存在不支持查看明细的场景，但是统一的提示都是“当前场景暂不支持查看明细”，导致用户不太理解，体验很不好\n            2. 预期效果：针对不支持查看明细的场景均按照严格的对应场景进行提示，如：\n                1. 自定义维度场景：维度或数据范围中使用了自定义维度字段，不支持查看明细，需要给提示\n                2. 统计指标作数据范围：使用统计指标作数据范围的时候，不支持查看明细，需要给出“数据范围中存在“指标名称”，暂不支持查看明细”\n                3. 统计指标使用多关联关系：统计指标使用的是多关联关系创建的，也不支持查看明细，也需要给对应提示\n                4. 特殊what/whatlist类型的查看明细：基于业务流程、业务流程任务、服务记录的特殊what类型的关联关系创建的统计指标均未支持查看明细（工单主题下基于业务流程、业务流程任务、服务记录的任意字段新建指标），需要给出明确提示\n            3. 优化逻辑/交互说明：\n                1. 自定义维度做维度/数据范围查看明细时，提示：“维度或数据范围中使用了自定义维度字段，暂不支持查看明细”；\n                2. 图数据范围中使用了普通指标/聚合指标/计算指标/同环比指标，查看明细时，提示：“统计图查询明细暂不支持按结果集的统计指标筛选”改为“统计图数据范围中设置了「指标名称」按结果集筛选，不支持查看明细”\n                3. 统计指标使用多关联关系，提示：“基于多关联关系创建的统计指标，暂不支持查看明细”\n                4. 特殊what/whatlist类型的查看明细，提示：“基于动态关联关系创建的统计指标，不支持查看明细”\n            4. 影响范围：统计图查看明细、拼表查看明细\n            5. 移动端同web端逻辑\n",
+      "content_hash": "sha256:88c0592ba1c2baf4e009a523a83c0fd8cddbb7855da1c4ae8309a16c586708fe",
+      "source_ref": {
+        "id": "stories/01-【深圳市昊一源】下钻查看明细提示文案优化/product/prd.md",
+        "location": "lines:159-172",
+        "type": "requirement"
+      }
+    }
+  },
+  "bundle_hash": "sha256:76d2c62ff702b3f0cc5faae46339ccdaae1f7e583bb468769aaba9b5a98b92cc",
+  "integrity": {
+    "business_repository_write_allowed": false,
+    "credentials_embedded": false,
+    "external_side_effects_allowed": false,
+    "oracle_included_in_agent_input": false
+  },
+  "output_contract": "requirement-analysis/1.0",
+  "profile_id": "A02",
+  "profile_version": "1.0.0",
+  "schema_version": "multica-agent-input/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

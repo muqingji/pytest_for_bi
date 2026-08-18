@@ -171,7 +171,9 @@ def _artifact_state(artifact: Mapping[str, Any]) -> str:
         if isinstance(item, Mapping) and item.get("route_to")
     }
     blocking_questions = artifact.get("blocking_questions", [])
-    if blocking_questions or "human" in routes or not routes:
+    if (
+        isinstance(payload, Mapping) and payload.get("next_node") == "human"
+    ) or blocking_questions or "human" in routes or not routes:
         return "waiting_human"
     return "blocked"
 
@@ -717,12 +719,29 @@ def initialize_autopilot(
 
 def _artifact_summary(artifact: Mapping[str, Any]) -> str:
     payload = artifact.get("payload", {})
-    for field in ("decision", "summary", "status"):
+    for field in ("decision", "summary"):
         value = payload.get(field) if isinstance(payload, Mapping) else None
         if isinstance(value, str) and value.strip():
             return value.strip()
         if isinstance(value, Mapping):
             return ", ".join(f"{key}={item}" for key, item in sorted(value.items()))[:500]
+    status = str(payload.get("status") or "").strip()
+    if status == "needs_human" and isinstance(payload, Mapping):
+        issues = payload.get("issues")
+        if isinstance(issues, list):
+            codes = [
+                str(item.get("id") or item.get("issue_code") or "").strip()
+                for item in issues
+                if isinstance(item, Mapping)
+            ]
+            codes = [code for code in codes if code]
+            if codes:
+                names = "、".join(codes[:4])
+                if len(codes) > 4:
+                    names += f" 等 {len(codes)} 项"
+                return f"发现 {len(codes)} 个阻塞问题需人工定向修正（{names}）"
+    if status:
+        return status
     return f"Artifact {artifact['artifact_id']} accepted"
 
 
@@ -777,6 +796,12 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "confirm_action": confirm_action.strip(),
                 "category": category.strip(),
                 "severity": str(item.get("severity") or "").strip(),
+                "issue_code": str(item.get("issue_code") or "").strip(),
+                "human_title": str(item.get("human_title") or "").strip(),
+                "plain_summary": str(item.get("plain_summary") or "").strip(),
+                "case_id": str(item.get("case_id") or "").strip(),
+                "expected_id": str(item.get("expected_id") or "").strip(),
+                "recommendation": str(item.get("recommendation") or "").strip(),
                 "requirement_ids": (
                     [str(value) for value in requirement_ids if str(value).strip()]
                     if isinstance(requirement_ids, list)
@@ -827,6 +852,7 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
                 or item.get("summary")
                 or (detail.get("summary") if isinstance(detail, Mapping) else "")
                 or (detail.get("message") if isinstance(detail, Mapping) else "")
+                or item.get("message")
             ).strip(),
             confirm_action=str(item.get("confirm_action") or "").strip(),
             category=str(item.get("category") or "").strip(),
@@ -994,9 +1020,9 @@ def reconcile_autopilot(
                 item["artifact_id"] = artifact["artifact_id"]
                 item["artifact_hash"] = artifact["artifact_hash"]
                 item["artifact_path"] = artifact["_path"]
-                if node_id == "A06" and item["state"] == "waiting_human":
-                    # A06 的待确认项统一并入 G01 范围与口径审核，一次审批；
-                    # A06 自身不再生成独立人工 action，避免二次审核。
+                if node_id in {"A02", "A03", "A06"} and item["state"] == "waiting_human":
+                    # Stage 1 的待确认项统一并入 G01 范围与口径审核，一次审批；
+                    # 上游分析节点不生成独立人工 action，避免阻断 A06 和重复审核。
                     item["state"] = "completed"
                     item["result_summary"] = "发现待确认项，已并入 G01 汇总审批"
                 if item["state"] == "waiting_human":

@@ -1,0 +1,64 @@
+{
+  "created_at": "2026-08-17T04:59:54+00:00",
+  "decision": "pending",
+  "decision_contract": "test-case-ir-review-decision/1.0",
+  "gate_id": "G02",
+  "multica_control": {
+    "assignee_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "decision_statuses": {
+      "blocked": "request_changes",
+      "cancelled": "rejected",
+      "done": "approved"
+    },
+    "identity_evidence_mode": "assigned_member_pilot",
+    "initial_status": "in_review",
+    "project_id": "2de9ecac-a535-4208-a929-2ec55bed2352",
+    "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46"
+  },
+  "outcome_contract": "test-case-ir-review-outcome/1.0",
+  "request_hash": "sha256:fdfb13b4ab13208b11130e3d56b9fc53869ea37a0dda5c29fd7ae8078b2ed538",
+  "review_key": "sha256:9368576dcc4359e6da681d11a48a43465cca3001b3d9263e7c086f137d30262f",
+  "review_policy": {
+    "allowed_actor_ids": [
+      "muqj11262"
+    ],
+    "allowed_multica_member_ids": [
+      "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54"
+    ],
+    "allowed_roles": [
+      "qa_owner"
+    ],
+    "approval_mode": "named_qa_owner_single_signoff",
+    "policy_hash": "sha256:e7eea965a046d632b6300907622e273470b39d302f27fd7ff64274809de9ee37",
+    "policy_scope": "pilot_test_design_only",
+    "production_release_authority": false,
+    "schema_version": "g02-review-policy/1.0",
+    "temporary_policy": true
+  },
+  "review_summary": {
+    "blocking_issue_count": 0,
+    "n04_valid": true,
+    "parent_case_count": 7,
+    "warning_count": 0,
+    "warnings": []
+  },
+  "schema_version": "test-case-ir-review-request/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "needs_human",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:ed485b244b7b1cd83bfc70ff62b8a2aae1c1b50cd80f651b5942d7071c5aac87",
+      "artifact_id": "a08-test-design-ir"
+    },
+    {
+      "artifact_hash": "sha256:13763e6b6f9e8821b429094eef32041ccffafefea48c838d907985a21fd4df74",
+      "artifact_id": "a09-oracle-coverage-review"
+    },
+    {
+      "artifact_hash": "sha256:a64f6e9a4b0e47e7c4c64013d4cc6e205a839a084d92bdd1ad3580e8ac855bdf",
+      "artifact_id": "n04-test-case-ir-validation"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-01"
+}

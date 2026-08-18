@@ -28,6 +28,23 @@ ADVICE_RECOMMENDATIONS = {"expand_selection", "keep_must_run", "request_human"}
 EXPANDED_SCOPE_RULE_ID = "A12-ADVICE-VALIDATED"
 
 
+def _asset_for_case(
+    assets: Mapping[str, Any], case_id: str
+) -> tuple[Any | None, bool]:
+    """Resolve an asset by canonical Case id or an explicit audited alias."""
+    if case_id in assets:
+        return assets[case_id], False
+    matches = [
+        asset
+        for asset in assets.values()
+        if isinstance(asset, Mapping)
+        and case_id in {str(alias) for alias in asset.get("case_aliases", [])}
+    ]
+    if len(matches) == 1:
+        return matches[0], False
+    return None, len(matches) > 1
+
+
 def _rule_matches(rule: Mapping[str, Any], case: Mapping[str, Any]) -> bool:
     case_id = str(case.get("id", ""))
     layer = str(case.get("layer", ""))
@@ -113,7 +130,27 @@ def select_cases(
             )
             continue
 
-        linked = assets.get(case_id)
+        linked, ambiguous = _asset_for_case(assets, case_id)
+        if ambiguous:
+            unresolved.append(
+                {
+                    "id": f"N26-U{len(unresolved) + 1:03d}",
+                    "case_id": case_id,
+                    "advisory_topic": "uncertain_asset_mapping",
+                    "reason_code": "uncertain_asset_mapping",
+                    "evidence": evidence,
+                    "uncertainty": "多个存量自动化资产声明了同一 Case 别名。",
+                }
+            )
+            selected.append(
+                {
+                    "case_id": case_id,
+                    "selection": "needs_human",
+                    "reason_code": "uncertain_asset_mapping",
+                    "evidence": evidence,
+                }
+            )
+            continue
         if linked is None:
             selected.append(
                 {
@@ -365,7 +402,9 @@ def compile_execution_plan(
     for item in selection.get("selected_cases", []):
         case_id = str(item["case_id"])
         case = cases_by_id[case_id]
-        asset = assets.get(case_id)
+        asset, ambiguous = _asset_for_case(assets, case_id)
+        if ambiguous:
+            asset = None
         test_level = str(case.get("test_level", "") or "").strip().lower()
         layer = str(case.get("layer", "")).strip().lower()
         if layer in deferred:

@@ -1,0 +1,150 @@
+[
+  {
+    "created_at": "2026-08-17T04:31:08.059903Z",
+    "input": {
+      "command": "/bin/zsh -lc 'multica issue get 8ef636de-987f-4058-97f0-a2a6894ec1fe --output json'"
+    },
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "seq": 1,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-17T04:31:08.062621Z",
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "output": "{\n  \"assignee_id\": \"83c08d9f-1f32-49c9-88c7-c8de3bf51869\",\n  \"assignee_type\": \"agent\",\n  \"attachments\": [\n    {\n      \"chat_message_id\": null,\n      \"chat_session_id\": null,\n      \"comment_id\": null,\n      \"content_type\": \"application/json\",\n      \"created_at\": \"2026-08-17T04:31:00Z\",\n      \"download_url\": \"/api/attachments/01a00dfc-b430-7c57-9e38-b18fc4d02f74/download\",\n      \"filename\": \"a08-input.json\",\n      \"id\": \"01a00dfc-b430-7c57-9e38-b18fc4d02f74\",\n      \"issue_id\": \"8ef636de-987f-4058-97f0-a2a6894ec1fe\",\n      \"markdown_url\": \"https://api-coding.firstshare.cn/api/attachments/01a00dfc-b430-7c57-9e38-b18fc4d02f74/download\",\n      \"size_bytes\": 109781,\n      \"uploader_id\": \"c2c6b9c6-4fb9-4439-a4a5-de4e93784c54\",\n      \"uploader_type\": \"member\",\n      \"url\": \"/uploads/workspaces/457d700f-6c27-4a59-871d-c2c56bca9f46/01a00dfc-b430-7c57-9e38-b18fc4d02f74.json\",\n      \"workspace_id\": \"457d700f-6c27-4a59-871d-c2c56bca9f46\"\n    }\n  ],\n  \"created_at\": \"2026-08-17T04:31:00Z\",\n  \"creator_id\": \"c2c6b9c6-4fb9-4439-a4a5-de4e93784c54\",\n  \"creator_type\": \"member\",\n  \"description\": null,\n  \"due_date\": null,\n  \"id\": \"8ef636de-987f-4058-97f0-a2a6894ec1fe\",\n  \"identifier\": \"QAA-292\",\n  \"labels\": [],\n  \"metadata\": {},\n  \"number\": 292,\n  \"parent_issue_id\": \"5024d85d-8142-4078-9bc6-d5788e3232df\",\n  \"position\": -4,\n  \"priority\": \"high\",\n  \"project_id\": \"2de9ecac-a535-4208-a929-2ec55bed2352\",\n  \"properties\": {},\n  \"stage\": 7,\n  \"start_date\": null,\n  \"status\": \"todo\",\n  \"title\": \"[detail-drill-i18n-8card-20260817-01] A08 修正#1\",\n  \"updated_at\": \"2026-08-17T04:31:00Z\",\n  \"workspace_id\": \"457d700f-6c27-4a59-871d-c2c56bca9f46\"\n}\n",
+    "seq": 2,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-17T04:31:12.052889Z",
+    "input": {
+      "command": "/bin/zsh -lc 'multica attachment download --help'"
+    },
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "seq": 3,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-17T04:31:12.054203Z",
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "output": "Download an attachment by its ID to a local file.\n\nUSAGE\n  multica attachment download <attachment-id> [flags]\n\nFLAGS\n  -h, --help                help for download\n  -o, --output-dir string   Directory to save the downloaded file (default \".\")\n\nINHERITED FLAGS\n  --help   Show help for command\n\nEXAMPLES\n  # Download an image attachment to the current directory\n  $ multica attachment download abc123\n\n  # Download to a directory inside the working directory (keep agent\n  # downloads out of /tmp and other machine-shared paths, MUL-4252)\n  $ multica attachment download abc123 -o ./attachments\n\nLEARN MORE\n  Use `multica <command> <subcommand> --help` for more information about a command.\n",
+    "seq": 4,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-17T04:31:17.554635Z",
+    "input": {
+      "command": "/bin/zsh -lc 'multica attachment download 01a00dfc-b430-7c57-9e38-b18fc4d02f74 --output-dir .'"
+    },
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "seq": 5,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-17T04:31:17.555886Z",
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "output": "Downloaded: /Users/liushanshan/multica_workspaces_desktop-api-coding.firstshare.cn/457d700f-6c27-4a59-871d-c2c56bca9f46/4f5c823d/workdir/a08-input.json\n{\n  \"filename\": \"a08-input.json\",\n  \"id\": \"01a00dfc-b430-7c57-9e38-b18fc4d02f74\",\n  \"path\": \"/Users/liushanshan/multica_workspaces_desktop-api-coding.firstshare.cn/457d700f-6c27-4a59-871d-c2c56bca9f46/4f5c823d/workdir/a08-input.json\",\n  \"size\": \"109781\"\n}\n",
+    "seq": 6,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-17T04:31:21.593575Z",
+    "input": {
+      "command": "/bin/zsh -lc 'cat a08-input.json'"
+    },
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "seq": 7,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-17T04:31:21.604903Z",
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "output": "{\n  \"allowed_inputs\": {\n    \"approved_scope\": {\n      \"decision\": \"approved\",\n      \"decision_hash\": \"sha256:2a79b599580f8e69417d202c6e6af8ae5610489b7218f0662b58cde2e303b80e\",\n      \"gate_id\": \"G01\",\n      \"request_hash\": \"sha256:551299f911e7851deb71fe0446c571729632bdc2f0e75468454961ce266eb60a\",\n      \"review_policy\": {\n        \"approval_mode\": \"qa_owner_single_signoff\",\n        \"policy_hash\": \"sha256:416a8050c9c5a0733cd003dfdcc0c0661752f5d1a5dd0318ae2afd1b1e2ca191\",\n        \"policy_scope\": \"pilot_test_design_only\",\n        \"production_release_authority\": false,\n        \"schema_version\": \"g01-review-policy/1.1\",\n        \"temporary_policy\": true\n      },\n      \"status\": \"approved\",\n      \"test_rule_obligations\": [\n        {\n          \"definition\": {\n            \"concatenate\": false,\n            \"fixed_business_reason_priority\": false,\n            \"message_count\": 1,\n            \"permission_errors\": \"preserve_existing_behavior\",\n            \"selection\": \"any_one_of_the_actually_matched_specialized_messages\"\n          },\n          \"id\": \"RULE-MULTIPLE-REASONS\"\n        },\n        {\n          \"definition\": {\n            \"multiple_metrics\": \"display_all_metric_names\",\n            \"resolution_order\": [\n              \"Filter.fieldName\",\n              \"field_metadata_by_fieldId\",\n              \"current_locale_dynamic_display_name\"\n            ],\n            \"unresolved_name\": \"preserve_actual_business_response\"\n          },\n          \"id\": \"RULE-SINGLE-METRIC\"\n        },\n        {\n          \"definition\": {\n            \"assertions\": [\n              \"same_backend_reason\",\n              \"same_error_code\",\n              \"same_locale_message\",\n              \"same_metric_parameters\"\n            ],\n            \"joined_table_copy\": \"same_copy_as_chart\",\n            \"mobile_equivalence\": \"query_runtime_route_and_compare_api_and_parameters_first\",\n            \"required_entries\": [\n              \"web_chart\",\n              \"web_joined_table\",\n              \"mobile_chart\",\n              \"mobile_joined_table\"\n            ]\n          },\n          \"id\": \"RULE-ENTRY-CONSISTENCY\"\n        },\n        {\n          \"definition\": {\n            \"covered_locations\": [\n              \"dimension\",\n              \"data_range\",\n              \"drill_field\"\n            ],\n            \"error_key\": \"CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED\",\n            \"preserve_existing_detection_order\": true\n          },\n          \"id\": \"RULE-CUSTOM-DIMENSION\"\n        },\n        {\n          \"definition\": {\n            \"error_key\": \"DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED\",\n            \"scope\": \"query_actual_what_and_what_list_object_and_field_scope_when_building_test_data\"\n          },\n          \"id\": \"RULE-DYNAMIC-RELATION\"\n        },\n        {\n          \"definition\": {\n            \"error_key\": \"MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED\",\n            \"successful_existing_relation_resolution\": \"must_remain_successful\"\n          },\n          \"id\": \"RULE-MULTI-RELATION\"\n        },\n        {\n          \"definition\": {\n            \"behavior\": \"preserve_actual_business_behavior\",\n            \"metric_name_visibility\": \"must_not_bypass_existing_permissions\"\n          },\n          \"id\": \"RULE-PERMISSION-PRIORITY\"\n        },\n        {\n          \"definition\": {\n            \"failure_response_shape\": \"unchanged_except_approved_codes_messages_and_parameters\",\n            \"historical_charts_and_tables\": \"evaluate_in_place_without_migration\",\n            \"non_target_error_codes\": \"unchanged\",\n            \"success_response\": \"unchanged\"\n          },\n          \"id\": \"RULE-HISTORICAL-COMPATIBILITY\"\n        },\n        {\n          \"definition\": {\n            \"code\": \"s307011534\",\n            \"en\": \"Custom dimension fields are used in the dimension or data range. Details view is not supported.\",\n            \"key\": \"CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED\",\n            \"parameters\": [],\n            \"zh_CN\": \"维度或数据范围中使用了自定义维度字段，暂不支持查看明细\"\n          },\n          \"id\": \"RULE-I18N-CUSTOM-DIMENSION\"\n        },\n        {\n          \"definition\": {\n            \"code\": \"s307011535\",\n            \"en\": \"The chart data range uses Metric Name with result set filtering. Details view is not supported.\",\n            \"key\": \"RESULT_SET_FILTER_DETAIL_UNSUPPORTED\",\n            \"parameters\": [\n              \"all_metric_display_names\"\n            ],\n            \"zh_CN\": \"统计图数据范围中设置了「指标名称」按结果集筛选，不支持查看明细\"\n          },\n          \"id\": \"RULE-I18N-RESULT-SET\"\n        },\n        {\n          \"definition\": {\n            \"code\": \"s307011536\",\n            \"en\": \"Metrics created based on multiple relationships do not support Details view.\",\n            \"key\": \"MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED\",\n            \"parameters\": [],\n            \"zh_CN\": \"基于多关联关系创建的统计指标，暂不支持查看明细\"\n          },\n          \"id\": \"RULE-I18N-MULTI-RELATION\"\n        },\n        {\n          \"definition\": {\n            \"code\": \"s307011537\",\n            \"en\": \"Metrics created based on dynamic relationships do not support Details view.\",\n            \"key\": \"DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED\",\n            \"parameters\": [],\n            \"zh_CN\": \"基于动态关联关系创建的统计指标，不支持查看明细\"\n          },\n          \"id\": \"RULE-I18N-DYNAMIC-RELATION\"\n        }\n      ],\n      \"test_rules\": {\n        \"compatibility\": {\n          \"failure_response_shape\": \"unchanged_except_approved_codes_messages_and_parameters\",\n          \"historical_charts_and_tables\": \"evaluate_in_place_without_migration\",\n          \"non_target_error_codes\": \"unchanged\",\n          \"success_response\": \"unchanged\"\n        },\n        \"custom_dimension\": {\n          \"covered_locations\": [\n            \"dimension\",\n            \"data_range\",\n            \"drill_field\"\n          ],\n          \"error_key\": \"CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED\",\n          \"preserve_existing_detection_order\": true\n        },\n        \"dynamic_relation\": {\n          \"error_key\": \"DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED\",\n          \"scope\": \"query_actual_what_and_what_list_object_and_field_scope_when_building_test_data\"\n        },\n        \"entry_consistency\": {\n          \"assertions\": [\n            \"same_backend_reason\",\n            \"same_error_code\",\n            \"same_locale_message\",\n            \"same_metric_parameters\"\n          ],\n          \"joined_table_copy\": \"same_copy_as_chart\",\n          \"mobile_equivalence\": \"query_runtime_route_and_compare_api_and_parameters_first\",\n          \"required_entries\": [\n            \"web_chart\",\n            \"web_joined_table\",\n            \"mobile_chart\",\n            \"mobile_joined_table\"\n          ]\n        },\n        \"localization\": {\n          \"errors\": [\n            {\n              \"code\": \"s307011534\",\n              \"en\": \"Custom dimension fields are used in the dimension or data range. Details view is not supported.\",\n              \"key\": \"CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED\",\n              \"parameters\": [],\n              \"zh_CN\": \"维度或数据范围中使用了自定义维度字段，暂不支持查看明细\"\n            },\n            {\n              \"code\": \"s307011535\",\n              \"en\": \"The chart data range uses Metric Name with result set filtering. Details view is not supported.\",\n              \"key\": \"RESULT_SET_FILTER_DETAIL_UNSUPPORTED\",\n              \"parameters\": [\n                \"all_metric_display_names\"\n              ],\n              \"zh_CN\": \"统计图数据范围中设置了「指标名称」按结果集筛选，不支持查看明细\"\n            },\n            {\n              \"code\": \"s307011536\",\n              \"en\": \"Metrics created based on multiple relationships do not support Details view.\",\n              \"key\": \"MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED\",\n              \"parameters\": [],\n              \"zh_CN\": \"基于多关联关系创建的统计指标，暂不支持查看明细\"\n            },\n            {\n              \"code\": \"s307011537\",\n              \"en\": \"Metrics created based on dynamic relationships do not support Details view.\",\n              \"key\": \"D",
+    "seq": 8,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-17T04:31:28.553717Z",
+    "input": {
+      "command": "/bin/zsh -lc \"jq '{schema_version,profile_id,profile_version,output_contract,workflow_run_id,source_snapshot_id,bundle_hash,integrity,allowed_input_keys:(.allowed_inputs|keys),feedback_schema:.allowed_inputs.correction_feedback.schema_version,correction_attempt:.allowed_inputs.correction_feedback.correction_attempt,max_correction_attempts:.allowed_inputs.correction_feedback.max_correction_attempts,g01_decision:.allowed_inputs.approved_scope.decision,g01_status:.allowed_inputs.approved_scope.status,production_release_authority:.allowed_inputs.approved_scope.review_policy.production_release_authority}' a08-input.json\""
+    },
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "seq": 9,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-17T04:31:28.554983Z",
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "output": "{\n  \"schema_version\": \"multica-agent-input/1.0\",\n  \"profile_id\": \"A08\",\n  \"profile_version\": \"1.2.1\",\n  \"output_contract\": \"test-design-ir/1.1\",\n  \"workflow_run_id\": \"detail-drill-i18n-8card-20260817-01\",\n  \"source_snapshot_id\": \"pilot-001-source-v1\",\n  \"bundle_hash\": \"sha256:11c7f295a3391e58a1ab01ef7af5dfd60c28e61a1ef762f44d31d214f5d48570\",\n  \"integrity\": {\n    \"business_repository_write_allowed\": false,\n    \"credentials_embedded\": false,\n    \"evaluation_oracle_included_in_agent_input\": false,\n    \"external_side_effects_allowed\": false\n  },\n  \"allowed_input_keys\": [\n    \"approved_scope\",\n    \"case_provider_draft\",\n    \"correction_feedback\",\n    \"previous_test_design_ir\",\n    \"test_strategy\",\n    \"validated_analysis\"\n  ],\n  \"feedback_schema\": \"test-design-correction/1.1\",\n  \"correction_attempt\": 0,\n  \"max_correction_attempts\": 2,\n  \"g01_decision\": \"approved\",\n  \"g01_status\": \"approved\",\n  \"production_release_authority\": false\n}\n",
+    "seq": 10,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-17T04:31:33.054881Z",
+    "input": {
+      "command": "/bin/zsh -lc \"jq '.allowed_inputs.previous_test_design_ir' a08-input.json\""
+    },
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "seq": 11,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-17T04:31:33.06102Z",
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "output": "{\n  \"blocking_gaps\": [\n    \"Case Provider 状态为 incompatible 且无候选 Case，本设计未假装采用其候选内容。\",\n    \"未提供任何测试框架、执行命令、环境或自动化工具能力证据。\",\n    \"未提供错误码平台联调环境，无法预先证明占位符、参数顺序及批准中英文模板的真实渲染。\",\n    \"未提供四类目标原因、历史数据、统计图、拼表及多端入口的可复用脱敏夹具。\",\n    \"未提供动态关联稳定标识白名单、关系故障注入点和异常参数观测点。\",\n    \"所有实现正确性结论必须由真实后端接口、契约或端到端执行 Oracle 得出，不能仅凭 G01 批准状态确认。\"\n  ],\n  \"coverage_matrix\": [\n    {\n      \"case_ids\": [\n        \"TC-A08-001\"\n      ],\n      \"requirement_id\": \"REQ-001\"\n    },\n    {\n      \"case_ids\": [\n        \"TC-A08-002\"\n      ],\n      \"requirement_id\": \"REQ-002\"\n    },\n    {\n      \"case_ids\": [\n        \"TC-A08-003\"\n      ],\n      \"requirement_id\": \"REQ-003\"\n    },\n    {\n      \"case_ids\": [\n        \"TC-A08-004\"\n      ],\n      \"requirement_id\": \"REQ-004\"\n    },\n    {\n      \"case_ids\": [\n        \"TC-A08-005\"\n      ],\n      \"requirement_id\": \"REQ-005\"\n    },\n    {\n      \"case_ids\": [\n        \"TC-A08-006\",\n        \"TC-A08-007\"\n      ],\n      \"requirement_id\": \"REQ-006\"\n    },\n    {\n      \"case_ids\": [\n        \"TC-A08-007\"\n      ],\n      \"requirement_id\": \"REQ-007\"\n    }\n  ],\n  \"parent_cases\": [\n    {\n      \"automation_candidate\": true,\n      \"cleanup\": [\n        \"删除命名空间内的临时图表、指标、筛选器和测试用户授权。\",\n        \"恢复权限策略及故障注入开关。\",\n        \"确认重复执行后不存在残留明细查询任务。\"\n      ],\n      \"execution_policy\": {\n        \"allowed_modes\": [\n          \"automated\",\n          \"manual\"\n        ],\n        \"automation_review\": \"required\",\n        \"blocking_gaps\": [\n          \"未提供可控的多原因构造器、权限故障注入点和后端测试命令。\",\n          \"必须保留真实接口或集成测试 Oracle，不能以 G01 批准状态代替实现验证。\"\n        ],\n        \"notes\": \"自动化前需由测试负责人确认原因集合断言未固化未批准的优先顺序。\"\n      },\n      \"expected\": [\n        {\n          \"description\": \"每个单一原因返回与实际原因匹配的一个专用错误，且不再返回通用提示。\",\n          \"id\": \"EXP-001-01\",\n          \"oracle\": {\n            \"expected_value\": \"message_count=1 and error_code matches the actually detected specialized reason\",\n            \"matcher\": \"equals\",\n            \"observation_point\": \"backend_exception.error_code_and_message_count\",\n            \"source_ref\": \"REQ-001\",\n            \"type\": \"deterministic\"\n          }\n        },\n        {\n          \"description\": \"多原因场景只返回一个实际命中的合法专用提示，不拼接多个原因，也不要求固定业务原因优先顺序。\",\n          \"id\": \"EXP-001-02\",\n          \"oracle\": {\n            \"expected_value\": \"exactly one message from the set of actually matched specialized messages\",\n            \"matcher\": \"contains\",\n            \"observation_point\": \"backend_exception.localized_messages\",\n            \"source_ref\": \"RULE-MULTIPLE-REASONS\",\n            \"type\": \"deterministic\"\n          }\n        },\n        {\n          \"description\": \"权限失败保持既有权限错误，不泄露指标名称且不被专用原因错误覆盖。\",\n          \"id\": \"EXP-001-03\",\n          \"oracle\": {\n            \"expected_value\": \"existing permission error code, message and response shape\",\n            \"matcher\": \"equals\",\n            \"observation_point\": \"backend_exception.permission_response\",\n            \"source_ref\": \"RULE-PERMISSION-PRIORITY\",\n            \"type\": \"deterministic\"\n          }\n        },\n        {\n          \"description\": \"受限调用不进入明细查询。\",\n          \"id\": \"EXP-001-04\",\n          \"oracle\": {\n            \"expected_value\": 0,\n            \"matcher\": \"equals\",\n            \"observation_point\": \"detail_query_invocation_count\",\n            \"source_ref\": \"REQ-001\",\n            \"type\": \"deterministic\"\n          }\n        }\n      ],\n      \"id\": \"TC-A08-001\",\n      \"intent_ids\": [\n        \"INT-001\"\n      ],\n      \"layer\": \"backend\",\n      \"preconditions\": [\n        \"可通过真实后端接口或集成测试入口触发查看明细判定。\",\n        \"已准备分别命中四类专用原因、同时命中至少两类原因及权限拒绝的数据。\",\n        \"可观测后端异常错误码、文案、参数数组以及是否进入明细查询。\"\n      ],\n      \"priority\": \"P0\",\n      \"required_layers\": [\n        \"backend\"\n      ],\n      \"risk\": \"critical\",\n      \"source_refs\": [\n        \"REQ-001\",\n        \"RULE-MULTIPLE-REASONS\",\n        \"RULE-PERMISSION-PRIORITY\",\n        \"TF-011\",\n        \"TF-014\"\n      ],\n      \"steps\": [\n        \"分别使用各单一原因数据调用真实查看明细接口，记录后端原因、错误码、文案和参数。\",\n        \"对每组多原因数据重复调用接口，记录每次返回的消息数量和实际命中的专用消息。\",\n        \"以无指标名称查看权限的用户调用同一接口，记录权限校验响应。\",\n        \"确认所有失败调用均未进入明细查询和结果返回。\"\n      ],\n      \"test_data\": {\n        \"datasets\": [\n          \"仅命中自定义维度原因的图表\",\n          \"仅命中结果集筛选原因的图表\",\n          \"仅命中多关联原因的图表\",\n          \"仅命中动态关联原因的图表\",\n          \"同时命中自定义维度与结果集筛选原因的图表\",\n          \"同时命中动态关联与多关联原因的图表\",\n          \"无指标名称查看权限且同时命中专用原因的用户\"\n        ],\n        \"locales\": [\n          \"zh_CN\",\n          \"en\"\n        ],\n        \"namespace\": \"a08_detail-drill-i18n-8card-20260817-01_TC-A08-001\"\n      },\n      \"title\": \"受限原因选择、多原因单提示与权限错误优先\"\n    },\n    {\n      \"automation_candidate\": true,\n      \"cleanup\": [\n        \"删除三个位置的自定义维度测试配置及对照图表。\",\n        \"恢复语言设置和时分筛选基线。\",\n        \"清除接口测试产生的缓存。\"\n      ],\n      \"execution_policy\": {\n        \"allowed_modes\": [\n          \"automated\",\n          \"manual\"\n        ],\n        \"automation_review\": \"required\",\n        \"blocking_gaps\": [\n          \"未提供错误码平台联调环境、三位置可复用夹具和测试执行命令。\"\n        ],\n        \"notes\": \"下钻字段属于 G01 批准覆盖位置，仍使用同一批准文案。\"\n      },\n      \"expected\": [\n        {\n          \"description\": \"三个覆盖位置均返回专用错误码 s307011534。\",\n          \"id\": \"EXP-002-01\",\n          \"oracle\": {\n            \"expected_value\": \"s307011534\",\n            \"matcher\": \"equals\",\n            \"observation_point\": \"detail_api.error_code\",\n            \"source_ref\": \"RULE-I18N-CUSTOM-DIMENSION\",\n            \"type\": \"deterministic\"\n          }\n        },\n        {\n          \"description\": \"中文文案精确为批准模板。\",\n          \"id\": \"EXP-002-02\",\n          \"oracle\": {\n            \"expected_value\": \"维度或数据范围中使用了自定义维度字段，暂不支持查看明细\",\n            \"matcher\": \"equals\",\n            \"observation_point\": \"detail_api.localized_message\",\n            \"source_ref\": \"RULE-I18N-CUSTOM-DIMENSION\",\n            \"type\": \"deterministic\"\n          }\n        },\n        {\n          \"description\": \"英文文案精确为批准模板。\",\n          \"id\": \"EXP-002-03\",\n          \"oracle\": {\n            \"expected_value\": \"Custom dimension fields are used in the dimension or data range. Details view is not supported.\",\n            \"matcher\": \"equals\",\n            \"observation_point\": \"detail_api.localized_message\",\n            \"source_ref\": \"RULE-I18N-CUSTOM-DIMENSION\",\n            \"type\": \"deterministic\"\n          }\n        },\n        {\n          \"description\": \"普通维度对照数据不返回自定义维度专用错误。\",\n          \"id\": \"EXP-002-04\",\n          \"oracle\"",
+    "seq": 12,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "created_at": "2026-08-17T04:31:39.052962Z",
+    "input": {
+      "command": "/bin/zsh -lc \"jq '{previous_keys:(.allowed_inputs.previous_test_design_ir|keys),feedback_ids:[.allowed_inputs.correction_feedback.a09_issues[].id],n04_group_ids:[.allowed_inputs.correction_feedback.n04_schema_issue_groups[].group_id],historical_behaviors:.allowed_inputs.historical_behavior_packet.behaviors}' a08-input.json\""
+    },
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "seq": 13,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_use"
+  },
+  {
+    "created_at": "2026-08-17T04:31:39.054124Z",
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "output": "{\n  \"previous_keys\": [\n    \"blocking_gaps\",\n    \"coverage_matrix\",\n    \"parent_cases\",\n    \"test_intents\",\n    \"test_rule_coverage\"\n  ],\n  \"feedback_ids\": [\n    \"A09-ISSUE-001\",\n    \"A09-ISSUE-002\",\n    \"A09-ISSUE-003\",\n    \"A09-ISSUE-004\",\n    \"A09-ISSUE-005\",\n    \"A09-ISSUE-006\",\n    \"A09-ISSUE-007\",\n    \"A09-ISSUE-008\",\n    \"A09-ISSUE-009\",\n    \"A09-ISSUE-010\"\n  ],\n  \"n04_group_ids\": [],\n  \"historical_behaviors\": null\n}\n",
+    "seq": 14,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "tool": "exec_command",
+    "type": "tool_result"
+  },
+  {
+    "content": "{\n  \"status\": \"blocked_input\",\n  \"schema_version\": \"test-design-ir/1.1\",\n  \"workflow_run_id\": \"detail-drill-i18n-8card-20260817-01\",\n  \"source_snapshot_id\": \"pilot-001-source-v1\",\n  \"input_bundle_hash\": \"sha256:11c7f295a3391e58a1ab01ef7af5dfd60c28e61a1ef762f44d31d214f5d48570\",\n  \"test_intents\": [],\n  \"parent_cases\": [],\n  \"coverage_matrix\": [],\n  \"test_rule_coverage\": [],\n  \"blocking_gaps\": [\n    \"allowed_inputs 缺少必需字段 historical_behavior_packet；实际字段集合不符合要求，无法为 historical_behavior_packet.behaviors 逐项生成或关联正常路径回归 Case。\"\n  ],\n  \"notes\": [\n    \"输入预校验失败，未执行测试设计修正。\"\n  ],\n  \"correction_resolutions\": []\n}",
+    "created_at": "2026-08-17T04:31:52.334328Z",
+    "issue_id": "8ef636de-987f-4058-97f0-a2a6894ec1fe",
+    "seq": 15,
+    "task_id": "4f5c823d-1240-4ca0-b80d-47455679779b",
+    "type": "text"
+  }
+]

@@ -1,0 +1,73 @@
+{
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-01",
+  "workflow_mode": "new_requirement",
+  "artifact_id": "n08-automation-execution",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "producer": {
+    "component_id": "N08",
+    "component_version": "0.1.0",
+    "runtime": "deterministic",
+    "profile_version": "1.0.0",
+    "model_provider": "none",
+    "model_snapshot": "pytest-112-live",
+    "prompt_version": "none",
+    "inference_config_hash": "none",
+    "tool_bundle_version": "pytest"
+  },
+  "payload": {
+    "schema_version": "automation-execution/1.0",
+    "environment_fingerprint": "sha256:edd75be2ec76eedacf893af2309f768f49a9fc000376dce758ce5f65c201213e",
+    "next_node": "N09",
+    "shards": [
+      {
+        "shard_id": "live-112-passed",
+        "case_ids": ["TC-A08-003-BACKEND", "TC-A08-003-CONTRACT"],
+        "outcome": "passed",
+        "duration_ms": 26900,
+        "collection_complete": true,
+        "junit_summary": {"tests": 14, "passed": 14, "failed": 0, "skipped": 0},
+        "stdout": "14 passed across live 112 result-filter and retained-asset scenarios",
+        "stderr": ""
+      },
+      {
+        "shard_id": "live-112-known-product-defects",
+        "case_ids": ["TC-A08-004-BACKEND", "TC-A08-004-CONTRACT", "TC-A08-005-BACKEND", "TC-A08-005-CONTRACT", "TC-A08-006-E2E"],
+        "outcome": "failed",
+        "duration_ms": 26900,
+        "collection_complete": true,
+        "failure_classification": "product_defect",
+        "junit_summary": {"tests": 4, "passed": 0, "failed": 4, "skipped": 0},
+        "stdout": "Dynamic relation returned s207050405 instead of s307011537 for zh-CN and en. Four-node multi-relation returned s307050002 instead of s307011536. Requirement asset effect reproduced the same multi-relation restriction-code defect.",
+        "stderr": ""
+      },
+      {
+        "shard_id": "live-112-unavailable-fixture",
+        "case_ids": ["TC-A08-002-BACKEND", "TC-A08-002-CONTRACT"],
+        "outcome": "blocked",
+        "duration_ms": 0,
+        "collection_complete": true,
+        "failure_classification": "test_data",
+        "junit_summary": {"tests": 1, "passed": 0, "failed": 0, "skipped": 1},
+        "stdout": "AccountObj.account_level has fewer than two live enum options; not_ready",
+        "stderr": ""
+      }
+    ]
+  },
+  "status": "completed_with_gaps",
+  "schema_version": "artifact-envelope/1.0",
+  "created_at": "2026-08-17T05:14:00+00:00",
+  "evidence_refs": [
+    {
+      "source_type": "test_execution",
+      "source_id": "pytest-live-112",
+      "location": "tests/test_112_*",
+      "content_hash": "sha256:45ac1d0db836f0db6101d0d97151cbedf546d811c44c84ff66f515d5c63a2029"
+    }
+  ],
+  "facts": [],
+  "inferences": [],
+  "assumptions": [],
+  "blocking_questions": [],
+  "reason_code": "live_112_failures_and_fixture_gap",
+  "artifact_hash": "sha256:9a5c3f7b58bac23dc5eb544311b6d44579e5495196555b85827c3932c489d072"
+}

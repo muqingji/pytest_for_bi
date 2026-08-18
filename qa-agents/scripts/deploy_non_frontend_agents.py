@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 RUNTIME_ID = "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
-MODEL = "gpt-5.6-sol"
+MODEL = "deepseek-v4-flash"
 QA_AGENTS_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = QA_AGENTS_ROOT / "multica/workspace-manifest.json"
 RECEIPT = QA_AGENTS_ROOT / "multica/non-frontend-agent-deployment.json"
