@@ -1,0 +1,144 @@
+flowchart TD
+    %% ================= 触发层 =================
+    START([业务触发]) --> TRIGGER{触发类型}
+    TRIGGER -->|需求 / commit 验证| M1[[new_requirement 新需求测试设计]]
+    TRIGGER -->|MR / commit range| M2[[change_incremental 变更增量测试]]
+    TRIGGER -->|发布版本 / 变更清单| M3[[release_regression 发布回归]]
+    TRIGGER -->|Bug / 日志 / 修复 MR| M4[[bug_reproduction Bug 复现与固化]]
+    TRIGGER -->|发布单授权| M5[[post_release_verification 上线后验证]]
+    M1 & M2 & M3 & M4 & M5 --> N00
+
+    %% ================= 阶段卡 C1 =================
+    subgraph C1[阶段卡 C1 · 需求分析与变更对齐]
+        direction TB
+        N00{N00 模板路由与执行深度 L1/L2/L3}
+        N00 -->|规则无法判定| A01[A01 路由建议 advice_only]
+        A01 --> N00
+        N00 -->|路由确定| FREEZE
+        FREEZE[INPUT-FREEZE 输入冻结<br/>source_snapshot 不可变快照<br/>ChangeSet first-parent 基线] -->|冻结成功| P1{{并行分派}}
+        FREEZE -->|输入缺失/矛盾| B1[blocked_input 返回补齐<br/>不基于残缺输入推理]
+        P1 --> A02[A02 需求分析<br/>requirement-analysis/1.0]
+        P1 --> A03[A03 技术方案与可测性分析<br/>technical-analysis/1.0]
+        P1 --> A05[A05 后端变更分析<br/>change-analysis/1.0]
+        A02 & A03 & A05 --> A06[A06 需求与变更对齐<br/>alignment-result/1.0<br/>等全部上游完成后才继续]
+    end
+
+    %% ================= 阶段卡 C2 =================
+    subgraph C2[阶段卡 C2 · 范围确认与测试策略]
+        direction TB
+        A06 --> G01{{G01 范围与口径人工审核<br/>Multica Issue 控制面 in_review}}
+        G01 -->|确认通过| N24[N24 风险与测试策略<br/>risk_level + required_layers]
+        G01 -->|退回补充输入| FREEZE
+        G01 -->|存在阻塞项| N24
+        N24 -->|规则存在未决项| A07[A07 风险建议 advice_only]
+        A07 --> N24
+    end
+
+    %% ================= 阶段卡 C3 =================
+    subgraph C3[阶段卡 C3 · 测试设计与审核]
+        direction TB
+        N24 --> A08[A08 测试设计<br/>Test Intent + Test Case IR]
+        A08 --> A09[A09 Oracle 与测试防范覆盖审查<br/>oracle-review/1.1]
+        A09 --> N04{N04 Test Case IR 校验<br/>结构/来源/Oracle/覆盖}
+        N04 -->|通过| G02{{G02 Test Case IR 人工审核}}
+        N04 -->|不通过 自动预算内| A08
+        N04 -->|不通过 预算耗尽| HR[人工修正恢复<br/>A08 v1.3.0 定向恢复<br/>预算不重置]
+        HR --> A09
+        G02 -->|退回| A08
+    end
+
+    %% ================= 阶段卡 C4 =================
+    subgraph C4[阶段卡 C4 · Case 编译与执行计划]
+        direction TB
+        G02 -->|通过| N25[N25 父子 Case 编译<br/>按 expected.layers 分层收窄]
+        N25 --> A11[A11 拆分覆盖审查<br/>split-review/1.0]
+        A11 -->|遗漏/重复/层级错误| N25
+        A11 -->|通过| N26[N26 测试选择<br/>策略强制/跳过/影响置信度]
+        N26 -->|有未决项| A12[A12 选择建议 advice_only<br/>只能扩大或升级范围]
+        A12 --> N26
+        N26 -->|选择完成| N15[N15 执行计划编译<br/>五动作互斥 每条 Case 一个动作]
+    end
+
+    %% ================= 阶段卡 C5 =================
+    subgraph C5[阶段卡 C5 · 自动化与测试数据准备]
+        direction TB
+        N15 -->|generate_new / update_existing| P5{{按层/类型并行分派}}
+        N15 -->|run_existing| C6IN[直接进入 C6 预检]
+        N15 -->|manual_run| C6IN
+        N15 -->|skip| C6IN
+        P5 --> A14[A14 后端自动化生成]
+        P5 --> A15[A15 契约自动化生成]
+        P5 --> A22[A22 测试数据规划<br/>只出计划 不持凭证]
+        A14 --> A18BE[A18-BE 独立复核]
+        A15 --> A18CT[A18-CT 独立复核]
+        A22 --> N27[N27 数据计划安全校验]
+        A18BE & A18CT & N27 --> N05[N05 自动化确定性代码检查<br/>语法/lint/哈希/权限/凭证/层根目录]
+        N05 -->|通过| G03{{G03 自动化代码人工审核}}
+        N05 -->|检出问题| FIX[按问题码定向回流]
+        FIX --> A14
+        FIX --> N15
+        G03 -->|退回| N15
+        G03 -->|通过| C6IN
+    end
+
+    %% ================= 阶段卡 C6 =================
+    subgraph C6[阶段卡 C6 · 环境预检与测试执行]
+        direction TB
+        C6IN[N07 环境数据资源预检<br/>指纹/依赖/账号/数据/锁] -->|通过| P6{{执行分派}}
+        C6IN -->|可恢复失败| N10
+        P6 --> N08[N08 受控自动化执行<br/>无 shell 最小环境 并行 超时]
+        P6 --> N17[N17 人工与探索测试执行<br/>结构化步骤/证据/结论]
+        N08 --> N10{N10 环境失败重试预算<br/>业务失败不重试}
+        N10 -->|预算内 可重试| C6IN
+        N10 -->|继续| N18
+        N10 -->|阻塞| N11
+        N17 --> N18
+    end
+
+    %% ================= 阶段卡 C7 =================
+    subgraph C7[阶段卡 C7 · 证据归一与质量决策]
+        direction TB
+        N18[N18 运行质量信号采集<br/>覆盖率/性能信号] --> N09[N09 证据标准化与失败聚类<br/>指纹归因 一个根因一组]
+        N09 --> N20[N20 跨运行缺陷去重<br/>create / link / reopen / needs_human]
+        N20 --> N11{N11 确定性质量决策<br/>passed / blocked / inconclusive}
+        N11 -->|有豁免申请| N19[N19 质量豁免审计]
+        N11 -->|无豁免| N12
+        N19 --> N12
+        N11 -->|证据不足| INC[inconclusive 不伪造通过]
+        INC --> N12
+    end
+
+    %% ================= 阶段卡 C8 =================
+    subgraph C8[阶段卡 C8 · 报告与关闭]
+        direction TB
+        N12[N12 质量报告发布<br/>JSON / Markdown / HTML 留证] --> N13[N13 报告反馈入口<br/>反馈归档为后续动作]
+        N13 --> N23[N23 上线后验证授权审计<br/>只读冒烟 不触发生产写]
+        N23 --> END([流程结束<br/>审计归档])
+    end
+
+    %% ================= 图例 =================
+    subgraph LEGEND[图例]
+        direction LR
+        AG[Agent 智能判断<br/>输出契约化 Artifact]:::agent
+        DT[确定性节点<br/>程序计算与校验]:::det
+        HG[人工 Gate 审批]:::human
+        DC{决策分支}:::dec
+        RF[退回 / 回流]:::loop
+        SK[跳过 / 不适用]:::skip
+    end
+
+    classDef agent fill:#e3f2fd,stroke:#1565c0,color:#0d2b45,stroke-width:1px
+    classDef det fill:#e8f5e9,stroke:#2e7d32,color:#1b3b1f,stroke-width:1px
+    classDef human fill:#fff3e0,stroke:#ef6c00,color:#4e342e,stroke-width:1.5px
+    classDef dec fill:#f3e5f5,stroke:#6a1b9a,color:#3b1a4f,stroke-width:1px
+    classDef loop fill:#fce4ec,stroke:#c62828,color:#4a1414,stroke-width:1px
+    classDef skip fill:#f5f5f5,stroke:#9e9e9e,color:#424242,stroke-width:1px
+    classDef start fill:#1a237e,stroke:#0d1547,color:#ffffff,stroke-width:2px
+
+    class START,END start
+    class A01,A02,A03,A05,A06,A07,A08,A09,A11,A12,A14,A15,A22,A18BE,A18CT agent
+    class N00,FREEZE,N24,N04,N25,N26,N15,N27,N05,N07,N08,N17,N10,N18,N09,N20,N11,N19,N12,N13,N23,INC,P1,P5,P6,HR,FIX,B1,C6IN,N10 det
+    class G01,G02,G03 human
+    class TRIGGER,DC dec
+    class RF loop
+    class M1,M2,M3,M4,M5,SKIP skip
