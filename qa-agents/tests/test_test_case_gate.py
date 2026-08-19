@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from qa_agents.contracts import artifact_hash_from_mapping
 from qa_agents.multica import ingest_multica_output, prepare_multica_oracle_review_input
 from qa_agents.test_case_gate import run_n04_after_a09
 
@@ -142,3 +143,77 @@ def test_n04_exhausted_budget_routes_to_human(tmp_path: Path) -> None:
 
     assert artifact["payload"]["next_node"] == "human"
     assert artifact["reason_code"] == "test_case_ir_correction_budget_exhausted"
+
+
+def test_n04_routes_human_when_previous_fix_claimed_but_still_blocking(
+    tmp_path: Path,
+) -> None:
+    design = json.loads(
+        (
+            PILOT_RUN / "multica-stage4" / "artifacts" / "a08-test-design-ir.json"
+        ).read_text(encoding="utf-8")
+    )
+    first_case = design["payload"]["parent_cases"][0]
+    design["payload"]["correction_resolutions"] = [
+        {
+            "feedback_id": "A09-ISSUE-004",
+            "disposition": "fixed",
+            "affected_case_ids": [first_case["id"]],
+            "source_refs": ["REQ-006"],
+            "rationale": "已修正 Oracle",
+        }
+    ]
+    design["artifact_hash"] = artifact_hash_from_mapping(design)
+    corrected_design_path = tmp_path / "a08-corrected.json"
+    corrected_design_path.write_text(
+        json.dumps(design, ensure_ascii=False), encoding="utf-8"
+    )
+
+    bundle = prepare_multica_oracle_review_input(
+        corrected_design_path,
+        PILOT_RUN / "multica-inputs" / "a08-input.json",
+        ROOT / "policies" / "oracle-rule-library.json",
+        tmp_path / "inputs",
+    )
+    a09_output = rejected_a09_output(bundle)
+    a09_output["issues"] = [
+        {
+            "id": "A09-ISSUE-008",
+            "issue_code": "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT",
+            "human_title": "中英文测试数据冲突",
+            "plain_summary": "英文场景仍取到中文结果。",
+            "severity": "blocking",
+            "category": "test_data",
+            "message": "locale 数据分支未拆分",
+            "path": "parent_cases[0].test_data",
+            "route_to": "A08",
+            "case_id": first_case["id"],
+            "expected_id": first_case["expected"][0]["id"],
+            "source_refs": list(first_case["source_refs"]),
+            "recommendation": "按 locale 拆分数据行",
+        }
+    ]
+    ingest_multica_output(
+        tmp_path / "inputs" / "a09-input.json",
+        json.dumps(a09_output, ensure_ascii=False),
+        tmp_path / "stage5",
+        task_id="task-a09-correction",
+        issue_id="issue-a09-correction",
+        attachment_id="attachment-a09-correction",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.2.1",
+    )
+
+    artifact = run_n04_after_a09(
+        corrected_design_path,
+        tmp_path / "stage5" / "artifacts" / "a09-oracle-coverage-review.json",
+        tmp_path / "inputs" / "a09-input.json",
+        tmp_path / "stage6",
+        correction_attempt=1,
+        max_correction_attempts=2,
+    )
+
+    assert artifact["payload"]["next_node"] == "human"
+    assert artifact["reason_code"] == "test_case_ir_fix_unverified"
+    assert artifact["payload"]["unverified_fix_issue_ids"] == ["A09-ISSUE-008"]

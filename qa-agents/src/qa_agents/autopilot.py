@@ -178,6 +178,79 @@ def _artifact_state(artifact: Mapping[str, Any]) -> str:
     return "blocked"
 
 
+def _propagate_human_routed_blocks(
+    nodes: list[dict[str, Any]],
+    selected: Mapping[str, Mapping[str, Any]],
+    owner_id: str,
+    run_id: str,
+    actions: list[dict[str, Any]],
+) -> None:
+    """Route blocked nodes carrying human-routed issues to waiting_human.
+
+    When a decision node (for example N04 after the automatic correction
+    budget is exhausted) routes its issues to ``human``, every other node that
+    surfaced the same issue ids must read as "waiting for human" instead of a
+    dead-end "blocked", and get an approval entry so the human decision is
+    actionable in the workflow center.
+    """
+
+    routed_issue_ids: set[str] = set()
+    for node in nodes:
+        if node.get("state") != "waiting_human":
+            continue
+        artifact = selected.get(str(node.get("node_id")))
+        if not isinstance(artifact, Mapping):
+            continue
+        payload = artifact.get("payload")
+        if not isinstance(payload, Mapping) or payload.get("next_node") != "human":
+            continue
+        for issue in payload.get("issues", []):
+            if isinstance(issue, Mapping) and issue.get("id"):
+                routed_issue_ids.add(str(issue["id"]))
+    if not routed_issue_ids:
+        return
+    if not owner_id:
+        raise ContractError("Autopilot human_owner_member_id is required for actions")
+    for item in nodes:
+        if item.get("state") != "blocked":
+            continue
+        artifact = selected.get(str(item.get("node_id")))
+        if not isinstance(artifact, Mapping):
+            continue
+        payload = artifact.get("payload")
+        if not isinstance(payload, Mapping):
+            continue
+        issue_ids = {
+            str(issue.get("id"))
+            for issue in payload.get("issues", [])
+            if isinstance(issue, Mapping) and issue.get("id")
+        }
+        if not (issue_ids & routed_issue_ids):
+            continue
+        item["state"] = "waiting_human"
+        item["result_summary"] = "阻塞问题已路由人工处置，等待定向修正或终止决策"
+        approval_items = _approval_items(artifact)
+        item["approval_items"] = approval_items
+        actions.append(
+            {
+                "action_id": f"{item.get('node_id')}-{run_id}",
+                "gate_id": str(item.get("node_id")),
+                "title": f"{item.get('label', item.get('node_id'))}处理",
+                "status": "open",
+                "owner_member_id": owner_id,
+                "item_count": (
+                    len(approval_items)
+                    if approval_items
+                    else _action_count(artifact)
+                ),
+                "summary": item["result_summary"],
+                "approval_items": approval_items,
+                "issue_id": item.get("issue_id"),
+                "issue_identifier": item.get("issue_identifier"),
+            }
+        )
+
+
 def _advance_frontier(nodes: Sequence[dict[str, Any]]) -> None:
     """Queue the earliest unfinished stage after accepted Artifacts are projected."""
 
@@ -1049,6 +1122,7 @@ def reconcile_autopilot(
                         }
                     )
             nodes.append(item)
+        _propagate_human_routed_blocks(nodes, selected, owner_id, run_id, actions)
         _advance_frontier(nodes)
         candidate = {**spec, "nodes": nodes, "actions": actions}
         candidate_core = {key: value for key, value in candidate.items() if key != "revision"}

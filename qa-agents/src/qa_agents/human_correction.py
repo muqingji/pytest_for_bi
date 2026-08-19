@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 from typing import Any
 
+from .card_copy import human_correction_description, human_correction_title
 from .contracts import artifact_hash_from_mapping, content_hash
 from .errors import ContractError, RetryableAgentError, SecurityPolicyError
 from .security import SecurityPolicy
@@ -20,18 +21,6 @@ REQUEST_FILE = "human-correction-request.json"
 DECISION_FILE = "human-correction-decision.json"
 OUTCOME_FILE = "human-correction-outcome.json"
 STATE_FILE = "human-correction-state.json"
-
-
-def _first_plain_sentence(text: str, limit: int = 120) -> str:
-    """Keep the leading sentence of a technical message for display."""
-    if len(text) <= limit:
-        return text
-    for separator in ("。", "；", "；", "\n", ". "):
-        position = text.find(separator)
-        if 0 < position <= limit:
-            return text[: position + len(separator)]
-    return text[:limit].rstrip() + "…"
-
 
 def _read(path: Path, label: str) -> dict[str, Any]:
     try:
@@ -155,33 +144,7 @@ def _bound_inputs(
 
 
 def render_human_correction_markdown(request: Mapping[str, Any]) -> str:
-    directives = []
-    for item in request["directives"]:
-        title = str(item.get("human_title") or "").strip()
-        headline = title or str(item.get("issue_code") or item["directive_id"])
-        lines = [f"### {item['directive_id']} - {headline}", ""]
-        plain = str(item.get("plain_summary") or "").strip()
-        problem = plain or _first_plain_sentence(str(item.get("message") or ""))
-        if problem:
-            lines.append(f"- 问题：{problem}")
-        if item.get("recommendation"):
-            lines.append(f"- 修正方案：{item['recommendation']}")
-        message = str(item.get("message") or "").strip()
-        if message and message != problem:
-            lines.append(f"- 技术细节：{message}")
-        directives.append("\n".join(lines))
-    return (
-        "# 测试设计人工修正\n\n"
-        f"- 工作流：`{request['workflow_run_id']}`\n"
-        f"- 修正预算：`{request['budget']['correction_attempt']}/"
-        f"{request['budget']['max_correction_attempts']}`（不重置）\n\n"
-        "请决定是否授权以下修正：\n\n"
-        "- 将本 Issue 置为 **done**：授权全部修正，系统将生成新的 A08 修正版并重新校验，"
-        "流程自动继续。\n"
-        "- 置为 **cancelled**：终止当前流程。\n"
-        "- 保持 **in_review**：流程保持暂停。\n\n"
-        + "\n\n".join(directives)
-    )
+    return human_correction_description(request)
 
 
 def prepare_human_correction_request(
@@ -326,7 +289,6 @@ def open_multica_human_correction(
     multica = policy["multica"]
     workspace = ["--workspace-id", multica["workspace_id"]]
     if not state.get("issue_id"):
-        short_hash = request["request_hash"].removeprefix("sha256:")[:12]
         parent_args = []
         parent_issue_id = request["multica_control"].get("parent_issue_id")
         if parent_issue_id:
@@ -334,7 +296,7 @@ def open_multica_human_correction(
         created = runner(
             [
                 "issue", "create",
-                "--title", f"Human A08 correction {request['workflow_run_id']} [{short_hash}]",
+                "--title", human_correction_title(request),
                 "--description-file", "human-correction-request.md",
                 "--attachment", REQUEST_FILE,
                 "--assignee-id", multica["assignee_member_id"],

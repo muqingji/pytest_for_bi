@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "requirement-case/1.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "requirement",
+    "scenario",
+    "steps",
+    "expected"
+  ],
+  "properties": {
+    "schema_version": {"const": "requirement-case/1.0"},
+    "requirement": {
+      "type": "object",
+      "required": ["id", "title", "layer", "risk", "priority"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "layer": {"type": "string", "minLength": 1},
+        "risk": {"enum": ["low", "medium", "high", "critical"]},
+        "priority": {"enum": ["P0", "P1", "P2", "P3"]}
+      },
+      "additionalProperties": true
+    },
+    "scenario": {"type": "string", "minLength": 1},
+    "variants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "name": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": true
+      }
+    },
+    "preconditions": {"type": "array", "items": {"type": "string"}},
+    "steps": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "expected": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "description", "oracle"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "description": {"type": "string", "minLength": 1},
+          "oracle": {
+            "type": "object",
+            "required": ["type", "matcher", "observation_point", "expected_value"],
+            "properties": {
+              "type": {"type": "string", "minLength": 1},
+              "matcher": {"type": "string", "minLength": 1},
+              "observation_point": {"type": "string", "minLength": 1},
+              "expected_value": {"type": "string", "minLength": 0}
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "additionalProperties": false
+}

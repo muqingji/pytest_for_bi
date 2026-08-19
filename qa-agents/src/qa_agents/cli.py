@@ -60,6 +60,7 @@ from .reporting import (
 from .security import SecurityPolicy
 from .risk import run_risk_strategy_after_g01
 from .release_control import decide_agent_release, validate_schema_handoff
+from .requirement_case_renderer import render_requirement_case_bundle
 from .source_collector import ReadOnlyGitCollector, RepositoryRegistry
 from .storage import ArtifactStore
 from .test_case_gate import run_n04_after_a09
@@ -341,6 +342,13 @@ def build_parser() -> argparse.ArgumentParser:
     g02_sync_parser.add_argument("--n04-artifact", type=Path, required=True)
     g02_sync_parser.add_argument("--policy", type=Path, required=True)
     g02_sync_parser.add_argument("--output", type=Path, required=True)
+
+    requirement_render_parser = subparsers.add_parser(
+        "render-requirement-case",
+        help="Parse compact requirement cards and render standard 测试场景/测试步骤/预期结果 cases",
+    )
+    requirement_render_parser.add_argument("--input", type=Path, required=True)
+    requirement_render_parser.add_argument("--output-dir", type=Path, required=True)
 
     human_correction_parser = subparsers.add_parser(
         "prepare-human-correction",
@@ -1126,6 +1134,11 @@ def _run(argv: list[str] | None = None) -> int:
                 ensure_ascii=False,
             )
         )
+        return 0
+
+    if args.command == "render-requirement-case":
+        outcome = render_requirement_case_bundle(args.input, args.output_dir)
+        print(json.dumps(outcome, ensure_ascii=False, indent=2))
         return 0
 
     if args.command == "open-g02-multica":

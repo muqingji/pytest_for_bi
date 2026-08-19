@@ -1,0 +1,71 @@
+{
+  "actor": {
+    "id": "muqj11262",
+    "multica_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "role": "qa_owner",
+    "type": "human"
+  },
+  "decided_at": "2026-08-18T10:29:27+00:00",
+  "decision": "approved",
+  "decision_hash": "sha256:3d04865c7069c771693e095b232024d4148581025f4967f4e1a3ebefe5f4da77",
+  "gate_id": "G01",
+  "multica_event": {
+    "comment_id": "a7054819-3e25-48ff-a85f-b99545ecb23c",
+    "event_id": "sha256:3332990cd5a2f999ec806672a42fe5d051698189865eb06ad2e8101aa1e87769",
+    "issue_id": "bd0191c9-bc0a-48af-873f-4b2d1da22ef7",
+    "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46"
+  },
+  "reason": "已逐项回复并确认",
+  "request_hash": "sha256:8456ee6dd0a5d676ae09b39d3c225c0a31f0fc0c79744a8bdaf671dabe33c97a",
+  "resolutions": [
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:ALN-F002",
+      "owner": "QA Owner",
+      "rationale": "接受当前实现口径\n2.",
+      "review_summary": "实现与需求/技术方案冲突：动态关联实现位于对象关系转换器，并在常规关系查询全部失败后依据what或WhatList 动态关联字段类型直接替换错误；技术方案要求由持有完整聚合规则和关系元数据的上层解析候选原因，且禁止仅据这些信号推断。",
+      "topic_key": "what_whatlist"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:ALN-F011",
+      "owner": "QA Owner",
+      "rationale": "接受当前实现口径`\n3.",
+      "review_summary": "存在超出需求范围的变更：自定义维度实现除冻结需求明确的维度和数据范围外，还覆盖钻取维度；技术分析也指出该范围超出当前文案定义，需要产品确认后才能认定为批准范围。",
+      "topic_key": "custom_dimension_copy"
+    },
+    {
+      "approvals": [
+        {
+          "id": "muqj11262",
+          "role": "qa_owner",
+          "type": "human"
+        }
+      ],
+      "disposition": "confirmed",
+      "issue_id": "A06:FOLLOWUP-A06-ALN-F010",
+      "owner": "QA Owner",
+      "rationale": "，都纳入本次测试，所有图表类型的提示语都是同一套",
+      "review_summary": "需要补充可执行测试证据：结果集筛选动态指标名、自定义维度、what/whatlist、多关联关系，以及统计图/拼表/Web/移动端/中英文的一致性。请确认这些都纳入本次测试范围。",
+      "topic_key": "test_evidence"
+    }
+  ],
+  "schema_version": "scope-review-decision/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "test_rules": "按逐项回复冻结的口径执行测试设计",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

@@ -1,0 +1,393 @@
+{
+  "allowed_inputs": {
+    "automation_target": {
+      "command_allowlist": [
+        "pytest"
+      ],
+      "forbidden_calls": [
+        "eval",
+        "exec",
+        "open",
+        "compile",
+        "__import__"
+      ],
+      "forbidden_python_imports": [
+        "ctypes",
+        "os",
+        "pathlib",
+        "shutil",
+        "socket",
+        "subprocess"
+      ],
+      "layer_profile": {
+        "agent_id": "A15",
+        "candidate_root": "generated/contract",
+        "framework": "pytest",
+        "generator_profile": "A15/1.0.0",
+        "manifest_id": "manifest-a15-contract",
+        "review_profile": "A18-CT/1.0.0"
+      },
+      "targets": [
+        {
+          "access_class": "approved_automation_repository",
+          "allowed_candidate_roots": [
+            "generated/backend",
+            "generated/frontend",
+            "generated/contract",
+            "generated/e2e",
+            "generated/non_functional"
+          ],
+          "frameworks": [
+            "pytest",
+            "playwright"
+          ],
+          "languages": [
+            "python"
+          ],
+          "repository_id": "pytest_for_bi"
+        }
+      ]
+    },
+    "cases": [
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除契约测试创建的图表和指标。",
+          "恢复请求语言。",
+          "保留只读契约结果供审核，不修改错误码平台配置。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供错误码平台联调环境和真实 API 契约测试命令。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "四类 code、key、参数和双语消息逐行精确匹配。",
+            "id": "EXP-CON-001-01",
+            "matcher": "equals",
+            "observation_point": "decoded_response.normalized_error_matrix",
+            "source_ref": "TF-002",
+            "type": "deterministic"
+          },
+          {
+            "description": "失败响应结构除批准字段外与基线一致。",
+            "id": "EXP-CON-001-02",
+            "matcher": "equals_baseline_except",
+            "observation_point": "decoded_response.failure_schema",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-CON-001-CONTRACT",
+        "intent_ids": [
+          "INT-001",
+          "INT-002",
+          "INT-003",
+          "INT-004",
+          "INT-005"
+        ],
+        "layer": "contract",
+        "parent_case_id": "TC-CON-001",
+        "preconditions": [
+          "错误码平台联调环境已配置四个专用错误。",
+          "真实 API 契约测试可设置当前语言并读取解码 JSON。",
+          "变更前失败响应结构已固化为契约基线。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "TF-002",
+          "TF-004",
+          "TF-008",
+          "RULE-I18N-CUSTOM-DIMENSION",
+          "RULE-I18N-RESULT-SET",
+          "RULE-I18N-MULTI-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION"
+        ],
+        "steps": [
+          "逐行以 zh_CN 和 en 调用真实接口。",
+          "解析错误码、key、消息、参数和响应结构。",
+          "将每行与 G01 批准映射精确比较。",
+          "确认结果集携带全部实际指标名，其他三类参数为空。",
+          "失败响应结构仅允许批准的错误码、消息和参数变化。"
+        ],
+        "test_data": {
+          "matrix": [
+            {
+              "code": "s307011534",
+              "en": "Custom dimension fields are used in the dimension or data range. Details view is not supported.",
+              "key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+              "parameters": [],
+              "reason": "custom_dimension",
+              "zh_CN": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细"
+            },
+            {
+              "code": "s307011535",
+              "en": "The chart data range uses \"Revenue\", \"Gross Margin\" with result set filtering. Details view is not supported.",
+              "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+              "parameters": {
+                "en": [
+                  "Revenue",
+                  "Gross Margin"
+                ],
+                "zh_CN": [
+                  "销售额",
+                  "毛利率"
+                ]
+              },
+              "reason": "result_set_filter",
+              "zh_CN": "统计图数据范围中设置了「销售额、毛利率」按结果集筛选，不支持查看明细"
+            },
+            {
+              "code": "s307011536",
+              "en": "Metrics created based on multiple relationships do not support Details view.",
+              "key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+              "parameters": [],
+              "reason": "multi_relation",
+              "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细"
+            },
+            {
+              "code": "s307011537",
+              "en": "Metrics created based on dynamic relationships do not support Details view.",
+              "key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+              "parameters": [],
+              "reason": "dynamic_relation",
+              "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细"
+            }
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_CON_001"
+        },
+        "title": "四类专用错误码、双语模板、参数及失败响应契约"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "保留原历史配置状态，不执行迁移或重存。",
+          "撤销非目标错误故障注入。",
+          "删除仅为本次比较创建的基线副本。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供真实脱敏历史统计图和拼表配置。",
+            "未提供成功数据值及非目标错误的冻结版本基线。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "历史目标配置按矩阵精确应用当前规则。",
+            "id": "EXP-CON-002-01",
+            "matcher": "equals",
+            "observation_point": "historical_configuration.normalized_error_matrix",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "历史正常路径成功且不返回四个新增错误码。",
+            "id": "EXP-CON-002-02",
+            "matcher": "equals",
+            "observation_point": "historical_success_response.status_and_error_code",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "历史正常路径保留分页、结果结构和已有明细字段展示。",
+            "id": "EXP-CON-002-03",
+            "matcher": "contains_structure",
+            "observation_point": "historical_success_response.structure",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "未冻结具体历史数据值，执行时人工确认与保存的同版本基线一致。",
+            "id": "EXP-CON-002-04",
+            "matcher": "manual_confirmation",
+            "observation_point": "historical_success_response.data_values",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "human_review"
+          },
+          {
+            "description": "非目标异常 code、key、参数和双语消息保持原业务响应。",
+            "id": "EXP-CON-002-05",
+            "matcher": "manual_confirmation",
+            "observation_point": "non_target_error_responses.full_contract",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "human_review"
+          }
+        ],
+        "id": "TC-CON-002-CONTRACT",
+        "intent_ids": [
+          "INT-008"
+        ],
+        "layer": "contract",
+        "parent_case_id": "TC-CON-002",
+        "preconditions": [
+          "存在变更前创建且未迁移、未重存的历史统计图和拼表配置。",
+          "保存同版本基线中的正常数据值和非目标异常完整响应。",
+          "历史配置覆盖四类目标原因、一个正常查询和参数错误、超时、元数据服务异常。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "TF-008",
+          "RULE-HISTORICAL-COMPATIBILITY",
+          "RULE-I18N-CUSTOM-DIMENSION",
+          "RULE-I18N-RESULT-SET",
+          "RULE-I18N-MULTI-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION"
+        ],
+        "steps": [
+          "不迁移、不重存历史配置，直接在新版本调用接口。",
+          "逐行核对历史配置的 code、key、参数和当前语言双语消息。",
+          "调用历史正常统计图和拼表，断言成功状态、不返回四个新错误码、分页和结果结构存在。",
+          "验证已有明细字段仍可展示，并将数据值与保存的同版本基线人工核对。",
+          "触发三类非目标错误并与保存基线逐项比较。"
+        ],
+        "test_data": {
+          "matrix": [
+            {
+              "code": "s307011534",
+              "entry": "historical_chart",
+              "id": "HIST-CHART-CD",
+              "key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+              "messages": {
+                "en": "Custom dimension fields are used in the dimension or data range. Details view is not supported.",
+                "zh_CN": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细"
+              },
+              "parameters": [],
+              "reason": "custom_dimension"
+            },
+            {
+              "code": "s307011535",
+              "entry": "historical_chart",
+              "id": "HIST-CHART-RS",
+              "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+              "messages": {
+                "en": "The chart data range uses \"Revenue\", \"Gross Margin\" with result set filtering. Details view is not supported.",
+                "zh_CN": "统计图数据范围中设置了「销售额、毛利率」按结果集筛选，不支持查看明细"
+              },
+              "parameters": {
+                "en": [
+                  "Revenue",
+                  "Gross Margin"
+                ],
+                "zh_CN": [
+                  "销售额",
+                  "毛利率"
+                ]
+              },
+              "reason": "result_set_filter"
+            },
+            {
+              "code": "s307011536",
+              "entry": "historical_joined_table",
+              "id": "HIST-TABLE-MR",
+              "key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+              "messages": {
+                "en": "Metrics created based on multiple relationships do not support Details view.",
+                "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细"
+              },
+              "parameters": [],
+              "reason": "multi_relation"
+            },
+            {
+              "code": "s307011537",
+              "entry": "historical_joined_table",
+              "id": "HIST-TABLE-DR",
+              "key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+              "messages": {
+                "en": "Metrics created based on dynamic relationships do not support Details view.",
+                "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细"
+              },
+              "parameters": [],
+              "reason": "dynamic_relation"
+            }
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_CON_002",
+          "non_target_errors": [
+            "parameter_error",
+            "timeout",
+            "metadata_service_error"
+          ],
+          "normal_path": {
+            "entry_types": [
+              "historical_chart",
+              "historical_joined_table"
+            ],
+            "existing_detail_fields": [
+              "existing_dimension_field",
+              "existing_metric_field"
+            ],
+            "expected_status": "success",
+            "forbidden_error_codes": [
+              "s307011534",
+              "s307011535",
+              "s307011536",
+              "s307011537"
+            ],
+            "required_paging_fields": [
+              "page_number",
+              "page_size",
+              "total"
+            ],
+            "required_result_fields": [
+              "columns",
+              "rows"
+            ]
+          }
+        },
+        "title": "历史配置实时新逻辑与成功、非目标错误兼容性"
+      }
+    ],
+    "execution_plan_actions": [
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-CON-001-CONTRACT",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-CON-002-CONTRACT",
+        "reason_code": "new_case_without_automation"
+      }
+    ],
+    "input_bindings": {},
+    "layer": "contract"
+  },
+  "bundle_hash": "sha256:755c340c68e04f0aca38f5562d07fc4504e730f59d6f8325dfde9d5e4dd590c0",
+  "integrity": {
+    "business_repository_write_allowed": false,
+    "credentials_embedded": false,
+    "evaluation_oracle_registry_included": false,
+    "external_side_effects_allowed": false
+  },
+  "output_contract": "automation-generation/1.0",
+  "profile_id": "A15",
+  "profile_version": "1.0.0",
+  "schema_version": "multica-agent-input/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:442f3f9583dc1ce3e7fda90bc66a5e11a746acbe611f92f9c21a3c63dae87f6a",
+      "artifact_id": "n25-compiled-test-cases"
+    },
+    {
+      "artifact_hash": "sha256:cd895e4b4fa8ea30ce9a3db3bb5e091a8d1de5bd7ed129751d94029b98f052ce",
+      "artifact_id": "n15-execution-plan"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

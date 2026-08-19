@@ -1,0 +1,43 @@
+{
+  "schema_version": "g03-review-policy/1.0",
+  "gate_id": "G03",
+  "allowed_roles": [
+    "qa_owner"
+  ],
+  "allowed_actor_ids": [
+    "muqj11262"
+  ],
+  "allowed_multica_member_ids": [
+    "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54"
+  ],
+  "allowed_decisions": [
+    "approved",
+    "request_changes",
+    "rejected"
+  ],
+  "approval_mode": "named_qa_owner_single_signoff",
+  "policy_scope": "pilot_automation_code_only",
+  "temporary_policy": true,
+  "production_release_authority": false,
+  "require_human_actor": true,
+  "require_n05_valid": true,
+  "request_changes_target": "A14/A15",
+  "multica": {
+    "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
+    "project_id": "f2f893a2-55dc-414d-87d9-a483e51765d6",
+    "assignee_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "identity_evidence_mode": "assigned_member_pilot",
+    "initial_status": "in_review",
+    "decision_statuses": {
+      "done": "approved",
+      "blocked": "request_changes",
+      "cancelled": "rejected"
+    }
+  },
+  "migration": {
+    "trigger": "end_to_end_quality_chain_completed",
+    "target_role": "qa_reviewer",
+    "target_approval_mode": "separate_qa_reviewer_signoff"
+  },
+  "exit_criteria": "After the full quality chain is complete, replace the named QA owner approval with another QA reviewer"
+}

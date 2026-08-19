@@ -29,6 +29,9 @@ from .security import SecurityPolicy
 from .storage import ArtifactStore
 
 
+HUMAN_FACING_ISSUE_FIELDS = frozenset({"plain_summary", "human_title"})
+
+
 PROFILE_INPUTS = {
     "A02": {
         "output_contract": "requirement-analysis/1.0",
@@ -255,6 +258,116 @@ PROFILE_OUTPUTS = {
             },
         },
     },
+    "A14": {
+        "artifact_id": "a14-backend-automation-generation",
+        "required_fields": {
+            "schema_version",
+            "manifest",
+            "code_candidates",
+            "rejected_cases",
+        },
+        "evidence_collections": {"rejected_cases"},
+        "collection_item_fields": {
+            "rejected_cases": {"case_id", "reason_code", "source_refs"},
+        },
+    },
+    "A15": {
+        "artifact_id": "a15-contract-automation-generation",
+        "required_fields": {
+            "schema_version",
+            "manifest",
+            "code_candidates",
+            "rejected_cases",
+        },
+        "evidence_collections": {"rejected_cases"},
+        "collection_item_fields": {
+            "rejected_cases": {"case_id", "reason_code", "source_refs"},
+        },
+    },
+    "A18-BE": {
+        "artifact_id": "a18-be-backend-automation-review",
+        "required_fields": {
+            "schema_version",
+            "review_profile",
+            "approved",
+            "issues",
+            "generation_hash",
+            "manifest_hash",
+            "candidate_hashes",
+            "generator_hidden_reasoning_accessed",
+            "evaluation_oracle_accessed",
+        },
+        "evidence_collections": {"issues"},
+        "collection_item_fields": {
+            "issues": {
+                "id",
+                "issue_code",
+                "severity",
+                "category",
+                "message",
+                "path",
+                "route_to",
+                "case_id",
+                "expected_id",
+                "source_refs",
+                "recommendation",
+                "plain_summary",
+                "human_title",
+            },
+        },
+    },
+    "A18-CT": {
+        "artifact_id": "a18-ct-contract-automation-review",
+        "required_fields": {
+            "schema_version",
+            "review_profile",
+            "approved",
+            "issues",
+            "generation_hash",
+            "manifest_hash",
+            "candidate_hashes",
+            "generator_hidden_reasoning_accessed",
+            "evaluation_oracle_accessed",
+        },
+        "evidence_collections": {"issues"},
+        "collection_item_fields": {
+            "issues": {
+                "id",
+                "issue_code",
+                "severity",
+                "category",
+                "message",
+                "path",
+                "route_to",
+                "case_id",
+                "expected_id",
+                "source_refs",
+                "recommendation",
+                "plain_summary",
+                "human_title",
+            },
+        },
+    },
+    "A22": {
+        "artifact_id": "a22-test-data-plan",
+        "required_fields": {
+            "schema_version",
+            "environment",
+            "namespace",
+            "case_plans",
+            "paused_cases",
+            "unresolved_requirements",
+        },
+        "evidence_collections": {"case_plans"},
+        "collection_item_fields": {
+            "case_plans": {
+                "case_id",
+                "requires_data_construction",
+                "resources",
+                "source_refs",
+            },
+        },
+    },
 }
 
 
@@ -438,6 +551,8 @@ def _verified_artifact(
     path: Path,
     expected_id: str,
     security: SecurityPolicy,
+    *,
+    allowed_statuses: set[str] | None = None,
 ) -> dict[str, Any]:
     artifact = _read(path)
     security.assert_no_secret_values(artifact)
@@ -445,11 +560,13 @@ def _verified_artifact(
         raise ContractError(f"Expected Artifact {expected_id}: {path}")
     if artifact.get("artifact_hash") != artifact_hash_from_mapping(artifact):
         raise ContractError(f"Artifact hash mismatch: {expected_id}")
-    if artifact.get("status") not in {
-        ArtifactStatus.COMPLETED.value,
-        ArtifactStatus.COMPLETED_WITH_GAPS.value,
-        ArtifactStatus.NEEDS_HUMAN.value,
-    }:
+    if allowed_statuses is None:
+        allowed_statuses = {
+            ArtifactStatus.COMPLETED.value,
+            ArtifactStatus.COMPLETED_WITH_GAPS.value,
+            ArtifactStatus.NEEDS_HUMAN.value,
+        }
+    if artifact.get("status") not in allowed_statuses:
         raise ContractError(f"Upstream Artifact is not consumable: {expected_id}")
     if not isinstance(artifact.get("payload"), Mapping):
         raise ContractError(f"Artifact payload is invalid: {expected_id}")
@@ -792,6 +909,57 @@ def _group_n04_correction_issues(issues: list[Any]) -> list[dict[str, Any]]:
     return result
 
 
+def _validate_g02_review_direction(
+    request: Mapping[str, Any],
+    decision: Mapping[str, Any],
+    n04: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate a request_changes G02 decision as an A08 fix direction."""
+
+    if request.get("schema_version") != "test-case-ir-review-request/1.0":
+        raise ContractError("A08 G02 direction request schema is invalid")
+    if request.get("gate_id") != "G02":
+        raise ContractError("A08 G02 direction request gate is invalid")
+    if decision.get("schema_version") != "test-case-ir-review-decision/1.0":
+        raise ContractError("A08 G02 direction decision schema is invalid")
+    if decision.get("gate_id") != "G02":
+        raise ContractError("A08 G02 direction decision gate is invalid")
+    for value, label, field in (
+        (request, "G02 review request", "request_hash"),
+        (decision, "G02 review decision", "decision_hash"),
+    ):
+        unhashed = {key: item for key, item in value.items() if key != field}
+        if value.get(field) != content_hash(unhashed):
+            raise ContractError(f"{label} hash is invalid")
+    if decision.get("decision") != "request_changes":
+        raise ContractError("A08 G02 direction requires a request_changes decision")
+    if decision.get("request_hash") != request.get("request_hash"):
+        raise ContractError("A08 G02 direction decision does not bind the request")
+    if decision.get("review_key") != request.get("review_key"):
+        raise ContractError("A08 G02 direction review_key is stale")
+    actor = decision.get("actor")
+    if not isinstance(actor, Mapping) or actor.get("type") != "human":
+        raise SecurityPolicyError("A08 G02 direction was not decided by a human")
+    upstream = {
+        str(item.get("artifact_id")): str(item.get("artifact_hash"))
+        for item in request.get("upstream_artifacts", [])
+        if isinstance(item, Mapping)
+    }
+    if upstream.get("n04-test-case-ir-validation") != n04.get("artifact_hash"):
+        raise ContractError("A08 G02 direction N04 binding is stale")
+    return {
+        "schema_version": "test-design-g02-direction/1.0",
+        "request_hash": request["request_hash"],
+        "decision_hash": decision["decision_hash"],
+        "decision": decision["decision"],
+        "actor": dict(actor),
+        "reason": str(decision.get("reason", "")),
+        "reviewer_comment": dict(decision.get("reviewer_comment") or {}),
+        "automatic_budget_reset": False,
+        "required_revalidation": ["A09", "N04"],
+    }
+
+
 def prepare_multica_test_design_correction_input(
     previous_test_design_artifact_path: Path,
     previous_test_design_bundle_path: Path,
@@ -802,9 +970,11 @@ def prepare_multica_test_design_correction_input(
     human_correction_request_path: Path | None = None,
     human_correction_decision_path: Path | None = None,
     human_correction_policy_path: Path | None = None,
+    g02_review_request_path: Path | None = None,
+    g02_review_decision_path: Path | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
-    """Build a hash-bound A08 correction input after an N04 route back to A08."""
+    """Build a hash-bound A08 correction input after an N04 or G02 route back."""
 
     security = security or SecurityPolicy()
     design = _verified_artifact(
@@ -861,13 +1031,27 @@ def prepare_multica_test_design_correction_input(
     if any(recovery_paths) and not all(recovery_paths):
         raise ContractError("A08 human recovery requires request, decision, and policy")
     human_recovery = all(recovery_paths)
+    g02_paths = (g02_review_request_path, g02_review_decision_path)
+    if any(g02_paths) and not all(g02_paths):
+        raise ContractError("A08 G02 correction requires request and decision")
+    g02_direction = all(g02_paths)
+    if human_recovery and g02_direction:
+        raise ContractError("A08 correction cannot mix human recovery and G02 direction")
     n04_payload = n04["payload"]
     expected_route = "human" if human_recovery else "A08"
-    if (
-        n04_payload.get("valid") is not False
-        or n04_payload.get("next_node") != expected_route
-        or n04_payload.get("g02_status") != "not_started"
-    ):
+    if g02_direction:
+        route_ok = (
+            n04_payload.get("valid") is True
+            and n04_payload.get("next_node") == "G02"
+            and n04_payload.get("g02_status") == "pending"
+        )
+    else:
+        route_ok = (
+            n04_payload.get("valid") is False
+            and n04_payload.get("next_node") == expected_route
+            and n04_payload.get("g02_status") == "not_started"
+        )
+    if not route_ok:
         raise ContractError(
             "A08 correction requires the matching N04 correction route before G02"
         )
@@ -879,7 +1063,7 @@ def prepare_multica_test_design_correction_input(
     max_attempts = n04_payload.get("max_correction_attempts")
     if not isinstance(attempt, int) or not isinstance(max_attempts, int):
         raise ContractError("A08 correction N04 retry budget is invalid")
-    if attempt >= max_attempts and not human_recovery:
+    if attempt >= max_attempts and not (human_recovery or g02_direction):
         raise ContractError("A08 correction retry budget is exhausted")
 
     human_authorization: dict[str, Any] | None = None
@@ -915,6 +1099,24 @@ def prepare_multica_test_design_correction_input(
             "required_revalidation": list(decision["required_revalidation"]),
         }
 
+    g02_authorization: dict[str, Any] | None = None
+    if g02_direction:
+        g02_request = _read(g02_review_request_path)
+        g02_decision = _read(g02_review_decision_path)
+        for value in (g02_request, g02_decision):
+            security.assert_no_secret_values(value)
+        g02_authorization = _validate_g02_review_direction(
+            g02_request, g02_decision, n04
+        )
+        request_upstream = {
+            str(item.get("artifact_id")): str(item.get("artifact_hash"))
+            for item in g02_request.get("upstream_artifacts", [])
+            if isinstance(item, Mapping)
+        }
+        for artifact in (design, review, n04):
+            if request_upstream.get(artifact["artifact_id"]) != artifact["artifact_hash"]:
+                raise ContractError("A08 G02 direction is stale")
+
     previous_inputs = previous_bundle.get("allowed_inputs")
     if not isinstance(previous_inputs, Mapping):
         raise ContractError("A08 correction previous frozen inputs are invalid")
@@ -946,13 +1148,23 @@ def prepare_multica_test_design_correction_input(
         for item in review_issues
         if isinstance(item, Mapping) and item.get("route_to") == "A08"
     ]
+    if human_recovery:
+        feedback_schema = "test-design-correction/1.2"
+        feedback_attempt = attempt + 1
+        recovery_mode = "human_directed"
+    elif g02_direction:
+        feedback_schema = "test-design-correction/1.3"
+        feedback_attempt = attempt + 1
+        recovery_mode = "g02_reviewer_direction"
+    else:
+        feedback_schema = "test-design-correction/1.1"
+        feedback_attempt = attempt
+        recovery_mode = "automatic"
     correction_feedback = {
-        "schema_version": (
-            "test-design-correction/1.2" if human_recovery else "test-design-correction/1.1"
-        ),
-        "correction_attempt": attempt + 1 if human_recovery else attempt,
+        "schema_version": feedback_schema,
+        "correction_attempt": feedback_attempt,
         "max_correction_attempts": max_attempts,
-        "recovery_mode": "human_directed" if human_recovery else "automatic",
+        "recovery_mode": recovery_mode,
         "automatic_budget_reset": False,
         "previous_artifact_hash": design["artifact_hash"],
         "oracle_review_artifact_hash": review["artifact_hash"],
@@ -1004,13 +1216,17 @@ def prepare_multica_test_design_correction_input(
     )
     if human_authorization is not None:
         allowed_inputs["human_correction_decision"] = human_authorization
+    if g02_authorization is not None:
+        allowed_inputs["g02_review_direction"] = g02_authorization
     bundle = {
         "schema_version": "multica-agent-input/1.0",
         "workflow_run_id": workflow_run_id,
         "workflow_mode": workflow_mode,
         "source_snapshot_id": snapshot_id,
         "profile_id": "A08",
-        "profile_version": "1.3.0" if human_recovery else "1.2.1",
+        "profile_version": (
+            "1.3.0" if human_recovery else "1.4.0" if g02_direction else "1.2.1"
+        ),
         "output_contract": "test-design-ir/1.1",
         "allowed_inputs": allowed_inputs,
         "upstream_artifacts": [
@@ -1032,6 +1248,11 @@ def prepare_multica_test_design_correction_input(
         bundle["upstream_human_decision"] = {
             "request_hash": human_authorization["request_hash"],
             "decision_hash": human_authorization["decision_hash"],
+        }
+    if g02_authorization is not None:
+        bundle["upstream_g02_decision"] = {
+            "request_hash": g02_authorization["request_hash"],
+            "decision_hash": g02_authorization["decision_hash"],
         }
     security.assert_no_secret_values(bundle)
     _assert_no_forbidden_oracle_fields(bundle)
@@ -1254,6 +1475,511 @@ def prepare_multica_split_review_input(
     return bundle
 
 
+GENERATION_LAYER_BY_PROFILE = {
+    "A14": "backend",
+    "A15": "contract",
+}
+GENERATION_ARTIFACT_BY_PROFILE = {
+    "A14": "a14-backend-automation-generation",
+    "A15": "a15-contract-automation-generation",
+}
+REVIEW_AGENT_BY_GENERATION = {
+    "A14": "A18-BE",
+    "A15": "A18-CT",
+}
+REVIEW_PROFILE_BY_AGENT = {
+    "A18-BE": "A18-BE/1.0.0",
+    "A18-CT": "A18-CT/1.0.0",
+}
+
+
+def _compact_generation_case(case: Mapping[str, Any]) -> dict[str, Any]:
+    """Compress one N25 child Case into the automation generation scope.
+
+    Keeps every field the generator needs to emit an artifact-only candidate while
+    dropping audit-only fields that would inflate the Agent context (parent IR
+    copies, split bookkeeping).
+    """
+
+    policy = case.get("execution_policy")
+    expected = []
+    for item in case.get("expected", []):
+        if not isinstance(item, Mapping):
+            continue
+        oracle = item.get("oracle")
+        expected.append(
+            {
+                "id": item.get("id"),
+                "description": item.get("description"),
+                "type": oracle.get("type") if isinstance(oracle, Mapping) else None,
+                "matcher": oracle.get("matcher") if isinstance(oracle, Mapping) else None,
+                "observation_point": (
+                    oracle.get("observation_point") if isinstance(oracle, Mapping) else None
+                ),
+                "source_ref": oracle.get("source_ref") if isinstance(oracle, Mapping) else None,
+            }
+        )
+    compact: dict[str, Any] = {
+        "id": case.get("id"),
+        "parent_case_id": case.get("parent_case_id"),
+        "title": case.get("title"),
+        "layer": case.get("layer"),
+        "risk": case.get("risk"),
+        "priority": case.get("priority"),
+        "automation_candidate": case.get("automation_candidate") is True,
+        "source_refs": list(case.get("source_refs", [])),
+        "intent_ids": list(case.get("intent_ids", [])),
+        "preconditions": list(case.get("preconditions", [])),
+        "test_data": dict(case.get("test_data", {})),
+        "steps": list(case.get("steps", [])),
+        "expected": expected,
+        "cleanup": list(case.get("cleanup", [])),
+        "execution_policy": (
+            dict(policy) if isinstance(policy, Mapping) else {}
+        ),
+    }
+    for lifecycle_key in (
+        "environment", "namespace", "variables", "setup", "readiness", "residue_checks",
+    ):
+        if lifecycle_key in case:
+            compact[lifecycle_key] = case[lifecycle_key]
+    return compact
+
+
+def prepare_multica_automation_generation_input(
+    compiled_cases_path: Path,
+    execution_plan_path: Path,
+    automation_policy_path: Path,
+    output_dir: Path,
+    *,
+    profile_id: str,
+    test_data_plan_path: Path | None = None,
+    test_data_validation_path: Path | None = None,
+    knowledge_readiness_path: Path | None = None,
+    security: SecurityPolicy | None = None,
+) -> dict[str, Any]:
+    """Compile N25 + N15 + approved automation target into A14/A15 input."""
+
+    if profile_id not in GENERATION_LAYER_BY_PROFILE:
+        raise ContractError(f"Unsupported generation profile: {profile_id}")
+    security = security or SecurityPolicy()
+    compiled = _verified_artifact(
+        compiled_cases_path, "n25-compiled-test-cases", security
+    )
+    plan = _verified_artifact(execution_plan_path, "n15-execution-plan", security)
+    if _identity_of(compiled) != _identity_of(plan):
+        raise ContractError(f"{profile_id} N15 and N25 belong to different runs")
+    workflow_run_id, workflow_mode, snapshot_id = _identity_of(compiled)
+    layer = GENERATION_LAYER_BY_PROFILE[profile_id]
+    payload = compiled.get("payload")
+    if not isinstance(payload, Mapping):
+        raise ContractError("N25 compiled cases payload is invalid")
+    cases = payload.get("compiled_cases", payload.get("child_cases"))
+    if not isinstance(cases, list) or not all(isinstance(item, Mapping) for item in cases):
+        raise ContractError("N25 compiled_cases or child_cases must be a list of objects")
+    layer_cases = [
+        _compact_generation_case(item)
+        for item in cases
+        if str(item.get("layer", "")) == layer
+    ]
+    if not layer_cases:
+        raise ContractError(f"{profile_id} has no {layer} Cases in the compiled set")
+    plan_actions = plan.get("payload", {}).get("actions", [])
+    if not isinstance(plan_actions, list):
+        raise ContractError("N15 execution plan actions are invalid")
+    actions_by_case = {
+        str(item.get("case_id", "")): item
+        for item in plan_actions
+        if isinstance(item, Mapping)
+    }
+    missing_actions = sorted(
+        case_id for case_id in {str(item["id"]) for item in layer_cases}
+        if case_id not in actions_by_case
+    )
+    if missing_actions:
+        raise ContractError(f"{profile_id} N15 has no action for: {', '.join(missing_actions)}")
+
+    target_policy = _read(automation_policy_path)
+    security.assert_no_secret_values(target_policy)
+    if target_policy.get("schema_version") != "automation-target-policy/1.0":
+        raise ContractError(f"{profile_id} automation target policy version is unsupported")
+    targets = target_policy.get("targets", [])
+    if not isinstance(targets, list) or not targets:
+        raise ContractError(f"{profile_id} automation target policy has no targets")
+    target_config = {
+        "targets": targets,
+        "layer_profile": next(
+            (
+                item
+                for item in target_policy.get("layer_profiles", {}).values()
+                if isinstance(item, Mapping) and item.get("agent_id") == profile_id
+            ),
+            None,
+        ),
+        "command_allowlist": target_policy.get("command_allowlist", []),
+        "forbidden_python_imports": target_policy.get("forbidden_python_imports", []),
+        "forbidden_calls": target_policy.get("forbidden_calls", []),
+    }
+    if target_config["layer_profile"] is None:
+        raise ContractError(f"{profile_id} automation target has no layer profile")
+
+    upstream: list[dict[str, str]] = [
+        {"artifact_id": "n25-compiled-test-cases", "artifact_hash": compiled["artifact_hash"]},
+        {"artifact_id": "n15-execution-plan", "artifact_hash": plan["artifact_hash"]},
+    ]
+    input_bindings: dict[str, Any] = {}
+    data_validation = None
+    if test_data_validation_path is not None:
+        data_validation = _verified_artifact(
+            test_data_validation_path, "n27-test-data-plan-validation", security
+        )
+        upstream.append(
+            {
+                "artifact_id": "n27-test-data-plan-validation",
+                "artifact_hash": data_validation["artifact_hash"],
+            }
+        )
+        input_bindings["test_data_validation_hash"] = data_validation["artifact_hash"]
+    if test_data_plan_path is not None:
+        data_plan = _verified_artifact(
+            test_data_plan_path, "a22-test-data-plan", security
+        )
+        upstream.append(
+            {"artifact_id": "a22-test-data-plan", "artifact_hash": data_plan["artifact_hash"]}
+        )
+        input_bindings["test_data_plan_hash"] = data_plan["artifact_hash"]
+    if knowledge_readiness_path is not None:
+        knowledge = _read(knowledge_readiness_path)
+        security.assert_no_secret_values(knowledge)
+        packet_hash = str(knowledge.get("packet_hash", ""))
+        if not packet_hash:
+            raise ContractError(f"{profile_id} knowledge readiness packet has no packet_hash")
+        input_bindings["knowledge_packet_hash"] = packet_hash
+
+    bundle = {
+        "schema_version": "multica-agent-input/1.0",
+        "workflow_run_id": workflow_run_id,
+        "workflow_mode": workflow_mode,
+        "source_snapshot_id": snapshot_id,
+        "profile_id": profile_id,
+        "profile_version": "1.0.0",
+        "output_contract": "automation-generation/1.0",
+        "allowed_inputs": {
+            "layer": layer,
+            "cases": layer_cases,
+            "execution_plan_actions": [
+                actions_by_case[str(item["id"])] for item in layer_cases
+            ],
+            "automation_target": target_config,
+            "input_bindings": input_bindings,
+        },
+        "upstream_artifacts": upstream,
+        "integrity": {
+            "evaluation_oracle_registry_included": False,
+            "credentials_embedded": False,
+            "business_repository_write_allowed": False,
+            "external_side_effects_allowed": False,
+        },
+    }
+    security.assert_no_secret_values(bundle)
+    _assert_no_forbidden_oracle_fields(bundle)
+    bundle["bundle_hash"] = content_hash(bundle)
+    ArtifactStore(output_dir).write_json(f"{profile_id.lower()}-input.json", bundle)
+    return bundle
+
+
+def prepare_multica_automation_review_input(
+    generation_artifact_path: Path,
+    generation_bundle_path: Path,
+    compiled_cases_path: Path,
+    automation_policy_path: Path,
+    output_dir: Path,
+    *,
+    profile_id: str,
+    security: SecurityPolicy | None = None,
+) -> dict[str, Any]:
+    """Compile one A14/A15 generation plus N25 scope into A18-BE/A18-CT input."""
+
+    if profile_id not in REVIEW_AGENT_BY_GENERATION.values():
+        raise ContractError(f"Unsupported review profile: {profile_id}")
+    generator_profile = next(
+        key for key, value in REVIEW_AGENT_BY_GENERATION.items() if value == profile_id
+    )
+    generation_artifact_id = GENERATION_ARTIFACT_BY_PROFILE[generator_profile]
+    security = security or SecurityPolicy()
+    generation = _verified_artifact(
+        generation_artifact_path, generation_artifact_id, security
+    )
+    generation_bundle = _read(generation_bundle_path)
+    compiled = _verified_artifact(
+        compiled_cases_path, "n25-compiled-test-cases", security
+    )
+    for value in (generation_bundle, compiled):
+        security.assert_no_secret_values(value)
+    _assert_no_forbidden_oracle_fields(generation_bundle)
+
+    expected_bundle_hash = str(generation_bundle.get("bundle_hash", ""))
+    unhashed_bundle = {
+        key: value for key, value in generation_bundle.items() if key != "bundle_hash"
+    }
+    if (
+        generation_bundle.get("profile_id") != generator_profile
+        or not expected_bundle_hash
+        or expected_bundle_hash != content_hash(unhashed_bundle)
+    ):
+        raise ContractError(f"{profile_id} requires the valid {generator_profile} input bundle")
+    if generation["payload"].get("input_bundle_hash") != expected_bundle_hash:
+        raise ContractError(f"{profile_id} generation Artifact does not bind its input")
+    if _identity_of(generation) != _identity_of(compiled):
+        raise ContractError(f"{profile_id} generation and N25 belong to different runs")
+    workflow_run_id, workflow_mode, snapshot_id = _identity_of(generation)
+
+    layer = GENERATION_LAYER_BY_PROFILE[generator_profile]
+    payload = compiled.get("payload")
+    cases = (
+        payload.get("compiled_cases", payload.get("child_cases"))
+        if isinstance(payload, Mapping)
+        else None
+    )
+    if not isinstance(cases, list) or not all(isinstance(item, Mapping) for item in cases):
+        raise ContractError("N25 compiled_cases or child_cases must be a list of objects")
+    layer_cases = [
+        _compact_generation_case(item)
+        for item in cases
+        if str(item.get("layer", "")) == layer
+    ]
+    target_policy = _read(automation_policy_path)
+    security.assert_no_secret_values(target_policy)
+    generation_payload = generation.get("payload")
+    if not isinstance(generation_payload, Mapping):
+        raise ContractError(f"{generation_artifact_id} payload is invalid")
+    manifest = generation_payload.get("manifest")
+    if not isinstance(manifest, Mapping):
+        raise ContractError(f"{profile_id} cannot review a not-applicable generation")
+
+    bundle = {
+        "schema_version": "multica-agent-input/1.0",
+        "workflow_run_id": workflow_run_id,
+        "workflow_mode": workflow_mode,
+        "source_snapshot_id": snapshot_id,
+        "profile_id": profile_id,
+        "profile_version": "1.0.0",
+        "output_contract": "automation-review/1.0",
+        "allowed_inputs": {
+            "layer": layer,
+            "cases": layer_cases,
+            "generation": generation_payload,
+            "security_rules": {
+                "command_allowlist": target_policy.get("command_allowlist", []),
+                "forbidden_python_imports": target_policy.get("forbidden_python_imports", []),
+                "forbidden_calls": target_policy.get("forbidden_calls", []),
+            },
+            "review_profile": REVIEW_PROFILE_BY_AGENT[profile_id],
+        },
+        "upstream_artifacts": [
+            {"artifact_id": generation_artifact_id, "artifact_hash": generation["artifact_hash"]},
+            {"artifact_id": "n25-compiled-test-cases", "artifact_hash": compiled["artifact_hash"]},
+        ],
+        "integrity": {
+            "evaluation_oracle_registry_included": False,
+            "credentials_embedded": False,
+            "business_repository_write_allowed": False,
+            "external_side_effects_allowed": False,
+        },
+    }
+    security.assert_no_secret_values(bundle)
+    _assert_no_forbidden_oracle_fields(bundle)
+    bundle["bundle_hash"] = content_hash(bundle)
+    ArtifactStore(output_dir).write_json(f"{profile_id.lower()}-input.json", bundle)
+    return bundle
+
+
+def prepare_multica_test_data_plan_input(
+    compiled_cases_path: Path,
+    execution_plan_path: Path,
+    test_data_policy_path: Path,
+    output_dir: Path,
+    *,
+    capability_catalog_path: Path | None = None,
+    knowledge_sources_path: Path | None = None,
+    security: SecurityPolicy | None = None,
+) -> dict[str, Any]:
+    """Compile N25 + N15 + data policy into the A22 test-data plan input."""
+
+    security = security or SecurityPolicy()
+    compiled = _verified_artifact(
+        compiled_cases_path, "n25-compiled-test-cases", security
+    )
+    plan = _verified_artifact(execution_plan_path, "n15-execution-plan", security)
+    if _identity_of(compiled) != _identity_of(plan):
+        raise ContractError("A22 N15 and N25 belong to different runs")
+    workflow_run_id, workflow_mode, snapshot_id = _identity_of(compiled)
+    payload = compiled.get("payload")
+    if not isinstance(payload, Mapping):
+        raise ContractError("N25 compiled cases payload is invalid")
+    cases = payload.get("compiled_cases", payload.get("child_cases"))
+    if not isinstance(cases, list) or not all(isinstance(item, Mapping) for item in cases):
+        raise ContractError("N25 compiled_cases or child_cases must be a list of objects")
+    policy = _read(test_data_policy_path)
+    security.assert_no_secret_values(policy)
+    if policy.get("schema_version") != "test-data-policy/1.0":
+        raise ContractError("A22 test-data policy version is unsupported")
+    plan_actions = plan.get("payload", {}).get("actions", [])
+    if not isinstance(plan_actions, list):
+        raise ContractError("N15 execution plan actions are invalid")
+    actions_by_case = {
+        str(item.get("case_id", "")): item
+        for item in plan_actions
+        if isinstance(item, Mapping)
+    }
+
+    context: dict[str, Any] = {}
+    if capability_catalog_path is not None:
+        catalog = _read(capability_catalog_path)
+        security.assert_no_secret_values(catalog)
+        context["capability_catalog"] = catalog
+    if knowledge_sources_path is not None:
+        sources = _read(knowledge_sources_path)
+        security.assert_no_secret_values(sources)
+        context["knowledge_sources"] = sources
+    if (capability_catalog_path is None) != (knowledge_sources_path is None):
+        raise ContractError("A22 catalog and knowledge sources must be provided together")
+
+    allowed_environments = {
+        str(item) for item in policy.get("allowed_environments", [])
+    }
+    default_namespace = "qa-a22-" + str(snapshot_id).casefold().replace("_", "-")[:40]
+    default_namespace = re.sub(r"[^a-z0-9-]", "-", default_namespace).strip("-")
+    bundle = {
+        "schema_version": "multica-agent-input/1.0",
+        "workflow_run_id": workflow_run_id,
+        "workflow_mode": workflow_mode,
+        "source_snapshot_id": snapshot_id,
+        "profile_id": "A22",
+        "profile_version": "1.0.0",
+        "output_contract": "test-data-plan/1.0",
+        "allowed_inputs": {
+            "cases": [_compact_generation_case(item) for item in cases],
+            "execution_plan_actions": [
+                actions_by_case[str(item.get("id", ""))] for item in cases
+            ],
+            "test_data_policy": policy,
+            "planning_defaults": {
+                "environment": sorted(allowed_environments)[0] if allowed_environments else "112",
+                "namespace": default_namespace,
+            },
+            **context,
+        },
+        "upstream_artifacts": [
+            {"artifact_id": "n25-compiled-test-cases", "artifact_hash": compiled["artifact_hash"]},
+            {"artifact_id": "n15-execution-plan", "artifact_hash": plan["artifact_hash"]},
+        ],
+        "integrity": {
+            "evaluation_oracle_registry_included": False,
+            "credentials_embedded": False,
+            "business_repository_write_allowed": False,
+            "external_side_effects_allowed": False,
+        },
+    }
+    security.assert_no_secret_values(bundle)
+    _assert_no_forbidden_oracle_fields(bundle)
+    bundle["bundle_hash"] = content_hash(bundle)
+    ArtifactStore(output_dir).write_json("a22-input.json", bundle)
+    return bundle
+
+
+def prepare_multica_test_data_plan_revision_input(
+    previous_plan_path: Path,
+    validation_path: Path,
+    previous_input_path: Path,
+    output_dir: Path,
+    *,
+    revision_attempt: int,
+    security: SecurityPolicy | None = None,
+) -> dict[str, Any]:
+    """Build an A22 revision input from the rejected plan and N27 validation.
+
+    The revision re-freezes the original cases/actions/policy scope and adds the
+    rejected plan plus the N27 validation error so the Agent can fix only what
+    N27 blocked. Revision attempts are content-addressed per attempt.
+    """
+
+    security = security or SecurityPolicy()
+    if int(revision_attempt) < 1:
+        raise ContractError("A22 revision_attempt must be >= 1")
+    previous = _verified_artifact(
+        previous_plan_path,
+        "a22-test-data-plan",
+        security,
+    )
+    validation = _verified_artifact(
+        validation_path,
+        "n27-test-data-plan-validation",
+        security,
+        allowed_statuses={ArtifactStatus.BLOCKED.value},
+    )
+    if _identity_of(previous) != _identity_of(validation):
+        raise ContractError("A22 revision plan and validation belong to different runs")
+    validation_payload = validation.get("payload", {})
+    if not isinstance(validation_payload, Mapping) or validation_payload.get(
+        "valid"
+    ) is not False:
+        raise ContractError("A22 revision requires a rejected N27 validation")
+    previous_input = _read(previous_input_path)
+    if previous_input.get("schema_version") != "multica-agent-input/1.0":
+        raise ContractError("A22 revision previous input schema_version is invalid")
+    if str(previous_input.get("profile_id", "")) != "A22":
+        raise ContractError("A22 revision previous input is not an A22 bundle")
+    if str(previous.get("payload", {}).get("input_bundle_hash", "")) != str(
+        previous_input.get("bundle_hash", "")
+    ):
+        raise ContractError("A22 revision previous Artifact does not bind its input bundle")
+
+    allowed_inputs = previous_input.get("allowed_inputs", {})
+    if not isinstance(allowed_inputs, Mapping):
+        raise ContractError("A22 revision previous input has no frozen scope")
+    bundle = {
+        "schema_version": "multica-agent-input/1.0",
+        "workflow_run_id": previous_input["workflow_run_id"],
+        "workflow_mode": previous_input["workflow_mode"],
+        "source_snapshot_id": previous_input["source_snapshot_id"],
+        "profile_id": "A22",
+        "profile_version": "1.0.0",
+        "output_contract": "test-data-plan/1.0",
+        "revision": {
+            "revision_attempt": int(revision_attempt),
+            "previous_plan_hash": previous["artifact_hash"],
+            "validation_hash": validation["artifact_hash"],
+            "validation_error": str(validation_payload.get("validation_error", "")),
+        },
+        "allowed_inputs": {
+            **allowed_inputs,
+            "previous_plan": previous["payload"],
+            "n27_validation": validation_payload,
+        },
+        "upstream_artifacts": list(previous_input.get("upstream_artifacts", [])) + [
+            {
+                "artifact_id": "a22-test-data-plan",
+                "artifact_hash": previous["artifact_hash"],
+            },
+            {
+                "artifact_id": "n27-test-data-plan-validation",
+                "artifact_hash": validation["artifact_hash"],
+            },
+        ],
+        "integrity": previous_input.get("integrity", {}),
+    }
+    security.assert_no_secret_values(bundle)
+    _assert_no_forbidden_oracle_fields(bundle)
+    bundle["bundle_hash"] = content_hash(
+        {key: value for key, value in bundle.items() if key != "bundle_hash"}
+    )
+    ArtifactStore(output_dir).write_json(
+        f"a22-input-revision-{int(revision_attempt)}.json", bundle
+    )
+    return bundle
+
+
 def _compact_a11_review_case(
     case: Mapping[str, Any], *, parent: Mapping[str, Any] | None = None
 ) -> dict[str, Any]:
@@ -1468,21 +2194,55 @@ def _parse_raw_model_output(raw_output: str) -> dict[str, Any]:
     try:
         value = json.loads(raw_output)
     except json.JSONDecodeError as error:
-        raise ContractError(
-            "Multica model output must be one raw JSON object without Markdown fences"
-        ) from error
+        value = _trailing_json_object(raw_output)
+        if value is None:
+            raise ContractError(
+                "Multica model output must be one raw JSON object without Markdown fences"
+            ) from error
     if not isinstance(value, dict):
         raise ContractError("Multica model output must be a JSON object")
     return value
 
 
+def _trailing_json_object(raw_output: str) -> dict[str, Any] | None:
+    """Extract the last JSON object when the model wraps it in prose or fences."""
+
+    decoder = json.JSONDecoder()
+    index = raw_output.rfind("{")
+    while index != -1:
+        try:
+            value, end = decoder.raw_decode(raw_output, index)
+        except json.JSONDecodeError:
+            index = raw_output.rfind("{", 0, index)
+            continue
+        if not isinstance(value, dict):
+            index = raw_output.rfind("{", 0, index)
+            continue
+        tail = raw_output[end:].strip()
+        if not tail or tail in {"```", "````", "```json"}:
+            return value
+        index = raw_output.rfind("{", 0, index)
+    return None
+
+
+def _coerce_raw_response(raw_response: str) -> dict[str, Any] | list[Any] | None:
+    """Parse a raw model response, tolerating a human-readable prose preamble."""
+
+    try:
+        value = json.loads(raw_response)
+    except json.JSONDecodeError:
+        value = _trailing_json_object(raw_response)
+    if isinstance(value, (dict, list)):
+        return value
+    return None
+
+
 def extract_multica_model_output(raw_response: str) -> dict[str, Any]:
     """Extract the final pure-JSON text message without parsing an aggregated task log."""
 
-    try:
-        response = json.loads(raw_response)
-    except json.JSONDecodeError as error:
-        raise ContractError("Multica response file must be valid JSON") from error
+    response = _coerce_raw_response(raw_response)
+    if response is None:
+        raise ContractError("Multica response file must be valid JSON")
     if isinstance(response, dict):
         return response
     if not isinstance(response, list):
@@ -1509,10 +2269,9 @@ def audit_multica_tool_trace(
 ) -> list[str]:
     """Reject model tool calls outside the frozen-input read boundary."""
 
-    try:
-        response = json.loads(raw_response)
-    except json.JSONDecodeError as error:
-        raise ContractError("Multica response file must be valid JSON") from error
+    response = _coerce_raw_response(raw_response)
+    if response is None:
+        raise ContractError("Multica response file must be valid JSON")
     if isinstance(response, dict):
         return []
     if not isinstance(response, list):
@@ -1626,7 +2385,13 @@ def _validate_collection_item_fields(
         for index, item in enumerate(collection):
             if not isinstance(item, Mapping):
                 raise ContractError(f"{collection_name}[{index}] must be an object")
-            missing = sorted(required_fields - set(item))
+            effective_required = set(required_fields)
+            if collection_name == "issues" and str(item.get("severity") or "") not in {
+                "error",
+                "blocking",
+            }:
+                effective_required -= HUMAN_FACING_ISSUE_FIELDS
+            missing = sorted(effective_required - set(item))
             if missing:
                 raise ContractError(
                     f"{collection_name}[{index}] is missing fields: {', '.join(missing)}"
@@ -1650,6 +2415,15 @@ def _validate_profile_semantics(
         return
     if profile_id == "A12":
         _validate_selection_advice_semantics(bundle, payload)
+        return
+    if profile_id in {"A14", "A15"}:
+        _validate_automation_generation_semantics(profile_id, bundle, payload)
+        return
+    if profile_id in {"A18-BE", "A18-CT"}:
+        _validate_automation_review_semantics(profile_id, bundle, payload)
+        return
+    if profile_id == "A22":
+        _validate_test_data_plan_semantics(bundle, payload)
         return
     if profile_id != "A05":
         return
@@ -2010,7 +2784,9 @@ def _validate_oracle_review_semantics(
             raise ContractError(f"A09 issues[{index}] references an unknown expected result")
         if issue.get("route_to") not in allowed_routes:
             raise ContractError(f"A09 issues[{index}] has an invalid route")
-        if not str(issue.get("plain_summary") or "").strip():
+        if issue.get("severity") in {"error", "blocking"} and not str(
+            issue.get("plain_summary") or ""
+        ).strip():
             raise ContractError(
                 f"A09 issues[{index}] requires a human-readable plain_summary"
             )
@@ -2114,7 +2890,9 @@ def _validate_split_review_semantics(
             raise ContractError(f"A11 issues[{index}] references an unknown Case")
         if issue.get("route_to") not in allowed_routes:
             raise ContractError(f"A11 issues[{index}] has an invalid route")
-        if not str(issue.get("plain_summary") or "").strip():
+        if issue.get("severity") in {"error", "blocking"} and not str(
+            issue.get("plain_summary") or ""
+        ).strip():
             raise ContractError(
                 f"A11 issues[{index}] requires a human-readable plain_summary"
             )
@@ -2307,6 +3085,225 @@ def _validate_selection_advice_semantics(
         raise ContractError("A12 advice item IDs must be non-empty and unique")
     if payload.get("evaluation_oracle_accessed") is not False:
         raise SecurityPolicyError("A12 must not access the evaluation Oracle Registry")
+
+
+def _validate_automation_generation_semantics(
+    profile_id: str, bundle: Mapping[str, Any], payload: Mapping[str, Any]
+) -> None:
+    allowed_inputs = bundle.get("allowed_inputs", {})
+    if not isinstance(allowed_inputs, Mapping):
+        raise ContractError(f"{profile_id} input has no frozen automation scope")
+    cases = allowed_inputs.get("cases", [])
+    if not isinstance(cases, list) or not cases or not all(
+        isinstance(item, Mapping) for item in cases
+    ):
+        raise ContractError(f"{profile_id} input has no compiled Cases")
+    frozen_case_ids = {str(item.get("id")) for item in cases}
+    layer = allowed_inputs.get("layer", "")
+    if not layer:
+        raise ContractError(f"{profile_id} input layer is missing")
+    if payload.get("schema_version") != "automation-generation/1.0":
+        raise ContractError(f"{profile_id} output schema_version is invalid")
+
+    rejected_case_ids: list[str] = []
+    for index, item in enumerate(payload.get("rejected_cases", [])):
+        if not isinstance(item, Mapping):
+            raise ContractError(f"{profile_id} rejected_cases[{index}] must be an object")
+        case_id = str(item.get("case_id", ""))
+        rejected_case_ids.append(case_id)
+        if case_id not in frozen_case_ids:
+            raise ContractError(f"{profile_id} rejected_cases[{index}] references an unknown Case")
+        if not str(item.get("reason_code", "")).strip():
+            raise ContractError(f"{profile_id} rejected_cases[{index}] has no reason_code")
+    if len(rejected_case_ids) != len(set(rejected_case_ids)):
+        raise ContractError(f"{profile_id} rejected Case IDs must be unique")
+
+    manifest = payload.get("manifest")
+    candidates = payload.get("code_candidates", [])
+    if manifest is None:
+        if candidates or rejected_case_ids != sorted(frozen_case_ids):
+            raise ContractError(
+                f"{profile_id} not-applicable output must reject every frozen Case"
+            )
+        return
+    if not isinstance(manifest, Mapping):
+        raise ContractError(f"{profile_id} manifest must be an object")
+    if not isinstance(candidates, list) or not all(
+        isinstance(item, Mapping) for item in candidates
+    ):
+        raise ContractError(f"{profile_id} code_candidates must be a list of objects")
+    if manifest.get("schema_version") != "automation-manifest/1.0":
+        raise ContractError(f"{profile_id} manifest schema_version is invalid")
+    if str(manifest.get("generator_profile", "")) != f"{profile_id}/1.0.0":
+        raise ContractError(f"{profile_id} manifest generator_profile is invalid")
+    manifest_layer = str(manifest.get("layer", ""))
+    if manifest_layer and manifest_layer != layer:
+        raise ContractError(f"{profile_id} manifest layer does not match its frozen scope")
+    mapped_case_ids: list[str] = []
+    for index, mapping in enumerate(manifest.get("case_mappings", [])):
+        if not isinstance(mapping, Mapping):
+            raise ContractError(f"{profile_id} case_mappings[{index}] must be an object")
+        case_id = str(mapping.get("case_id", ""))
+        mapped_case_ids.append(case_id)
+        if case_id not in frozen_case_ids or case_id in set(rejected_case_ids):
+            raise ContractError(
+                f"{profile_id} case_mappings[{index}] maps a rejected or unknown Case"
+            )
+        if not isinstance(mapping.get("expected_ids"), list):
+            raise ContractError(f"{profile_id} case_mappings[{index}] expected_ids is invalid")
+    if len(mapped_case_ids) != len(set(mapped_case_ids)):
+        raise ContractError(f"{profile_id} mapped Case IDs must be unique")
+
+    candidate_files = manifest.get("candidate_files", [])
+    if not isinstance(candidate_files, list) or not candidate_files:
+        raise ContractError(f"{profile_id} manifest candidate_files is empty")
+    candidate_index = {str(item.get("path")): item for item in candidates}
+    mapped_paths = {str(item.get("candidate_path")) for item in manifest["case_mappings"]}
+    for index, file_item in enumerate(candidate_files):
+        if not isinstance(file_item, Mapping):
+            raise ContractError(f"{profile_id} candidate_files[{index}] must be an object")
+        path = str(file_item.get("path", ""))
+        if path not in candidate_index:
+            raise ContractError(f"{profile_id} candidate_files[{index}] has no candidate code")
+        if str(candidate_index[path].get("content_hash", "")) != str(
+            file_item.get("content_hash", "")
+        ):
+            raise ContractError(f"{profile_id} candidate_files[{index}] content_hash mismatch")
+    if mapped_paths and not mapped_paths <= set(candidate_index):
+        raise ContractError(f"{profile_id} case_mappings reference missing candidate files")
+    expected_manifest_layers = {"backend": "A14", "contract": "A15"}.get(layer)
+    if expected_manifest_layers and manifest.get("manifest_id") != (
+        "manifest-a14-backend" if profile_id == "A14" else "manifest-a15-contract"
+    ):
+        raise ContractError(f"{profile_id} manifest_id is invalid")
+    if manifest.get("permissions", {}).get("business_repository_write") is not False:
+        raise SecurityPolicyError(f"{profile_id} manifest requests business repository writes")
+    if payload.get("evaluation_oracle_accessed") is not False:
+        raise SecurityPolicyError(f"{profile_id} must not access the evaluation Oracle Registry")
+
+
+def _validate_automation_review_semantics(
+    profile_id: str, bundle: Mapping[str, Any], payload: Mapping[str, Any]
+) -> None:
+    allowed_inputs = bundle.get("allowed_inputs", {})
+    if not isinstance(allowed_inputs, Mapping):
+        raise ContractError(f"{profile_id} input has no generation to review")
+    cases = allowed_inputs.get("cases", [])
+    generation = allowed_inputs.get("generation", {})
+    if not isinstance(cases, list) or not cases or not isinstance(generation, Mapping):
+        raise ContractError(f"{profile_id} review inputs are incomplete")
+    frozen_case_ids = {str(item.get("id")) for item in cases if isinstance(item, Mapping)}
+    manifest = generation.get("manifest") if isinstance(generation, Mapping) else None
+    candidates = generation.get("code_candidates", []) if isinstance(generation, Mapping) else []
+    if payload.get("schema_version") != "automation-review/1.0":
+        raise ContractError(f"{profile_id} output schema_version is invalid")
+    if payload.get("generation_hash") != content_hash(generation):
+        raise ContractError(f"{profile_id} generation_hash does not match its frozen input")
+    if payload.get("manifest_hash") != content_hash(manifest):
+        raise ContractError(f"{profile_id} manifest_hash does not match its frozen input")
+    if not isinstance(manifest, Mapping):
+        raise ContractError(f"{profile_id} has no manifest to review")
+    candidate_index = {
+        str(item.get("path")): str(item.get("content_hash", ""))
+        for item in candidates
+        if isinstance(item, Mapping)
+    }
+    candidate_hashes = payload.get("candidate_hashes")
+    if not isinstance(candidate_hashes, Mapping) or candidate_hashes != candidate_index:
+        raise ContractError(f"{profile_id} candidate_hashes do not match the frozen candidates")
+    if payload.get("generator_hidden_reasoning_accessed") is not False:
+        raise SecurityPolicyError(f"{profile_id} must not access generator hidden reasoning")
+    if payload.get("evaluation_oracle_accessed") is not False:
+        raise SecurityPolicyError(f"{profile_id} must not access the evaluation Oracle Registry")
+    approved = payload.get("approved")
+    if not isinstance(approved, bool):
+        raise ContractError(f"{profile_id} approved must be a boolean")
+    issue_ids: list[str] = []
+    blocking_count = 0
+    for index, issue in enumerate(payload.get("issues", [])):
+        if not isinstance(issue, Mapping):
+            raise ContractError(f"{profile_id} issues[{index}] must be an object")
+        issue_id = str(issue.get("id", ""))
+        issue_ids.append(issue_id)
+        case_id = str(issue.get("case_id") or "")
+        if case_id and case_id not in frozen_case_ids:
+            raise ContractError(f"{profile_id} issues[{index}] references an unknown Case")
+        if str(issue.get("route_to", "")) != profile_id:
+            raise ContractError(f"{profile_id} issues[{index}] has an invalid route_to")
+        if issue.get("severity") in {"error", "blocking"}:
+            blocking_count += 1
+    if not all(issue_ids) or len(issue_ids) != len(set(issue_ids)):
+        raise ContractError(f"{profile_id} issue IDs must be non-empty and unique")
+    if approved != (blocking_count == 0):
+        raise ContractError(f"{profile_id} approval does not match its blocking issue count")
+    if approved and payload.get("status") not in {
+        ArtifactStatus.COMPLETED.value,
+        ArtifactStatus.COMPLETED_WITH_GAPS.value,
+    }:
+        raise ContractError(f"{profile_id} approved output has an invalid status")
+    if not approved and payload.get("status") != ArtifactStatus.NEEDS_HUMAN.value:
+        raise ContractError(f"{profile_id} rejected output must be needs_human")
+
+
+def _validate_test_data_plan_semantics(
+    bundle: Mapping[str, Any], payload: Mapping[str, Any]
+) -> None:
+    allowed_inputs = bundle.get("allowed_inputs", {})
+    if not isinstance(allowed_inputs, Mapping):
+        raise ContractError("A22 input has no frozen data planning scope")
+    cases = allowed_inputs.get("cases", [])
+    if not isinstance(cases, list) or not all(isinstance(item, Mapping) for item in cases):
+        raise ContractError("A22 input has no compiled Cases")
+    frozen_case_ids = {str(item.get("id")) for item in cases}
+    policy = allowed_inputs.get("test_data_policy", {})
+    if not isinstance(policy, Mapping) or policy.get("schema_version") != "test-data-policy/1.0":
+        raise ContractError("A22 input test-data policy is invalid")
+    if payload.get("schema_version") != "test-data-plan/1.0":
+        raise ContractError("A22 output schema_version is invalid")
+    allowed_environments = {str(item) for item in policy.get("allowed_environments", [])}
+    if str(payload.get("environment", "")) not in allowed_environments:
+        raise SecurityPolicyError("A22 output targets a non-approved environment")
+    namespace = str(payload.get("namespace", ""))
+    if not re.fullmatch(r"qa-[a-z0-9][a-z0-9-]{5,80}", namespace):
+        raise ContractError("A22 output namespace is invalid")
+
+    paused_ids: list[str] = []
+    for index, item in enumerate(payload.get("paused_cases", [])):
+        if not isinstance(item, Mapping):
+            raise ContractError(f"A22 paused_cases[{index}] must be an object")
+        case_id = str(item.get("case_id", ""))
+        paused_ids.append(case_id)
+        if case_id not in frozen_case_ids:
+            raise ContractError(f"A22 paused_cases[{index}] references an unknown Case")
+    if len(paused_ids) != len(set(paused_ids)):
+        raise ContractError("A22 paused Case IDs must be unique")
+
+    planned_case_ids: list[str] = []
+    for index, item in enumerate(payload.get("case_plans", [])):
+        if not isinstance(item, Mapping):
+            raise ContractError(f"A22 case_plans[{index}] must be an object")
+        case_id = str(item.get("case_id", ""))
+        planned_case_ids.append(case_id)
+        if case_id not in frozen_case_ids:
+            raise ContractError(f"A22 case_plans[{index}] references an unknown Case")
+        if not isinstance(item.get("resources"), list):
+            raise ContractError(f"A22 case_plans[{index}].resources must be a list")
+        if item.get("requires_data_construction") is True and not item["resources"]:
+            raise ContractError(
+                f"A22 case_plans[{index}] requires construction without resources"
+            )
+    if len(planned_case_ids) != len(set(planned_case_ids)):
+        raise ContractError("A22 planned Case IDs must be unique")
+    if set(planned_case_ids) & set(paused_ids):
+        raise ContractError("A22 cannot plan and pause the same Case")
+
+    unresolved = payload.get("unresolved_requirements", [])
+    if not isinstance(unresolved, list):
+        raise ContractError("A22 unresolved_requirements must be a list")
+    if unresolved and payload.get("status") != ArtifactStatus.NEEDS_HUMAN.value:
+        raise ContractError("A22 unresolved requirements must route to needs_human")
+    if not unresolved and payload.get("status") != ArtifactStatus.COMPLETED.value:
+        raise ContractError("A22 complete plan must be completed")
 
 
 def ingest_multica_output(

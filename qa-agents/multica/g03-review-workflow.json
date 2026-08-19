@@ -1,0 +1,47 @@
+{
+  "schema_version": "multica-g03-review-workflow/1.0",
+  "gate_id": "G03",
+  "control_plane": "multica_issue",
+  "request_contract": "automation-code-review-request/1.0",
+  "decision_contract": "automation-code-review-decision/1.0",
+  "outcome_contract": "automation-code-review-outcome/1.0",
+  "entry_guard": {
+    "node": "N05",
+    "required_fields": {
+      "passed": true,
+      "next_node": "G03",
+      "g03_status": "pending"
+    }
+  },
+  "multica_status_mapping": {
+    "todo": "opening_review",
+    "in_progress": "waiting_for_review",
+    "in_review": "waiting_for_review",
+    "done": "approved",
+    "blocked": "request_changes",
+    "cancelled": "rejected"
+  },
+  "routes": {
+    "approved": "N07",
+    "request_changes": "A14/A15",
+    "rejected": null
+  },
+  "required_issue_metadata": [
+    "qa_gate_id",
+    "qa_review_key",
+    "qa_request_hash",
+    "qa_policy_hash",
+    "qa_workflow_run_id"
+  ],
+  "trigger_adapter": {
+    "current_mode": "poll_issue_status",
+    "command": "qa-agents sync-g03-multica",
+    "native_status_webhook_supported": false,
+    "upgrade_rule": "Replace only the trigger adapter when Multica exposes a native issue-status webhook"
+  },
+  "idempotency": {
+    "review_issue_key": "review_key",
+    "decision_event_key": "multica_issue_id+status+updated_at+request_hash",
+    "resume_key": "gate_id+request_hash+decision_hash"
+  }
+}

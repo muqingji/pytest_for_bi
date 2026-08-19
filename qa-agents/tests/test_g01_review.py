@@ -790,7 +790,7 @@ def test_open_g01_created_issue_uses_autopilot_discovery_title(tmp_path: Path) -
 
     create = next(call for call in multica.calls if call[:2] == ["issue", "create"])
     title = create[create.index("--title") + 1]
-    assert title.startswith(f"[{request['workflow_run_id']}] G01 ")
+    assert title == "[run-1] G01 范围与口径审核 · 4 项待确认"
 
 
 def test_g01_terminal_status_without_decision_comment_is_ignored(tmp_path: Path) -> None:

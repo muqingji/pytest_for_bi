@@ -1,0 +1,2850 @@
+{
+  "allowed_inputs": {
+    "capability_catalog": {
+      "environment_profiles": {
+        "112-mainstream-schemas": {
+          "candidates": [
+            {
+              "describe_api_name": "AccountObj",
+              "schema_id": "BI_5bcebcdc3060e20001e79977",
+              "schema_name": "客户统计",
+              "schema_object": "biz_account",
+              "status": 1
+            },
+            {
+              "describe_api_name": "SalesOrderObj",
+              "schema_id": "BI_5be1351956fc11448cdde39e",
+              "schema_name": "销售订单统计",
+              "schema_object": "biz_sales_order",
+              "status": 1
+            },
+            {
+              "describe_api_name": "ActiveRecordObj",
+              "schema_id": "BI_55479c68f4922c26cbadda8265b2f",
+              "schema_name": "销售记录统计",
+              "schema_object": "active_record",
+              "status": 1
+            }
+          ],
+          "environment": "112",
+          "evidence_refs": [
+            "environment-112",
+            "fs-bi-source"
+          ],
+          "subject_selection": {
+            "default_priority": [
+              "客户",
+              "销售订单",
+              "销售记录"
+            ],
+            "explicit_case_subject_required_when_present": true,
+            "forbidden_fallbacks": [
+              "区域测试"
+            ]
+          }
+        },
+        "112-region-test-schema": {
+          "environment": "112",
+          "evidence_refs": [
+            "environment-112",
+            "probe-result-filter-detail-112"
+          ],
+          "variables": {
+            "amount_db_field": "field_shS2y__c",
+            "amount_field_id": "BI_d9d45d8381de9e094fe1973acf408d92",
+            "date_db_field": "field_3913t__c",
+            "date_field_id": "BI_9b4d74a9fd193cc9b75e51db2dc2c67f",
+            "schema_display_name": "区域测试",
+            "schema_id": "BI_e672ff1046fb773b76bc2b56",
+            "schema_join_field": "BI_3162840e81468715b0ec6b5aea414582",
+            "schema_object": "object_fwtes__c"
+          }
+        }
+      },
+      "recipes": [
+        {
+          "environment_profile": "112-region-test-schema",
+          "evidence_refs": [
+            "fs-bi-contract-c6b7853",
+            "fs-bi-source",
+            "environment-112",
+            "probe-result-filter-detail-112"
+          ],
+          "id": "ordinary-metric-result-set-filter",
+          "match": {
+            "data_intents": [
+              "metric.ordinary_result_set_filter.detail_unsupported"
+            ],
+            "datasets": [
+              "ordinary_result_filter_metric"
+            ]
+          },
+          "resource_goals": [
+            {
+              "desired_state": {
+                "read_only": true
+              },
+              "resource_type": "approved_schema_field"
+            }
+          ],
+          "resources": [
+            {
+              "depends_on": [],
+              "lifecycle_mode": "existing_read_only",
+              "readiness": [
+                {
+                  "expect": {
+                    "body_contains_values": [
+                      "{{ amount_field_id }}"
+                    ],
+                    "status_code": 200
+                  },
+                  "name": "确认批准普通指标字段存在",
+                  "request": {
+                    "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+                    "json": {
+                      "schemaId": "{{ schema_id }}"
+                    },
+                    "protocol": "http"
+                  }
+                }
+              ],
+              "residue_checks": [],
+              "resource_id_variable": "amount_field_id",
+              "resource_key": "ordinary_field_fixture",
+              "resource_type": "approved_schema_field"
+            }
+          ],
+          "supported_variants": [
+            "ordinary",
+            "ordinary_metric"
+          ],
+          "variables": {
+            "metric_name": "Revenue"
+          },
+          "version": "1.0.0"
+        },
+        {
+          "environment_profile": "112-region-test-schema",
+          "evidence_refs": [
+            "fs-bi-contract-c6b7853",
+            "fs-bi-source",
+            "environment-112",
+            "probe-result-filter-detail-112"
+          ],
+          "id": "comparison-metric-result-set-filter",
+          "match": {
+            "data_intents": [
+              "metric.comparison_result_set_filter.detail_unsupported"
+            ],
+            "datasets": [
+              "comparison_result_filter_metric"
+            ]
+          },
+          "resource_goals": [
+            {
+              "desired_state": {
+                "ratio_type": "1",
+                "read_only": true
+              },
+              "resource_type": "approved_schema_field"
+            }
+          ],
+          "resources": [
+            {
+              "depends_on": [],
+              "lifecycle_mode": "existing_read_only",
+              "readiness": [
+                {
+                  "expect": {
+                    "body_contains_values": [
+                      "{{ amount_field_id }}"
+                    ],
+                    "status_code": 200
+                  },
+                  "name": "确认批准同环比基础字段存在",
+                  "request": {
+                    "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+                    "json": {
+                      "schemaId": "{{ schema_id }}"
+                    },
+                    "protocol": "http"
+                  }
+                }
+              ],
+              "residue_checks": [],
+              "resource_id_variable": "amount_field_id",
+              "resource_key": "comparison_field_fixture",
+              "resource_type": "approved_schema_field"
+            }
+          ],
+          "supported_variants": [
+            "comparison",
+            "comparison_metric"
+          ],
+          "variables": {
+            "metric_name": "Revenue YoY"
+          },
+          "version": "1.0.0"
+        },
+        {
+          "environment_profile": "112-region-test-schema",
+          "evidence_refs": [
+            "fxiaoke-help-bi",
+            "fxiaoke-help-chart-create",
+            "fs-bi-contract-c6b7853",
+            "fs-bi-source",
+            "environment-112",
+            "probe-result-filter-detail-112"
+          ],
+          "id": "aggregate-metric-result-set-filter",
+          "match": {
+            "all_term_groups": [
+              [
+                "结果集筛选",
+                "结果集数据范围",
+                "result set filter"
+              ],
+              [
+                "查看明细",
+                "detail query",
+                "details view"
+              ]
+            ],
+            "data_intents": [
+              "metric.result_set_filter.detail_unsupported"
+            ],
+            "datasets": [
+              "result_filter_metric",
+              "result_set_metric_types"
+            ]
+          },
+          "resource_goals": [
+            {
+              "desired_state": {
+                "detail_query": "unsupported_with_metric_name",
+                "result_set_filter_enabled": true
+              },
+              "resource_type": "aggregate_metric"
+            }
+          ],
+          "resources": [
+            {
+              "cleanup": {
+                "expect": {
+                  "json_path": {
+                    "Result.FailureCode": 0
+                  },
+                  "status_code": 200
+                },
+                "name": "删除本次运行创建的隔离指标",
+                "request": {
+                  "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+                  "json": {
+                    "fieldId": "{{ metric_field_id }}",
+                    "fieldName": "{{ metric_name }}",
+                    "schemaId": "{{ schema_id }}"
+                  },
+                  "protocol": "http"
+                }
+              },
+              "depends_on": [],
+              "display_name": "销售金额结果集筛选聚合指标",
+              "readiness": [],
+              "residue_checks": [
+                {
+                  "expect_absent": {
+                    "json_path": "Value.fieldId",
+                    "value": "{{ metric_field_id }}"
+                  },
+                  "name": "确认本次创建的隔离指标已无残留",
+                  "request": {
+                    "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                    "json": {
+                      "fieldId": "{{ metric_field_id }}",
+                      "schemaId": "{{ schema_id }}"
+                    },
+                    "protocol": "http"
+                  }
+                }
+              ],
+              "resource_id_variable": "metric_field_id",
+              "resource_key": "result_filter_metric",
+              "resource_type": "aggregate_metric",
+              "retention_mode": "retain",
+              "semantic_basis": "销售订单金额数值字段",
+              "setup": {
+                "expect": {
+                  "json_path": {
+                    "Result.FailureCode": 0
+                  },
+                  "status_code": 200
+                },
+                "extract": {
+                  "metric_field_id": "Value.fieldId"
+                },
+                "name": "创建带结果集数据范围的隔离指标",
+                "request": {
+                  "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+                  "json": {
+                    "aggField": {
+                      "dbFieldName": "{{ amount_db_field }}",
+                      "dbObjName": "{{ schema_object }}",
+                      "fieldId": "{{ amount_field_id }}",
+                      "fieldName": "金额",
+                      "fieldType": "Number"
+                    },
+                    "aggFieldTime": {
+                      "dbFieldName": "{{ date_db_field }}",
+                      "dbObjName": "{{ schema_object }}",
+                      "fieldId": "{{ date_field_id }}",
+                      "fieldName": "日期",
+                      "fieldType": "Date"
+                    },
+                    "aggObject": {
+                      "refJoinField": "{{ schema_join_field }}",
+                      "refObjName": "{{ schema_object }}",
+                      "refObjShowName": "{{ schema_display_name }}"
+                    },
+                    "checkFieldAggregateType": 2,
+                    "displayName": "销售金额结果集筛选聚合指标",
+                    "filterLists": [
+                      {
+                        "filters": [
+                          {
+                            "aggDimType": "base_agg",
+                            "dbFieldName": "{{ amount_db_field }}",
+                            "dbObjName": "{{ schema_object }}",
+                            "displayNumber": 1,
+                            "fieldID": "{{ amount_field_id }}",
+                            "fieldId": "{{ amount_field_id }}",
+                            "fieldName": "金额",
+                            "fieldType": "Number",
+                            "filterConfig": {
+                              "aggrType": "2",
+                              "filterGroupType": 1,
+                              "ratioType": "0",
+                              "showAppointLevelSwitch": 0,
+                              "switchStatus": 0
+                            },
+                            "operator": 1,
+                            "operatorLabel": "等于",
+                            "value1": "{{ numeric_filter_value }}",
+                            "value2": "",
+                            "value_kind": "numeric"
+                          }
+                        ]
+                      }
+                    ],
+                    "initStatus": 1,
+                    "schemaId": "{{ schema_id }}",
+                    "schemaObjectName": "{{ schema_object }}",
+                    "timeZone": "Asia/Shanghai"
+                  },
+                  "protocol": "http"
+                }
+              },
+              "source_field_type": "Number"
+            }
+          ],
+          "supported_variants": [
+            "聚合指标",
+            "aggregate_metric"
+          ],
+          "variables": {
+            "metric_name": "销售金额结果集筛选聚合指标"
+          },
+          "version": "1.0.0"
+        },
+        {
+          "environment_profile": "112-region-test-schema",
+          "evidence_refs": [
+            "fs-bi-contract-c6b7853",
+            "fs-bi-source",
+            "environment-112",
+            "probe-calculated-metric-lifecycle-112"
+          ],
+          "id": "calculated-metric-result-set-filter",
+          "match": {
+            "data_intents": [
+              "metric.calculated_result_set_filter.detail_unsupported"
+            ],
+            "datasets": [
+              "calculated_result_filter_metric"
+            ]
+          },
+          "resource_goals": [
+            {
+              "desired_state": {
+                "formula_base": true
+              },
+              "resource_type": "aggregate_metric"
+            },
+            {
+              "desired_state": {
+                "result_set_filter_enabled": true
+              },
+              "resource_type": "calculated_metric"
+            }
+          ],
+          "resources": [
+            {
+              "cleanup": {
+                "expect": {
+                  "json_path": {
+                    "Result.FailureCode": 0
+                  },
+                  "status_code": 200
+                },
+                "name": "删除计算指标依赖的隔离聚合指标",
+                "request": {
+                  "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+                  "json": {
+                    "fieldId": "{{ aggregate_metric_id }}",
+                    "fieldName": "{{ aggregate_metric_name }}",
+                    "schemaId": "{{ schema_id }}"
+                  },
+                  "protocol": "http"
+                }
+              },
+              "depends_on": [],
+              "display_name": "销售金额计算基准聚合指标",
+              "readiness": [],
+              "residue_checks": [
+                {
+                  "expect": {
+                    "body_not_contains_values": [
+                      "{{ aggregate_metric_id }}",
+                      "{{ aggregate_metric_name }}"
+                    ],
+                    "status_code": 200
+                  },
+                  "name": "确认聚合依赖无残留",
+                  "request": {
+                    "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+                    "json": {
+                      "schemaId": "{{ schema_id }}"
+                    },
+                    "protocol": "http"
+                  }
+                }
+              ],
+              "resource_id_variable": "aggregate_metric_id",
+              "resource_key": "aggregate_base",
+              "resource_type": "aggregate_metric",
+              "retention_mode": "retain",
+              "semantic_basis": "销售订单金额数值字段",
+              "setup": {
+                "expect": {
+                  "json_path": {
+                    "Result.FailureCode": 0
+                  },
+                  "status_code": 200
+                },
+                "extract": {
+                  "aggregate_metric_id": "Value.fieldId"
+                },
+                "name": "创建计算指标依赖的隔离聚合指标",
+                "request": {
+                  "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+                  "json": {
+                    "aggField": {
+                      "dbFieldName": "{{ amount_db_field }}",
+                      "dbObjName": "{{ schema_object }}",
+                      "fieldId": "{{ amount_field_id }}",
+                      "fieldName": "金额",
+                      "fieldType": "Number"
+                    },
+                    "aggFieldTime": {
+                      "dbFieldName": "{{ date_db_field }}",
+                      "dbObjName": "{{ schema_object }}",
+                      "fieldId": "{{ date_field_id }}",
+                      "fieldName": "日期",
+                      "fieldType": "Date"
+                    },
+                    "aggObject": {
+                      "refJoinField": "{{ schema_join_field }}",
+                      "refObjName": "{{ schema_object }}",
+                      "refObjShowName": "{{ schema_display_name }}"
+                    },
+                    "checkFieldAggregateType": 2,
+                    "displayName": "销售金额计算基准聚合指标",
+                    "filterLists": [],
+                    "initStatus": 1,
+                    "schemaId": "{{ schema_id }}",
+                    "schemaObjectName": "{{ schema_object }}",
+                    "timeZone": "Asia/Shanghai"
+                  },
+                  "protocol": "http"
+                }
+              },
+              "source_field_type": "Number"
+            },
+            {
+              "cleanup": {
+                "expect": {
+                  "json_path": {
+                    "Result.FailureCode": 0
+                  },
+                  "status_code": 200
+                },
+                "name": "删除隔离计算指标",
+                "request": {
+                  "api": "fs_bi_stat.stat_calc_field.delete_calc_field",
+                  "json": {
+                    "calcFieldId": [
+                      "{{ calculated_metric_id }}"
+                    ],
+                    "viewId": ""
+                  },
+                  "protocol": "http"
+                }
+              },
+              "depends_on": [
+                "aggregate_base"
+              ],
+              "display_name": "销售利润率计算指标",
+              "readiness": [
+                {
+                  "expect": {
+                    "body_contains_values": [
+                      "{{ calculated_metric_id }}"
+                    ],
+                    "status_code": 200
+                  },
+                  "name": "通过计算指标子字段接口回查资源已创建",
+                  "request": {
+                    "api": "fs_bi_stat.stat_base.get_calc_agg_sub_fields",
+                    "json": {
+                      "measureFieldId": "{{ calculated_metric_id }}",
+                      "viewId": ""
+                    },
+                    "protocol": "http"
+                  }
+                }
+              ],
+              "residue_checks": [
+                {
+                  "expect": {
+                    "body_not_contains_values": [
+                      "{{ calculated_metric_id }}",
+                      "{{ metric_name }}"
+                    ],
+                    "status_code": 200
+                  },
+                  "name": "确认计算指标无残留",
+                  "request": {
+                    "api": "fs_bi_stat.stat_base.get_calc_agg_sub_fields",
+                    "json": {
+                      "measureFieldId": "{{ calculated_metric_id }}",
+                      "viewId": ""
+                    },
+                    "protocol": "http"
+                  }
+                }
+              ],
+              "resource_id_variable": "calculated_metric_id",
+              "resource_key": "calculated_metric",
+              "resource_type": "calculated_metric",
+              "retention_mode": "retain",
+              "semantic_basis": "销售金额数值指标计算结果",
+              "setup": {
+                "expect": {
+                  "json_path": {
+                    "Result.FailureCode": 0
+                  },
+                  "status_code": 200
+                },
+                "extract": {
+                  "calculated_metric_id": "Value.fieldID"
+                },
+                "name": "创建隔离计算指标",
+                "request": {
+                  "api": "fs_bi_stat.stat_calc_field.save_calc_field",
+                  "json": {
+                    "calcFieldId": "",
+                    "fieldName": "销售利润率计算指标",
+                    "formatStr": "0.00",
+                    "formula": "[{{ aggregate_metric_id }}_2]",
+                    "ratioType": 0
+                  },
+                  "protocol": "http"
+                }
+              },
+              "source_field_type": "Number"
+            }
+          ],
+          "supported_variants": [
+            "计算指标",
+            "calculated_metric"
+          ],
+          "variables": {
+            "aggregate_metric_name": "销售金额计算基准聚合指标",
+            "metric_name": "销售利润率计算指标"
+          },
+          "version": "1.0.0"
+        }
+      ],
+      "schema_version": "bi-data-capability-catalog/1.0"
+    },
+    "cases": [
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除命名空间内创建的统计图和自定义维度。",
+          "恢复测试租户语言设置。",
+          "确认未残留共享字段或数据范围配置。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供错误码平台联调环境、测试框架及可执行命令。",
+            "需用真实接口确认下钻字段命中时仍展示 G01 批准模板。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "三个变体均拒绝查看明细并返回错误码 s307011534。",
+            "id": "EXP-BE-001-01",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.code",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "zh_CN 运行时消息精确为批准模板。",
+            "id": "EXP-BE-001-02",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.zh_CN",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "en 运行时消息精确为批准模板。",
+            "id": "EXP-BE-001-03",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.en",
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-BE-001-BACKEND",
+        "intent_ids": [
+          "INT-001",
+          "INT-002"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-001",
+        "preconditions": [
+          "真实测试接口连接错误码平台联调环境，不以 G01 配置本身代替运行时 Oracle。",
+          "测试租户支持创建统计图并触发查看明细。",
+          "自定义维度字段可分别配置在维度、数据范围和下钻字段。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001",
+          "REQ-002",
+          "TF-001",
+          "RULE-CUSTOM-DIMENSION",
+          "RULE-I18N-CUSTOM-DIMENSION"
+        ],
+        "steps": [
+          "在命名空间内创建基线统计图并确认查看明细请求成功。",
+          "对变体 A、B、C 分别以 zh_CN 和 en 调用真实查看明细接口。",
+          "核对三类位置沿用现有检测顺序，且未返回统一通用提示。"
+        ],
+        "test_data": {
+          "datasets": [
+            "基线统计图：普通维度、普通数据范围、普通下钻字段，可成功查看明细",
+            "变体 A：仅维度使用自定义维度字段",
+            "变体 B：仅数据范围使用自定义维度字段",
+            "变体 C：仅下钻字段使用自定义维度字段"
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_001"
+        },
+        "title": "自定义维度三类位置的专用错误与双语提示"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除命名空间内四类指标和统计图配置。",
+          "恢复动态字段名称和租户语言设置。",
+          "删除结果集筛选测试数据。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供错误码平台占位符替换行为的联调证据。",
+            "未提供可执行测试框架及多指标参数序列化观测工具。"
+          ],
+          "multiple_reason_policy": "仅断言一个实际命中的合法 code-message 对，不固定业务原因优先级。"
+        },
+        "expected": [
+          {
+            "description": "所有名称可解析场景均返回 s307011535。",
+            "id": "EXP-BE-002-01",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.code",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "单指标 zh_CN 消息代入销售额（fieldName 分支）。",
+            "id": "EXP-BE-002-02",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.zh_CN",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "单指标 en 消息代入动态名称 Revenue（前两级为空的独立数据行 RS-EN-03）。",
+            "id": "EXP-BE-002-03",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.en",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "名称解析严格按批准顺序取得当前语言实际展示名，zh_CN 与 en 分别断言三级分支。",
+            "id": "EXP-BE-002-04",
+            "matcher": "equals",
+            "observation_point": "backend_exception.metric_name_parameters",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "多指标参数包含全部实际展示名。",
+            "id": "EXP-BE-002-05",
+            "matcher": "equals",
+            "observation_point": "backend_exception.metric_name_parameters",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "多指标 zh_CN 解码消息展示全部指标名并只使用一个模板。",
+            "id": "EXP-BE-002-06",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.zh_CN",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "多指标 en 解码消息展示全部名称，使用普通双引号且不含字面反斜杠。",
+            "id": "EXP-BE-002-07",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.en",
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "空指标名不生成专用消息；由于未冻结实际降级响应，执行时人工确认业务响应。",
+            "id": "EXP-BE-002-08",
+            "matcher": "manual_confirmation",
+            "observation_point": "detail_api.empty_metric_name_response",
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "human_review"
+          }
+        ],
+        "id": "TC-BE-002-BACKEND",
+        "intent_ids": [
+          "INT-001",
+          "INT-003"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-002",
+        "preconditions": [
+          "真实查看明细接口可观测错误码、解码消息和业务异常参数数组。",
+          "测试租户已启用 zh_CN 与 en 动态字段名称。",
+          "普通指标、聚合指标、计算指标和同环比指标均可配置按结果集筛选。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-003",
+          "TF-003",
+          "TF-004",
+          "RULE-SINGLE-METRIC",
+          "RULE-I18N-RESULT-SET"
+        ],
+        "steps": [
+          "分别为四种指标类型创建按结果集筛选的统计图，zh_CN 与 en 各使用独立数据行。",
+          "按 Filter.fieldName、fieldId 字段元数据、当前语言动态显示名的顺序，为每个 locale 分别构造三级名称来源分支；英文动态名称场景使用前两级均为空的独立数据行。",
+          "分别以 zh_CN 和 en 调用真实接口并记录错误码、解码消息和参数数组。",
+          "对多指标配置核对全部实际展示名进入参数并渲染在唯一批准模板中。",
+          "对空名称夹具确认不生成空指标名专用消息，人工确认实际业务响应。"
+        ],
+        "test_data": {
+          "datasets": [
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "销售额"
+              ],
+              "fieldName": "销售额",
+              "field_metadata_name": null,
+              "id": "RS-ZH-01",
+              "locale": "zh_CN",
+              "resolution_branch": "Filter.fieldName",
+              "type": "普通指标"
+            },
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "订单数"
+              ],
+              "fieldName": null,
+              "field_metadata_name": "订单数",
+              "id": "RS-ZH-02",
+              "locale": "zh_CN",
+              "resolution_branch": "field_metadata_by_fieldId",
+              "type": "聚合指标"
+            },
+            {
+              "dynamic_display_name": "毛利率",
+              "expected_metric_name_parameters": [
+                "毛利率"
+              ],
+              "fieldName": null,
+              "field_metadata_name": null,
+              "id": "RS-ZH-03",
+              "locale": "zh_CN",
+              "resolution_branch": "current_locale_dynamic_display_name",
+              "type": "计算指标"
+            },
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "同比增长率"
+              ],
+              "fieldName": "同比增长率",
+              "field_metadata_name": null,
+              "id": "RS-ZH-04",
+              "locale": "zh_CN",
+              "resolution_branch": "Filter.fieldName",
+              "type": "同环比指标"
+            },
+            {
+              "expected_metric_name_parameters": [
+                "销售额",
+                "毛利率"
+              ],
+              "id": "RS-ZH-05",
+              "locale": "zh_CN",
+              "metric_names": {
+                "zh_CN": [
+                  "销售额",
+                  "毛利率"
+                ]
+              },
+              "type": "多指标"
+            },
+            {
+              "dynamic_display_name": "",
+              "expected_metric_name_parameters": null,
+              "fieldName": null,
+              "field_metadata_name": null,
+              "id": "RS-ZH-06",
+              "locale": "zh_CN",
+              "type": "空名称"
+            },
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "销售额"
+              ],
+              "fieldName": "销售额",
+              "field_metadata_name": null,
+              "id": "RS-EN-01",
+              "locale": "en",
+              "resolution_branch": "Filter.fieldName",
+              "type": "普通指标"
+            },
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "Order Count"
+              ],
+              "fieldName": null,
+              "field_metadata_name": "Order Count",
+              "id": "RS-EN-02",
+              "locale": "en",
+              "resolution_branch": "field_metadata_by_fieldId",
+              "type": "聚合指标"
+            },
+            {
+              "dynamic_display_name": "Revenue",
+              "expected_metric_name_parameters": [
+                "Revenue"
+              ],
+              "fieldName": null,
+              "field_metadata_name": null,
+              "id": "RS-EN-03",
+              "locale": "en",
+              "resolution_branch": "current_locale_dynamic_display_name",
+              "type": "计算指标"
+            },
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "同比增长率"
+              ],
+              "fieldName": "同比增长率",
+              "field_metadata_name": null,
+              "id": "RS-EN-04",
+              "locale": "en",
+              "resolution_branch": "Filter.fieldName",
+              "type": "同环比指标"
+            },
+            {
+              "expected_metric_name_parameters": [
+                "Revenue",
+                "Gross Margin"
+              ],
+              "id": "RS-EN-05",
+              "locale": "en",
+              "metric_names": {
+                "en": [
+                  "Revenue",
+                  "Gross Margin"
+                ]
+              },
+              "type": "多指标"
+            },
+            {
+              "dynamic_display_name": "",
+              "expected_metric_name_parameters": null,
+              "fieldName": null,
+              "field_metadata_name": null,
+              "id": "RS-EN-06",
+              "locale": "en",
+              "type": "空名称"
+            }
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_002"
+        },
+        "title": "结果集筛选指标名称解析、全部名称参数与本地化"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除测试指标及关系拓扑。",
+          "撤销关系转换故障注入。",
+          "核对共享对象关系未被修改。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供多关联关系转换失败的可控故障注入机制。",
+            "需真实接口回归矩阵各分支。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "4/3、3/4、3/3 每行均返回 s307011536。",
+            "id": "EXP-BE-003-01",
+            "matcher": "equals",
+            "observation_point": "detail_api.matrix_rows.error_code",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "zh_CN 消息精确匹配批准模板。",
+            "id": "EXP-BE-003-02",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.zh_CN",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "en 消息精确匹配批准模板。",
+            "id": "EXP-BE-003-03",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.en",
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "原本成功的关系仍成功并保留分页及结果结构。",
+            "id": "EXP-BE-003-04",
+            "matcher": "equals_baseline",
+            "observation_point": "detail_api.success_response",
+            "source_ref": "RULE-MULTI-RELATION",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-BE-003-BACKEND",
+        "intent_ids": [
+          "INT-001",
+          "INT-004"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-003",
+        "preconditions": [
+          "测试环境可构造 4/3、3/4、3/3 对象与关系拓扑。",
+          "可控故障点能区分已知对象关系不支持异常与成功关系转换。",
+          "真实查看明细接口可观测最终错误码和消息。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-004",
+          "TF-005",
+          "TF-006",
+          "RULE-MULTI-RELATION",
+          "RULE-I18N-MULTI-RELATION"
+        ],
+        "steps": [
+          "逐行建立矩阵拓扑并记录关系标识。",
+          "对前三行注入已知对象关系不支持异常并以 zh_CN、en 调用接口。",
+          "对 MR-SUCCESS 调用相同接口并记录成功状态、分页和结果结构。",
+          "确认专用原因只在原关系转换失败后替换。"
+        ],
+        "test_data": {
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "matrix": [
+            {
+              "conversion_result": "known_unsupported",
+              "expected_code": "s307011536",
+              "id": "MR-4-3",
+              "object_count": 4,
+              "relation_count": 3
+            },
+            {
+              "conversion_result": "known_unsupported",
+              "expected_code": "s307011536",
+              "id": "MR-3-4",
+              "object_count": 3,
+              "relation_count": 4
+            },
+            {
+              "conversion_result": "known_unsupported",
+              "expected_code": "s307011536",
+              "id": "MR-3-3",
+              "object_count": 3,
+              "relation_count": 3
+            },
+            {
+              "conversion_result": "success",
+              "expected_status": "success",
+              "id": "MR-SUCCESS",
+              "object_count": 3,
+              "relation_count": 2
+            }
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_003"
+        },
+        "title": "多关联关系失败替换与原成功关系回归"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除动态关联和普通关系测试指标。",
+          "撤销元数据及关系转换故障注入。",
+          "删除命名空间内测试对象数据。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "完整 what 和 what-list 字段清单必须在执行时通过真实元数据确认。",
+            "未提供关系转换失败和元数据异常的可控故障注入机制。"
+          ],
+          "dynamic_scope_policy": "所有真实 what 和 what-list 均属于动态关联，不限定工单主题，不生成非工单主题负向 Case。"
+        },
+        "expected": [
+          {
+            "description": "所有真实 what 和 what-list 动态关联失败行返回 s307011537。",
+            "id": "EXP-BE-004-01",
+            "matcher": "equals",
+            "observation_point": "detail_api.dynamic_relation_rows.error_code",
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "zh_CN 消息精确为批准模板。",
+            "id": "EXP-BE-004-02",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.zh_CN",
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "en 消息精确为批准模板。",
+            "id": "EXP-BE-004-03",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.en",
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "普通非 what/what-list 成功字段不被前置禁用。",
+            "id": "EXP-BE-004-04",
+            "matcher": "equals",
+            "observation_point": "detail_api.controls.CTRL-01",
+            "source_ref": "TF-006",
+            "type": "deterministic"
+          },
+          {
+            "description": "元数据缺失时不替换为动态关联专用错误；未冻结原错误码，人工确认完整业务响应。",
+            "id": "EXP-BE-004-05",
+            "matcher": "manual_confirmation",
+            "observation_point": "detail_api.controls.CTRL-02.full_response",
+            "source_ref": "TF-006",
+            "type": "human_review"
+          },
+          {
+            "description": "元数据服务异常不替换为动态关联专用错误；未冻结原错误码，人工确认完整业务响应。",
+            "id": "EXP-BE-004-06",
+            "matcher": "manual_confirmation",
+            "observation_point": "detail_api.controls.CTRL-03.full_response",
+            "source_ref": "TF-006",
+            "type": "human_review"
+          }
+        ],
+        "id": "TC-BE-004-BACKEND",
+        "intent_ids": [
+          "INT-001",
+          "INT-005"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-004",
+        "preconditions": [
+          "执行前通过真实元数据接口取得当前环境全部 what 和 what-list 对象及字段。",
+          "可控故障点能触发已知对象关系不支持异常、元数据异常和普通非 what/what-list 关系成功分支。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-005",
+          "TF-005",
+          "TF-006",
+          "RULE-DYNAMIC-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION"
+        ],
+        "steps": [
+          "查询真实元数据并枚举全部 what 和 what-list 对象及字段，不按工单主题过滤。",
+          "使用每个确认字段创建动态关联指标并使原转换产生已知对象关系不支持异常。",
+          "分别以 zh_CN 和 en 调用真实接口。",
+          "对普通非 what/what-list 成功字段、元数据缺失和元数据服务异常控制行调用接口。",
+          "核对动态判定使用完整聚合规则、指标字段和关系元数据。"
+        ],
+        "test_data": {
+          "datasets": [
+            {
+              "expected_reason": "dynamic_relation",
+              "id": "DR-01",
+              "scope": "actual_what",
+              "topic_restriction": false
+            },
+            {
+              "expected_reason": "dynamic_relation",
+              "id": "DR-02",
+              "scope": "actual_what_list",
+              "topic_restriction": false
+            },
+            {
+              "expected_reason": "dynamic_relation",
+              "id": "DR-03",
+              "scope": "business_process_actual_what_fields",
+              "topic_restriction": false
+            },
+            {
+              "expected_reason": "dynamic_relation",
+              "id": "DR-04",
+              "scope": "business_process_task_actual_what_fields",
+              "topic_restriction": false
+            },
+            {
+              "expected_reason": "dynamic_relation",
+              "id": "DR-05",
+              "scope": "service_record_actual_what_fields",
+              "topic_restriction": false
+            },
+            {
+              "conversion_result": "success",
+              "expected_status": "success",
+              "id": "CTRL-01",
+              "scope": "ordinary_non_what_non_what_list_field"
+            },
+            {
+              "expected_behavior": "preserve_actual_business_response",
+              "id": "CTRL-02",
+              "scope": "missing_relation_metadata"
+            },
+            {
+              "expected_behavior": "preserve_actual_business_response",
+              "id": "CTRL-03",
+              "scope": "metadata_service_error"
+            }
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_004"
+        },
+        "title": "所有 what 和 what-list 动态关联识别及非动态控制"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除组合场景统计图、指标和关系配置。",
+          "撤销所有故障注入。",
+          "确认组合配置未污染基线数据。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "缺少组合原因的可控集成测试数据及故障注入能力。"
+          ],
+          "reason_selection": "不固定业务优先级，只接受一个实际命中的合法 code-message 对。"
+        },
+        "expected": [
+          {
+            "description": "每次只返回一个错误提示。",
+            "id": "EXP-BE-005-01",
+            "matcher": "equals",
+            "observation_point": "detail_api.error_message_count",
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          },
+          {
+            "description": "错误码是实际命中原因对应的一个合法值，不断言固定优先级。",
+            "id": "EXP-BE-005-02",
+            "matcher": "one_of_actually_matched",
+            "observation_point": "detail_api.error.code",
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          },
+          {
+            "description": "错误码与消息必须形成一个完整批准映射且不拼接。",
+            "id": "EXP-BE-005-03",
+            "matcher": "equals_one_complete_matched_mapping",
+            "observation_point": "detail_api.error.code_message_pair",
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-BE-005-BACKEND",
+        "intent_ids": [
+          "INT-001",
+          "INT-006"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-005",
+        "preconditions": [
+          "测试环境可在一次请求中同时配置至少两个已批准受限原因。",
+          "接口可观测错误码、消息和异常数量。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001",
+          "TF-009",
+          "RULE-MULTIPLE-REASONS"
+        ],
+        "steps": [
+          "对每个组合分别以 zh_CN 和 en 调用真实接口。",
+          "记录错误对象数量、错误码和消息。",
+          "将返回值与该请求实际命中的专用错误集合比较。",
+          "检查消息不存在多个原因模板拼接。"
+        ],
+        "test_data": {
+          "datasets": [
+            "组合 A：自定义维度与结果集筛选同时命中",
+            "组合 B：动态关联与多关联同时命中",
+            "组合 C：自定义维度、结果集筛选和关联原因同时命中"
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_005"
+        },
+        "title": "多原因单提示且无固定业务优先顺序"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除敏感指标和受限图表。",
+          "撤销临时账号权限。",
+          "确认权限基线数据未被修改。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供权限基线响应及隔离测试账号。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "无权限账号保持原权限错误行为。",
+            "id": "EXP-BE-006-01",
+            "matcher": "equals_baseline",
+            "observation_point": "detail_api.permission_error_response",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "无权限响应不包含敏感指标名。",
+            "id": "EXP-BE-006-02",
+            "matcher": "not_contains",
+            "observation_point": "detail_api.permission_error_payload",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "完整权限账号按实际命中原因返回合法专用错误。",
+            "id": "EXP-BE-006-03",
+            "matcher": "one_of",
+            "observation_point": "detail_api.authorized_error.code",
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-BE-006-BACKEND",
+        "intent_ids": [
+          "INT-006"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-006",
+        "preconditions": [
+          "存在无查看图表权限、无查看字段权限和完整权限三个测试账号。",
+          "受限图表包含无权限账号不可见的敏感指标名称。",
+          "变更前权限错误响应已保存为可比较基线。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "TF-006",
+          "RULE-PERMISSION-PRIORITY"
+        ],
+        "steps": [
+          "使用账号 A、B 调用同时命中业务受限原因的接口。",
+          "记录响应状态、错误码、消息和参数并与权限基线比较。",
+          "使用账号 C 调用同一配置，确认权限通过后才执行业务原因判定。"
+        ],
+        "test_data": {
+          "datasets": [
+            "敏感指标显示名：机密收入",
+            "图表同时命中结果集筛选受限原因",
+            "图表同时命中动态关联受限原因",
+            "账号 A：无图表权限",
+            "账号 B：可看图表但无敏感字段权限",
+            "账号 C：拥有完整权限"
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_006"
+        },
+        "title": "权限错误优先与指标名称防泄露"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除契约测试创建的图表和指标。",
+          "恢复请求语言。",
+          "保留只读契约结果供审核，不修改错误码平台配置。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供错误码平台联调环境和真实 API 契约测试命令。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "四类 code、key、参数和双语消息逐行精确匹配。",
+            "id": "EXP-CON-001-01",
+            "matcher": "equals",
+            "observation_point": "decoded_response.normalized_error_matrix",
+            "source_ref": "TF-002",
+            "type": "deterministic"
+          },
+          {
+            "description": "失败响应结构除批准字段外与基线一致。",
+            "id": "EXP-CON-001-02",
+            "matcher": "equals_baseline_except",
+            "observation_point": "decoded_response.failure_schema",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-CON-001-CONTRACT",
+        "intent_ids": [
+          "INT-001",
+          "INT-002",
+          "INT-003",
+          "INT-004",
+          "INT-005"
+        ],
+        "layer": "contract",
+        "parent_case_id": "TC-CON-001",
+        "preconditions": [
+          "错误码平台联调环境已配置四个专用错误。",
+          "真实 API 契约测试可设置当前语言并读取解码 JSON。",
+          "变更前失败响应结构已固化为契约基线。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "TF-002",
+          "TF-004",
+          "TF-008",
+          "RULE-I18N-CUSTOM-DIMENSION",
+          "RULE-I18N-RESULT-SET",
+          "RULE-I18N-MULTI-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION"
+        ],
+        "steps": [
+          "逐行以 zh_CN 和 en 调用真实接口。",
+          "解析错误码、key、消息、参数和响应结构。",
+          "将每行与 G01 批准映射精确比较。",
+          "确认结果集携带全部实际指标名，其他三类参数为空。",
+          "失败响应结构仅允许批准的错误码、消息和参数变化。"
+        ],
+        "test_data": {
+          "matrix": [
+            {
+              "code": "s307011534",
+              "en": "Custom dimension fields are used in the dimension or data range. Details view is not supported.",
+              "key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+              "parameters": [],
+              "reason": "custom_dimension",
+              "zh_CN": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细"
+            },
+            {
+              "code": "s307011535",
+              "en": "The chart data range uses \"Revenue\", \"Gross Margin\" with result set filtering. Details view is not supported.",
+              "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+              "parameters": {
+                "en": [
+                  "Revenue",
+                  "Gross Margin"
+                ],
+                "zh_CN": [
+                  "销售额",
+                  "毛利率"
+                ]
+              },
+              "reason": "result_set_filter",
+              "zh_CN": "统计图数据范围中设置了「销售额、毛利率」按结果集筛选，不支持查看明细"
+            },
+            {
+              "code": "s307011536",
+              "en": "Metrics created based on multiple relationships do not support Details view.",
+              "key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+              "parameters": [],
+              "reason": "multi_relation",
+              "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细"
+            },
+            {
+              "code": "s307011537",
+              "en": "Metrics created based on dynamic relationships do not support Details view.",
+              "key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+              "parameters": [],
+              "reason": "dynamic_relation",
+              "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细"
+            }
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_CON_001"
+        },
+        "title": "四类专用错误码、双语模板、参数及失败响应契约"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "保留原历史配置状态，不执行迁移或重存。",
+          "撤销非目标错误故障注入。",
+          "删除仅为本次比较创建的基线副本。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供真实脱敏历史统计图和拼表配置。",
+            "未提供成功数据值及非目标错误的冻结版本基线。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "历史目标配置按矩阵精确应用当前规则。",
+            "id": "EXP-CON-002-01",
+            "matcher": "equals",
+            "observation_point": "historical_configuration.normalized_error_matrix",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "历史正常路径成功且不返回四个新增错误码。",
+            "id": "EXP-CON-002-02",
+            "matcher": "equals",
+            "observation_point": "historical_success_response.status_and_error_code",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "历史正常路径保留分页、结果结构和已有明细字段展示。",
+            "id": "EXP-CON-002-03",
+            "matcher": "contains_structure",
+            "observation_point": "historical_success_response.structure",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "未冻结具体历史数据值，执行时人工确认与保存的同版本基线一致。",
+            "id": "EXP-CON-002-04",
+            "matcher": "manual_confirmation",
+            "observation_point": "historical_success_response.data_values",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "human_review"
+          },
+          {
+            "description": "非目标异常 code、key、参数和双语消息保持原业务响应。",
+            "id": "EXP-CON-002-05",
+            "matcher": "manual_confirmation",
+            "observation_point": "non_target_error_responses.full_contract",
+            "source_ref": "RULE-HISTORICAL-COMPATIBILITY",
+            "type": "human_review"
+          }
+        ],
+        "id": "TC-CON-002-CONTRACT",
+        "intent_ids": [
+          "INT-008"
+        ],
+        "layer": "contract",
+        "parent_case_id": "TC-CON-002",
+        "preconditions": [
+          "存在变更前创建且未迁移、未重存的历史统计图和拼表配置。",
+          "保存同版本基线中的正常数据值和非目标异常完整响应。",
+          "历史配置覆盖四类目标原因、一个正常查询和参数错误、超时、元数据服务异常。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "TF-008",
+          "RULE-HISTORICAL-COMPATIBILITY",
+          "RULE-I18N-CUSTOM-DIMENSION",
+          "RULE-I18N-RESULT-SET",
+          "RULE-I18N-MULTI-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION"
+        ],
+        "steps": [
+          "不迁移、不重存历史配置，直接在新版本调用接口。",
+          "逐行核对历史配置的 code、key、参数和当前语言双语消息。",
+          "调用历史正常统计图和拼表，断言成功状态、不返回四个新错误码、分页和结果结构存在。",
+          "验证已有明细字段仍可展示，并将数据值与保存的同版本基线人工核对。",
+          "触发三类非目标错误并与保存基线逐项比较。"
+        ],
+        "test_data": {
+          "matrix": [
+            {
+              "code": "s307011534",
+              "entry": "historical_chart",
+              "id": "HIST-CHART-CD",
+              "key": "CUSTOM_DIMENSION_DETAIL_REASON_UNSUPPORTED",
+              "messages": {
+                "en": "Custom dimension fields are used in the dimension or data range. Details view is not supported.",
+                "zh_CN": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细"
+              },
+              "parameters": [],
+              "reason": "custom_dimension"
+            },
+            {
+              "code": "s307011535",
+              "entry": "historical_chart",
+              "id": "HIST-CHART-RS",
+              "key": "RESULT_SET_FILTER_DETAIL_UNSUPPORTED",
+              "messages": {
+                "en": "The chart data range uses \"Revenue\", \"Gross Margin\" with result set filtering. Details view is not supported.",
+                "zh_CN": "统计图数据范围中设置了「销售额、毛利率」按结果集筛选，不支持查看明细"
+              },
+              "parameters": {
+                "en": [
+                  "Revenue",
+                  "Gross Margin"
+                ],
+                "zh_CN": [
+                  "销售额",
+                  "毛利率"
+                ]
+              },
+              "reason": "result_set_filter"
+            },
+            {
+              "code": "s307011536",
+              "entry": "historical_joined_table",
+              "id": "HIST-TABLE-MR",
+              "key": "MULTI_RELATION_METRIC_DETAIL_UNSUPPORTED",
+              "messages": {
+                "en": "Metrics created based on multiple relationships do not support Details view.",
+                "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细"
+              },
+              "parameters": [],
+              "reason": "multi_relation"
+            },
+            {
+              "code": "s307011537",
+              "entry": "historical_joined_table",
+              "id": "HIST-TABLE-DR",
+              "key": "DYNAMIC_RELATION_METRIC_DETAIL_UNSUPPORTED",
+              "messages": {
+                "en": "Metrics created based on dynamic relationships do not support Details view.",
+                "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细"
+              },
+              "parameters": [],
+              "reason": "dynamic_relation"
+            }
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_CON_002",
+          "non_target_errors": [
+            "parameter_error",
+            "timeout",
+            "metadata_service_error"
+          ],
+          "normal_path": {
+            "entry_types": [
+              "historical_chart",
+              "historical_joined_table"
+            ],
+            "existing_detail_fields": [
+              "existing_dimension_field",
+              "existing_metric_field"
+            ],
+            "expected_status": "success",
+            "forbidden_error_codes": [
+              "s307011534",
+              "s307011535",
+              "s307011536",
+              "s307011537"
+            ],
+            "required_paging_fields": [
+              "page_number",
+              "page_size",
+              "total"
+            ],
+            "required_result_fields": [
+              "columns",
+              "rows"
+            ]
+          }
+        },
+        "title": "历史配置实时新逻辑与成功、非目标错误兼容性"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "退出 Web 测试账号。",
+          "恢复租户语言设置。",
+          "删除本 Case 创建的统计图和测试数据。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供 Web 端到端环境、真实脱敏配置和 UI 自动化观测能力。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "四类 API code 和双语解码消息及参数按 reason 与 locale 逐行匹配结构化期望矩阵。",
+            "id": "EXP-E2E-001-01",
+            "matcher": "equals",
+            "observation_point": "web_chart.normalized_api_results",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "deterministic"
+          },
+          {
+            "description": "每类 UI 消息与对应 API 当前语言消息相等。",
+            "id": "EXP-E2E-001-02",
+            "matcher": "equals",
+            "observation_point": "web_chart.ui_message_by_reason_and_locale",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "deterministic"
+          },
+          {
+            "description": "每类仅展示一个提示且不打开明细。",
+            "id": "EXP-E2E-001-03",
+            "matcher": "equals",
+            "observation_point": "web_chart.ui_state_by_reason",
+            "source_ref": "REQ-006",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-E2E-001-E2E",
+        "intent_ids": [
+          "INT-001",
+          "INT-002",
+          "INT-003",
+          "INT-004",
+          "INT-005",
+          "INT-007"
+        ],
+        "layer": "e2e",
+        "parent_case_id": "TC-E2E-001",
+        "preconditions": [
+          "Web 统计图入口连接真实后端和错误码平台。",
+          "四类受限配置已在隔离租户准备完成。",
+          "浏览器可切换 zh_CN、en 并观测网络响应、UI 消息和明细状态。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-006",
+          "TF-007",
+          "RULE-ENTRY-CONSISTENCY",
+          "RULE-I18N-CUSTOM-DIMENSION",
+          "RULE-I18N-RESULT-SET",
+          "RULE-I18N-MULTI-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION"
+        ],
+        "steps": [
+          "依次打开四个 Web 统计图。",
+          "分别在 zh_CN 和 en 下触发查看明细。",
+          "逐项记录 API code、解码消息、UI 消息、消息数量和明细打开状态。",
+          "将每个场景与结构化四行期望矩阵按 reason 和 locale 精确比较 code、messages、parameters。"
+        ],
+        "test_data": {
+          "matrix": [
+            {
+              "code": "s307011534",
+              "detail_opened": false,
+              "message_count": 1,
+              "messages": {
+                "en": "Custom dimension fields are used in the dimension or data range. Details view is not supported.",
+                "zh_CN": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细"
+              },
+              "parameters": {
+                "en": [],
+                "zh_CN": []
+              },
+              "reason": "custom_dimension"
+            },
+            {
+              "code": "s307011535",
+              "detail_opened": false,
+              "message_count": 1,
+              "messages": {
+                "en": "The chart data range uses \"Revenue\" with result set filtering. Details view is not supported.",
+                "zh_CN": "统计图数据范围中设置了「销售额」按结果集筛选，不支持查看明细"
+              },
+              "parameters": {
+                "en": [
+                  "Revenue"
+                ],
+                "zh_CN": [
+                  "销售额"
+                ]
+              },
+              "reason": "result_set_filter"
+            },
+            {
+              "code": "s307011536",
+              "detail_opened": false,
+              "message_count": 1,
+              "messages": {
+                "en": "Metrics created based on multiple relationships do not support Details view.",
+                "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细"
+              },
+              "parameters": {
+                "en": [],
+                "zh_CN": []
+              },
+              "reason": "multi_relation"
+            },
+            {
+              "code": "s307011537",
+              "detail_opened": false,
+              "message_count": 1,
+              "messages": {
+                "en": "Metrics created based on dynamic relationships do not support Details view.",
+                "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细"
+              },
+              "parameters": {
+                "en": [],
+                "zh_CN": []
+              },
+              "reason": "dynamic_relation"
+            }
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_E2E_001"
+        },
+        "title": "Web 统计图四类受限原因端到端验证"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除成对统计图和拼表配置。",
+          "恢复租户语言设置。",
+          "删除测试指标和关系数据。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供拼表端到端环境及真实请求路由。",
+            "结果集批准模板固定包含统计图字样，必须按 G01 规则验证拼表复用。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "每类原因的统计图和拼表得到相同后端原因、错误码、本地化消息及指标参数。",
+            "id": "EXP-E2E-002-01",
+            "matcher": "all_equal",
+            "observation_point": "web_chart_vs_joined_table.responses",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "deterministic"
+          },
+          {
+            "description": "拼表阻止打开明细且仅显示一个提示。",
+            "id": "EXP-E2E-002-02",
+            "matcher": "equals",
+            "observation_point": "web_joined_table.detail_state",
+            "source_ref": "REQ-007",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-E2E-002-E2E",
+        "intent_ids": [
+          "INT-007"
+        ],
+        "layer": "e2e",
+        "parent_case_id": "TC-E2E-002",
+        "preconditions": [
+          "同一业务配置可从 Web 统计图和 Web 拼表触发查看明细。",
+          "两个入口均连接真实后端接口。",
+          "四类原因均有成对配置。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-007",
+          "TF-007",
+          "RULE-ENTRY-CONSISTENCY"
+        ],
+        "steps": [
+          "对每类配置从统计图和拼表触发查看明细。",
+          "记录两个入口的请求参数、后端原因、错误码、消息和指标参数。",
+          "逐类比较统计图与拼表结果。",
+          "确认拼表直接使用与统计图相同的批准文案。"
+        ],
+        "test_data": {
+          "datasets": [
+            "成对配置 A：自定义维度",
+            "成对配置 B：结果集筛选指标 销售额 或 Revenue",
+            "成对配置 C：多关联指标",
+            "成对配置 D：动态关联指标"
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_E2E_002"
+        },
+        "title": "Web 拼表与统计图四类提示一致性"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "退出 Web 和移动端测试账号。",
+          "恢复两个客户端语言设置。",
+          "删除共享统计图、拼表、指标和关系测试数据。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供移动端实际运行时路由、端到端环境及抓包能力。",
+            "未提供 Web 和移动端自动化观测或截图比对能力。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "实际路由均被记录，路由语义按明确规则人工确认。",
+            "id": "EXP-E2E-003-01",
+            "matcher": "manual_confirmation",
+            "observation_point": "captured_client_routes.entry_semantic_mapping",
+            "source_ref": "TF-010",
+            "type": "human_review"
+          },
+          {
+            "description": "去除允许的客户端字段后，跨端配对的配置、入口语义、过滤器、指标和语言参数结构化相等。",
+            "id": "EXP-E2E-003-02",
+            "matcher": "equals",
+            "observation_point": "normalized_client_business_parameters",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "deterministic"
+          },
+          {
+            "description": "四入口对每类原因返回相同后端原因、错误码、本地化消息和指标参数。",
+            "id": "EXP-E2E-003-03",
+            "matcher": "all_equal",
+            "observation_point": "four_entry_api_responses",
+            "source_ref": "RULE-ENTRY-CONSISTENCY",
+            "type": "deterministic"
+          },
+          {
+            "description": "Web 与移动端均阻止明细，最终展示等于各自 API 当前语言消息。",
+            "id": "EXP-E2E-003-04",
+            "matcher": "equals",
+            "observation_point": "web_and_mobile_rendered_state",
+            "source_ref": "REQ-008",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-E2E-003-E2E",
+        "intent_ids": [
+          "INT-007"
+        ],
+        "layer": "e2e",
+        "parent_case_id": "TC-E2E-003",
+        "preconditions": [
+          "Web 和移动端可访问同一租户、统计图和拼表配置。",
+          "可抓取两个客户端实际运行时路由、请求参数和响应。",
+          "四类受限原因均已准备，客户端可设置 zh_CN 和 en。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-008",
+          "TF-007",
+          "TF-010",
+          "RULE-ENTRY-CONSISTENCY"
+        ],
+        "steps": [
+          "抓取并记录四个入口的实际运行时路由和完整请求参数。",
+          "按规定字段和规则生成归一化请求对象。",
+          "人工确认每条实际路由对应声明的入口语义。",
+          "对两个跨端配对执行结构化 equals。",
+          "在双语环境逐一触发四类原因并比较 API 响应和最终展示。"
+        ],
+        "test_data": {
+          "comparison_pairs": [
+            [
+              "web_chart",
+              "mobile_chart"
+            ],
+            [
+              "web_joined_table",
+              "mobile_joined_table"
+            ]
+          ],
+          "entries": [
+            {
+              "entry_semantic": "chart_detail",
+              "id": "web_chart"
+            },
+            {
+              "entry_semantic": "joined_table_detail",
+              "id": "web_joined_table"
+            },
+            {
+              "entry_semantic": "chart_detail",
+              "id": "mobile_chart"
+            },
+            {
+              "entry_semantic": "joined_table_detail",
+              "id": "mobile_joined_table"
+            }
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_E2E_003",
+          "normalization": {
+            "allowed_route_difference": "客户端实际路径可不同，但必须记录路径并由人工确认其服务于对应 entry_semantic；归一化业务参数必须结构化相等。",
+            "canonicalization": [
+              "按字段名排序对象键",
+              "过滤器按 field_id、operator、value 排序",
+              "metric_ids 按稳定标识排序",
+              "locale 规范为 zh_CN 或 en"
+            ],
+            "ignored_client_fields": [
+              "trace_id",
+              "request_id",
+              "device_id",
+              "viewport",
+              "client_version",
+              "transport_wrapper"
+            ],
+            "required_fields": [
+              "configuration_id",
+              "entry_semantic",
+              "filters",
+              "metric_ids",
+              "locale"
+            ]
+          },
+          "scenarios": [
+            "custom_dimension",
+            "result_set_filter",
+            "multi_relation",
+            "dynamic_relation"
+          ]
+        },
+        "title": "Web 与移动端统计图及拼表运行时路由和展示一致性"
+      }
+    ],
+    "execution_plan_actions": [
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-001-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-002-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-003-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-004-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-005-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-006-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-CON-001-CONTRACT",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-CON-002-CONTRACT",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-E2E-001-E2E",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-E2E-002-E2E",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-E2E-003-E2E",
+        "reason_code": "new_case_without_automation"
+      }
+    ],
+    "knowledge_sources": {
+      "captured_at": "2026-08-11",
+      "schema_version": "bi-knowledge-sources/1.0",
+      "sources": [
+        {
+          "access_status": "available",
+          "content_hash": "sha256:80be4b89e5fbdcad8980d0d573d335a69949d97702b7b33d84e1fedd94836161",
+          "id": "fxiaoke-help-bi",
+          "kind": "official_product_manual",
+          "location": "https://help.fxiaoke.com/5df3",
+          "scope": [
+            "overview",
+            "report",
+            "chart",
+            "joined_report",
+            "dashboard",
+            "bi_component",
+            "goal",
+            "subscription",
+            "permission",
+            "internationalization"
+          ],
+          "snapshot_ref": "knowledge/snapshots/fxiaoke-bi-manual-20260811.json"
+        },
+        {
+          "access_status": "available",
+          "content_hash": "sha256:80be4b89e5fbdcad8980d0d573d335a69949d97702b7b33d84e1fedd94836161",
+          "id": "fxiaoke-help-chart-create",
+          "kind": "official_product_manual",
+          "location": "https://help.fxiaoke.com/5df3/dfdb/ab25/39f6",
+          "scope": [
+            "chart_create",
+            "chart_view"
+          ],
+          "snapshot_ref": "knowledge/snapshots/fxiaoke-bi-manual-20260811.json#chart_create_path"
+        },
+        {
+          "access_status": "authentication_required",
+          "id": "bi-product-whitepaper",
+          "kind": "official_product_whitepaper",
+          "location": "https://365.kdocs.cn/l/cfO2un8c7Mz6",
+          "scope": [
+            "product_boundary",
+            "business_model"
+          ]
+        },
+        {
+          "access_status": "available",
+          "id": "fs-bi-contract-c6b7853",
+          "kind": "frozen_api_contract",
+          "location": "fs-bi@c6b785344c6973b6d6fc5bb108c45b3971f36c64",
+          "scope": [
+            "stat_schema",
+            "aggregate_metric",
+            "calculated_metric",
+            "custom_dimension",
+            "detail_query"
+          ]
+        },
+        {
+          "access_status": "available",
+          "id": "fs-bi-source",
+          "kind": "business_source_read_only",
+          "location": "git@git.firstshare.cn:bi/fs-bi.git",
+          "scope": [
+            "bi_backend"
+          ]
+        },
+        {
+          "access_status": "available",
+          "id": "fs-bi-crm-report-source",
+          "kind": "business_source_read_only",
+          "location": "git@git.firstshare.cn:bi/fs-bi-crm-report.git",
+          "scope": [
+            "crm_report_backend"
+          ]
+        },
+        {
+          "access_status": "available",
+          "id": "fs-bi-dev-platform-source",
+          "kind": "business_source_read_only",
+          "location": "git@git.firstshare.cn:bi/fs-bi-dev-platform.git",
+          "scope": [
+            "joined_report_backend"
+          ]
+        },
+        {
+          "access_status": "available",
+          "id": "fs-bi-udf-report-source",
+          "kind": "business_source_read_only",
+          "location": "git@git.firstshare.cn:dataplatform/fs-bi-udf-report.git",
+          "scope": [
+            "udf_report_backend"
+          ]
+        },
+        {
+          "access_status": "available",
+          "id": "fbi-source",
+          "kind": "business_source_read_only",
+          "local_checkout": ".cache/frontend-sources/fbi",
+          "location": "git@git.firstshare.cn:fe/fbi.git",
+          "scope": [
+            "bi_web_frontend",
+            "resource_navigation",
+            "route_parameter_generation"
+          ],
+          "verified_commit": "b436e4eeaa8dd01ebab92201c2080317176f1948"
+        },
+        {
+          "access_status": "available",
+          "id": "bi-sdk-source",
+          "kind": "business_source_read_only",
+          "local_checkout": "/Users/liushanshan/code/web/bi-sdk",
+          "location": "git@git.firstshare.cn:fe-bi/bi-sdk.git",
+          "scope": [
+            "bi_sdk_frontend",
+            "app_h5_routes",
+            "mobile_chart_detail",
+            "mobile_joined_table_detail"
+          ],
+          "verified_commit": "de869775758af3be5987f6d9958fade3bdfa2094"
+        },
+        {
+          "access_status": "available",
+          "id": "bi-xkcharts-source",
+          "kind": "business_source_read_only",
+          "local_checkout": ".cache/frontend-sources/bi-xkcharts",
+          "location": "git@git.firstshare.cn:fe/bi-xkcharts.git",
+          "scope": [
+            "chart_frontend",
+            "chart_interaction",
+            "drill_and_detail_behavior"
+          ],
+          "verified_commit": "ddc342e4d5ea482ded8244663aabb8f2038c6634"
+        },
+        {
+          "access_status": "available",
+          "id": "fs-bi-warehouse-source",
+          "kind": "business_source_read_only",
+          "location": "git@git.firstshare.cn:bi/fs-bi-warehouse.git",
+          "scope": [
+            "bi_warehouse"
+          ]
+        },
+        {
+          "access_status": "available",
+          "id": "environment-112",
+          "kind": "writable_test_environment",
+          "location": "config/environment.112.json",
+          "scope": [
+            "resource_create",
+            "resource_query",
+            "resource_cleanup"
+          ]
+        },
+        {
+          "access_status": "available",
+          "id": "probe-result-filter-detail-112",
+          "kind": "verified_environment_probe",
+          "location": "tests/test_112_data_lifecycle.py",
+          "scope": [
+            "aggregate_metric_create",
+            "detail_query",
+            "aggregate_metric_cleanup"
+          ]
+        },
+        {
+          "access_status": "available",
+          "id": "probe-calculated-metric-lifecycle-112",
+          "kind": "verified_environment_probe",
+          "location": "tests/test_112_calculated_metric_lifecycle.py",
+          "scope": [
+            "aggregate_metric_create",
+            "calculated_metric_create",
+            "calculated_metric_cleanup",
+            "aggregate_metric_cleanup",
+            "resource_residue_verification"
+          ]
+        }
+      ]
+    },
+    "n27_validation": {
+      "a22_artifact_hash": "sha256:6138052639c8cedc2f51b482c8683fb9f7c15c1163946b3f6a46f70c35caade4",
+      "a22_artifact_id": "a22-test-data-plan",
+      "decision": "rejected",
+      "schema_version": "test-data-plan-validation/1.0",
+      "valid": false,
+      "validation_error": "case_plans[0].resources[0] requires a setup operation"
+    },
+    "planning_defaults": {
+      "environment": "112",
+      "namespace": "qa-a22-pilot-001-source-v1"
+    },
+    "previous_plan": {
+      "case_plans": [
+        {
+          "case_id": "TC-BE-001-BACKEND",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "cd_field_id",
+              "resource_key": "cd_field",
+              "resource_type": "custom_dimension",
+              "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension"
+            },
+            {
+              "resource_id_variable": "baseline_chart_id",
+              "resource_key": "baseline_chart",
+              "resource_type": "stat_chart",
+              "setup_operation": null
+            },
+            {
+              "count": 3,
+              "resource_id_variable": "variant_chart_id",
+              "resource_key": "variant_charts",
+              "resource_type": "stat_chart",
+              "setup_operation": null
+            }
+          ],
+          "source_refs": [
+            "TC-BE-001-BACKEND"
+          ]
+        },
+        {
+          "case_id": "TC-BE-002-BACKEND",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "lifecycle_mode": "existing_read_only",
+              "resource_id_variable": "ordinary_field_id",
+              "resource_key": "ordinary_field_fixture",
+              "resource_type": "crm_field",
+              "setup_operation": null
+            },
+            {
+              "lifecycle_mode": "existing_read_only",
+              "resource_id_variable": "comparison_field_id",
+              "resource_key": "comparison_field_fixture",
+              "resource_type": "crm_field",
+              "setup_operation": null
+            },
+            {
+              "resource_id_variable": "rs_metric_id",
+              "resource_key": "rs_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "resource_id_variable": "agg_base_id",
+              "resource_key": "agg_base",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "depends_on": [
+                "agg_base"
+              ],
+              "resource_id_variable": "calc_metric_id",
+              "resource_key": "calc_metric",
+              "resource_type": "calculated_metric",
+              "setup_operation": "fs_bi_stat.stat_calc_field.save_calc_field"
+            }
+          ],
+          "source_refs": [
+            "TC-BE-002-BACKEND"
+          ]
+        },
+        {
+          "case_id": "TC-BE-003-BACKEND",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "rel_topology_id",
+              "resource_key": "rel_topology",
+              "resource_type": "crm_object",
+              "setup_operation": null
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "mr_metric_id",
+              "resource_key": "mr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            }
+          ],
+          "source_refs": [
+            "TC-BE-003-BACKEND"
+          ]
+        },
+        {
+          "case_id": "TC-BE-004-BACKEND",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "lifecycle_mode": "existing_read_only",
+              "resource_id_variable": "what_field_id",
+              "resource_key": "what_field_scope",
+              "resource_type": "crm_field",
+              "setup_operation": null
+            },
+            {
+              "lifecycle_mode": "existing_read_only",
+              "resource_id_variable": "ctrl_field_id",
+              "resource_key": "ctrl_field",
+              "resource_type": "crm_field",
+              "setup_operation": null
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "dr_metric_id",
+              "resource_key": "dr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            }
+          ],
+          "source_refs": [
+            "TC-BE-004-BACKEND"
+          ]
+        },
+        {
+          "case_id": "TC-BE-005-BACKEND",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "cd_field_id",
+              "resource_key": "cd_field",
+              "resource_type": "custom_dimension",
+              "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension"
+            },
+            {
+              "resource_id_variable": "rs_metric_id",
+              "resource_key": "rs_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "mr_metric_id",
+              "resource_key": "mr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "dr_metric_id",
+              "resource_key": "dr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            }
+          ],
+          "source_refs": [
+            "TC-BE-005-BACKEND"
+          ]
+        },
+        {
+          "case_id": "TC-BE-006-BACKEND",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "sensitive_metric_id",
+              "resource_key": "sensitive_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            }
+          ],
+          "source_refs": [
+            "TC-BE-006-BACKEND"
+          ]
+        },
+        {
+          "case_id": "TC-CON-001-CONTRACT",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "cd_field_id",
+              "resource_key": "cd_field",
+              "resource_type": "custom_dimension",
+              "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension"
+            },
+            {
+              "resource_id_variable": "rs_metric_id",
+              "resource_key": "rs_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "resource_id_variable": "agg_base_id",
+              "resource_key": "agg_base",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "depends_on": [
+                "agg_base"
+              ],
+              "resource_id_variable": "calc_metric_id",
+              "resource_key": "calc_metric",
+              "resource_type": "calculated_metric",
+              "setup_operation": "fs_bi_stat.stat_calc_field.save_calc_field"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "mr_metric_id",
+              "resource_key": "mr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "dr_metric_id",
+              "resource_key": "dr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            }
+          ],
+          "source_refs": [
+            "TC-CON-001-CONTRACT"
+          ]
+        },
+        {
+          "case_id": "TC-CON-002-CONTRACT",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "resource_id_variable": "hist_chart_cd_id",
+              "resource_key": "hist_chart_cd",
+              "resource_type": "stat_chart",
+              "setup_operation": null
+            },
+            {
+              "resource_id_variable": "hist_chart_rs_id",
+              "resource_key": "hist_chart_rs",
+              "resource_type": "stat_chart",
+              "setup_operation": null
+            },
+            {
+              "resource_id_variable": "hist_table_mr_id",
+              "resource_key": "hist_table_mr",
+              "resource_type": "joined_table",
+              "setup_operation": null
+            },
+            {
+              "resource_id_variable": "hist_table_dr_id",
+              "resource_key": "hist_table_dr",
+              "resource_type": "joined_table",
+              "setup_operation": null
+            },
+            {
+              "resource_id_variable": "hist_normal_chart_id",
+              "resource_key": "hist_normal_chart",
+              "resource_type": "stat_chart",
+              "setup_operation": null
+            },
+            {
+              "resource_id_variable": "hist_normal_table_id",
+              "resource_key": "hist_normal_table",
+              "resource_type": "joined_table",
+              "setup_operation": null
+            }
+          ],
+          "source_refs": [
+            "TC-CON-002-CONTRACT"
+          ]
+        },
+        {
+          "case_id": "TC-E2E-001-E2E",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "cd_field_id",
+              "resource_key": "cd_field",
+              "resource_type": "custom_dimension",
+              "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension"
+            },
+            {
+              "resource_id_variable": "rs_metric_id",
+              "resource_key": "rs_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "mr_metric_id",
+              "resource_key": "mr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "dr_metric_id",
+              "resource_key": "dr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            }
+          ],
+          "source_refs": [
+            "TC-E2E-001-E2E"
+          ]
+        },
+        {
+          "case_id": "TC-E2E-002-E2E",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "cd_field_id",
+              "resource_key": "cd_field",
+              "resource_type": "custom_dimension",
+              "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension"
+            },
+            {
+              "resource_id_variable": "rs_metric_id",
+              "resource_key": "rs_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "mr_metric_id",
+              "resource_key": "mr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "dr_metric_id",
+              "resource_key": "dr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "count": 4,
+              "resource_id_variable": "joined_table_id",
+              "resource_key": "joined_tables",
+              "resource_type": "joined_table",
+              "setup_operation": "fs_bi_dev.lwt_manager.save"
+            }
+          ],
+          "source_refs": [
+            "TC-E2E-002-E2E"
+          ]
+        },
+        {
+          "case_id": "TC-E2E-003-E2E",
+          "requires_data_construction": true,
+          "resources": [
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "cd_field_id",
+              "resource_key": "cd_field",
+              "resource_type": "custom_dimension",
+              "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension"
+            },
+            {
+              "resource_id_variable": "rs_metric_id",
+              "resource_key": "rs_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "mr_metric_id",
+              "resource_key": "mr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "dr_metric_id",
+              "resource_key": "dr_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "count": 4,
+              "resource_id_variable": "joined_table_id",
+              "resource_key": "joined_tables",
+              "resource_type": "joined_table",
+              "setup_operation": "fs_bi_dev.lwt_manager.save"
+            }
+          ],
+          "source_refs": [
+            "TC-E2E-003-E2E"
+          ]
+        }
+      ],
+      "environment": "112",
+      "evaluation_oracle_accessed": false,
+      "input_bundle_hash": "sha256:b3a5187dfbc8eb3c73ef0dddf40d7e652cfe374195c4103a0e4f6a8dc2794c44",
+      "namespace": "qa-a22-pilot-001-source-v1",
+      "paused_cases": [],
+      "planning_mode": "generate_new",
+      "schema_version": "test-data-plan/1.0",
+      "source_snapshot_id": "pilot-001-source-v1",
+      "status": "needs_human",
+      "unresolved_requirements": [
+        {
+          "reason_code": "chart_create_op_unverified",
+          "requirement": "stat_chart 创建接口及参数未验证，图表 setup_operation 需人工确认",
+          "requirement_id": "UR-01"
+        },
+        {
+          "reason_code": "relation_topology_params_unconfirmed",
+          "requirement": "多关联/动态关联拓扑构造及故障注入未验证，add_new_agg_rule 仅验证结果集筛选",
+          "requirement_id": "UR-02"
+        },
+        {
+          "reason_code": "permission_fixture_unverified",
+          "requirement": "TC-BE-006 三类权限账号供给方式未验证且不在 resource_types 内",
+          "requirement_id": "UR-03"
+        },
+        {
+          "reason_code": "historical_fixture_seed_unverified",
+          "requirement": "TC-CON-002 需变更前未迁移未重存的历史配置及同版本基线，无已验证种子来源",
+          "requirement_id": "UR-04"
+        },
+        {
+          "reason_code": "fault_injection_capability_unconfirmed",
+          "requirement": "元数据服务异常、关系转换失败、超时等故障注入无已验证机制",
+          "requirement_id": "UR-05"
+        }
+      ],
+      "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+    },
+    "test_data_policy": {
+      "allowed_environments": [
+        "112"
+      ],
+      "default_retention_mode": "retain",
+      "enum_option_operations": [
+        "fs_bi_udf_report.view_edit.get_ui_type",
+        "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+        "fs_bi_stat.stat_edit.get_filters_result",
+        "fs_bi_stat.stat_edit.batch_get_filters_result"
+      ],
+      "folder_operations": {
+        "create": "fs_bi_crm.rpt_category.save_category",
+        "query": "fs_bi_crm.rpt_category.get_category_and_rpt"
+      },
+      "naming_policy": {
+        "business_resource_types": [
+          "aggregate_metric",
+          "calculated_metric",
+          "stat_schema",
+          "crm_field",
+          "custom_dimension"
+        ],
+        "business_resources": "typed_chinese_semantic",
+        "chart_folder": "requirement_name"
+      },
+      "operation_pairs": {
+        "fs_bi_dev.lwt_manager.save": "",
+        "fs_bi_stat.agg_rule.add_new_agg_rule": "fs_bi_stat.agg_rule.delete_agg_rule",
+        "fs_bi_stat.custom_dimension.create_custom_dimension": "fs_bi_stat.custom_dimension.delete_custom_dimension",
+        "fs_bi_stat.stat_calc_field.save_calc_field": "fs_bi_stat.stat_calc_field.delete_calc_field",
+        "fs_bi_stat.stat_schema.add_new_schema": "fs_bi_stat.stat_schema.delete_schema"
+      },
+      "phase_permissions": {
+        "cleanup": "disabled",
+        "readiness": "read_only",
+        "retention_verification": "read_only",
+        "setup": "write"
+      },
+      "readiness_operations": [
+        "fs_bi_crm.rpt_category.get_category_and_rpt",
+        "fs_bi_stat.stat_schema.get_all_schema",
+        "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+        "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+        "fs_bi_stat.custom_dimension.get_custom_dimension",
+        "fs_bi_stat.stat_base.get_calc_agg_sub_fields",
+        "fs_bi_stat.stat_base.chart_query",
+        "fs_bi_stat.stat_edit.get_chart_config",
+        "fs_bi_stat.stat_base.data_query_da655ba1",
+        "fs_bi_stat.stat_edit.get_filters_result",
+        "fs_bi_stat.stat_edit.batch_get_filters_result",
+        "fs_bi_stat.agg_rule.query_agg_conditions_by_agg_object",
+        "fs_bi_stat.view_data_query_api.get_chart_config",
+        "fs_bi_crm.stat_edit.get_stat_view",
+        "fs_bi_dev_platform.joined_table.get_lwt_args",
+        "fs_bi_dev.lwt_manager.query_arg_detail",
+        "fs_bi_dev.lwt_manager.query_lwt_arg",
+        "fs_bi_dev.lwt_manager.get_data_source_fields_detail"
+      ],
+      "resource_types": [
+        "crm_object",
+        "crm_field",
+        "stat_schema",
+        "aggregate_metric",
+        "calculated_metric",
+        "report",
+        "stat_chart",
+        "joined_report",
+        "pivot_table",
+        "dashboard",
+        "goal",
+        "home_layout",
+        "custom_dimension",
+        "joined_table"
+      ],
+      "retained_asset_registry_required": true,
+      "schema_version": "test-data-policy/1.0"
+    }
+  },
+  "bundle_hash": "sha256:6b7b6e84fbbf7bdb6624ac46e1503adbdf82f72174d1b6ba127de5a830b7f0ce",
+  "integrity": {
+    "business_repository_write_allowed": false,
+    "credentials_embedded": false,
+    "evaluation_oracle_registry_included": false,
+    "external_side_effects_allowed": false
+  },
+  "output_contract": "test-data-plan/1.0",
+  "profile_id": "A22",
+  "profile_version": "1.0.0",
+  "revision": {
+    "previous_plan_hash": "sha256:6138052639c8cedc2f51b482c8683fb9f7c15c1163946b3f6a46f70c35caade4",
+    "revision_attempt": 1,
+    "validation_error": "case_plans[0].resources[0] requires a setup operation",
+    "validation_hash": "sha256:2e6ec4c1a63c46d6dc32d96898050d4e7fefb643bc54aa950a37ee6f3137cab4"
+  },
+  "schema_version": "multica-agent-input/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:442f3f9583dc1ce3e7fda90bc66a5e11a746acbe611f92f9c21a3c63dae87f6a",
+      "artifact_id": "n25-compiled-test-cases"
+    },
+    {
+      "artifact_hash": "sha256:cd895e4b4fa8ea30ce9a3db3bb5e091a8d1de5bd7ed129751d94029b98f052ce",
+      "artifact_id": "n15-execution-plan"
+    },
+    {
+      "artifact_hash": "sha256:6138052639c8cedc2f51b482c8683fb9f7c15c1163946b3f6a46f70c35caade4",
+      "artifact_id": "a22-test-data-plan"
+    },
+    {
+      "artifact_hash": "sha256:2e6ec4c1a63c46d6dc32d96898050d4e7fefb643bc54aa950a37ee6f3137cab4",
+      "artifact_id": "n27-test-data-plan-validation"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

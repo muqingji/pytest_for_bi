@@ -97,10 +97,11 @@ def write_valid_gate_artifacts(root: Path) -> tuple[Path, Path, Path]:
 class FakeMultica:
     def __init__(self) -> None:
         self.calls: list[list[str]] = []
+        self.comments: list[dict] = []
         self.issue = {
             "id": "g02-issue-1",
             "workspace_id": WORKSPACE_ID,
-            "project_id": "c2c84f1f-20af-456d-9eca-c9fbbd253840",
+            "project_id": "f2f893a2-55dc-414d-87d9-a483e51765d6",
             "assignee_id": MEMBER_ID,
             "assignee_type": "member",
             "metadata": {},
@@ -123,6 +124,8 @@ class FakeMultica:
             return dict(self.issue)
         if args[:2] == ["issue", "get"]:
             return json.loads(json.dumps(self.issue))
+        if args[:3] == ["issue", "comment", "list"]:
+            return {"comments": [dict(comment) for comment in self.comments]}
         raise AssertionError(f"Unexpected Multica command: {args}")
 
 
@@ -142,6 +145,7 @@ def test_prepare_g02_is_content_addressed_and_idempotent(tmp_path: Path) -> None
     assert first["review_policy"]["allowed_actor_ids"] == ["muqj11262"]
     assert first["multica_control"]["assignee_member_id"] == MEMBER_ID
     assert first["review_summary"]["n04_valid"] is True
+    assert [item["case_id"] for item in first["review_items"]] == ["CASE-001"]
     assert read_json(output / STATE_FILE)["state"] == "prepared"
 
 
@@ -234,6 +238,94 @@ def test_g02_terminal_status_routes_deterministically(
     assert outcome["decision"] == decision
     assert outcome["action"] == action
     assert outcome["next_node"] == next_node
+
+
+def test_g02_blocked_uses_reviewer_comment_as_fix_direction(
+    tmp_path: Path,
+) -> None:
+    artifacts, output = prepare_valid_review(tmp_path)
+    multica = FakeMultica()
+    request = output / "g02-review-request.json"
+    open_multica_test_case_review(request, POLICY_PATH, output, runner=multica)
+    multica.comments.append(
+        {
+            "id": "comment-1",
+            "creator_type": "member",
+            "creator_id": MEMBER_ID,
+            "created_at": "2026-08-10T08:04:00Z",
+            "content": "缺少 en 维度下钻边界场景：补充 CASE-001 的 en 分支断言",
+        }
+    )
+    multica.issue["status"] = "blocked"
+    multica.issue["updated_at"] = "2026-08-10T08:05:00Z"
+
+    outcome = sync_multica_test_case_review(
+        request, artifacts[2], POLICY_PATH, output, runner=multica
+    )
+
+    assert outcome["decision"] == "request_changes"
+    assert outcome["next_node"] == "A08"
+    decision = read_json(output / DECISION_FILE)
+    assert decision["reason"] == "缺少 en 维度下钻边界场景：补充 CASE-001 的 en 分支断言"
+    assert decision["reviewer_comment"]["id"] == "comment-1"
+    assert decision["multica_event"]["comment_id"] == "comment-1"
+
+
+def test_g02_done_with_confirm_comment_records_approved_reason(
+    tmp_path: Path,
+) -> None:
+    artifacts, output = prepare_valid_review(tmp_path)
+    multica = FakeMultica()
+    request = output / "g02-review-request.json"
+    open_multica_test_case_review(request, POLICY_PATH, output, runner=multica)
+    multica.comments.append(
+        {
+            "id": "comment-2",
+            "creator_type": "member",
+            "creator_id": MEMBER_ID,
+            "created_at": "2026-08-10T08:04:00Z",
+            "content": "确认无缺场景",
+        }
+    )
+    multica.issue["status"] = "done"
+    multica.issue["updated_at"] = "2026-08-10T08:05:00Z"
+
+    outcome = sync_multica_test_case_review(
+        request, artifacts[2], POLICY_PATH, output, runner=multica
+    )
+
+    assert outcome["decision"] == "approved"
+    decision = read_json(output / DECISION_FILE)
+    assert decision["reason"] == "确认无缺场景"
+
+
+def test_g02_blocked_ignores_comment_from_unauthorized_author(
+    tmp_path: Path,
+) -> None:
+    artifacts, output = prepare_valid_review(tmp_path)
+    multica = FakeMultica()
+    request = output / "g02-review-request.json"
+    open_multica_test_case_review(request, POLICY_PATH, output, runner=multica)
+    multica.comments.append(
+        {
+            "id": "comment-3",
+            "creator_type": "member",
+            "creator_id": "not-the-reviewer",
+            "created_at": "2026-08-10T08:04:00Z",
+            "content": "请补充场景",
+        }
+    )
+    multica.issue["status"] = "blocked"
+    multica.issue["updated_at"] = "2026-08-10T08:05:00Z"
+
+    outcome = sync_multica_test_case_review(
+        request, artifacts[2], POLICY_PATH, output, runner=multica
+    )
+
+    assert outcome["decision"] == "request_changes"
+    decision = read_json(output / DECISION_FILE)
+    assert decision["reviewer_comment"] is None
+    assert "status transition to blocked" in decision["reason"]
 
 
 def test_g02_rejects_wrong_assignee_and_stale_n04(tmp_path: Path) -> None:

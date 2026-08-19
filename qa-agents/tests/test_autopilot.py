@@ -405,6 +405,91 @@ def test_reconcile_derives_nodes_and_human_actions_from_artifacts(tmp_path: Path
     assert unchanged["revision"] == 2
 
 
+def test_reconcile_routes_blocked_a09_to_waiting_human_when_n04_routes_human(
+    tmp_path: Path,
+) -> None:
+    multica = FakeMultica()
+    initialize_autopilot(
+        _request(tmp_path / "request.json"),
+        _config(tmp_path / "config.json"),
+        tmp_path / "registry",
+        tmp_path / "initial",
+        runner=multica,
+    )
+    artifacts = tmp_path / "artifacts"
+    n04_payload = {
+        "schema_version": "test-case-ir-validation/1.0",
+        "valid": False,
+        "next_node": "human",
+        "issues": [
+            {"id": "A09-ISSUE-007", "origin": "A09", "severity": "blocking"},
+            {"id": "A09-ISSUE-008", "origin": "A09", "severity": "blocking"},
+        ],
+        "correction_attempt": 2,
+        "max_correction_attempts": 2,
+    }
+    a09_payload = {
+        "schema_version": "oracle-coverage-review/1.0",
+        "approved": False,
+        "issues": [
+            {
+                "id": "A09-ISSUE-007",
+                "severity": "blocking",
+                "route_to": "A08",
+                "case_id": "TC-E2E-001",
+                "recommendation": "改 expected_value",
+            },
+            {
+                "id": "A09-ISSUE-008",
+                "severity": "blocking",
+                "route_to": "A08",
+                "case_id": "TC-BE-002",
+                "recommendation": "按 locale 拆分数据行",
+            },
+        ],
+    }
+    for component, artifact_id, status, payload in (
+        (
+            "N04",
+            "n04-test-case-ir-validation",
+            ArtifactStatus.NEEDS_HUMAN,
+            n04_payload,
+        ),
+        (
+            "A09",
+            "a09-oracle-coverage-review",
+            ArtifactStatus.NEEDS_HUMAN,
+            a09_payload,
+        ),
+    ):
+        envelope = ArtifactEnvelope(
+            workflow_run_id="REQ-1-r001",
+            workflow_mode="new_requirement",
+            artifact_id=artifact_id,
+            source_snapshot_id="snapshot-1",
+            producer=Producer(component),
+            payload=payload,
+            status=status,
+        )
+        _write(artifacts / f"{artifact_id}.json", envelope.to_dict())
+
+    result = reconcile_autopilot(
+        tmp_path / "initial/workflow-center-spec.json",
+        [artifacts],
+        tmp_path / "reconciled",
+    )
+
+    assert result["changed"] is True
+    spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
+    nodes = {item["node_id"]: item for item in spec["nodes"]}
+    assert nodes["N04"]["state"] == "waiting_human"
+    assert nodes["A09"]["state"] == "waiting_human"
+    assert nodes["A09"]["result_summary"] == "阻塞问题已路由人工处置，等待定向修正或终止决策"
+    gate_ids = {action["gate_id"] for action in spec["actions"]}
+    assert "N04" in gate_ids and "A09" in gate_ids
+    assert result["open_action_count"] == 2
+
+
 def test_a06_needs_human_merges_into_g01_without_second_action(tmp_path: Path) -> None:
     multica = FakeMultica()
     initialize_autopilot(

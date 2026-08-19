@@ -9,6 +9,7 @@ from pathlib import Path
 import subprocess
 from typing import Any
 
+from .card_copy import scope_review_title
 from .contracts import content_hash
 from .errors import ContractError, RetryableAgentError, SecurityPolicyError
 from .gates import build_scope_review_outcome, validate_scope_review_decision
@@ -225,13 +226,12 @@ def open_multica_scope_review(
             _validate_issue(bound, adapter, require_metadata=False)
             created = bound
         else:
-            short_hash = request["request_hash"].removeprefix("sha256:")[:12]
             created = runner(
                 [
                     "issue",
                     "create",
                     "--title",
-                    f"[{request['workflow_run_id']}] G01 范围与口径人工审核 [{short_hash}]",
+                    scope_review_title(request),
                     "--description-file",
                     "g01-review-request.md",
                     "--attachment",

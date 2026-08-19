@@ -1,0 +1,716 @@
+{
+  "created_at": "2026-08-19T09:54:29+00:00",
+  "decision": "pending",
+  "decision_contract": "test-case-ir-review-decision/1.0",
+  "gate_id": "G02",
+  "multica_control": {
+    "assignee_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+    "decision_statuses": {
+      "blocked": "request_changes",
+      "cancelled": "rejected",
+      "done": "approved"
+    },
+    "identity_evidence_mode": "assigned_member_pilot",
+    "initial_status": "in_review",
+    "project_id": "f2f893a2-55dc-414d-87d9-a483e51765d6",
+    "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46"
+  },
+  "outcome_contract": "test-case-ir-review-outcome/1.0",
+  "request_hash": "sha256:289bb46001561b06d704cfe8d359f61a27190571dc4edbc9f64be0b7ae0ef80a",
+  "review_items": [
+    {
+      "case_id": "TC-BE-001",
+      "expected": [
+        {
+          "description": "三个变体均拒绝查看明细并返回错误码 s307011534。",
+          "expected_value": "s307011534",
+          "id": "EXP-BE-001-01",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.code",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "zh_CN 运行时消息精确为批准模板。",
+          "expected_value": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细",
+          "id": "EXP-BE-001-02",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.message.zh_CN",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "en 运行时消息精确为批准模板。",
+          "expected_value": "Custom dimension fields are used in the dimension or data range. Details view is not supported.",
+          "id": "EXP-BE-001-03",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.message.en",
+          "oracle_type": "deterministic"
+        }
+      ],
+      "layer": "backend",
+      "preconditions": [
+        "真实测试接口连接错误码平台联调环境，不以 G01 配置本身代替运行时 Oracle。",
+        "测试租户支持创建统计图并触发查看明细。",
+        "自定义维度字段可分别配置在维度、数据范围和下钻字段。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "自定义维度三类位置的专用错误与双语提示：三个变体均拒绝查看明细并返回错误码 s307011534。",
+      "source_refs": [
+        "REQ-001",
+        "REQ-002",
+        "TF-001",
+        "RULE-CUSTOM-DIMENSION",
+        "RULE-I18N-CUSTOM-DIMENSION"
+      ],
+      "steps": [
+        "在命名空间内创建基线统计图并确认查看明细请求成功。",
+        "对变体 A、B、C 分别以 zh_CN 和 en 调用真实查看明细接口。",
+        "核对三类位置沿用现有检测顺序，且未返回统一通用提示。"
+      ],
+      "title": "自定义维度三类位置的专用错误与双语提示"
+    },
+    {
+      "case_id": "TC-BE-002",
+      "expected": [
+        {
+          "description": "所有名称可解析场景均返回 s307011535。",
+          "expected_value": "s307011535",
+          "id": "EXP-BE-002-01",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.code",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "单指标 zh_CN 消息代入销售额（fieldName 分支）。",
+          "expected_value": "统计图数据范围中设置了「销售额」按结果集筛选，不支持查看明细",
+          "id": "EXP-BE-002-02",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.message.zh_CN",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "单指标 en 消息代入动态名称 Revenue（前两级为空的独立数据行 RS-EN-03）。",
+          "expected_value": "The chart data range uses \"Revenue\" with result set filtering. Details view is not supported.",
+          "id": "EXP-BE-002-03",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.message.en",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "名称解析严格按批准顺序取得当前语言实际展示名，zh_CN 与 en 分别断言三级分支。",
+          "expected_value": "{'en': {'Filter.fieldName_branch': ['销售额'], 'current_locale_dynamic_display_name_branch': ['Revenue'], 'field_metadata_by_fieldId_branch': ['Order Count']}, 'zh_CN': {'Filter.fieldName_branch': ['销售额'], 'current_locale_dynamic_display_name_branch': ['毛利率'], 'field_metadata_by_fieldId_branch': ['订单数']}}",
+          "id": "EXP-BE-002-04",
+          "matcher": "equals",
+          "observation_point": "backend_exception.metric_name_parameters",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "多指标参数包含全部实际展示名。",
+          "expected_value": "{'en': ['Revenue', 'Gross Margin'], 'zh_CN': ['销售额', '毛利率']}",
+          "id": "EXP-BE-002-05",
+          "matcher": "equals",
+          "observation_point": "backend_exception.metric_name_parameters",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "多指标 zh_CN 解码消息展示全部指标名并只使用一个模板。",
+          "expected_value": "统计图数据范围中设置了「销售额、毛利率」按结果集筛选，不支持查看明细",
+          "id": "EXP-BE-002-06",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.message.zh_CN",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "多指标 en 解码消息展示全部名称，使用普通双引号且不含字面反斜杠。",
+          "expected_value": "The chart data range uses \"Revenue\", \"Gross Margin\" with result set filtering. Details view is not supported.",
+          "id": "EXP-BE-002-07",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.message.en",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "空指标名不生成专用消息；由于未冻结实际降级响应，执行时人工确认业务响应。",
+          "expected_value": "preserve_actual_business_response_without_empty_metric_name_message",
+          "id": "EXP-BE-002-08",
+          "matcher": "manual_confirmation",
+          "observation_point": "detail_api.empty_metric_name_response",
+          "oracle_type": "human_review"
+        }
+      ],
+      "layer": "backend",
+      "preconditions": [
+        "真实查看明细接口可观测错误码、解码消息和业务异常参数数组。",
+        "测试租户已启用 zh_CN 与 en 动态字段名称。",
+        "普通指标、聚合指标、计算指标和同环比指标均可配置按结果集筛选。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "结果集筛选指标名称解析、全部名称参数与本地化：所有名称可解析场景均返回 s307011535。",
+      "source_refs": [
+        "REQ-003",
+        "TF-003",
+        "TF-004",
+        "RULE-SINGLE-METRIC",
+        "RULE-I18N-RESULT-SET"
+      ],
+      "steps": [
+        "分别为四种指标类型创建按结果集筛选的统计图，zh_CN 与 en 各使用独立数据行。",
+        "按 Filter.fieldName、fieldId 字段元数据、当前语言动态显示名的顺序，为每个 locale 分别构造三级名称来源分支；英文动态名称场景使用前两级均为空的独立数据行。",
+        "分别以 zh_CN 和 en 调用真实接口并记录错误码、解码消息和参数数组。",
+        "对多指标配置核对全部实际展示名进入参数并渲染在唯一批准模板中。",
+        "对空名称夹具确认不生成空指标名专用消息，人工确认实际业务响应。"
+      ],
+      "title": "结果集筛选指标名称解析、全部名称参数与本地化"
+    },
+    {
+      "case_id": "TC-BE-003",
+      "expected": [
+        {
+          "description": "4/3、3/4、3/3 每行均返回 s307011536。",
+          "expected_value": "{'MR-3-3': 's307011536', 'MR-3-4': 's307011536', 'MR-4-3': 's307011536'}",
+          "id": "EXP-BE-003-01",
+          "matcher": "equals",
+          "observation_point": "detail_api.matrix_rows.error_code",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "zh_CN 消息精确匹配批准模板。",
+          "expected_value": "基于多关联关系创建的统计指标，暂不支持查看明细",
+          "id": "EXP-BE-003-02",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.message.zh_CN",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "en 消息精确匹配批准模板。",
+          "expected_value": "Metrics created based on multiple relationships do not support Details view.",
+          "id": "EXP-BE-003-03",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.message.en",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "原本成功的关系仍成功并保留分页及结果结构。",
+          "expected_value": "successful_existing_relation_resolution_with_unchanged_paging_and_result_structure",
+          "id": "EXP-BE-003-04",
+          "matcher": "equals_baseline",
+          "observation_point": "detail_api.success_response",
+          "oracle_type": "deterministic"
+        }
+      ],
+      "layer": "backend",
+      "preconditions": [
+        "测试环境可构造 4/3、3/4、3/3 对象与关系拓扑。",
+        "可控故障点能区分已知对象关系不支持异常与成功关系转换。",
+        "真实查看明细接口可观测最终错误码和消息。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "多关联关系失败替换与原成功关系回归：4/3、3/4、3/3 每行均返回 s307011536。",
+      "source_refs": [
+        "REQ-004",
+        "TF-005",
+        "TF-006",
+        "RULE-MULTI-RELATION",
+        "RULE-I18N-MULTI-RELATION"
+      ],
+      "steps": [
+        "逐行建立矩阵拓扑并记录关系标识。",
+        "对前三行注入已知对象关系不支持异常并以 zh_CN、en 调用接口。",
+        "对 MR-SUCCESS 调用相同接口并记录成功状态、分页和结果结构。",
+        "确认专用原因只在原关系转换失败后替换。"
+      ],
+      "title": "多关联关系失败替换与原成功关系回归"
+    },
+    {
+      "case_id": "TC-BE-004",
+      "expected": [
+        {
+          "description": "所有真实 what 和 what-list 动态关联失败行返回 s307011537。",
+          "expected_value": "s307011537",
+          "id": "EXP-BE-004-01",
+          "matcher": "equals",
+          "observation_point": "detail_api.dynamic_relation_rows.error_code",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "zh_CN 消息精确为批准模板。",
+          "expected_value": "基于动态关联关系创建的统计指标，不支持查看明细",
+          "id": "EXP-BE-004-02",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.message.zh_CN",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "en 消息精确为批准模板。",
+          "expected_value": "Metrics created based on dynamic relationships do not support Details view.",
+          "id": "EXP-BE-004-03",
+          "matcher": "equals",
+          "observation_point": "detail_api.error.message.en",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "普通非 what/what-list 成功字段不被前置禁用。",
+          "expected_value": "{'forbidden_error_codes': ['s307011534', 's307011535', 's307011536', 's307011537'], 'paging': 'present', 'result_structure': 'present', 'status': 'success'}",
+          "id": "EXP-BE-004-04",
+          "matcher": "equals",
+          "observation_point": "detail_api.controls.CTRL-01",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "元数据缺失时不替换为动态关联专用错误；未冻结原错误码，人工确认完整业务响应。",
+          "expected_value": "preserve_actual_business_response",
+          "id": "EXP-BE-004-05",
+          "matcher": "manual_confirmation",
+          "observation_point": "detail_api.controls.CTRL-02.full_response",
+          "oracle_type": "human_review"
+        },
+        {
+          "description": "元数据服务异常不替换为动态关联专用错误；未冻结原错误码，人工确认完整业务响应。",
+          "expected_value": "preserve_actual_business_response",
+          "id": "EXP-BE-004-06",
+          "matcher": "manual_confirmation",
+          "observation_point": "detail_api.controls.CTRL-03.full_response",
+          "oracle_type": "human_review"
+        }
+      ],
+      "layer": "backend",
+      "preconditions": [
+        "执行前通过真实元数据接口取得当前环境全部 what 和 what-list 对象及字段。",
+        "可控故障点能触发已知对象关系不支持异常、元数据异常和普通非 what/what-list 关系成功分支。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "所有 what 和 what-list 动态关联识别及非动态控制：所有真实 what 和 what-list 动态关联失败行返回 s307011537。",
+      "source_refs": [
+        "REQ-005",
+        "TF-005",
+        "TF-006",
+        "RULE-DYNAMIC-RELATION",
+        "RULE-I18N-DYNAMIC-RELATION"
+      ],
+      "steps": [
+        "查询真实元数据并枚举全部 what 和 what-list 对象及字段，不按工单主题过滤。",
+        "使用每个确认字段创建动态关联指标并使原转换产生已知对象关系不支持异常。",
+        "分别以 zh_CN 和 en 调用真实接口。",
+        "对普通非 what/what-list 成功字段、元数据缺失和元数据服务异常控制行调用接口。",
+        "核对动态判定使用完整聚合规则、指标字段和关系元数据。"
+      ],
+      "title": "所有 what 和 what-list 动态关联识别及非动态控制"
+    },
+    {
+      "case_id": "TC-BE-005",
+      "expected": [
+        {
+          "description": "每次只返回一个错误提示。",
+          "expected_value": "1",
+          "id": "EXP-BE-005-01",
+          "matcher": "equals",
+          "observation_point": "detail_api.error_message_count",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "错误码是实际命中原因对应的一个合法值，不断言固定优先级。",
+          "expected_value": "['s307011534', 's307011535', 's307011536', 's307011537']",
+          "id": "EXP-BE-005-02",
+          "matcher": "one_of_actually_matched",
+          "observation_point": "detail_api.error.code",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "错误码与消息必须形成一个完整批准映射且不拼接。",
+          "expected_value": "one_actual_matched_code_message_pair",
+          "id": "EXP-BE-005-03",
+          "matcher": "equals_one_complete_matched_mapping",
+          "observation_point": "detail_api.error.code_message_pair",
+          "oracle_type": "deterministic"
+        }
+      ],
+      "layer": "backend",
+      "preconditions": [
+        "测试环境可在一次请求中同时配置至少两个已批准受限原因。",
+        "接口可观测错误码、消息和异常数量。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "多原因单提示且无固定业务优先顺序：每次只返回一个错误提示。",
+      "source_refs": [
+        "REQ-001",
+        "TF-009",
+        "RULE-MULTIPLE-REASONS"
+      ],
+      "steps": [
+        "对每个组合分别以 zh_CN 和 en 调用真实接口。",
+        "记录错误对象数量、错误码和消息。",
+        "将返回值与该请求实际命中的专用错误集合比较。",
+        "检查消息不存在多个原因模板拼接。"
+      ],
+      "title": "多原因单提示且无固定业务优先顺序"
+    },
+    {
+      "case_id": "TC-BE-006",
+      "expected": [
+        {
+          "description": "无权限账号保持原权限错误行为。",
+          "expected_value": "existing_permission_behavior",
+          "id": "EXP-BE-006-01",
+          "matcher": "equals_baseline",
+          "observation_point": "detail_api.permission_error_response",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "无权限响应不包含敏感指标名。",
+          "expected_value": "机密收入",
+          "id": "EXP-BE-006-02",
+          "matcher": "not_contains",
+          "observation_point": "detail_api.permission_error_payload",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "完整权限账号按实际命中原因返回合法专用错误。",
+          "expected_value": "['s307011535', 's307011537']",
+          "id": "EXP-BE-006-03",
+          "matcher": "one_of",
+          "observation_point": "detail_api.authorized_error.code",
+          "oracle_type": "deterministic"
+        }
+      ],
+      "layer": "backend",
+      "preconditions": [
+        "存在无查看图表权限、无查看字段权限和完整权限三个测试账号。",
+        "受限图表包含无权限账号不可见的敏感指标名称。",
+        "变更前权限错误响应已保存为可比较基线。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "权限错误优先与指标名称防泄露：无权限账号保持原权限错误行为。",
+      "source_refs": [
+        "TF-006",
+        "RULE-PERMISSION-PRIORITY"
+      ],
+      "steps": [
+        "使用账号 A、B 调用同时命中业务受限原因的接口。",
+        "记录响应状态、错误码、消息和参数并与权限基线比较。",
+        "使用账号 C 调用同一配置，确认权限通过后才执行业务原因判定。"
+      ],
+      "title": "权限错误优先与指标名称防泄露"
+    },
+    {
+      "case_id": "TC-CON-001",
+      "expected": [
+        {
+          "description": "四类 code、key、参数和双语消息逐行精确匹配。",
+          "expected_value": "test_data.matrix",
+          "id": "EXP-CON-001-01",
+          "matcher": "equals",
+          "observation_point": "decoded_response.normalized_error_matrix",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "失败响应结构除批准字段外与基线一致。",
+          "expected_value": "['error_code', 'error_key', 'localized_message', 'metric_parameters']",
+          "id": "EXP-CON-001-02",
+          "matcher": "equals_baseline_except",
+          "observation_point": "decoded_response.failure_schema",
+          "oracle_type": "deterministic"
+        }
+      ],
+      "layer": "contract",
+      "preconditions": [
+        "错误码平台联调环境已配置四个专用错误。",
+        "真实 API 契约测试可设置当前语言并读取解码 JSON。",
+        "变更前失败响应结构已固化为契约基线。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "四类专用错误码、双语模板、参数及失败响应契约：四类 code、key、参数和双语消息逐行精确匹配。",
+      "source_refs": [
+        "TF-002",
+        "TF-004",
+        "TF-008",
+        "RULE-I18N-CUSTOM-DIMENSION",
+        "RULE-I18N-RESULT-SET",
+        "RULE-I18N-MULTI-RELATION",
+        "RULE-I18N-DYNAMIC-RELATION"
+      ],
+      "steps": [
+        "逐行以 zh_CN 和 en 调用真实接口。",
+        "解析错误码、key、消息、参数和响应结构。",
+        "将每行与 G01 批准映射精确比较。",
+        "确认结果集携带全部实际指标名，其他三类参数为空。",
+        "失败响应结构仅允许批准的错误码、消息和参数变化。"
+      ],
+      "title": "四类专用错误码、双语模板、参数及失败响应契约"
+    },
+    {
+      "case_id": "TC-CON-002",
+      "expected": [
+        {
+          "description": "历史目标配置按矩阵精确应用当前规则。",
+          "expected_value": "test_data.matrix",
+          "id": "EXP-CON-002-01",
+          "matcher": "equals",
+          "observation_point": "historical_configuration.normalized_error_matrix",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "历史正常路径成功且不返回四个新增错误码。",
+          "expected_value": "{'forbidden_error_codes': ['s307011534', 's307011535', 's307011536', 's307011537'], 'status': 'success'}",
+          "id": "EXP-CON-002-02",
+          "matcher": "equals",
+          "observation_point": "historical_success_response.status_and_error_code",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "历史正常路径保留分页、结果结构和已有明细字段展示。",
+          "expected_value": "{'displayed_fields': ['existing_dimension_field', 'existing_metric_field'], 'paging': ['page_number', 'page_size', 'total'], 'result': ['columns', 'rows']}",
+          "id": "EXP-CON-002-03",
+          "matcher": "contains_structure",
+          "observation_point": "historical_success_response.structure",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "未冻结具体历史数据值，执行时人工确认与保存的同版本基线一致。",
+          "expected_value": "unchanged_from_captured_same_version_baseline",
+          "id": "EXP-CON-002-04",
+          "matcher": "manual_confirmation",
+          "observation_point": "historical_success_response.data_values",
+          "oracle_type": "human_review"
+        },
+        {
+          "description": "非目标异常 code、key、参数和双语消息保持原业务响应。",
+          "expected_value": "unchanged_from_captured_same_version_baseline",
+          "id": "EXP-CON-002-05",
+          "matcher": "manual_confirmation",
+          "observation_point": "non_target_error_responses.full_contract",
+          "oracle_type": "human_review"
+        }
+      ],
+      "layer": "contract",
+      "preconditions": [
+        "存在变更前创建且未迁移、未重存的历史统计图和拼表配置。",
+        "保存同版本基线中的正常数据值和非目标异常完整响应。",
+        "历史配置覆盖四类目标原因、一个正常查询和参数错误、超时、元数据服务异常。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "历史配置实时新逻辑与成功、非目标错误兼容性：历史目标配置按矩阵精确应用当前规则。",
+      "source_refs": [
+        "TF-008",
+        "RULE-HISTORICAL-COMPATIBILITY",
+        "RULE-I18N-CUSTOM-DIMENSION",
+        "RULE-I18N-RESULT-SET",
+        "RULE-I18N-MULTI-RELATION",
+        "RULE-I18N-DYNAMIC-RELATION"
+      ],
+      "steps": [
+        "不迁移、不重存历史配置，直接在新版本调用接口。",
+        "逐行核对历史配置的 code、key、参数和当前语言双语消息。",
+        "调用历史正常统计图和拼表，断言成功状态、不返回四个新错误码、分页和结果结构存在。",
+        "验证已有明细字段仍可展示，并将数据值与保存的同版本基线人工核对。",
+        "触发三类非目标错误并与保存基线逐项比较。"
+      ],
+      "title": "历史配置实时新逻辑与成功、非目标错误兼容性"
+    },
+    {
+      "case_id": "TC-E2E-001",
+      "expected": [
+        {
+          "description": "四类 API code 和双语解码消息及参数按 reason 与 locale 逐行匹配结构化期望矩阵。",
+          "expected_value": "[{'code': 's307011534', 'messages': {'en': 'Custom dimension fields are used in the dimension or data range. Details view is not supported.', 'zh_CN': '维度或数据范围中使用了自定义维度字段，暂不支持查看明细'}, 'parameters': {'en': [], 'zh_CN': []}, 'reason': 'custom_dimension'}, {'code': 's307011535', 'messages': {'en': 'The chart data range uses \"Revenue\" with result set filtering. Details view is not supported.', 'zh_CN': '统计图数据范围中设置了「销售额」按结果集筛选，不支持查看明细'}, 'parameters': {'en': ['Revenue'], 'zh_CN': ['销售额']}, 'reason': 'result_set_filter'}, {'code': 's307011536', 'messages': {'en': 'Metrics created based on multiple relationships do not support Details view.', 'zh_CN': '基于多关联关系创建的统计指标，暂不支持查看明细'}, 'parameters': {'en': [], 'zh_CN': []}, 'reason': 'multi_relation'}, {'code': 's307011537', 'messages': {'en': 'Metrics created based on dynamic relationships do not support Details view.', 'zh_CN': '基于动态关联关系创建的统计指标，不支持查看明细'}, 'parameters': {'en': [], 'zh_CN': []}, 'reason': 'dynamic_relation'}]",
+          "id": "EXP-E2E-001-01",
+          "matcher": "equals",
+          "observation_point": "web_chart.normalized_api_results",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "每类 UI 消息与对应 API 当前语言消息相等。",
+          "expected_value": "{'custom_dimension': {'en': 'Custom dimension fields are used in the dimension or data range. Details view is not supported.', 'zh_CN': '维度或数据范围中使用了自定义维度字段，暂不支持查看明细'}, 'dynamic_relation': {'en': 'Metrics created based on dynamic relationships do not support Details view.', 'zh_CN': '基于动态关联关系创建的统计指标，不支持查看明细'}, 'multi_relation': {'en': 'Metrics created based on multiple relationships do not support Details view.', 'zh_CN': '基于多关联关系创建的统计指标，暂不支持查看明细'}, 'result_set_filter': {'en': 'The chart data range uses \"Revenue\" with result set filtering. Details view is not supported.', 'zh_CN': '统计图数据范围中设置了「销售额」按结果集筛选，不支持查看明细'}}",
+          "id": "EXP-E2E-001-02",
+          "matcher": "equals",
+          "observation_point": "web_chart.ui_message_by_reason_and_locale",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "每类仅展示一个提示且不打开明细。",
+          "expected_value": "{'detail_opened': False, 'message_count': 1}",
+          "id": "EXP-E2E-001-03",
+          "matcher": "equals",
+          "observation_point": "web_chart.ui_state_by_reason",
+          "oracle_type": "deterministic"
+        }
+      ],
+      "layer": "e2e",
+      "preconditions": [
+        "Web 统计图入口连接真实后端和错误码平台。",
+        "四类受限配置已在隔离租户准备完成。",
+        "浏览器可切换 zh_CN、en 并观测网络响应、UI 消息和明细状态。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "Web 统计图四类受限原因端到端验证：四类 API code 和双语解码消息及参数按 reason 与 locale 逐行匹配结构化期望矩阵。",
+      "source_refs": [
+        "REQ-006",
+        "TF-007",
+        "RULE-ENTRY-CONSISTENCY",
+        "RULE-I18N-CUSTOM-DIMENSION",
+        "RULE-I18N-RESULT-SET",
+        "RULE-I18N-MULTI-RELATION",
+        "RULE-I18N-DYNAMIC-RELATION"
+      ],
+      "steps": [
+        "依次打开四个 Web 统计图。",
+        "分别在 zh_CN 和 en 下触发查看明细。",
+        "逐项记录 API code、解码消息、UI 消息、消息数量和明细打开状态。",
+        "将每个场景与结构化四行期望矩阵按 reason 和 locale 精确比较 code、messages、parameters。"
+      ],
+      "title": "Web 统计图四类受限原因端到端验证"
+    },
+    {
+      "case_id": "TC-E2E-002",
+      "expected": [
+        {
+          "description": "每类原因的统计图和拼表得到相同后端原因、错误码、本地化消息及指标参数。",
+          "expected_value": "['backend_reason', 'error_code', 'locale_message', 'metric_parameters']",
+          "id": "EXP-E2E-002-01",
+          "matcher": "all_equal",
+          "observation_point": "web_chart_vs_joined_table.responses",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "拼表阻止打开明细且仅显示一个提示。",
+          "expected_value": "{'detail_opened': False, 'message_count': 1}",
+          "id": "EXP-E2E-002-02",
+          "matcher": "equals",
+          "observation_point": "web_joined_table.detail_state",
+          "oracle_type": "deterministic"
+        }
+      ],
+      "layer": "e2e",
+      "preconditions": [
+        "同一业务配置可从 Web 统计图和 Web 拼表触发查看明细。",
+        "两个入口均连接真实后端接口。",
+        "四类原因均有成对配置。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "Web 拼表与统计图四类提示一致性：每类原因的统计图和拼表得到相同后端原因、错误码、本地化消息及指标参数。",
+      "source_refs": [
+        "REQ-007",
+        "TF-007",
+        "RULE-ENTRY-CONSISTENCY"
+      ],
+      "steps": [
+        "对每类配置从统计图和拼表触发查看明细。",
+        "记录两个入口的请求参数、后端原因、错误码、消息和指标参数。",
+        "逐类比较统计图与拼表结果。",
+        "确认拼表直接使用与统计图相同的批准文案。"
+      ],
+      "title": "Web 拼表与统计图四类提示一致性"
+    },
+    {
+      "case_id": "TC-E2E-003",
+      "expected": [
+        {
+          "description": "实际路由均被记录，路由语义按明确规则人工确认。",
+          "expected_value": "{'mobile_chart': 'chart_detail', 'mobile_joined_table': 'joined_table_detail', 'web_chart': 'chart_detail', 'web_joined_table': 'joined_table_detail'}",
+          "id": "EXP-E2E-003-01",
+          "matcher": "manual_confirmation",
+          "observation_point": "captured_client_routes.entry_semantic_mapping",
+          "oracle_type": "human_review"
+        },
+        {
+          "description": "去除允许的客户端字段后，跨端配对的配置、入口语义、过滤器、指标和语言参数结构化相等。",
+          "expected_value": "{'fields': ['configuration_id', 'entry_semantic', 'filters', 'metric_ids', 'locale'], 'pairs': [['web_chart', 'mobile_chart'], ['web_joined_table', 'mobile_joined_table']]}",
+          "id": "EXP-E2E-003-02",
+          "matcher": "equals",
+          "observation_point": "normalized_client_business_parameters",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "四入口对每类原因返回相同后端原因、错误码、本地化消息和指标参数。",
+          "expected_value": "['backend_reason', 'error_code', 'locale_message', 'metric_parameters']",
+          "id": "EXP-E2E-003-03",
+          "matcher": "all_equal",
+          "observation_point": "four_entry_api_responses",
+          "oracle_type": "deterministic"
+        },
+        {
+          "description": "Web 与移动端均阻止明细，最终展示等于各自 API 当前语言消息。",
+          "expected_value": "{'detail_opened': False, 'message_count': 1, 'rendered_message': 'equals_api_locale_message'}",
+          "id": "EXP-E2E-003-04",
+          "matcher": "equals",
+          "observation_point": "web_and_mobile_rendered_state",
+          "oracle_type": "deterministic"
+        }
+      ],
+      "layer": "e2e",
+      "preconditions": [
+        "Web 和移动端可访问同一租户、统计图和拼表配置。",
+        "可抓取两个客户端实际运行时路由、请求参数和响应。",
+        "四类受限原因均已准备，客户端可设置 zh_CN 和 en。"
+      ],
+      "priority": "P0",
+      "risk": "critical",
+      "scenario": "Web 与移动端统计图及拼表运行时路由和展示一致性：实际路由均被记录，路由语义按明确规则人工确认。",
+      "source_refs": [
+        "REQ-008",
+        "TF-007",
+        "TF-010",
+        "RULE-ENTRY-CONSISTENCY"
+      ],
+      "steps": [
+        "抓取并记录四个入口的实际运行时路由和完整请求参数。",
+        "按规定字段和规则生成归一化请求对象。",
+        "人工确认每条实际路由对应声明的入口语义。",
+        "对两个跨端配对执行结构化 equals。",
+        "在双语环境逐一触发四类原因并比较 API 响应和最终展示。"
+      ],
+      "title": "Web 与移动端统计图及拼表运行时路由和展示一致性"
+    }
+  ],
+  "review_key": "sha256:95011b5b9a42611d00139f85bec01a2870f7697f199bb8465a839e98c3c3d79b",
+  "review_policy": {
+    "allowed_actor_ids": [
+      "muqj11262"
+    ],
+    "allowed_multica_member_ids": [
+      "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54"
+    ],
+    "allowed_roles": [
+      "qa_owner"
+    ],
+    "approval_mode": "named_qa_owner_single_signoff",
+    "policy_hash": "sha256:56b6515faec54116397d8b6f1ce586d3981395ad3dc1dfc4231888f58b5f6181",
+    "policy_scope": "pilot_test_design_only",
+    "production_release_authority": false,
+    "schema_version": "g02-review-policy/1.0",
+    "temporary_policy": true
+  },
+  "review_summary": {
+    "blocking_issue_count": 0,
+    "n04_valid": true,
+    "parent_case_count": 11,
+    "warning_count": 0,
+    "warnings": []
+  },
+  "schema_version": "test-case-ir-review-request/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "needs_human",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:cf9c8ca17949aa5a12480e8bf180346490d019f268e06a4f2011829393960892",
+      "artifact_id": "a08-test-design-ir"
+    },
+    {
+      "artifact_hash": "sha256:19a7e6b81a34c33c0449d25444c5f2b81345d9ef365167d146bc35b8f799e5fe",
+      "artifact_id": "a09-oracle-coverage-review"
+    },
+    {
+      "artifact_hash": "sha256:43bfbf47006f4f68b8d64ec9a7ad58927f04b5c887c799e9bd867b7f9e59cac2",
+      "artifact_id": "n04-test-case-ir-validation"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

@@ -9,6 +9,8 @@ from pathlib import Path
 import subprocess
 from typing import Any
 
+from .card_copy import g02_review_description, g02_review_title
+from .requirement_case_renderer import normalize_ir_parent_case, render_g02_review_items
 from .contracts import artifact_hash_from_mapping, content_hash
 from .errors import ContractError, RetryableAgentError, SecurityPolicyError
 from .security import SecurityPolicy
@@ -154,6 +156,17 @@ def _request_core(
         for item in issues
         if isinstance(item, Mapping) and item.get("severity") == "warning"
     ]
+    review_items = []
+    for case in cases:
+        if not isinstance(case, Mapping):
+            continue
+        item = render_g02_review_items([normalize_ir_parent_case(case)])[0]
+        item["source_refs"] = [
+            str(ref)
+            for ref in case.get("source_refs", [])
+            if isinstance(ref, str)
+        ]
+        review_items.append(item)
     multica = policy["multica"]
     return {
         "schema_version": "test-case-ir-review-request/1.0",
@@ -175,6 +188,7 @@ def _request_core(
             "warning_count": len(warnings),
             "warnings": warnings,
         },
+        "review_items": review_items,
         "review_policy": {
             "schema_version": policy["schema_version"],
             "policy_hash": policy_hash,
@@ -216,28 +230,7 @@ def test_case_review_decision_template(request: Mapping[str, Any]) -> dict[str, 
 
 
 def render_test_case_review_markdown(request: Mapping[str, Any]) -> str:
-    summary = request["review_summary"]
-    upstream = "\n".join(
-        f"- `{item['artifact_id']}`: `{item['artifact_hash']}`"
-        for item in request["upstream_artifacts"]
-    )
-    return (
-        "# G02 Test Case IR Review\n\n"
-        f"- Workflow: `{request['workflow_run_id']}`\n"
-        f"- Review key: `{request['review_key']}`\n"
-        f"- Parent cases: `{summary['parent_case_count']}`\n"
-        f"- N04 valid: `{summary['n04_valid']}`\n"
-        f"- Blocking issues: `{summary['blocking_issue_count']}`\n"
-        f"- Warnings: `{summary['warning_count']}`\n"
-        f"- Approver: `{request['review_policy']['allowed_actor_ids'][0]}`\n\n"
-        "## Bound Artifacts\n\n"
-        f"{upstream}\n\n"
-        "## Multica Decisions\n\n"
-        "- Move to `done` to approve and continue to N25.\n"
-        "- Move to `blocked` to return to A08.\n"
-        "- Move to `cancelled` to terminate this workflow.\n"
-        "- Leaving the issue in `in_review` keeps the workflow paused.\n"
-    )
+    return g02_review_description(request)
 
 
 def prepare_test_case_review_request(
@@ -330,6 +323,17 @@ def _write_state(store: ArtifactStore, state: Mapping[str, Any]) -> dict[str, An
     return value
 
 
+def _comment_values(value: Any) -> list[Mapping[str, Any]]:
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, Mapping)]
+    if isinstance(value, Mapping):
+        for field in ("comments", "data", "items"):
+            items = value.get(field)
+            if isinstance(items, list):
+                return [item for item in items if isinstance(item, Mapping)]
+    raise ContractError("Multica comment list returned an invalid payload")
+
+
 def _load_bound_request_policy(
     request_path: Path, policy_path: Path, security: SecurityPolicy
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -368,13 +372,12 @@ def open_multica_test_case_review(
     multica = policy["multica"]
     workspace_args = ["--workspace-id", multica["workspace_id"]]
     if not state.get("issue_id"):
-        short_key = request["review_key"].removeprefix("sha256:")[:12]
         created = runner(
             [
                 "issue",
                 "create",
                 "--title",
-                f"G02 Test Case IR review {request['workflow_run_id']} [{short_key}]",
+                g02_review_title(request),
                 "--description-file",
                 "g02-review-request.md",
                 "--attachment",
@@ -471,7 +474,10 @@ def _validate_current_n04(request: Mapping[str, Any], n04_path: Path) -> dict[st
 
 
 def _event_decision(
-    request: Mapping[str, Any], policy: Mapping[str, Any], issue: Mapping[str, Any]
+    request: Mapping[str, Any],
+    policy: Mapping[str, Any],
+    issue: Mapping[str, Any],
+    comment: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     multica = policy["multica"]
     if issue.get("workspace_id") != multica["workspace_id"]:
@@ -515,6 +521,24 @@ def _event_decision(
         }
     )
     reason = str(metadata.get("qa_review_reason", "")).strip()
+    reviewer_comment: dict[str, Any] | None = None
+    if comment is not None:
+        creator_type = comment.get("creator_type", comment.get("author_type"))
+        creator_id = str(comment.get("creator_id", comment.get("author_id", "")))
+        if creator_type != "member" or creator_id not in policy["allowed_multica_member_ids"]:
+            raise SecurityPolicyError("G02 decision comment was not authored by an authorized reviewer")
+        comment_id = str(comment.get("id", ""))
+        comment_content = str(comment.get("content", "")).strip()
+        comment_created_at = str(comment.get("created_at", ""))
+        if not comment_id or not comment_created_at:
+            raise ContractError("G02 decision comment id and created_at are required")
+        reviewer_comment = {
+            "id": comment_id,
+            "created_at": comment_created_at,
+            "content": comment_content,
+        }
+        if comment_content:
+            reason = comment_content
     if not reason:
         reason = f"G02 decision recorded by Multica status transition to {status}"
     raw = {
@@ -537,8 +561,10 @@ def _event_decision(
             "issue_id": issue["id"],
             "event_id": event_id,
             "status": status,
+            "comment_id": reviewer_comment["id"] if reviewer_comment else "",
             "identity_evidence_mode": multica["identity_evidence_mode"],
         },
+        "reviewer_comment": reviewer_comment,
         "reason": reason,
     }
     raw["decision_hash"] = content_hash(raw)
@@ -661,7 +687,41 @@ def sync_multica_test_case_review(
             },
         )
 
-    decision = _event_decision(request, policy, issue)
+    reviewer_comment: Mapping[str, Any] | None = None
+    try:
+        comment_payload = runner(
+            [
+                "issue",
+                "comment",
+                "list",
+                str(state["issue_id"]),
+                "--output",
+                "json",
+                "--compact",
+                "--workspace-id",
+                multica["workspace_id"],
+            ],
+            request_path.parent,
+        )
+        comments = [
+            item
+            for item in _comment_values(comment_payload)
+            if item.get("creator_type", item.get("author_type")) == "member"
+            and str(item.get("creator_id", item.get("author_id", "")))
+            in policy["allowed_multica_member_ids"]
+        ]
+        if comments:
+            reviewer_comment = max(
+                comments,
+                key=lambda item: (
+                    str(item.get("created_at", "")),
+                    str(item.get("id", "")),
+                ),
+            )
+    except (ContractError, RetryableAgentError, SecurityPolicyError):
+        reviewer_comment = None
+
+    decision = _event_decision(request, policy, issue, reviewer_comment)
     outcome = _build_outcome(request, decision)
     security.assert_no_secret_values(decision)
     security.assert_no_secret_values(outcome)

@@ -41,6 +41,24 @@
     ],
     "A09": [
       "generated/multica-eight-card-run-20260817-02/inputs/a09-input.json"
+    ],
+    "A11": [
+      "generated/multica-eight-card-run-20260817-02/inputs/a11-input.json"
+    ],
+    "A14": [
+      "generated/multica-eight-card-run-20260817-02/inputs/a14-input.json"
+    ],
+    "A15": [
+      "generated/multica-eight-card-run-20260817-02/inputs/a15-input.json"
+    ],
+    "A22": [
+      "generated/multica-eight-card-run-20260817-02/inputs/a22-input.json"
+    ],
+    "A18-BE": [
+      "generated/multica-eight-card-run-20260817-02/inputs/a18-be-input.json"
+    ],
+    "A18-CT": [
+      "generated/multica-eight-card-run-20260817-02/inputs/a18-ct-input.json"
     ]
   },
   "properties": {
@@ -60,11 +78,32 @@
     "A08": {
       "1.1.0": "qa-agents/multica/agent-instructions/a08-v1.1.1.md",
       "1.2.1": "qa-agents/multica/agent-instructions/a08-v1.2.1.md",
-      "1.3.0": "qa-agents/multica/agent-instructions/a08-v1.3.0.md"
+      "1.3.0": "qa-agents/multica/agent-instructions/a08-v1.3.0.md",
+      "1.4.0": "qa-agents/multica/agent-instructions/a08-v1.4.0.md"
+    },
+    "A14": {
+      "1.0.0": "qa-agents/multica/agent-instructions/a14-v1.0.0.md"
+    },
+    "A15": {
+      "1.0.0": "qa-agents/multica/agent-instructions/a15-v1.0.0.md"
+    },
+    "A22": {
+      "1.0.0": "qa-agents/multica/agent-instructions/a22-v1.0.0.md"
+    },
+    "A18-BE": {
+      "1.0.0": "qa-agents/multica/agent-instructions/a18-be-v1.0.0.md"
+    },
+    "A18-CT": {
+      "1.0.0": "qa-agents/multica/agent-instructions/a18-ct-v1.0.0.md"
     }
   },
   "prior_test_rules_paths": [
     "generated/multica-eight-card-run-20260817/g01-live/g01-review-decision.json"
   ],
-  "human_correction_policy": "generated/multica-eight-card-run-20260817-02/human-correction-policy.json"
+  "human_correction_policy": "generated/multica-eight-card-run-20260817-02/human-correction-policy.json",
+  "g03_policy": "qa-agents/policies/g03-review-policy.json",
+  "automation_target_policy": "qa-agents/policies/automation-target-policy.json",
+  "test_data_policy": "qa-agents/policies/test-data-policy.json",
+  "capability_catalog": "qa-agents/knowledge/bi-data-capability-catalog.json",
+  "knowledge_sources": "qa-agents/knowledge/bi-knowledge-sources.json"
 }

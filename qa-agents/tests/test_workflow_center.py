@@ -152,9 +152,11 @@ def test_projection_prioritizes_human_action_and_renders_one_cockpit() -> None:
     assert projection["multica_status"] == "in_review"
     assert projection["progress"] == {"completed": 3, "total": 5, "percent": 60}
     assert projection["action_count"] == 15
+    assert "## 目标" in markdown and "## 背景" in markdown
+    assert "## 范围" in markdown and "## 输入材料" in markdown and "## 验收" in markdown
     assert "需要你处理" in markdown
-    assert "范围与口径审核（QAA-105）" in markdown
-    assert "| 2 | 需求实现对齐（QAA-104） | 已完成 |" in markdown
+    assert "范围与口径审核（[QAA-105](mention://issue/issue-g01)）" in markdown
+    assert "| 2 | [QAA-104](mention://issue/issue-a06) 需求实现对齐 | 已完成 |" in markdown
     assert "REQ-101-r002" in markdown
     assert projection["projection_hash"].startswith("sha256:")
 
@@ -251,7 +253,10 @@ def test_stage_card_renders_human_correction_issues_and_entry() -> None:
     assert "审查发现 1 个问题，需你决策是否授权修正。" in markdown
     assert "问题：用例 `EXP-E2E-001-01` 的预期结果指向了一个不存在的字段路径" in markdown
     assert "建议修正：改为可直接解析的结构化期望矩阵。" in markdown
-    assert "操作：打开 `QAA-325`（人工修正 Issue，状态 in_review）：" in markdown
+    assert (
+        "操作：打开 [QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)"
+        "（人工修正 Issue，状态 in_review）：" in markdown
+    )
     assert "置为 **done**：授权修正，系统自动修改用例并重新校验，流程自动继续。" in markdown
     assert "置为 **cancelled**：不修正，终止当前流程。" in markdown
 
@@ -321,8 +326,14 @@ def test_stage_card_exception_section_points_to_human_entry() -> None:
     markdown = _render_stage_card_markdown("C3", "测试设计与审核", [blocked, waiting])
     assert "A09" in markdown
     assert "发现 2 个阻塞问题需人工定向修正" in markdown
-    assert "处理入口：`QAA-325`，见下方人工操作" in markdown
-    assert "操作：打开 `QAA-325`（人工修正 Issue，状态 in_review）：" in markdown
+    assert (
+        "处理入口：[QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)，"
+        "见下方人工操作" in markdown
+    )
+    assert (
+        "操作：打开 [QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)"
+        "（人工修正 Issue，状态 in_review）：" in markdown
+    )
 
     blocked["artifact_id"] = "a09-oracle-coverage-review"
     blocked["artifact_hash"] = "sha256:9c1345ccedccd16367ced8a057e95515387ca8e0db9bdc200ef5153daebbc712"
@@ -331,6 +342,141 @@ def test_stage_card_exception_section_points_to_human_entry() -> None:
     markdown = _render_stage_card_markdown("C3", "测试设计与审核", [blocked, waiting])
     assert "`a09-oracle-coverage-review`（Oracle 与覆盖审查 · 阻塞）" in markdown
     assert "`n04-test-case-ir-validation`（Test Case IR 校验 · 等待人工）：待人工授权修正，见下方人工操作" in markdown
+
+
+def test_stage_card_renders_stage_tasks_with_clickable_issue_links() -> None:
+    nodes = [
+        {
+            "node_id": "A08",
+            "label": "测试设计",
+            "state": "completed",
+            "stage_card_id": "C3",
+            "stage_card_title": "测试设计与审核",
+            "issue_id": "issue-a08-execution",
+            "issue_identifier": "QAA-A08",
+        },
+        {
+            "node_id": "N24",
+            "label": "风险与测试策略",
+            "state": "not_started",
+            "stage_card_id": "C2",
+            "stage_card_title": "范围确认与测试策略",
+        },
+        {
+            "node_id": "N04",
+            "label": "Test Case IR 校验",
+            "state": "waiting_human",
+            "stage_card_id": "C3",
+            "stage_card_title": "测试设计与审核",
+            "human_action_entry": {
+                "issue_id": "7a6c629c-100b-4a8b-9eb2-1fab1f24635d",
+                "issue_identifier": "QAA-325",
+                "status": "in_review",
+            },
+        },
+    ]
+    markdown = _render_stage_card_markdown("C3", "测试设计与审核", nodes)
+    assert "## 阶段任务" in markdown
+    assert "- `A08` 测试设计 · 已完成 · [QAA-A08](mention://issue/issue-a08-execution)" in markdown
+    assert "- `N24` 风险与测试策略 · 未开始" in markdown
+    assert (
+        "- `N04` Test Case IR 校验 · 等待人工 · "
+        "[QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)" in markdown
+    )
+
+
+def test_stage_card_marks_not_started_node_with_blocking_decision() -> None:
+    n04 = {
+        "node_id": "N04",
+        "label": "Test Case IR 校验",
+        "stage": 9,
+        "stage_card_id": "C3",
+        "stage_card_title": "测试设计与审核",
+        "state": "waiting_human",
+        "human_action_entry": {
+            "issue_id": "7a6c629c-100b-4a8b-9eb2-1fab1f24635d",
+            "issue_identifier": "QAA-325",
+            "status": "in_review",
+        },
+    }
+    g02 = {
+        "node_id": "G02",
+        "label": "Test Case IR 人工审核",
+        "stage": 10,
+        "stage_card_id": "C3",
+        "stage_card_title": "测试设计与审核",
+        "state": "not_started",
+    }
+    markdown = _render_stage_card_markdown("C3", "测试设计与审核", [g02, n04])
+    assert (
+        "- `G02` Test Case IR 人工审核 · 未开始 · 卡在 `N04` Test Case IR 校验 的决策"
+        "（[QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)）" in markdown
+    )
+
+
+def test_stage_card_marks_cross_card_upstream_decision() -> None:
+    n04 = {
+        "node_id": "N04",
+        "label": "Test Case IR 校验",
+        "stage": 9,
+        "stage_card_id": "C3",
+        "stage_card_title": "测试设计与审核",
+        "state": "waiting_human",
+        "human_action_entry": {
+            "issue_id": "7a6c629c-100b-4a8b-9eb2-1fab1f24635d",
+            "issue_identifier": "QAA-325",
+            "status": "in_review",
+        },
+    }
+    n25 = {
+        "node_id": "N25",
+        "label": "父子 Case 编译",
+        "stage": 11,
+        "stage_card_id": "C4",
+        "stage_card_title": "用例编译与选择",
+        "state": "not_started",
+    }
+    markdown = _render_stage_card_markdown(
+        "C4", "用例编译与选择", [n25], all_nodes=[n25, n04]
+    )
+    assert (
+        "- `N25` 父子 Case 编译 · 未开始 · 卡在 `N04` Test Case IR 校验 的决策"
+        "（上游 C3 · [QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)）"
+        in markdown
+    )
+
+
+def test_cockpit_marks_not_started_node_with_blocking_decision() -> None:
+    spec = workflow_spec()
+    spec["nodes"] = [
+        {
+            "execution_id": "N04-1",
+            "node_id": "N04",
+            "label": "Test Case IR 校验",
+            "stage": 9,
+            "stage_card_id": "C3",
+            "state": "waiting_human",
+            "issue_id": "issue-n04",
+            "issue_identifier": "QAA-325",
+        },
+        {
+            "execution_id": "G02-1",
+            "node_id": "G02",
+            "label": "Test Case IR 人工审核",
+            "stage": 10,
+            "stage_card_id": "C3",
+            "state": "not_started",
+            "completion": "0/1",
+            "result_summary": "等待上游节点",
+        },
+    ]
+    spec["actions"] = []
+    markdown = render_workflow_center_markdown(build_workflow_projection(spec))
+    assert (
+        "卡在 `N04` Test Case IR 校验 的决策"
+        "（[QAA-325](mention://issue/issue-n04)）" in markdown
+    )
+    assert "等待上游节点" not in markdown
 
 
 @pytest.mark.parametrize(
@@ -370,11 +516,14 @@ def test_projection_rejects_duplicate_execution_identity() -> None:
 
 
 class FakeMultica:
-    def __init__(self) -> None:
+    def __init__(self, issues: dict[str, dict] | None = None) -> None:
         self.calls: list[tuple[list[str], str | None]] = []
+        self.issues = dict(issues or {})
 
     def __call__(self, command: list[str], stdin: str | None) -> dict:
         self.calls.append((command, stdin))
+        if command[1:3] == ["issue", "list"]:
+            return {"issues": list(self.issues.values())}
         if command[1:3] == ["issue", "update"]:
             result = {
                 "id": command[3],
@@ -405,7 +554,13 @@ def test_sync_moves_only_parent_to_center_and_classifies_bound_nodes(
         runner=multica,
     )
 
-    update, description = multica.calls[0]
+    parent_updates = [
+        (command, description)
+        for command, description in multica.calls
+        if command[1:4] == ["issue", "update", PARENT_ID]
+    ]
+    assert len(parent_updates) == 1
+    update, description = parent_updates[0]
     assert update[1:4] == ["issue", "update", PARENT_ID]
     assert update[update.index("--project") + 1] == INTERNAL_PROJECT_ID
     assert update[update.index("--status") + 1] == "in_review"
@@ -564,13 +719,95 @@ def test_stage_card_shared_issue_is_aggregated_and_synced_once(tmp_path: Path) -
     assert all(
         heading in description
         for heading in (
-            "## 目标", "## 输入", "## 执行内容", "## 当前进度",
-            "## 产出", "## 异常处理", "## 人工操作", "## 完成标准",
+            "## 目标", "## 背景", "## 范围", "## 输入材料",
+            "## 阶段任务", "## 当前进度", "## 产出", "## 异常处理",
+            "## 人工操作", "## 验收", "## 完成标准",
         )
     )
-    assert "A08 -> G02" in description
+    assert "- `A08` 测试设计 · 已完成 · [QAA-A08](mention://issue/issue-a08-execution)" in description
+    assert "- `G02` 人工审核 · 等待人工 · [QAA-G02](mention://issue/issue-g02-execution)" in description
     assert result["stage_card_count"] == 1
     assert result["classified_node_count"] == 2
+
+
+def test_sync_binds_discovered_node_issues_into_stage_cards(tmp_path: Path) -> None:
+    spec = workflow_spec()
+    spec["nodes"] = [
+        {
+            "execution_id": "N25-1",
+            "node_id": "N25",
+            "label": "父子 Case 编译",
+            "stage": 11,
+            "state": "completed",
+            "completion": "1/1",
+            "result_summary": "编译完成",
+            "stage_card_id": "C4",
+            "stage_card_title": "用例编译与选择",
+            "issue_id": "issue-n25",
+            "issue_identifier": "QAA-201",
+            "stage_issue_id": "issue-c4",
+            "stage_issue_identifier": "QAA-C4",
+        },
+        {
+            "execution_id": "A11-1",
+            "node_id": "A11",
+            "label": "拆分覆盖审查",
+            "stage": 12,
+            "state": "not_started",
+            "completion": "0/1",
+            "result_summary": "等待上游",
+            "stage_card_id": "C4",
+            "stage_card_title": "用例编译与选择",
+            "stage_issue_id": "issue-c4",
+            "stage_issue_identifier": "QAA-C4",
+        },
+    ]
+    spec["actions"] = []
+    multica = FakeMultica(
+        issues={
+            "issue-a11-discovered": {
+                "id": "issue-a11-discovered",
+                "identifier": "QAA-202",
+                "title": "[REQ-101-r003] A11 拆分覆盖审查",
+                "created_at": "2026-08-18T00:00:00Z",
+                "status": "todo",
+                "project_id": INTERNAL_PROJECT_ID,
+            }
+        }
+    )
+    store = ArtifactStore(tmp_path / "input")
+    sync_multica_workflow_center(
+        store.write_json("workflow.json", spec),
+        store.write_json("config.json", workflow_config()),
+        tmp_path / "output",
+        runner=multica,
+    )
+
+    projection = json.loads(
+        (tmp_path / "output" / "workflow-projection.json").read_text(encoding="utf-8")
+    )
+    a11 = next(node for node in projection["nodes"] if node["node_id"] == "A11")
+    assert a11["issue_id"] == "issue-a11-discovered"
+    assert a11["issue_identifier"] == "QAA-202"
+
+    card_updates = [
+        (command, description)
+        for command, description in multica.calls
+        if command[1:4] == ["issue", "update", "issue-c4"]
+    ]
+    assert len(card_updates) == 1
+    _, description = card_updates[0]
+    assert (
+        "- `A11` 拆分覆盖审查 · 未开始 · [QAA-202](mention://issue/issue-a11-discovered)"
+        in description
+    )
+    a11_updates = [
+        command
+        for command, _ in multica.calls
+        if command[1:4] == ["issue", "update", "issue-a11-discovered"]
+    ]
+    assert len(a11_updates) == 1
+    assert a11_updates[0][a11_updates[0].index("--status") + 1] == "backlog"
 
 
 def test_sync_rejects_conflicting_projection_at_same_revision(tmp_path: Path) -> None:

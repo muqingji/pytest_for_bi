@@ -352,8 +352,8 @@
     {
       "instruction_version": "1.0.0",
       "logical_id": "A22",
-      "name": "A22 测试数据意图提取",
-      "output_contract": "test-data-intent/1.0",
+      "name": "A22 测试数据规划",
+      "output_contract": "test-data-plan/1.0",
       "remote_id": "79335d2f-8525-448d-8804-792852f9446e",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
       "runtime_status": "active",
@@ -409,6 +409,19 @@
       "production_release_authority": false,
       "status": "opened_waiting_for_qa_owner",
       "workflow_contract": "multica/g02-review-workflow.json"
+    },
+    "G03": {
+      "allowed_actor_id": "muqj11262",
+      "allowed_multica_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
+      "allowed_role": "qa_owner",
+      "approval_mode": "named_qa_owner_single_signoff",
+      "migration_target_role": "qa_reviewer",
+      "migration_trigger": "end_to_end_quality_chain_completed",
+      "policy_path": "policies/g03-review-policy.json",
+      "policy_scope": "pilot_automation_code_only",
+      "production_release_authority": false,
+      "status": "pending",
+      "workflow_contract": "multica/g03-review-workflow.json"
     }
   },
   "pilot_state": {
@@ -466,7 +479,9 @@
         "reason": "CASE-CT-005 unscoped cross-layer responsibilities were not reported"
       }
     },
-    "a11_instruction_published": "1.0.0"
+    "a11_instruction_published": "1.0.0",
+    "g03_approver_id": "muqj11262",
+    "g03_approver_role": "qa_owner"
   },
   "project": {
     "id": "c2c84f1f-20af-456d-9eca-c9fbbd253840",

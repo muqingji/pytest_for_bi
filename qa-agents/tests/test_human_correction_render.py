@@ -18,13 +18,14 @@ def test_human_correction_markdown_is_readable_chinese() -> None:
     }
     markdown = render_human_correction_markdown(request)
     assert "测试设计人工修正" in markdown
-    assert "请决定是否授权以下修正" in markdown
-    assert "A09-ISSUE-007 - 预期结果写错了" in markdown
+    assert "## 目标" in markdown and "## 背景" in markdown
+    assert "## 范围" in markdown and "## 输入材料" in markdown
+    assert "## 本次授权明细" in markdown and "## 验收" in markdown
+    assert "1. **预期结果写错了**（`A09-ISSUE-007` · error）" in markdown
     assert "问题：预期结果指向不存在的字段，用例无法校验。" in markdown
     assert "修正方案：改为可直接解析的期望矩阵。" in markdown
-    assert "技术细节：expected_value 指向 test_data.matrix" in markdown
-    assert "置为 **done**" in markdown and "置为 **cancelled**" in markdown
-    assert "Problem:" not in markdown and "Required correction:" not in markdown
+    assert "置 **done**" in markdown and "置 **cancelled**" in markdown
+    assert "expected_value 指向 test_data.matrix" not in markdown
 
 
 def test_human_correction_markdown_falls_back_without_plain_summary() -> None:
@@ -43,5 +44,6 @@ def test_human_correction_markdown_falls_back_without_plain_summary() -> None:
         ],
     }
     markdown = render_human_correction_markdown(request)
-    assert "A09-ISSUE-008 - LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT" in markdown
+    assert "A09-ISSUE-008" in markdown
+    assert "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT" not in markdown
     assert "问题：TC-BE-002 的中英文夹具冲突。" in markdown

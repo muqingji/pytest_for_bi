@@ -288,17 +288,20 @@ make -C qa-agents prepare-multica-test-design-correction-pilot
 
 G02 使用 Multica Issue 作为唯一人工审核入口，不单独建设审批页面。只有 N04 输出
 `valid=true`、`blocking_issue_count=0`、`next_node=G02` 后才能生成内容寻址审核请求并创建
-分配给指定 QA Owner 的 `in_review` Issue。Multica 状态确定性映射为：
+分配给指定 QA Owner 的 `in_review` Issue。Issue 描述携带全部父用例与每条 expected 的
+Oracle 明细，作为交付评审产物。Multica 状态确定性映射为：
 
 - `in_review`：流程保持暂停；
 - `done`：审核通过，恢复到 N25；
-- `blocked`：退回 A08，并使其下游失效；
+- `blocked`：退回 A08，并使其下游失效；最新一条授权 reviewer 评论会作为 A08 的修正指令；
 - `cancelled`：拒绝并终止本次流程。
 
 审核 Issue 的 metadata 绑定 request、policy、workflow 和上游 Artifact 哈希。同步节点同时
 校验审批 member ID 和当前 N04 哈希；上游变化会使旧审批失效。决定和结果分别保存为
 `g02-review-decision.json` 与 `g02-review-outcome.json`，重复同步使用同一幂等结果，不重复
-启动下游节点。
+启动下游节点。`blocked` 回流由 `ensure_g02_correction_dispatch` 自动派发 A08 v1.4.0
+（按评论修正）→ A09 复审 → N04 重新校验 → 重新生成 G02 交付卡片；旧一轮
+`g02-auto` 会归档到 `g02-round-*`，避免冻结输入变化时旧请求失效。
 
 ```bash
 make -C qa-agents prepare-g02-pilot

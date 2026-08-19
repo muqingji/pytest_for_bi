@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -85,6 +85,40 @@ def _n04_issues(cases: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def _unverified_fix_issues(
+    design_payload: Mapping[str, Any],
+    review_issues: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """A09 blocking issues on cases the previous A08 correction claimed fixed.
+
+    The previous correction round declared ``fixed`` for affected cases, yet
+    the A09 re-review still reports blocking issues on the same cases. The
+    automatic fix loop must stop and route to human instead of guessing again,
+    so the fix agent can never hand in a partial fix and resubmit.
+    """
+
+    resolutions = design_payload.get("correction_resolutions")
+    if not isinstance(resolutions, list):
+        return []
+    claimed_case_ids = {
+        str(case_id)
+        for resolution in resolutions
+        if isinstance(resolution, Mapping)
+        and resolution.get("disposition") == "fixed"
+        for case_id in resolution.get("affected_case_ids", [])
+        if isinstance(resolution.get("affected_case_ids"), list)
+    }
+    if not claimed_case_ids:
+        return []
+    return [
+        dict(issue)
+        for issue in review_issues
+        if isinstance(issue, Mapping)
+        and str(issue.get("origin")) == "A09"
+        and str(issue.get("case_id") or "") in claimed_case_ids
+    ]
+
+
 def run_n04_after_a09(
     test_design_artifact_path: Path,
     oracle_review_artifact_path: Path,
@@ -148,6 +182,7 @@ def run_n04_after_a09(
     blocking_issues = [
         item for item in issues if item.get("severity", "error") in {"error", "blocking"}
     ]
+    unverified_fix_issues = _unverified_fix_issues(design["payload"], blocking_issues)
     routes = Counter(str(item.get("route_to", "A08")) for item in blocking_issues)
     valid = not blocking_issues and review["payload"].get("approved") is True
     if valid:
@@ -156,6 +191,9 @@ def run_n04_after_a09(
     elif correction_attempt >= max_correction_attempts:
         next_node = "human"
         reason_code = "test_case_ir_correction_budget_exhausted"
+    elif unverified_fix_issues:
+        next_node = "human"
+        reason_code = "test_case_ir_fix_unverified"
     else:
         route_order = ("A06/G01", "A07", "A08", "human")
         next_node = next((route for route in route_order if routes[route]), "A08")
@@ -172,6 +210,9 @@ def run_n04_after_a09(
         "issue_count": len(issues),
         "blocking_issue_count": len(blocking_issues),
         "route_summary": dict(sorted(routes.items())),
+        "unverified_fix_issue_ids": [
+            str(item.get("id")) for item in unverified_fix_issues
+        ],
         "correction_attempt": correction_attempt,
         "max_correction_attempts": max_correction_attempts,
         "next_node": next_node,

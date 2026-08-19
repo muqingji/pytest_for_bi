@@ -11,6 +11,7 @@ from pathlib import Path
 import subprocess
 from typing import Any
 
+from .card_copy import stage_card_sections, stage_card_title
 from .contracts import content_hash
 from .errors import ContractError, InputError, RetryableAgentError
 from .security import SecurityPolicy
@@ -80,6 +81,21 @@ NODE_MULTICA_STATUS = {
     "superseded": "cancelled",
 }
 
+# Live Multica Issue status -> node state. A "done" Issue keeps the
+# artifact-derived terminal state; an open Issue always reflects the real
+# execution state even when an older Artifact still says otherwise (for
+# example an A22 plan flagged needs_human while its revision Issue is running).
+LIVE_ISSUE_TO_NODE_STATE = {
+    "todo": "queued",
+    "queued": "queued",
+    "backlog": "queued",
+    "in_progress": "running",
+    "running": "running",
+    "in_review": "waiting_human",
+    "blocked": "blocked",
+    "cancelled": "cancelled",
+}
+
 SERVER_NODE_DETAILS = {
     "INPUT-FREEZE": "冻结需求、技术方案和 ChangeSet，校验输入完整性与权限边界。",
     "N00": "按触发类型和组织策略确定工作流模板、执行深度与节点路由。",
@@ -92,7 +108,7 @@ SERVER_NODE_DETAILS = {
     "A08": "按冻结需求和测试策略设计 Test Case IR 与覆盖矩阵。",
     "A09": "审查 Oracle 规则、测试防范覆盖、遗漏和修正建议。",
     "N04": "确定性校验 Test Case IR 的结构、来源、Oracle 和覆盖规则。",
-    "G02": "人工审核 Test Case IR 的预期结果和测试覆盖。",
+    "G02": "交付评审 Test Case IR 用例：评论缺场景后置 blocked，A08 按评论修正回流。",
     "N25": "把父级 Case 编译成可执行子 Case，并建立父子与能力映射。",
     "A11": "审查父子 Case 拆分后的覆盖完整性、冲突和遗漏。",
     "N26": "按资产、风险和策略确定本次要执行的测试 Case。",
@@ -338,6 +354,152 @@ def build_workflow_projection(spec: Mapping[str, Any]) -> dict[str, Any]:
     return core
 
 
+def _issue_mention(value: Mapping[str, Any]) -> str:
+    """Render a clickable Multica issue mention when the value carries a binding."""
+
+    issue_id = str(value.get("issue_id") or "").strip()
+    identifier = str(value.get("issue_identifier") or "").strip()
+    if not (issue_id and identifier):
+        return ""
+    return f"[{identifier}](mention://issue/{issue_id})"
+
+
+def _node_issue_mention(node: Mapping[str, Any]) -> str:
+    """Issue mention for a node, falling back to its human action entry."""
+
+    mention = _issue_mention(node)
+    if mention:
+        return mention
+    entry = node.get("human_action_entry")
+    if isinstance(entry, Mapping):
+        return _issue_mention(entry)
+    return ""
+
+
+def _upstream_decision_hint(
+    node: Mapping[str, Any], all_nodes: list[Mapping[str, Any]]
+) -> str:
+    """Name the human decision a not-started node is stuck on, if any.
+
+    Picks the nearest upstream ``waiting_human`` node by stage ordering so the
+    hint points at the decision that actually gates this node instead of
+    guessing. Returns an empty string when no upstream decision exists.
+    """
+
+    node_stage = int(node.get("stage") or 0)
+    waiting = [
+        candidate
+        for candidate in all_nodes
+        if candidate.get("state") == "waiting_human"
+        and int(candidate.get("stage") or 0) < node_stage
+    ]
+    if not waiting:
+        return ""
+    nearest_stage = max(int(candidate.get("stage") or 0) for candidate in waiting)
+    decisions: list[str] = []
+    for candidate in sorted(
+        (item for item in waiting if int(item.get("stage") or 0) == nearest_stage),
+        key=lambda item: str(item.get("node_id") or item.get("execution_id")),
+    ):
+        detail = f"`{candidate.get('node_id') or candidate.get('execution_id')}`"
+        label = str(candidate.get("label") or "").strip()
+        if label:
+            detail += f" {label}"
+        note: list[str] = []
+        card_id = str(candidate.get("stage_card_id") or "").strip()
+        if card_id and card_id != str(node.get("stage_card_id") or ""):
+            note.append(f"上游 {card_id}")
+        mention = _node_issue_mention(candidate)
+        if mention:
+            note.append(mention)
+        detail += " 的决策" + (f"（{' · '.join(note)}）" if note else "")
+        decisions.append(detail)
+    return "卡在 " + "、".join(decisions)
+
+
+def _discover_node_issues(
+    runner: CommandRunner,
+    project_id: str,
+    workspace_id: str,
+    run_id: str,
+    known_node_ids: set[str],
+) -> dict[str, dict[str, str]]:
+    """Find per-node Issues created under the `[{run_id}] ` title convention."""
+
+    result = _run_object(
+        runner,
+        [
+            "multica", "issue", "list", "--project", project_id,
+            "--limit", "100", "--output", "json", "--workspace-id", workspace_id,
+        ],
+        None,
+        "workflow-center node Issue discovery",
+    )
+    issues = result.get("issues", [])
+    if not isinstance(issues, list):
+        raise ContractError("Workflow-center node Issue discovery returned invalid issues")
+    prefix = f"[{run_id}] "
+    discovered: dict[str, dict[str, str]] = {}
+    timestamps: dict[str, str] = {}
+    for issue in issues:
+        if not isinstance(issue, Mapping):
+            continue
+        title = str(issue.get("title", ""))
+        if not title.startswith(prefix):
+            continue
+        node_id = title[len(prefix):].split(" ", 1)[0]
+        created_at = str(issue.get("created_at", ""))
+        if (
+            node_id in known_node_ids
+            and issue.get("id")
+            and issue.get("identifier")
+            and created_at >= timestamps.get(node_id, "")
+        ):
+            discovered[node_id] = {
+                "id": str(issue["id"]),
+                "identifier": str(issue["identifier"]),
+                "status": str(issue.get("status", "")),
+            }
+            timestamps[node_id] = created_at
+    return discovered
+
+
+def _bind_discovered_node_issues(
+    projection: Mapping[str, Any],
+    config: Mapping[str, Any],
+    runner: CommandRunner,
+) -> dict[str, Any]:
+    """Enrich unbound nodes with already-created per-node Issues for clickable links."""
+
+    if config.get("discover_node_issues", True) is False:
+        return dict(projection)
+    known = {
+        str(node.get("node_id") or node["execution_id"])
+        for node in projection["nodes"]
+    }
+    discovered = _discover_node_issues(
+        runner,
+        str(config["internal_project_id"]),
+        str(config["workspace_id"]),
+        str(projection["workflow_run_id"]),
+        known,
+    )
+    if not discovered:
+        return dict(projection)
+    enriched = {**dict(projection), "nodes": [dict(node) for node in projection["nodes"]]}
+    for node in enriched["nodes"]:
+        node_id = str(node.get("node_id") or node["execution_id"])
+        if node_id not in discovered:
+            continue
+        binding = discovered[node_id]
+        node["issue_id"] = binding["id"]
+        node["issue_identifier"] = binding["identifier"]
+        live_state = LIVE_ISSUE_TO_NODE_STATE.get(binding.get("status", ""))
+        if live_state:
+            node["state"] = live_state
+    return enriched
+
+
 def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
     """Render one requirement as a compact workflow cockpit."""
 
@@ -346,6 +508,34 @@ def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
     progress = projection["progress"]
     lines = [
         f"# {projection['requirement_id']} {projection['title']}",
+        "",
+        "## 目标",
+        "",
+        f"对 `{projection['requirement_id']}` 完成从范围确认到质量报告的全流程 QA 交付。",
+        "",
+        "## 背景",
+        "",
+        f"“{projection['title']}”进入 QA 流程；下方 8 张阶段卡（C1-C8）逐步推进，"
+        "本卡汇总总状态、进度和需要你处理的事项。",
+        "",
+        "## 范围",
+        "",
+        "包含：",
+        "- 范围确认、测试设计与审核、Case 编译与执行计划、自动化与测试数据准备、测试执行、质量决策与报告。",
+        "",
+        "不包含：",
+        "- 修改业务代码、生产发布。",
+        "",
+        "## 输入材料",
+        "",
+        f"- 需求快照：`{projection['source_snapshot_id']}`",
+        "- 技术方案与后端 ChangeSet（见 C1）",
+        "- 只读代码/OpenAPI 快照",
+        "",
+        "## 验收",
+        "",
+        "- 8 张阶段卡全部完成，质量报告发布并有有效审计结论。",
+        "- 需要你处理的事项能在本卡与对应阶段卡中明确看到操作入口。",
         "",
         "## 工作流概览",
         "",
@@ -378,8 +568,11 @@ def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
     if open_actions:
         lines.extend(["## 需要你处理", ""])
         for action in open_actions:
+            mention = _issue_mention(action)
             issue = str(action.get("issue_identifier", "")).strip()
-            issue_text = f"（{issue}）" if issue else ""
+            issue_text = (
+                f"（{mention}）" if mention else (f"（{issue}）" if issue else "")
+            )
             lines.extend(
                 [
                     f"### {action['title']}{issue_text}",
@@ -415,10 +608,16 @@ def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
         grouped[int(node["stage"])].append(node)
     for stage in sorted(grouped):
         for node in grouped[stage]:
+            mention = _issue_mention(node)
             issue = str(node.get("issue_identifier", "")).strip()
             node_label = str(node.get("label") or node.get("node_id") or node["execution_id"])
-            if issue:
+            if mention:
+                node_label = f"{mention} {node_label}"
+            elif issue:
                 node_label = f"{node_label}（{issue}）"
+            result = str(node.get("result_summary", "-"))
+            if str(node["state"]) == "not_started":
+                result = _upstream_decision_hint(node, projection["nodes"]) or result
             lines.append(
                 "| "
                 + " | ".join(
@@ -427,7 +626,7 @@ def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
                         node_label.replace("|", "/"),
                         NODE_STATUS_LABELS[str(node["state"])],
                         str(node.get("completion", "-")),
-                        str(node.get("result_summary", "-")).replace("|", "/").replace("\n", " "),
+                        result.replace("|", "/").replace("\n", " "),
                     ]
                 )
                 + " |"
@@ -731,9 +930,40 @@ def _approval_lines(approval: Mapping[str, Any], index: int) -> list[str]:
     return lines
 
 
+def _node_action_entry(node: Mapping[str, Any]) -> dict[str, str] | None:
+    """Resolve the actionable entry for a waiting node card.
+
+    A node's own Issue card (for example the A09 correction card that carries
+    the approval details) outranks a legacy human-correction entry that has
+    already been decided. Decided entries (done/cancelled) are never shown as
+    open action entries.
+    """
+
+    issue_id = str(node.get("issue_id") or "").strip()
+    identifier = str(node.get("issue_identifier") or "").strip()
+    if issue_id and identifier:
+        return {
+            "issue_id": issue_id,
+            "issue_identifier": identifier,
+            "status": "待处理",
+        }
+    entry = node.get("human_action_entry")
+    if not isinstance(entry, Mapping):
+        return None
+    status = str(entry.get("status") or "").strip()
+    if status in {"done", "cancelled"}:
+        return None
+    return {key: str(value) for key, value in entry.items() if value is not None}
+
+
 def _render_stage_card_markdown(
-    card_id: str, title: str, nodes: list[Mapping[str, Any]]
+    card_id: str,
+    title: str,
+    nodes: list[Mapping[str, Any]],
+    all_nodes: list[Mapping[str, Any]] | None = None,
 ) -> str:
+    all_nodes = all_nodes if all_nodes is not None else nodes
+    copy = stage_card_sections(card_id)
     counts: dict[str, int] = defaultdict(int)
     for node in nodes:
         counts[str(node.get("state", "not_started"))] += 1
@@ -760,53 +990,76 @@ def _render_stage_card_markdown(
             line += f"：{summary}"
         line += f"  `{node.get('artifact_hash')}`"
         artifacts.append(line)
-    human_entries = {
-        str(entry.get("issue_identifier") or entry.get("issue_id") or "").strip()
+    human_entries = [
+        entry
         for node in nodes
         if node.get("state") == "waiting_human"
         if isinstance(node.get("human_action_entry"), Mapping)
         for entry in [node["human_action_entry"]]
         if str(entry.get("issue_identifier") or entry.get("issue_id") or "").strip()
-    }
+    ]
     failures = []
     for node in nodes:
         if node.get("state") not in {"blocked", "failed"}:
             continue
         line = f"- `{node.get('node_id')}`：{node.get('result_summary', '等待处理')}"
         if human_entries:
-            line += f"（处理入口：{'、'.join(f'`{entry}`' for entry in sorted(human_entries))}，见下方人工操作）"
+            entries = "、".join(
+                _issue_mention(entry)
+                or f"`{str(entry.get('issue_identifier') or entry.get('issue_id'))}`"
+                for entry in sorted(
+                    human_entries,
+                    key=lambda item: str(item.get("issue_identifier") or item.get("issue_id")),
+                )
+            )
+            line += f"（处理入口：{entries}，见下方人工操作）"
         failures.append(line)
     human_lines: list[str] = []
+    seen_approval_ids: set[str] = set()
     for node in nodes:
         if node.get("state") != "waiting_human":
             continue
         approval_items = node.get("approval_items") or []
-        if approval_items:
+        unique_items = []
+        for approval in approval_items:
+            approval_id = str(approval.get("id") or "").strip()
+            if approval_id and approval_id in seen_approval_ids:
+                continue
+            if approval_id:
+                seen_approval_ids.add(approval_id)
+            unique_items.append(approval)
+        if unique_items:
             label = str(node.get("label") or "").strip()
             label_text = f"（{label}）" if label else ""
             if isinstance(node.get("human_action_entry"), Mapping):
                 human_lines.append(
                     f"- 来源：`{node.get('node_id')}`{label_text} 审查发现 "
-                    f"{len(approval_items)} 个问题，需你决策是否授权修正。"
+                    f"{len(unique_items)} 个问题，需你决策是否授权修正。"
                 )
             else:
                 human_lines.append(
                     f"- 来源：`{node.get('node_id')}`{label_text}，共 "
-                    f"{len(approval_items)} 个待确认事项，请逐条确认后继续。"
+                    f"{len(unique_items)} 个待确认事项，请逐条确认后继续。"
                 )
-            for index, approval in enumerate(approval_items, start=1):
+            for index, approval in enumerate(unique_items, start=1):
                 human_lines.extend(_approval_lines(approval, index))
         else:
             human_lines.append(
                 f"- 审核 `{node.get('node_id')}`：{node.get('result_summary', '请完成审核')}"
             )
             human_lines.append("  - 审批项：请打开审核入口查看具体审批项。")
-        entry = node.get("human_action_entry")
-        if isinstance(entry, Mapping):
-            identifier = str(entry.get("issue_identifier") or entry.get("issue_id") or "").strip()
+        entry = None
+        if isinstance(node.get("human_action_entry"), Mapping):
+            entry = _node_action_entry(node)
+        if entry:
+            identifier = str(
+                entry.get("issue_identifier") or entry.get("issue_id") or ""
+            ).strip()
             if identifier:
+                mention = _issue_mention(entry)
+                entry_text = f"打开 {mention}" if mention else f"打开 `{identifier}`"
                 status = str(entry.get("status") or "待处理")
-                human_lines.append(f"- 操作：打开 `{identifier}`（人工修正 Issue，状态 {status}）：")
+                human_lines.append(f"- 操作：{entry_text}（人工修正 Issue，状态 {status}）：")
                 human_lines.append(
                     "  - 置为 **done**：授权修正，系统自动修改用例并重新校验，流程自动继续。"
                 )
@@ -818,26 +1071,53 @@ def _render_stage_card_markdown(
         f"{NODE_STATUS_LABELS.get(state, state)} {count}"
         for state, count in sorted(counts.items())
     )
-    node_list = " -> ".join(str(node.get("node_id")) for node in nodes)
-    node_details = [
-        f"- `{node.get('node_id')}`："
-        f"{SERVER_NODE_DETAILS.get(str(node.get('node_id')), str(node.get('label', '')))}"
-        for node in nodes
-    ]
+    task_lines: list[str] = []
+    for node in nodes:
+        node_id = str(node.get("node_id") or node.get("execution_id"))
+        label = str(node.get("label") or "").strip()
+        state_label = NODE_STATUS_LABELS.get(str(node.get("state")), str(node.get("state")))
+        line = f"- `{node_id}`"
+        if label:
+            line += f" {label}"
+        line += f" · {state_label}"
+        mention = _node_issue_mention(node)
+        if mention:
+            line += f" · {mention}"
+        if str(node.get("state")) == "not_started":
+            hint = _upstream_decision_hint(node, all_nodes)
+            if hint:
+                line += f" · {hint}"
+        task_lines.append(line)
+    goal = str(copy["goal"])
+    background = str(copy["background"])
+    scope_includes = [f"- {item}" for item in copy["scope_includes"]]
+    scope_excludes = [f"- {item}" for item in copy["scope_excludes"]]
+    inputs = [f"- {item}" for item in copy["inputs"]]
+    acceptance = [f"- {item}" for item in copy["acceptance"]]
     return "\n".join(
         [
             f"# {card_id} {title}",
             "",
             "## 目标",
-            f"完成“{title}”阶段并保留全部内部节点审计。",
+            goal,
             "",
-            "## 输入",
-            "上游已验收 Artifact、当前需求快照和本阶段节点依赖。",
+            "## 背景",
+            background,
             "",
-            "## 执行内容",
-            node_list,
+            "## 范围",
             "",
-            *node_details,
+            "包含：",
+            *scope_includes,
+            "",
+            "不包含：",
+            *scope_excludes,
+            "",
+            "## 输入材料",
+            "",
+            *inputs,
+            "",
+            "## 阶段任务",
+            *(task_lines or ["- 暂无任务。"]),
             "",
             "## 当前进度",
             f"共 {len(nodes)} 个内部节点：{progress}。",
@@ -851,6 +1131,10 @@ def _render_stage_card_markdown(
             "",
             "## 人工操作",
             *(human or ["当前无需人工操作。"]),
+            "",
+            "## 验收",
+            "",
+            *acceptance,
             "",
             "## 完成标准",
             "本阶段所有已路由节点完成或按策略跳过；人工 Gate 必须具有有效 Decision Artifact。",
@@ -875,7 +1159,9 @@ def _stage_cards(projection: Mapping[str, Any]) -> list[dict[str, Any]]:
     upstream_blocker = ""
     for card_id, nodes in sorted(grouped.items()):
         status = _stage_card_status(nodes)
-        description = _render_stage_card_markdown(card_id, titles[card_id], nodes)
+        description = _render_stage_card_markdown(
+            card_id, titles[card_id], nodes, all_nodes=projection["nodes"]
+        )
         if upstream_blocker:
             status = "backlog"
             description += (
@@ -955,13 +1241,14 @@ def _sync_multica_workflow_center_unlocked(
     security.assert_no_secret_values(spec)
     security.assert_no_secret_values(config)
     projection = build_workflow_projection(spec)
+    active_runner = runner or _default_runner
+    projection = _bind_discovered_node_issues(projection, config, active_runner)
     markdown = render_workflow_center_markdown(projection)
     security.assert_no_secret_values(projection)
     store = ArtifactStore(output_dir)
     store.write_json("workflow-projection.json", projection)
     store.write_text("workflow-center.md", markdown)
 
-    active_runner = runner or _default_runner
     workspace_id = str(config["workspace_id"])
     parent_id = str(projection["parent_issue"]["id"])
     parent = _run_object(
@@ -1133,7 +1420,11 @@ def _sync_multica_workflow_center_unlocked(
             [
                 "multica", "issue", "update", issue_id,
                 "--description-stdin",
-                "--title", f"[{projection['workflow_run_id']}] {card['stage_card_id']} {card['title']}",
+                "--title", stage_card_title(
+                    str(projection["workflow_run_id"]),
+                    str(card["stage_card_id"]),
+                    str(card["title"]),
+                ),
                 "--project", str(config["workflow_project_id"]),
                 "--status", str(card["status"]),
                 "--output", "json",

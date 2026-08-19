@@ -1,59 +1,27 @@
 {
-  "action_count": 2,
+  "action_count": 1,
   "action_required": true,
   "actions": [
     {
-      "action_id": "N04-detail-drill-i18n-8card-20260817-02",
+      "action_id": "A22-detail-drill-i18n-8card-20260817-02",
       "approval_items": [
         {
-          "case_id": "TC-E2E-001",
-          "category": "oracle",
-          "confirm_action": "",
-          "expected_id": "EXP-E2E-001-01",
-          "human_title": "",
-          "id": "A09-ISSUE-007",
-          "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
-          "plain_summary": "",
-          "recommendation": "将 expected_value 改为可直接解析的结构化四行期望矩阵，或引用真实存在的 test_data.matrix，并明确按 reason 和 locale 比较 code、messages、parameters；source_ref 应引用 G01 或对应冻结 I18N 规则。",
+          "id": "a22-test-data-plan-approval",
           "requirement_ids": [],
-          "severity": "blocking",
-          "source_refs": [
-            "REQ-006",
-            "RULE-ENTRY-CONSISTENCY",
-            "A09-ISSUE-004"
-          ],
-          "summary": "EXP-E2E-001-01 的 expected_value 指向 test_data.matrix.code_messages_and_parameters，但 matrix 是数组且各行仅定义 code、messages 和可选 parameters，不存在 code_messages_and_parameters 路径；equals 无法取得明确期望值执行。correction_resolutions 对 A09-ISSUE-004 标记 fixed，但该 Oracle 仍未完成可执行修正。",
-          "title": "oracle"
-        },
-        {
-          "case_id": "TC-BE-002",
-          "category": "test_data",
-          "confirm_action": "",
-          "expected_id": "EXP-BE-002-03",
-          "human_title": "",
-          "id": "A09-ISSUE-008",
-          "issue_code": "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT",
-          "plain_summary": "",
-          "recommendation": "按 locale 分别定义 Filter.fieldName、字段元数据和动态多语名称输入及期望参数，确保每个分支严格遵循冻结优先级；可将英文动态名称场景置于前两级均为空的独立数据行。",
-          "requirement_ids": [],
-          "severity": "blocking",
-          "source_refs": [
-            "REQ-003",
-            "RULE-SINGLE-METRIC",
-            "RULE-I18N-RESULT-SET"
-          ],
-          "summary": "TC-BE-002 同时以 zh_CN 和 en 执行，但 RS-01 固定提供非空 fieldName=销售额。按冻结解析顺序，en 请求也会优先取得销售额，无法同时满足 EXP-BE-002-03 期望的 Revenue；EXP-BE-002-04 也只给出中文分支值，未建立当前语言英文名称解析的确定期望。",
-          "title": "test_data"
+          "severity": "",
+          "source_refs": [],
+          "summary": "needs_human",
+          "title": "审批确认"
         }
       ],
-      "gate_id": "N04",
+      "gate_id": "A22",
       "issue_id": null,
       "issue_identifier": null,
-      "item_count": 2,
+      "item_count": 1,
       "owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
       "status": "open",
-      "summary": "Artifact n04-test-case-ir-validation accepted",
-      "title": "Test Case IR 校验处理"
+      "summary": "needs_human",
+      "title": "112 测试数据规划处理"
     }
   ],
   "autopilot": {
@@ -64,83 +32,46 @@
   "autopilot_runs": [],
   "current_nodes": [
     {
-      "artifact_hash": "sha256:9c1345ccedccd16367ced8a057e95515387ca8e0db9bdc200ef5153daebbc712",
-      "artifact_id": "a09-oracle-coverage-review",
-      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a09-oracle-coverage-review.json",
-      "completion": "1/1",
-      "execution_id": "A09-detail-drill-i18n-8card-20260817-02",
-      "label": "Oracle 与覆盖审查",
-      "node_id": "A09",
-      "result_summary": "发现 2 个阻塞问题需人工定向修正（A09-ISSUE-007、A09-ISSUE-008）",
-      "stage": 8,
-      "stage_card_id": "C3",
-      "stage_card_title": "测试设计与审核",
-      "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
-      "stage_issue_identifier": "QAA-308",
-      "state": "blocked"
-    },
-    {
       "approval_items": [
         {
-          "case_id": "TC-E2E-001",
-          "category": "oracle",
-          "confirm_action": "",
-          "expected_id": "EXP-E2E-001-01",
-          "human_title": "",
-          "id": "A09-ISSUE-007",
-          "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
-          "plain_summary": "",
-          "recommendation": "将 expected_value 改为可直接解析的结构化四行期望矩阵，或引用真实存在的 test_data.matrix，并明确按 reason 和 locale 比较 code、messages、parameters；source_ref 应引用 G01 或对应冻结 I18N 规则。",
+          "id": "a22-test-data-plan-approval",
           "requirement_ids": [],
-          "severity": "blocking",
-          "source_refs": [
-            "REQ-006",
-            "RULE-ENTRY-CONSISTENCY",
-            "A09-ISSUE-004"
-          ],
-          "summary": "EXP-E2E-001-01 的 expected_value 指向 test_data.matrix.code_messages_and_parameters，但 matrix 是数组且各行仅定义 code、messages 和可选 parameters，不存在 code_messages_and_parameters 路径；equals 无法取得明确期望值执行。correction_resolutions 对 A09-ISSUE-004 标记 fixed，但该 Oracle 仍未完成可执行修正。",
-          "title": "oracle"
-        },
-        {
-          "case_id": "TC-BE-002",
-          "category": "test_data",
-          "confirm_action": "",
-          "expected_id": "EXP-BE-002-03",
-          "human_title": "",
-          "id": "A09-ISSUE-008",
-          "issue_code": "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT",
-          "plain_summary": "",
-          "recommendation": "按 locale 分别定义 Filter.fieldName、字段元数据和动态多语名称输入及期望参数，确保每个分支严格遵循冻结优先级；可将英文动态名称场景置于前两级均为空的独立数据行。",
-          "requirement_ids": [],
-          "severity": "blocking",
-          "source_refs": [
-            "REQ-003",
-            "RULE-SINGLE-METRIC",
-            "RULE-I18N-RESULT-SET"
-          ],
-          "summary": "TC-BE-002 同时以 zh_CN 和 en 执行，但 RS-01 固定提供非空 fieldName=销售额。按冻结解析顺序，en 请求也会优先取得销售额，无法同时满足 EXP-BE-002-03 期望的 Revenue；EXP-BE-002-04 也只给出中文分支值，未建立当前语言英文名称解析的确定期望。",
-          "title": "test_data"
+          "severity": "",
+          "source_refs": [],
+          "summary": "needs_human",
+          "title": "审批确认"
         }
       ],
-      "artifact_hash": "sha256:4bce713d1297625be0fc5288847458b21baa08ab97a5ce7a5677ed151ccb5d09",
-      "artifact_id": "n04-test-case-ir-validation",
-      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n04-test-case-ir-validation.json",
+      "artifact_hash": "sha256:6138052639c8cedc2f51b482c8683fb9f7c15c1163946b3f6a46f70c35caade4",
+      "artifact_id": "a22-test-data-plan",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a22-test-data-plan.json",
       "completion": "1/1",
-      "execution_id": "N04-detail-drill-i18n-8card-20260817-02",
-      "human_action_entry": {
-        "issue_id": "7a6c629c-100b-4a8b-9eb2-1fab1f24635d",
-        "issue_identifier": "QAA-325",
-        "status": "in_review"
-      },
-      "label": "Test Case IR 校验",
-      "node_id": "N04",
-      "result_summary": "Artifact n04-test-case-ir-validation accepted",
-      "stage": 9,
-      "stage_card_id": "C3",
-      "stage_card_title": "测试设计与审核",
-      "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
-      "stage_issue_identifier": "QAA-308",
+      "execution_id": "A22-detail-drill-i18n-8card-20260817-02",
+      "label": "112 测试数据规划",
+      "node_id": "A22",
+      "result_summary": "needs_human",
+      "stage": 15,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
       "state": "waiting_human"
+    },
+    {
+      "artifact_hash": "sha256:2e6ec4c1a63c46d6dc32d96898050d4e7fefb643bc54aa950a37ee6f3137cab4",
+      "artifact_id": "n27-test-data-plan-validation",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n27-test-data-plan-validation.json",
+      "completion": "1/1",
+      "execution_id": "N27-detail-drill-i18n-8card-20260817-02",
+      "label": "测试数据计划安全校验",
+      "node_id": "N27",
+      "result_summary": "rejected",
+      "stage": 16,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
+      "state": "blocked"
     }
   ],
   "multica_status": "blocked",
@@ -183,6 +114,8 @@
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a02-requirement-analysis.json",
       "completion": "1/1",
       "execution_id": "A02-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "7a4a3e8d-5ac0-4c19-9b87-f7eefbd6d8d3",
+      "issue_identifier": "QAA-314",
       "label": "需求分析",
       "node_id": "A02",
       "result_summary": "completed_with_gaps",
@@ -238,6 +171,8 @@
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a03-technical-testability-analysis.json",
       "completion": "1/1",
       "execution_id": "A03-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "2feedb7e-9e1c-42d3-a063-9263f7b3ddaa",
+      "issue_identifier": "QAA-315",
       "label": "技术方案与可测性分析",
       "node_id": "A03",
       "result_summary": "发现待确认项，已并入 G01 汇总审批",
@@ -254,6 +189,8 @@
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a05-backend-change-analysis.json",
       "completion": "1/1",
       "execution_id": "A05-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "9a0898f3-b7b4-4300-a4cd-8901f1506242",
+      "issue_identifier": "QAA-316",
       "label": "服务端变更分析",
       "node_id": "A05",
       "result_summary": "completed_with_gaps",
@@ -270,6 +207,8 @@
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a06-alignment-result.json",
       "completion": "1/1",
       "execution_id": "A06-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "b5cdbef4-0bc5-4794-b2fe-f625473bdb38",
+      "issue_identifier": "QAA-317",
       "label": "需求与变更对齐",
       "node_id": "A06",
       "result_summary": "发现待确认项，已并入 G01 汇总审批",
@@ -283,15 +222,55 @@
     {
       "approval_items": [
         {
+          "case_id": "",
           "category": "待确认测试范围",
           "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
-          "id": "A06:ALN-F012",
+          "expected_id": "",
+          "human_title": "",
+          "id": "A06:ALN-F002",
+          "issue_code": "conflict",
+          "plain_summary": "实现与需求/技术方案冲突：动态关联实现位于对象关系转换器，并在常规关系查询全部失败后依据what或WhatList 动态关联字段类型直接替换错误；技术方案要求由持有完整聚合规则和关系元数据的上层解析候选原因，且禁止仅据这些信号推断。",
+          "recommendation": "",
           "requirement_ids": [
-            "REQ-001"
+            "REQ-005"
+          ],
+          "severity": "high",
+          "source_refs": [],
+          "summary": "实现与需求/技术方案冲突：动态关联实现位于对象关系转换器，并在常规关系查询全部失败后依据what或WhatList 动态关联字段类型直接替换错误；技术方案要求由持有完整聚合规则和关系元数据的上层解析候选原因，且禁止仅据这些信号推断。",
+          "title": "待确认测试范围"
+        },
+        {
+          "case_id": "",
+          "category": "待确认测试范围",
+          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
+          "expected_id": "",
+          "human_title": "",
+          "id": "A06:ALN-F011",
+          "issue_code": "out_of_scope_change",
+          "plain_summary": "存在超出需求范围的变更：自定义维度实现除冻结需求明确的维度和数据范围外，还覆盖钻取维度；技术分析也指出该范围超出当前文案定义，需要产品确认后才能认定为批准范围。",
+          "recommendation": "",
+          "requirement_ids": [
+            "REQ-002"
           ],
           "severity": "medium",
           "source_refs": [],
-          "summary": "存在超出需求范围的变更：员工或部门主题特殊分支将原本显式生成的本地化消息改为空字符串，但冻结需求和技术目标未要求修改该非目标错误分支，存在兼容性风险。",
+          "summary": "存在超出需求范围的变更：自定义维度实现除冻结需求明确的维度和数据范围外，还覆盖钻取维度；技术分析也指出该范围超出当前文案定义，需要产品确认后才能认定为批准范围。",
+          "title": "待确认测试范围"
+        },
+        {
+          "case_id": "",
+          "category": "待确认测试范围",
+          "confirm_action": "",
+          "expected_id": "",
+          "human_title": "",
+          "id": "A06:FOLLOWUP-A06-ALN-F010",
+          "issue_code": "",
+          "plain_summary": "需要补充可执行测试证据：结果集筛选动态指标名、自定义维度、what/whatlist、多关联关系，以及统计图/拼表/Web/移动端/中英文的一致性。请确认这些都纳入本次测试范围。",
+          "recommendation": "",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [],
+          "summary": "需要补充可执行测试证据：结果集筛选动态指标名、自定义维度、what/whatlist、多关联关系，以及统计图/拼表/Web/移动端/中英文的一致性。请确认这些都纳入本次测试范围。",
           "title": "待确认测试范围"
         }
       ],
@@ -300,6 +279,8 @@
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/g01-scope-review.json",
       "completion": "1/1",
       "execution_id": "G01-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "ea27f34c-7a8a-41f3-8a66-33f6af0d983a",
+      "issue_identifier": "QAA-318",
       "label": "范围与口径人工审核",
       "node_id": "G01",
       "result_summary": "not_required",
@@ -316,6 +297,8 @@
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n24-test-strategy.json",
       "completion": "1/1",
       "execution_id": "N24-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "2be62435-5491-4e16-9b89-21ba308ad4d3",
+      "issue_identifier": "QAA-332",
       "label": "风险与测试策略",
       "node_id": "N24",
       "result_summary": "Artifact n24-test-strategy accepted",
@@ -327,11 +310,13 @@
       "state": "completed"
     },
     {
-      "artifact_hash": "sha256:9aa3e990fd3181865e8a0254ae348c93445c6e288578f33993a1ca968fb2535a",
+      "artifact_hash": "sha256:cf9c8ca17949aa5a12480e8bf180346490d019f268e06a4f2011829393960892",
       "artifact_id": "a08-test-design-ir",
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a08-test-design-ir.json",
       "completion": "1/1",
       "execution_id": "A08-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "7f41c597-4c8c-4ea8-9c71-5cf4a6390d14",
+      "issue_identifier": "QAA-326",
       "label": "测试设计",
       "node_id": "A08",
       "result_summary": "completed_with_gaps",
@@ -341,22 +326,6 @@
       "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
       "stage_issue_identifier": "QAA-308",
       "state": "completed"
-    },
-    {
-      "artifact_hash": "sha256:9c1345ccedccd16367ced8a057e95515387ca8e0db9bdc200ef5153daebbc712",
-      "artifact_id": "a09-oracle-coverage-review",
-      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a09-oracle-coverage-review.json",
-      "completion": "1/1",
-      "execution_id": "A09-detail-drill-i18n-8card-20260817-02",
-      "label": "Oracle 与覆盖审查",
-      "node_id": "A09",
-      "result_summary": "发现 2 个阻塞问题需人工定向修正（A09-ISSUE-007、A09-ISSUE-008）",
-      "stage": 8,
-      "stage_card_id": "C3",
-      "stage_card_title": "测试设计与审核",
-      "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
-      "stage_issue_identifier": "QAA-308",
-      "state": "blocked"
     },
     {
       "approval_items": [
@@ -401,16 +370,73 @@
           "title": "test_data"
         }
       ],
-      "artifact_hash": "sha256:4bce713d1297625be0fc5288847458b21baa08ab97a5ce7a5677ed151ccb5d09",
+      "artifact_hash": "sha256:19a7e6b81a34c33c0449d25444c5f2b81345d9ef365167d146bc35b8f799e5fe",
+      "artifact_id": "a09-oracle-coverage-review",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a09-oracle-coverage-review.json",
+      "completion": "1/1",
+      "execution_id": "A09-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "674fd845-2213-48a2-9a2a-1e703a4d2be1",
+      "issue_identifier": "QAA-327",
+      "label": "Oracle 与覆盖审查",
+      "node_id": "A09",
+      "result_summary": "completed_with_gaps",
+      "stage": 8,
+      "stage_card_id": "C3",
+      "stage_card_title": "测试设计与审核",
+      "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
+      "stage_issue_identifier": "QAA-308",
+      "state": "completed"
+    },
+    {
+      "approval_items": [
+        {
+          "case_id": "TC-E2E-001",
+          "category": "oracle",
+          "confirm_action": "",
+          "expected_id": "EXP-E2E-001-01",
+          "human_title": "",
+          "id": "A09-ISSUE-007",
+          "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
+          "plain_summary": "",
+          "recommendation": "将 expected_value 改为可直接解析的结构化四行期望矩阵，或引用真实存在的 test_data.matrix，并明确按 reason 和 locale 比较 code、messages、parameters；source_ref 应引用 G01 或对应冻结 I18N 规则。",
+          "requirement_ids": [],
+          "severity": "blocking",
+          "source_refs": [
+            "REQ-006",
+            "RULE-ENTRY-CONSISTENCY",
+            "A09-ISSUE-004"
+          ],
+          "summary": "EXP-E2E-001-01 的 expected_value 指向 test_data.matrix.code_messages_and_parameters，但 matrix 是数组且各行仅定义 code、messages 和可选 parameters，不存在 code_messages_and_parameters 路径；equals 无法取得明确期望值执行。correction_resolutions 对 A09-ISSUE-004 标记 fixed，但该 Oracle 仍未完成可执行修正。",
+          "title": "oracle"
+        },
+        {
+          "case_id": "TC-BE-002",
+          "category": "test_data",
+          "confirm_action": "",
+          "expected_id": "EXP-BE-002-03",
+          "human_title": "",
+          "id": "A09-ISSUE-008",
+          "issue_code": "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT",
+          "plain_summary": "",
+          "recommendation": "按 locale 分别定义 Filter.fieldName、字段元数据和动态多语名称输入及期望参数，确保每个分支严格遵循冻结优先级；可将英文动态名称场景置于前两级均为空的独立数据行。",
+          "requirement_ids": [],
+          "severity": "blocking",
+          "source_refs": [
+            "REQ-003",
+            "RULE-SINGLE-METRIC",
+            "RULE-I18N-RESULT-SET"
+          ],
+          "summary": "TC-BE-002 同时以 zh_CN 和 en 执行，但 RS-01 固定提供非空 fieldName=销售额。按冻结解析顺序，en 请求也会优先取得销售额，无法同时满足 EXP-BE-002-03 期望的 Revenue；EXP-BE-002-04 也只给出中文分支值，未建立当前语言英文名称解析的确定期望。",
+          "title": "test_data"
+        }
+      ],
+      "artifact_hash": "sha256:43bfbf47006f4f68b8d64ec9a7ad58927f04b5c887c799e9bd867b7f9e59cac2",
       "artifact_id": "n04-test-case-ir-validation",
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n04-test-case-ir-validation.json",
       "completion": "1/1",
       "execution_id": "N04-detail-drill-i18n-8card-20260817-02",
-      "human_action_entry": {
-        "issue_id": "7a6c629c-100b-4a8b-9eb2-1fab1f24635d",
-        "issue_identifier": "QAA-325",
-        "status": "in_review"
-      },
+      "issue_id": "6a8c7ff8-a649-4eb4-9498-b82ebacd0b75",
+      "issue_identifier": "QAA-331",
       "label": "Test Case IR 校验",
       "node_id": "N04",
       "result_summary": "Artifact n04-test-case-ir-validation accepted",
@@ -419,111 +445,168 @@
       "stage_card_title": "测试设计与审核",
       "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
       "stage_issue_identifier": "QAA-308",
-      "state": "waiting_human"
+      "state": "completed"
     },
     {
-      "completion": "0/1",
+      "approval_items": [
+        {
+          "id": "g02-test-case-ir-review-approval",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [],
+          "summary": "Artifact g02-test-case-ir-review accepted",
+          "title": "审批确认"
+        }
+      ],
+      "artifact_hash": "sha256:24154f91cbc0343fd3825acbbb4468697750ec73c0471c3eff36037f937d7498",
+      "artifact_id": "g02-test-case-ir-review",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/g02-test-case-ir-review.json",
+      "completion": "1/1",
       "execution_id": "G02-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "512ea879-4e33-4fc5-ae64-677d836bf5e9",
+      "issue_identifier": "QAA-329",
       "label": "Test Case IR 人工审核",
       "node_id": "G02",
-      "result_summary": "等待上游节点",
+      "result_summary": "approved",
       "stage": 10,
       "stage_card_id": "C3",
       "stage_card_title": "测试设计与审核",
       "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
       "stage_issue_identifier": "QAA-308",
-      "state": "not_started"
+      "state": "completed"
     },
     {
-      "completion": "0/1",
+      "artifact_hash": "sha256:442f3f9583dc1ce3e7fda90bc66a5e11a746acbe611f92f9c21a3c63dae87f6a",
+      "artifact_id": "n25-compiled-test-cases",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n25-compiled-test-cases.json",
+      "completion": "1/1",
       "execution_id": "N25-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "3329aa18-2dc1-4b23-9899-747951d4a749",
+      "issue_identifier": "QAA-333",
       "label": "父子 Case 编译",
       "node_id": "N25",
-      "result_summary": "等待上游节点",
+      "result_summary": "Artifact n25-compiled-test-cases accepted",
       "stage": 11,
       "stage_card_id": "C4",
       "stage_card_title": "Case 编译与执行计划",
       "stage_issue_id": "00602199-1ddc-491f-bbb4-a0be0282ea94",
       "stage_issue_identifier": "QAA-309",
-      "state": "not_started"
+      "state": "completed"
     },
     {
-      "completion": "0/1",
+      "artifact_hash": "sha256:d73fd794526dda16806ff41831c84e90cfa55715b8a4cbe80977a00331ad99f1",
+      "artifact_id": "a11-split-coverage-review",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a11-split-coverage-review.json",
+      "completion": "1/1",
       "execution_id": "A11-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "046cda0d-8ad9-435e-93fc-41b9682e007a",
+      "issue_identifier": "QAA-330",
       "label": "拆分覆盖审查",
       "node_id": "A11",
-      "result_summary": "等待上游节点",
+      "result_summary": "completed",
       "stage": 12,
       "stage_card_id": "C4",
       "stage_card_title": "Case 编译与执行计划",
       "stage_issue_id": "00602199-1ddc-491f-bbb4-a0be0282ea94",
       "stage_issue_identifier": "QAA-309",
-      "state": "not_started"
+      "state": "completed"
     },
     {
-      "completion": "0/1",
+      "artifact_hash": "sha256:a98391b1f50401f2ec4411270e03d099292944205b5481fc5ecdd183f2ea275f",
+      "artifact_id": "n26-test-selection",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n26-test-selection.json",
+      "completion": "1/1",
       "execution_id": "N26-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "1ba8d6e5-f1d2-415a-be9d-7bc478c0e4c2",
+      "issue_identifier": "QAA-335",
       "label": "测试选择",
       "node_id": "N26",
-      "result_summary": "等待上游节点",
+      "result_summary": "Artifact n26-test-selection accepted",
       "stage": 13,
       "stage_card_id": "C4",
       "stage_card_title": "Case 编译与执行计划",
       "stage_issue_id": "00602199-1ddc-491f-bbb4-a0be0282ea94",
       "stage_issue_identifier": "QAA-309",
-      "state": "not_started"
+      "state": "completed"
     },
     {
-      "completion": "0/1",
+      "artifact_hash": "sha256:cd895e4b4fa8ea30ce9a3db3bb5e091a8d1de5bd7ed129751d94029b98f052ce",
+      "artifact_id": "n15-execution-plan",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n15-execution-plan.json",
+      "completion": "1/1",
       "execution_id": "N15-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "d19009da-5ba3-481c-9053-1ddeb586566b",
+      "issue_identifier": "QAA-334",
       "label": "执行计划编译",
       "node_id": "N15",
-      "result_summary": "等待上游节点",
+      "result_summary": "Artifact n15-execution-plan accepted",
       "stage": 14,
       "stage_card_id": "C4",
       "stage_card_title": "Case 编译与执行计划",
       "stage_issue_id": "00602199-1ddc-491f-bbb4-a0be0282ea94",
       "stage_issue_identifier": "QAA-309",
-      "state": "not_started"
+      "state": "completed"
     },
     {
       "completion": "0/1",
       "execution_id": "A14-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "bd22cd54-e5ce-4e77-b829-1174f38825c6",
+      "issue_identifier": "QAA-336",
       "label": "服务端自动化生成",
       "node_id": "A14",
-      "result_summary": "等待上游节点",
+      "result_summary": "上游节点已完成，等待调度",
       "stage": 15,
       "stage_card_id": "C5",
       "stage_card_title": "自动化与测试数据准备",
       "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
       "stage_issue_identifier": "QAA-310",
-      "state": "not_started"
+      "state": "queued"
     },
     {
-      "completion": "0/1",
+      "artifact_hash": "sha256:b8ebd205094bdb51043e348429c0d2e3f9aee19c2800345a48e16bea15568918",
+      "artifact_id": "a15-contract-automation-generation",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a15-contract-automation-generation.json",
+      "completion": "1/1",
       "execution_id": "A15-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "fceb05d9-2005-492d-a02c-178fc78a88b5",
+      "issue_identifier": "QAA-337",
       "label": "契约自动化生成",
       "node_id": "A15",
-      "result_summary": "等待上游节点",
+      "result_summary": "not_applicable",
       "stage": 15,
       "stage_card_id": "C5",
       "stage_card_title": "自动化与测试数据准备",
       "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
       "stage_issue_identifier": "QAA-310",
-      "state": "not_started"
+      "state": "skipped"
     },
     {
-      "completion": "0/1",
+      "approval_items": [
+        {
+          "id": "a22-test-data-plan-approval",
+          "requirement_ids": [],
+          "severity": "",
+          "source_refs": [],
+          "summary": "needs_human",
+          "title": "审批确认"
+        }
+      ],
+      "artifact_hash": "sha256:6138052639c8cedc2f51b482c8683fb9f7c15c1163946b3f6a46f70c35caade4",
+      "artifact_id": "a22-test-data-plan",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a22-test-data-plan.json",
+      "completion": "1/1",
       "execution_id": "A22-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "bff5ee4c-c45f-4717-b4ac-05334290a9a8",
+      "issue_identifier": "QAA-339",
       "label": "112 测试数据规划",
       "node_id": "A22",
-      "result_summary": "等待上游节点",
+      "result_summary": "needs_human",
       "stage": 15,
       "stage_card_id": "C5",
       "stage_card_title": "自动化与测试数据准备",
       "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
       "stage_issue_identifier": "QAA-310",
-      "state": "not_started"
+      "state": "waiting_human"
     },
     {
       "completion": "0/1",
@@ -552,17 +635,22 @@
       "state": "not_started"
     },
     {
-      "completion": "0/1",
+      "artifact_hash": "sha256:2e6ec4c1a63c46d6dc32d96898050d4e7fefb643bc54aa950a37ee6f3137cab4",
+      "artifact_id": "n27-test-data-plan-validation",
+      "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n27-test-data-plan-validation.json",
+      "completion": "1/1",
       "execution_id": "N27-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "2d2b6678-2b7c-4364-92c3-8a35d64906f6",
+      "issue_identifier": "QAA-340",
       "label": "测试数据计划安全校验",
       "node_id": "N27",
-      "result_summary": "等待上游节点",
+      "result_summary": "rejected",
       "stage": 16,
       "stage_card_id": "C5",
       "stage_card_title": "自动化与测试数据准备",
       "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
       "stage_issue_identifier": "QAA-310",
-      "state": "not_started"
+      "state": "blocked"
     },
     {
       "completion": "0/1",
@@ -749,57 +837,25 @@
   ],
   "open_actions": [
     {
-      "action_id": "N04-detail-drill-i18n-8card-20260817-02",
+      "action_id": "A22-detail-drill-i18n-8card-20260817-02",
       "approval_items": [
         {
-          "case_id": "TC-E2E-001",
-          "category": "oracle",
-          "confirm_action": "",
-          "expected_id": "EXP-E2E-001-01",
-          "human_title": "",
-          "id": "A09-ISSUE-007",
-          "issue_code": "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE",
-          "plain_summary": "",
-          "recommendation": "将 expected_value 改为可直接解析的结构化四行期望矩阵，或引用真实存在的 test_data.matrix，并明确按 reason 和 locale 比较 code、messages、parameters；source_ref 应引用 G01 或对应冻结 I18N 规则。",
+          "id": "a22-test-data-plan-approval",
           "requirement_ids": [],
-          "severity": "blocking",
-          "source_refs": [
-            "REQ-006",
-            "RULE-ENTRY-CONSISTENCY",
-            "A09-ISSUE-004"
-          ],
-          "summary": "EXP-E2E-001-01 的 expected_value 指向 test_data.matrix.code_messages_and_parameters，但 matrix 是数组且各行仅定义 code、messages 和可选 parameters，不存在 code_messages_and_parameters 路径；equals 无法取得明确期望值执行。correction_resolutions 对 A09-ISSUE-004 标记 fixed，但该 Oracle 仍未完成可执行修正。",
-          "title": "oracle"
-        },
-        {
-          "case_id": "TC-BE-002",
-          "category": "test_data",
-          "confirm_action": "",
-          "expected_id": "EXP-BE-002-03",
-          "human_title": "",
-          "id": "A09-ISSUE-008",
-          "issue_code": "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT",
-          "plain_summary": "",
-          "recommendation": "按 locale 分别定义 Filter.fieldName、字段元数据和动态多语名称输入及期望参数，确保每个分支严格遵循冻结优先级；可将英文动态名称场景置于前两级均为空的独立数据行。",
-          "requirement_ids": [],
-          "severity": "blocking",
-          "source_refs": [
-            "REQ-003",
-            "RULE-SINGLE-METRIC",
-            "RULE-I18N-RESULT-SET"
-          ],
-          "summary": "TC-BE-002 同时以 zh_CN 和 en 执行，但 RS-01 固定提供非空 fieldName=销售额。按冻结解析顺序，en 请求也会优先取得销售额，无法同时满足 EXP-BE-002-03 期望的 Revenue；EXP-BE-002-04 也只给出中文分支值，未建立当前语言英文名称解析的确定期望。",
-          "title": "test_data"
+          "severity": "",
+          "source_refs": [],
+          "summary": "needs_human",
+          "title": "审批确认"
         }
       ],
-      "gate_id": "N04",
+      "gate_id": "A22",
       "issue_id": null,
       "issue_identifier": null,
-      "item_count": 2,
+      "item_count": 1,
       "owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
       "status": "open",
-      "summary": "Artifact n04-test-case-ir-validation accepted",
-      "title": "Test Case IR 校验处理"
+      "summary": "needs_human",
+      "title": "112 测试数据规划处理"
     }
   ],
   "overall_status": "blocked",
@@ -809,13 +865,13 @@
     "identifier": "QAA-304"
   },
   "progress": {
-    "completed": 9,
-    "percent": 25,
+    "completed": 17,
+    "percent": 47,
     "total": 36
   },
-  "projection_hash": "sha256:5a7b59c4202fffb1cfc6e57e78f8d2a430e22e359a911a380688872000911d30",
+  "projection_hash": "sha256:5d3165f45aa1c1671d01e0e3821654eda5ca7dba606abfa614d166b062135bea",
   "requirement_id": "REQ-DETAIL-DRILL-I18N-RERUN-20260817-02",
-  "revision": 41,
+  "revision": 59,
   "run_history": [],
   "run_issue": {
     "id": "277d9c07-16bc-4462-8f83-ff8434a84b9e",

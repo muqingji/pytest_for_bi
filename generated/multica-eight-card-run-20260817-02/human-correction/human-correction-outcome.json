@@ -1,0 +1,20 @@
+{
+  "action": "resume_with_human_direction",
+  "automatic_budget_reset": false,
+  "decision": "directed_correction",
+  "decision_hash": "sha256:5947a43c9f60dcbb03ec06d5fa039d38a66c95bdb933ffa4a6352e1048ca9656",
+  "idempotency_key": "sha256:a814ca325daab5968ac105ae2aa9923697e0ea89f5551b9d011e44aff557a330",
+  "next_correction_attempt": 3,
+  "next_node": "A08",
+  "node_id": "human_test_design_correction",
+  "outcome_hash": "sha256:e6178350f7b6a68c4bba34f4f2099db1707b855348572a29978afe47b822dc19",
+  "request_hash": "sha256:df052a48587ea905305d7bb0756bea95291378d69c9e2f0da9a101a0802bd819",
+  "required_revalidation": [
+    "A09",
+    "N04"
+  ],
+  "schema_version": "human-test-design-correction-outcome/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}
