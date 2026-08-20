@@ -1,0 +1,508 @@
+{
+  "schema_version": "bi-recipe-candidate/1.0",
+  "sources_hash": "sha256:6a585430b978d92f2b91726b6fd1371a9be4e1661bd267c2fa96f83960cd84f0",
+  "candidates": [
+    {
+      "candidate_id": "custom_dimension-create",
+      "asset_type": "custom_dimension",
+      "source_contract": "verified-setup-contracts.json",
+      "contract_status": "verified_112",
+      "operation_id": "fs_bi_stat.custom_dimension.create_custom_dimension",
+      "readback_operation": "fs_bi_stat.custom_dimension.get_custom_dimension",
+      "match": {
+        "data_intents": [
+          "custom_dimension.create"
+        ],
+        "datasets": [
+          "custom_dimension"
+        ],
+        "all_term_groups": [
+          [
+            "自定义维度",
+            "枚举维度",
+            "custom dimension"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "custom_dimension"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "custom_dimension",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "resources": [
+        {
+          "resource_key": "custom_dimension_resource",
+          "resource_type": "custom_dimension",
+          "lifecycle_mode": "create",
+          "resource_id_variable": "dimension_id",
+          "depends_on": [],
+          "setup": {
+            "name": "创建custom_dimension隔离资源",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.create_custom_dimension",
+              "json": {
+                "topologyDescribeId": "BI_5bcebcdc3060e20001e79977",
+                "customType": "enum_group",
+                "dimensionName": "{{ namespace }}-{{variant_name}}",
+                "description": "需求：统计图查看明细限制原因提示优化；A22 命名空间构造并长期保留",
+                "dimensionConfig": "{{dimension_config_json}}",
+                "describeApiName": "AccountObj",
+                "sourceField": {
+                  "fieldId": "BI_5bcebcddcab2980001ee22b3",
+                  "apiName": "account_level",
+                  "type": "select_one",
+                  "describeApiName": "AccountObj"
+                }
+              }
+            }
+          },
+          "readiness": [],
+          "cleanup": {},
+          "residue_checks": []
+        }
+      ],
+      "verification_requirements": [
+        {
+          "code": "live_enum_option_bindings",
+          "description": "enum_group dimensionConfig values must come from a live get_ui_type option query with response hash",
+          "required_evidence": "option_query_operation + option_response_hash + selected_option_codes"
+        }
+      ]
+    },
+    {
+      "candidate_id": "joined_table-create",
+      "asset_type": "joined_table",
+      "source_contract": "verified-setup-contracts.json",
+      "contract_status": "verified_112",
+      "operation_id": "fs_bi_dev.lwt_manager.save",
+      "readback_operation": "fs_bi_dev.lwt_manager.query_arg_detail",
+      "match": {
+        "data_intents": [
+          "joined_table.create"
+        ],
+        "datasets": [
+          "joined_table"
+        ],
+        "all_term_groups": [
+          [
+            "拼表",
+            "关联表",
+            "joined table",
+            "join table"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "joined_table"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "joined_table",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "resources": [
+        {
+          "resource_key": "joined_table_resource",
+          "resource_type": "joined_table",
+          "lifecycle_mode": "create",
+          "resource_id_variable": "joined_table_id",
+          "depends_on": [],
+          "setup": {
+            "name": "创建joined_table隔离资源",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_dev.lwt_manager.save",
+              "json": {}
+            }
+          },
+          "readiness": [],
+          "cleanup": {},
+          "residue_checks": []
+        }
+      ],
+      "verification_requirements": [
+        {
+          "code": "live_discovery_evidence",
+          "description": "folder/topology/identity must be derived from live query_arg_detail and hash-bound",
+          "required_evidence": "live_discovery_evidence with response hashes"
+        },
+        {
+          "code": "cleanup_operation_pair",
+          "description": "a verified delete/cleanup operation must exist and be registered in the test-data policy before the resource can be executed",
+          "required_evidence": "delete operation verified in 112 and registered operation pair"
+        }
+      ]
+    },
+    {
+      "candidate_id": "stat_chart-create",
+      "asset_type": "stat_chart",
+      "source_contract": "bi-chart-create-contract.json",
+      "contract_status": "verified_112",
+      "operation_id": "fs_bi_stat.stat_edit.creat_stat_view",
+      "readback_operation": "fs_bi_stat.stat_edit.get_chart_config",
+      "match": {
+        "data_intents": [
+          "stat_chart.create"
+        ],
+        "datasets": [
+          "stat_chart"
+        ],
+        "all_term_groups": [
+          [
+            "统计图",
+            "图表",
+            "图形",
+            "chart",
+            "stat view"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "stat_chart"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "resources": [
+        {
+          "resource_key": "stat_chart_resource",
+          "resource_type": "stat_chart",
+          "lifecycle_mode": "create",
+          "resource_id_variable": "view_id",
+          "depends_on": [],
+          "setup": {
+            "name": "创建stat_chart隔离资源",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.stat_edit.creat_stat_view",
+              "json": {}
+            }
+          },
+          "readiness": [],
+          "cleanup": {},
+          "residue_checks": []
+        }
+      ],
+      "verification_requirements": [
+        {
+          "code": "folder_binding",
+          "description": "chart category must bind a live requirement-name folder with response hash",
+          "required_evidence": "folder_query_operation + folder_response_hash + category_id"
+        },
+        {
+          "code": "configuration_hash",
+          "description": "chart configuration must be hash-bound from live readback",
+          "required_evidence": "configuration_hash"
+        },
+        {
+          "code": "cleanup_operation_pair",
+          "description": "a verified delete/cleanup operation must exist and be registered in the test-data policy before the resource can be executed",
+          "required_evidence": "delete operation verified in 112 and registered operation pair"
+        }
+      ]
+    },
+    {
+      "candidate_id": "pivot_table-create",
+      "asset_type": "pivot_table",
+      "source_contract": "bi-pivot-table-create-contract.json",
+      "contract_status": "candidate",
+      "operation_id": "fs_bi_udf_report.rpt_udf_view_create.save_rpt_view",
+      "readback_operation": "",
+      "match": {
+        "data_intents": [
+          "pivot_table.create"
+        ],
+        "datasets": [
+          "pivot_table"
+        ],
+        "all_term_groups": [
+          [
+            "交叉表",
+            "透视表",
+            "pivot",
+            "cross table"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "pivot_table"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "pivot_table",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "resources": [
+        {
+          "resource_key": "pivot_table_resource",
+          "resource_type": "pivot_table",
+          "lifecycle_mode": "create",
+          "resource_id_variable": "pivot_view_id",
+          "depends_on": [],
+          "setup": {
+            "name": "创建pivot_table隔离资源",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_udf_report.rpt_udf_view_create.save_rpt_view",
+              "json": {}
+            }
+          },
+          "readiness": [],
+          "cleanup": {},
+          "residue_checks": []
+        }
+      ],
+      "verification_requirements": [
+        {
+          "code": "contract_verification_112",
+          "description": "create operation must be verified against environment 112 with readback evidence",
+          "required_evidence": "captured request/response evidence in 112"
+        },
+        {
+          "code": "cleanup_operation_pair",
+          "description": "a verified delete/cleanup operation must exist and be registered in the test-data policy before the resource can be executed",
+          "required_evidence": "delete operation verified in 112 and registered operation pair"
+        }
+      ]
+    },
+    {
+      "candidate_id": "ordinary_report-create",
+      "asset_type": "ordinary_report",
+      "source_contract": "bi-report-create-contract.json",
+      "contract_status": "candidate",
+      "operation_id": "",
+      "readback_operation": "",
+      "match": {
+        "data_intents": [
+          "ordinary_report.create"
+        ],
+        "datasets": [
+          "ordinary_report"
+        ],
+        "all_term_groups": [
+          [
+            "报表",
+            "报告",
+            "report",
+            "dashboard"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "ordinary_report"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "ordinary_report",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "resources": [
+        {
+          "resource_key": "ordinary_report_resource",
+          "resource_type": "ordinary_report",
+          "lifecycle_mode": "create",
+          "resource_id_variable": "report_id",
+          "depends_on": [],
+          "setup": {
+            "name": "创建ordinary_report隔离资源",
+            "request": {
+              "protocol": "http",
+              "api": "",
+              "json": {}
+            }
+          },
+          "readiness": [],
+          "cleanup": {},
+          "residue_checks": []
+        }
+      ],
+      "verification_requirements": [
+        {
+          "code": "contract_verification_112",
+          "description": "create operation must be verified against environment 112 with readback evidence",
+          "required_evidence": "captured request/response evidence in 112"
+        },
+        {
+          "code": "cleanup_operation_pair",
+          "description": "a verified delete/cleanup operation must exist and be registered in the test-data policy before the resource can be executed",
+          "required_evidence": "delete operation verified in 112 and registered operation pair"
+        }
+      ]
+    },
+    {
+      "candidate_id": "metric-plus-stat-chart-detail",
+      "asset_types": [
+        "aggregate_metric",
+        "stat_chart"
+      ],
+      "source_contract": "verified-setup-contracts.json; bi-chart-create-contract.json",
+      "contract_status": "composite_candidate",
+      "match": {
+        "data_intents": [
+          "chart_detail.metric_with_chart"
+        ],
+        "datasets": [],
+        "all_term_groups": [
+          [
+            "查看明细",
+            "统计图"
+          ],
+          [
+            "查看明细",
+            "图表"
+          ],
+          [
+            "查看明细",
+            "指标统计图"
+          ],
+          [
+            "查看明细",
+            "指标图表"
+          ]
+        ]
+      },
+      "match_all_terms": true,
+      "supported_variants": [
+        "aggregate_metric",
+        "stat_chart"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true,
+            "saved": true
+          }
+        }
+      ],
+      "resources": [
+        {
+          "resource_key": "aggregate_metric_resource",
+          "resource_type": "aggregate_metric",
+          "lifecycle_mode": "create",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "setup": {
+            "name": "创建aggregate_metric隔离资源",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "BI_5be1351956fc11448cdde39e",
+                "schemaObjectName": "biz_sales_order",
+                "displayName": "{{ namespace }}-{{metric_name}}",
+                "aggObject": {
+                  "dbFieldName": "mc_exchange_rate",
+                  "fieldName": "汇率",
+                  "fieldType": "Number",
+                  "dbObjName": "object_1Lhg5__c",
+                  "fieldId": "BI_a23fbc479ea07edab8c7fd5fddf90cc7"
+                },
+                "aggField": {
+                  "dbFieldName": "mc_exchange_rate",
+                  "fieldName": "汇率",
+                  "fieldType": "Number",
+                  "dbObjName": "object_1Lhg5__c",
+                  "fieldId": "BI_a23fbc479ea07edab8c7fd5fddf90cc7"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "create_time",
+                  "fieldName": "创建时间",
+                  "fieldType": "Date",
+                  "dbObjName": "object_1Lhg5__c",
+                  "fieldId": "BI_f6b5bbe13117f9e4e2f96790b31115a9"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            }
+          },
+          "readiness": [],
+          "cleanup": {},
+          "residue_checks": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ]
+        },
+        {
+          "resource_key": "detail_chart",
+          "resource_type": "stat_chart",
+          "lifecycle_mode": "create",
+          "resource_id_variable": "view_id",
+          "depends_on": [
+            "aggregate_metric_resource"
+          ],
+          "setup": {
+            "name": "创建stat_chart隔离资源",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.stat_edit.creat_stat_view",
+              "json": {}
+            }
+          },
+          "readiness": [],
+          "cleanup": {},
+          "residue_checks": [],
+          "scene_roles": [
+            "metric_or_dimension",
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution"
+          ]
+        }
+      ],
+      "verification_requirements": [
+        {
+          "code": "folder_binding",
+          "description": "chart category must bind a live requirement-name folder with response hash",
+          "required_evidence": "folder_query_operation + folder_response_hash + category_id"
+        },
+        {
+          "code": "configuration_hash",
+          "description": "chart configuration must be hash-bound from live readback",
+          "required_evidence": "configuration_hash"
+        },
+        {
+          "code": "cleanup_operation_pair",
+          "description": "a verified delete/cleanup operation must exist and be registered in the test-data policy before the resource can be executed",
+          "required_evidence": "delete operation verified in 112 and registered operation pair"
+        },
+        {
+          "code": "requirement_folder",
+          "description": "chart folder must exactly match the approved requirement name",
+          "required_evidence": "requirement_name + folder readback hash"
+        }
+      ]
+    }
+  ]
+}

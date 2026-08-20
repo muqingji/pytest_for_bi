@@ -806,6 +806,7 @@ def prepare_test_data_plan(
     namespace: str,
     knowledge_sources_path: Path | None = None,
     capability_catalog_path: Path | None = None,
+    inventory_path: Path | None = None,
     execution_plan_path: Path | None = None,
     skip_by_policy: bool = False,
     existing_data_case_ids: set[str] | None = None,
@@ -839,6 +840,7 @@ def prepare_test_data_plan(
             output_dir,
             environment=environment,
             namespace=namespace,
+            inventory_path=inventory_path,
             security=security,
         )
 

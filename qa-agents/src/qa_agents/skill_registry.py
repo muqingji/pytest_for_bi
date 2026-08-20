@@ -105,6 +105,72 @@ def route_backend_case(case: Mapping[str, Any], registry: SkillRegistry) -> dict
     }
 
 
+def _has_unmatched_data_cases(
+    cases: list[Mapping[str, Any]], catalog: Mapping[str, Any]
+) -> bool:
+    """True when at least one Case needs data construction but no recipe matched.
+
+    Matching is deterministic and mirrors the A22 intent extraction rules:
+    explicit ``data_intent`` or ``dataset`` wins, then term groups.  A Case
+    that needs constructed data and matches nothing routes to the backlog
+    adapter skill instead of silently planning nothing.
+    """
+    recipe_rules: list[tuple[set[str], set[str], list[list[str]]]] = []
+    for recipe in catalog.get("recipes", []):
+        if not isinstance(recipe, Mapping):
+            continue
+        match = recipe.get("match", {})
+        if not isinstance(match, Mapping):
+            continue
+        recipe_rules.append(
+            (
+                {str(item) for item in match.get("data_intents", [])},
+                {str(item) for item in match.get("datasets", [])},
+                [
+                    [str(term).lower() for term in group]
+                    for group in match.get("all_term_groups", [])
+                    if isinstance(group, list)
+                ],
+            )
+        )
+    for case in cases:
+        test_data = case.get("test_data")
+        requires_data = bool(
+            case.get("setup")
+            or case.get("resource_requirements")
+            or (isinstance(test_data, Mapping) and bool(test_data))
+            or bool(case.get("preconditions"))
+        )
+        if not requires_data:
+            continue
+        if isinstance(test_data, Mapping):
+            declared_intent = str(test_data.get("data_intent", ""))
+            dataset = str(test_data.get("dataset", ""))
+        else:
+            declared_intent, dataset = "", ""
+        case_text = json.dumps(
+            {
+                "title": case.get("title", ""),
+                "test_data": test_data or {},
+                "preconditions": case.get("preconditions", []),
+                "steps": case.get("steps", []),
+            },
+            ensure_ascii=False,
+        ).lower()
+        matched = any(
+            (declared_intent and declared_intent in intents)
+            or (dataset and dataset in datasets)
+            or any(
+                group and any(term in case_text for term in group)
+                for group in groups
+            )
+            for intents, datasets, groups in recipe_rules
+        )
+        if not matched:
+            return True
+    return False
+
+
 def route_data_plan(
     cases: list[Mapping[str, Any]], catalog: Mapping[str, Any], registry: SkillRegistry
 ) -> dict[str, Any]:
@@ -134,6 +200,8 @@ def route_data_plan(
     selected = list(COMMON_DATA) + [mapping[item] for item in sorted(resource_types) if item in mapping]
     if any(term in text for term in ("result_set_filter", "result-set-filter", "结果集筛选", "结果集数据范围")):
         selected.append("bi-result-set-filter")
+    if _has_unmatched_data_cases(cases, catalog):
+        selected.append("bi-recipe-adapter")
     refs = registry.refs(list(dict.fromkeys(selected)), "D01")
     return {
         "schema_version": "skill-authorization/1.0", "aggregate_agent_id": "D01",

@@ -82,6 +82,26 @@ def test_data_router_authorizes_registered_resource_skills_only() -> None:
     assert authorization["allowed_tools"] == []
 
 
+def test_data_router_authorizes_recipe_adapter_for_unmatched_data_cases() -> None:
+    registry = SkillRegistry.from_file(REGISTRY)
+    catalog = json.loads((ROOT / "knowledge/bi-data-capability-catalog.json").read_text())
+    authorization = route_data_plan(
+        [{"id": "C", "title": "报表导出", "test_data": {"dataset": "ordinary_report"}}],
+        catalog, registry,
+    )
+    assert "bi-recipe-adapter/1.0.0" in authorization["required_skills"]
+
+
+def test_data_router_skips_recipe_adapter_when_all_cases_are_matched() -> None:
+    registry = SkillRegistry.from_file(REGISTRY)
+    catalog = json.loads((ROOT / "knowledge/bi-data-capability-catalog.json").read_text())
+    authorization = route_data_plan(
+        [{"id": "C", "title": "结果集筛选", "test_data": {"dataset": "result_set_metric_types"}}],
+        catalog, registry,
+    )
+    assert not any(ref.startswith("bi-recipe-adapter/") for ref in authorization["required_skills"])
+
+
 def test_language_h5_skill_is_published_for_contract_and_e2e_agents() -> None:
     registry = SkillRegistry.from_file(REGISTRY)
     entry = registry.skills["fxiaoke-personal-language-h5"]

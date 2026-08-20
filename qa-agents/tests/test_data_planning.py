@@ -9,6 +9,8 @@ from qa_agents.contracts import ArtifactEnvelope, Producer
 from qa_agents.data_planning import (
     compile_resource_plan,
     extract_test_data_intents,
+    infer_data_intent,
+    infer_resource_intents,
     prepare_autonomous_test_data_plan,
     select_test_subject,
     validate_capability_catalog,
@@ -83,7 +85,7 @@ def test_official_sources_and_capability_catalog_are_traceable() -> None:
 
     assert source_result["available_count"] == 14
     assert source_result["unavailable_count"] == 1
-    assert catalog_result["recipe_count"] == 4
+    assert catalog_result["recipe_count"] == 5
     assert catalog_result["catalog_hash"].startswith("sha256:")
     assert snapshot_result["verified_snapshot_count"] == 2
 
@@ -321,3 +323,72 @@ def test_autonomous_pipeline_writes_hash_bound_a22_n28_n27_artifacts(
     assert (tmp_path / "out/artifacts/n28-test-data-resource-plan.json").exists()
     n27 = _load(tmp_path / "out/artifacts/n27-test-data-plan-validation.json")
     assert n27["payload"]["n28_artifact_hash"] == result["n28_artifact_hash"]
+
+def _ordinary_metric_case() -> dict:
+    return {
+        "id": "CASE-AUTO-DATA-002",
+        "title": "创建普通指标后回查返回指标名称",
+        "test_level": "functional",
+        "preconditions": ["存在可用数值字段"],
+        "test_data": {"metric_name": "普通指标"},
+        "steps": [{"action": "创建普通指标"}],
+        "expected": [{"description": "普通指标创建成功"}],
+    }
+
+
+def test_infer_data_intent_resolves_ordinary_metric_without_declaration() -> None:
+    case = _ordinary_metric_case()
+    intents = infer_resource_intents(case)
+    assert intents == [
+        {
+            "resource_type": "ordinary_metric",
+            "data_intent": "metric.ordinary.create",
+            "dataset": "ordinary_metric",
+            "terms": ["普通指标"],
+        }
+    ]
+    assert infer_data_intent(case) == "metric.ordinary.create"
+    catalog = _load(CATALOG)
+    intent = extract_test_data_intents([case], catalog)
+    assert intent["unresolved_requirements"] == []
+    assert intent["case_intents"][0]["recipe_id"] == "ordinary-metric-create"
+
+
+def test_inferred_intent_stays_unresolved_for_ambiguous_case() -> None:
+    ambiguous = {
+        "id": "CASE-AUTO-DATA-003",
+        "title": "报表与统计图同时出现的多资源场景",
+        "test_level": "functional",
+        "test_data": {"metric_name": "多资源"},
+        "steps": [{"action": "打开报表和统计图"}],
+        "expected": [{"description": "展示报表与统计图"}],
+    }
+    assert len(infer_resource_intents(ambiguous)) > 1
+    assert infer_data_intent(ambiguous) == ""
+    intent = extract_test_data_intents([ambiguous], _load(CATALOG))
+    assert intent["unresolved_requirements"] == [
+        {
+            "case_id": "CASE-AUTO-DATA-003",
+            "reason_code": "data_capability_not_registered",
+            "dataset": None,
+            "route_to": "capability_adapter_backlog",
+        }
+    ]
+
+
+def test_ordinary_metric_create_recipe_compiles_and_n27_validates() -> None:
+    catalog = _load(CATALOG)
+    intent = extract_test_data_intents([_ordinary_metric_case()], catalog)
+    plan = compile_resource_plan(
+        intent, catalog, environment="112", namespace="qa-autonomous-data-002"
+    )
+    validation = validate_test_data_plan(plan, _load(POLICY))
+    assert validation["valid"] is True
+    case_plan = plan["case_plans"][0]
+    assert case_plan["resources"][0]["setup"]["request"]["api"] == (
+        "fs_bi_stat.agg_rule.add_new_agg_rule"
+    )
+    assert case_plan["resources"][0]["cleanup"]["request"]["api"] == (
+        "fs_bi_stat.agg_rule.delete_agg_rule"
+    )
+    assert plan["ready_for_execution"] is True

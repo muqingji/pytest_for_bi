@@ -317,6 +317,56 @@
           }]
         }
       ]
+    },
+    {
+      "id": "ordinary-metric-create",
+      "version": "1.0.0",
+      "environment_profile": "112-region-test-schema",
+      "match": {
+        "datasets": ["ordinary_metric"],
+        "data_intents": ["metric.ordinary.create"],
+        "all_term_groups": [["普通指标", "普通度量", "一般指标", "ordinary metric", "plain metric"]]
+      },
+      "supported_variants": ["ordinary", "ordinary_metric"],
+      "resource_goals": [{"resource_type": "aggregate_metric", "desired_state": {"created": true}}],
+      "variables": {"metric_name": "普通指标自动构造"},
+      "evidence_refs": ["fxiaoke-help-bi", "fxiaoke-help-chart-create", "fs-bi-contract-c6b7853", "fs-bi-source", "environment-112", "probe-result-filter-detail-112"],
+      "resources": [
+        {
+          "resource_key": "ordinary_metric",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "display_name": "普通指标自动构造",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "setup": {
+            "name": "创建普通隔离指标",
+            "request": {"protocol": "http", "api": "fs_bi_stat.agg_rule.add_new_agg_rule", "json": {
+              "schemaId": "{{ schema_id }}", "schemaObjectName": "{{ schema_object }}", "displayName": "{{ namespace }}-普通指标自动构造",
+              "aggObject": {"refObjName": "{{ schema_object }}", "refObjShowName": "{{ schema_display_name }}", "refJoinField": "{{ schema_join_field }}"},
+              "aggField": {"dbFieldName": "{{ amount_db_field }}", "fieldName": "金额", "fieldType": "Number", "dbObjName": "{{ schema_object }}", "fieldId": "{{ amount_field_id }}"},
+              "aggFieldTime": {"dbFieldName": "{{ date_db_field }}", "fieldName": "日期", "fieldType": "Date", "dbObjName": "{{ schema_object }}", "fieldId": "{{ date_field_id }}"},
+              "filterLists": [], "checkFieldAggregateType": 2, "initStatus": 1, "timeZone": "Asia/Shanghai"
+            }},
+            "extract": {"metric_field_id": "Value.fieldId"},
+            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+          },
+          "readiness": [],
+          "cleanup": {
+            "name": "删除本次运行创建的普通指标",
+            "request": {"protocol": "http", "api": "fs_bi_stat.agg_rule.delete_agg_rule", "json": {"schemaId": "{{ schema_id }}", "fieldId": "{{ metric_field_id }}", "fieldName": "{{ metric_name }}"}},
+            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+          },
+          "residue_checks": [{
+            "name": "确认本次创建的普通指标已无残留",
+            "request": {"protocol": "http", "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id", "json": {"schemaId": "{{ schema_id }}", "fieldId": "{{ metric_field_id }}"}},
+            "expect_absent": {"json_path": "Value.fieldId", "value": "{{ metric_field_id }}"}
+          }]
+        }
+      ]
     }
+
   ]
 }

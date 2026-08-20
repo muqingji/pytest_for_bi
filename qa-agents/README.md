@@ -76,10 +76,23 @@ PYTHONPATH=src ../.venv/bin/python -m qa_agents prepare-test-data \
   --environment 112 --namespace qa-<run-id> --output runs/<run-id>/test-data
 ```
 
-当前真实能力模板覆盖“聚合指标 + 结果集筛选 + 查看明细”纵向链路。现有 14 个试点 Case
-审计可自主解析 1 个 Case 的聚合指标部分；普通指标、计算指标、同环比指标以及其余 13 个
-数据集会进入 `capability_adapter_backlog`，不会转成要求用户手写链路的人工事项。产品白皮书
-当前需要 WPS 企业登录，来源状态记录为 `authentication_required`，未被当作已采集证据。
+当前能力目录已注册 5 个 recipe：普通指标创建（`ordinary-metric-create`）、普通/同环比/
+聚合/计算指标的结果集筛选链路。意图抽取支持确定性资源类型推断（`infer_resource_intents`：
+聚合指标/普通指标/计算指标/同环比/统计图/报表/交叉表/拼表/自定义维度），Case 未显式声明
+`data_intent`/`dataset` 也能命中唯一 recipe；多资源歧义时保持 unresolved，不猜测。
+
+仍未登记的 Case 路由到 `capability_adapter_backlog`，由 `bi-recipe-adapter` skill 负责：
+`prepare-recipe-candidates` CLI 读取 `knowledge/verified-setup-contracts.json` 和
+`knowledge/bi-*-create-contract.json`，产出 `knowledge/bi-recipe-candidates.json`
+（custom_dimension/joined_table/stat_chart/pivot_table/ordinary_report/组合明细场景），
+每个候选都声明 `verification_requirements`（枚举绑定、目录绑定、配置哈希、清理配对等），
+证据闭合前不会被当作可执行 recipe。
+
+静态 profile 无法提供的变量（字段 id、枚举值、目录 id）通过 112 环境清单快照解析：
+`prepare-test-data --inventory <snapshot>` 在 N28 与 N27 之间调用
+`qa_agents.env_inventory.enrich_plan_with_inventory`，无法证明的变量标记为
+`runtime_required`，绝不猜测。产品白皮书当前需要 WPS 企业登录，来源状态记录为
+`authentication_required`，未被当作已采集证据。
 
 ## 目录
 

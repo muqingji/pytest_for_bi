@@ -64,6 +64,7 @@ from .requirement_case_renderer import render_requirement_case_bundle
 from .source_collector import ReadOnlyGitCollector, RepositoryRegistry
 from .storage import ArtifactStore
 from .test_case_gate import run_n04_after_a09
+from .recipe_adapter import prepare_recipe_candidates
 from .test_data import prepare_test_data_plan
 from .test_knowledge import assess_automation_readiness
 from .workflow import PhaseOneWorkflow
@@ -529,6 +530,7 @@ def build_parser() -> argparse.ArgumentParser:
     test_data_parser.add_argument("--output", type=Path, required=True)
     test_data_parser.add_argument("--knowledge-sources", type=Path)
     test_data_parser.add_argument("--capability-catalog", type=Path)
+    test_data_parser.add_argument("--inventory", type=Path, help="112 environment inventory snapshot for variable resolution")
     test_data_parser.add_argument("--execution-plan", type=Path)
     test_data_parser.add_argument("--skip-by-policy", action="store_true")
     test_data_parser.add_argument("--existing-data-case-id", action="append", default=[])
@@ -542,6 +544,19 @@ def build_parser() -> argparse.ArgumentParser:
     contract_binding_parser.add_argument("--openapi", type=Path, required=True)
     contract_binding_parser.add_argument("--bindings", type=Path, required=True)
     contract_binding_parser.add_argument("--output", type=Path, required=True)
+
+    recipe_candidates_parser = subparsers.add_parser(
+        "prepare-recipe-candidates",
+        help="Turn verified BI create contracts into evidence-gated recipe candidates",
+    )
+    recipe_candidates_parser.add_argument("--compiled-cases", type=Path, required=True)
+    recipe_candidates_parser.add_argument("--contracts-dir", type=Path, required=True)
+    recipe_candidates_parser.add_argument("--environment", default="112")
+    recipe_candidates_parser.add_argument("--namespace", required=True)
+    recipe_candidates_parser.add_argument("--output", type=Path, required=True)
+    recipe_candidates_parser.add_argument("--knowledge-sources", type=Path)
+    recipe_candidates_parser.add_argument("--capability-catalog", type=Path)
+    recipe_candidates_parser.add_argument("--policy", type=Path)
 
     n08_parser = subparsers.add_parser(
         "run-n08-automation",
@@ -735,6 +750,20 @@ def _run(argv: list[str] | None = None) -> int:
 
     if args.command == "sync-multica-issue-card":
         result = sync_multica_issue_card(args.bundle, args.artifact, args.issue_id)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "prepare-recipe-candidates":
+        result = prepare_recipe_candidates(
+            args.compiled_cases,
+            args.contracts_dir,
+            args.output,
+            environment=args.environment,
+            namespace=args.namespace,
+            capability_catalog_path=args.capability_catalog,
+            sources_path=args.knowledge_sources,
+            policy_path=args.policy,
+        )
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
 
@@ -1000,6 +1029,7 @@ def _run(argv: list[str] | None = None) -> int:
             namespace=args.namespace,
             knowledge_sources_path=args.knowledge_sources,
             capability_catalog_path=args.capability_catalog,
+            inventory_path=args.inventory,
             execution_plan_path=args.execution_plan,
             skip_by_policy=args.skip_by_policy,
             existing_data_case_ids=set(args.existing_data_case_id),

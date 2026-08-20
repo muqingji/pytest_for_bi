@@ -23,6 +23,10 @@
 | A19/N18/Flaky | 已实现参考版 | A19 本地保守归因；N18 读取 N08 coverage_summary；`flaky-quarantine/1.0` 计入覆盖缺口，P0/P1 或高风险隔离阻塞发布 |
 | 单元测试生成策略 | 已暂停 | `test_level=unit` 在 N15 以 `paused_existing_developer_unit_coverage` 跳过；A14 仅生成服务端 API、集成和功能测试 |
 | A22/N28/N27 自主测试数据构造 | 已实现首个 112 纵向切片 | A22 从 Case 语义输出 `test-data-intent/1.0`；N28 用可追溯 BI 能力目录生成资源 DAG；N27 允许 setup/cleanup 写入并强制 namespace、操作配对、资源 ID、只读 readiness 和 Secret 边界 |
+| A22 确定性意图推断 | 已实现 | `infer_resource_intents`/`infer_data_intent` 覆盖 9 类资源（聚合/普通/计算/同环比指标、统计图、报表、交叉表、拼表、自定义维度），唯一命中才给 `data_intent`，歧义保持 unresolved |
+| 已验证契约 → recipe 注册 | 部分落地 | `ordinary-metric-create` 已入目录（add_new_agg_rule filterLists=[]，N27 全量校验通过）；custom_dimension/joined_table/stat_chart/pivot/report 以候选形式登记，证据闭合前不可执行 |
+| 环境清单变量解析 | 已实现参考版 | `env_inventory.enrich_plan_with_inventory` 在 N28/N27 之间解析字段 id/枚举/目录变量，`runtime_required` 不猜测；CLI `--inventory` 接入 |
+| backlog 自适应候选生成 | 已实现参考版 | `recipe_adapter` + `prepare-recipe-candidates` 从已验证契约产出 `bi-recipe-candidates.json`（含组合明细场景），`verification_requirements` 强制证据门禁；`bi-recipe-adapter` skill 注册 D01/A22 |
 | 112 数据生命周期执行 | 真实通过 | `CASE-FUNC-RESULT-FILTER-DETAIL-112` 创建带结果集筛选的隔离指标、回查、调用真实查看明细接口断言 `s307011535` 和动态指标名、finally 删除；独立回查无 namespace 残留 |
 | 可追溯 fs-bi 契约 | 已冻结 | OpenAPI `info.version` 和 `x-contract-source.ref` 固定为 MR commit `c6b785344c6973b6d6fc5bb108c45b3971f36c64`，165 个真实 gateway 路由，生成器测试通过 |
 | Oracle 离线评估 | 已实现参考版 | 路由、事实、对齐、开放问题、Gate 决策和测试义务；确定性规则、一对一义务匹配、文本/HTML 报告 |

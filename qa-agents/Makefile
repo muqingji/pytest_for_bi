@@ -5,7 +5,7 @@ PILOT_INPUT := eval/workflows/pilot-001-detail-drill-message-i18n/input
 PILOT_ORACLE := eval/workflows/pilot-001-detail-drill-message-i18n/oracle
 PILOT_RUN := runs/pilot-001
 
-.PHONY: test pilot pilot-full pilot-automation collect-pilot evaluate-pilot compile-workflow-center sync-workflow-center init-autopilot reconcile-autopilot prepare-multica-pilot prepare-multica-alignment-pilot report-multica-alignment-pilot prepare-g01-pilot record-g01-pilot run-n24-pilot prepare-multica-test-design-pilot prepare-multica-oracle-review-pilot run-n04-pilot prepare-multica-test-design-correction-pilot prepare-multica-oracle-review-correction-pilot run-n04-correction-pilot run-n25-after-g02-pilot prepare-multica-split-review-pilot run-n26-after-a11-pilot run-n15-after-n26-pilot prepare-autonomous-test-data-pilot prepare-server-automation-pilot run-n07-env-precheck-pilot run-n16-env-fix-pilot land-automation-candidates-pilot run-n08-automation-pilot run-server-quality-pilot run-server-full-pilot prepare-multica-selection-advice-pilot prepare-human-correction-pilot open-human-correction-pilot sync-human-correction-pilot prepare-multica-human-correction-pilot prepare-g02-pilot open-g02-pilot sync-g02-pilot
+.PHONY: test pilot pilot-full pilot-automation collect-pilot evaluate-pilot compile-workflow-center sync-workflow-center init-autopilot reconcile-autopilot prepare-multica-pilot prepare-multica-alignment-pilot report-multica-alignment-pilot prepare-g01-pilot record-g01-pilot run-n24-pilot prepare-multica-test-design-pilot prepare-multica-oracle-review-pilot run-n04-pilot prepare-multica-test-design-correction-pilot prepare-multica-oracle-review-correction-pilot run-n04-correction-pilot run-n25-after-g02-pilot prepare-multica-split-review-pilot run-n26-after-a11-pilot run-n15-after-n26-pilot prepare-autonomous-test-data-pilot prepare-recipe-candidates prepare-server-automation-pilot run-n07-env-precheck-pilot run-n16-env-fix-pilot land-automation-candidates-pilot run-n08-automation-pilot run-server-quality-pilot run-server-full-pilot prepare-multica-selection-advice-pilot prepare-human-correction-pilot open-human-correction-pilot sync-human-correction-pilot prepare-multica-human-correction-pilot prepare-g02-pilot open-g02-pilot sync-g02-pilot
 
 G01_DIR := $(PILOT_RUN)/g01
 G01_DECISION_INPUT ?= $(G01_DIR)/g01-decision-input.json
@@ -167,6 +167,11 @@ run-n15-after-n26-pilot:
 
 prepare-autonomous-test-data-pilot:
 	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-test-data --compiled-cases $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --policy policies/test-data-policy.json --knowledge-sources knowledge/bi-knowledge-sources.json --capability-catalog knowledge/bi-data-capability-catalog.json --environment 112 --namespace $(TEST_DATA_NAMESPACE) --output $(TEST_DATA_STAGE)
+
+RECIPE_CANDIDATES_STAGE ?= $(PILOT_RUN)/recipe-candidates
+
+prepare-recipe-candidates:
+	PYTHONPATH=$(PYTHONPATH) $(PYTHON) -m qa_agents prepare-recipe-candidates --compiled-cases $(HUMAN_N25_STAGE)/artifacts/n25-compiled-test-cases.json --contracts-dir knowledge --policy policies/test-data-policy.json --knowledge-sources knowledge/bi-knowledge-sources.json --capability-catalog knowledge/bi-data-capability-catalog.json --environment 112 --namespace $(TEST_DATA_NAMESPACE) --output $(RECIPE_CANDIDATES_STAGE)
 
 
 # Execution-phase environment gates (design doc section 17): N07 precheck runs

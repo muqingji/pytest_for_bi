@@ -34,6 +34,96 @@ FORBIDDEN_DEFAULT_SUBJECTS = frozenset({"区域测试"})
 CHART_DETAIL_TERMS = ("查看明细", "统计图", "拼表", "交叉表", "detail query", "details view")
 
 
+RESOURCE_INTENT_GROUPS: tuple[dict[str, Any], ...] = (
+    {
+        "resource_type": "aggregate_metric",
+        "data_intent": "metric.aggregate.create",
+        "dataset": "aggregate_metric",
+        "terms": ("聚合指标", "聚合度量", "agg metric", "aggregate metric"),
+    },
+    {
+        "resource_type": "ordinary_metric",
+        "data_intent": "metric.ordinary.create",
+        "dataset": "ordinary_metric",
+        "terms": ("普通指标", "普通度量", "一般指标", "ordinary metric", "plain metric"),
+    },
+    {
+        "resource_type": "calculated_metric",
+        "data_intent": "metric.calculated.create",
+        "dataset": "calculated_metric",
+        "terms": ("计算指标", "计算度量", "公式指标", "calculated metric", "calc metric"),
+    },
+    {
+        "resource_type": "comparison_metric",
+        "data_intent": "metric.comparison.create",
+        "dataset": "comparison_metric",
+        "terms": ("同环比", "同比", "环比", "comparison metric", "period over period"),
+    },
+    {
+        "resource_type": "stat_chart",
+        "data_intent": "chart.create",
+        "dataset": "stat_chart",
+        "terms": ("统计图", "图表", "图形", "chart", "stat view"),
+    },
+    {
+        "resource_type": "report",
+        "data_intent": "report.create",
+        "dataset": "report",
+        "terms": ("报表", "报告", "report", "dashboard"),
+    },
+    {
+        "resource_type": "pivot_table",
+        "data_intent": "pivot.create",
+        "dataset": "pivot_table",
+        "terms": ("交叉表", "透视表", "pivot", "cross table"),
+    },
+    {
+        "resource_type": "joined_table",
+        "data_intent": "joined_table.create",
+        "dataset": "joined_table",
+        "terms": ("拼表", "关联表", "joined table", "join table"),
+    },
+    {
+        "resource_type": "custom_dimension",
+        "data_intent": "custom_dimension.create",
+        "dataset": "custom_dimension",
+        "terms": ("自定义维度", "枚举维度", "custom dimension"),
+    },
+)
+
+
+def infer_resource_intents(case: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Deterministic resource-type hints from Case semantics without an LLM."""
+    text = _case_text(case)
+    hits: list[dict[str, Any]] = []
+    for group in RESOURCE_INTENT_GROUPS:
+        matched_terms = [
+            str(term)
+            for term in group["terms"]
+            if str(term).lower() in text
+        ]
+        if matched_terms:
+            hits.append(
+                {
+                    "resource_type": str(group["resource_type"]),
+                    "data_intent": str(group["data_intent"]),
+                    "dataset": str(group["dataset"]),
+                    "terms": sorted(matched_terms),
+                }
+            )
+    return hits
+
+
+def infer_data_intent(case: Mapping[str, Any]) -> str:
+    """Synthesize a data_intent only when the Case semantics are unambiguous."""
+    hits = infer_resource_intents(case)
+    if len(hits) == 1:
+        return str(hits[0]["data_intent"])
+    return ""
+
+
+
+
 def select_test_subject(
     candidates: list[Mapping[str, Any]], *, explicit_subject: str = ""
 ) -> dict[str, Any]:
@@ -228,6 +318,8 @@ def _matches_recipe(case: Mapping[str, Any], recipe: Mapping[str, Any]) -> bool:
     explicit_intent = ""
     if isinstance(test_data, Mapping):
         explicit_intent = str(test_data.get("data_intent", ""))
+    if not explicit_intent:
+        explicit_intent = infer_data_intent(case)
     intents = {str(item) for item in match.get("data_intents", [])}
     if explicit_intent and explicit_intent in intents:
         return True
@@ -591,6 +683,7 @@ def prepare_autonomous_test_data_plan(
     *,
     environment: str,
     namespace: str,
+    inventory_path: Path | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
     """Create hash-bound A22, N28 and N27 Artifacts from one frozen N25 output."""
@@ -677,6 +770,11 @@ def prepare_autonomous_test_data_plan(
     plan = compile_resource_plan(
         intent_payload, catalog, environment=environment, namespace=namespace
     )
+    if inventory_path is not None:
+        from .env_inventory import enrich_plan_with_inventory, load_inventory_snapshot
+
+        inventory = load_inventory_snapshot(inventory_path)
+        plan = enrich_plan_with_inventory(plan, inventory)
     plan["aggregate_agent_id"] = "D01"
     plan["skill_router_binding"] = skill_authorization
     n28 = ArtifactEnvelope(

@@ -14,4 +14,8 @@ description: Build and validate the complete retained BI scene for Cases that ex
 7. Execute 查看明细 through the saved chart/pivot entry and capture the request, response contract, error code, restriction reason, and affected field name as evidence.
 8. Retain all created assets and register them. Do not schedule cleanup unless the Case explicitly overrides retention with approved `delete` mode.
 
+## Composite candidates
+
+A chart-detail Case needs a metric *and* a saved chart. When only the metric recipe is published, the `bi-recipe-adapter` skill produces the composite `metric-plus-stat-chart-detail` candidate whose `verification_requirements` (folder binding, configuration hash, cleanup pair) must close in 112 before N27 can accept the scene.
+
 Fail closed in N27 when any DAG role is absent. A metric or custom dimension alone never satisfies a chart-detail Case.
