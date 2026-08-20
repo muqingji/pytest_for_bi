@@ -75,7 +75,7 @@
 | 12 | [QAA-330](mention://issue/046cda0d-8ad9-435e-93fc-41b9682e007a) 拆分覆盖审查 | 已完成 | 1/1 | completed |
 | 13 | [QAA-335](mention://issue/1ba8d6e5-f1d2-415a-be9d-7bc478c0e4c2) 测试选择 | 已完成 | 1/1 | Artifact n26-test-selection accepted |
 | 14 | [QAA-334](mention://issue/d19009da-5ba3-481c-9053-1ddeb586566b) 执行计划编译 | 已完成 | 1/1 | Artifact n15-execution-plan accepted |
-| 15 | [QAA-336](mention://issue/bd22cd54-e5ce-4e77-b829-1174f38825c6) 服务端自动化生成 | 排队中 | 0/1 | 上游节点已完成，等待调度 |
+| 15 | [QAA-336](mention://issue/bd22cd54-e5ce-4e77-b829-1174f38825c6) 服务端自动化生成 | 运行中 | 0/1 | 上游节点已完成，等待调度 |
 | 15 | [QAA-337](mention://issue/fceb05d9-2005-492d-a02c-178fc78a88b5) 契约自动化生成 | 已跳过 | 1/1 | not_applicable |
 | 15 | [QAA-339](mention://issue/bff5ee4c-c45f-4717-b4ac-05334290a9a8) 112 测试数据规划 | 等待人工 | 1/1 | needs_human |
 | 16 | 服务端自动化独立复核 | 未开始 | 0/1 | 卡在 `A22` 112 测试数据规划 的决策（[QAA-339](mention://issue/bff5ee4c-c45f-4717-b4ac-05334290a9a8)） |
@@ -100,6 +100,6 @@
 
 - Workflow ID：`REQ-DETAIL-DRILL-I18N-RERUN-20260817-02`
 - Parent Issue：`QAA-304`
-- Projection：`sha256:5d3165f45aa1c1671d01e0e3821654eda5ca7dba606abfa614d166b062135bea`
+- Projection：`sha256:84ca9e7b4e088d92489dcfc2fff93f3644e57dcaeb791dc6740d9ac16e3c1654`
 
 节点任务和重跑记录保留在内部执行项目；本卡只展示需求级总体状态、进度和人工事项。

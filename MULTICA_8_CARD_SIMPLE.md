@@ -178,6 +178,10 @@ A22/A18-BE/A18-CT），3 个为人工 Gate（G01/G02/G03），其余为确定性
   N27 未通过时生成卡等待修订，不携带被拒数据。
 - Agent 任务完成后状态自动同步：摄入即置 `done`，对已摄入的已完成运行在后续同步轮幂等补置
   `done`，避免中断恢复后卡片长期停留在“排队中/进行中”。
+- 阶段卡状态以实时 Issue 状态为准，不再只看历史 Artifact：节点存在进行中的 Agent Issue 时按
+  实时状态显示（`todo/queued`→排队中、`in_progress`→运行中、`blocked`→阻塞），Issue 为终态
+  时才回落到 Artifact 推导状态；同步只对 Agent Issue 写终态（`done`/`cancelled`），open 状态
+  交给 Agent 运行时管理，避免把已完成 Agent 任务回写成 `in_review`。
 - C5 每个子任务都可点击跳转：A14/A15/A22/A18-BE/A18-CT 由 Agent Issue 承载（输入包为附件），
   N27/N05 由系统自动创建的记录卡承载（Artifact 为附件），G03 由人工审核卡承载；阶段卡详情页
   的节点表格会把它们渲染成可点击的 Issue 链接。

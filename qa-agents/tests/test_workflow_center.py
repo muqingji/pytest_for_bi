@@ -798,7 +798,7 @@ def test_sync_binds_discovered_node_issues_into_stage_cards(tmp_path: Path) -> N
     assert len(card_updates) == 1
     _, description = card_updates[0]
     assert (
-        "- `A11` 拆分覆盖审查 · 未开始 · [QAA-202](mention://issue/issue-a11-discovered)"
+        "- `A11` 拆分覆盖审查 · 排队中 · [QAA-202](mention://issue/issue-a11-discovered)"
         in description
     )
     a11_updates = [
@@ -807,7 +807,107 @@ def test_sync_binds_discovered_node_issues_into_stage_cards(tmp_path: Path) -> N
         if command[1:4] == ["issue", "update", "issue-a11-discovered"]
     ]
     assert len(a11_updates) == 1
-    assert a11_updates[0][a11_updates[0].index("--status") + 1] == "backlog"
+    assert a11_updates[0][a11_updates[0].index("--status") + 1] == "todo"
+
+
+def test_sync_live_issue_state_overrides_stale_artifact_state(tmp_path: Path) -> None:
+    spec = workflow_spec()
+    spec["nodes"] = [
+        {
+            "execution_id": "A15-1",
+            "node_id": "A15",
+            "label": "契约自动化生成",
+            "stage": 15,
+            "state": "skipped",
+            "completion": "1/1",
+            "result_summary": "not_applicable",
+            "stage_card_id": "C5",
+            "stage_card_title": "自动化与测试数据准备",
+            "issue_id": "issue-a15",
+            "issue_identifier": "QAA-301",
+            "stage_issue_id": "issue-c5",
+            "stage_issue_identifier": "QAA-C5",
+        },
+        {
+            "execution_id": "A22-1",
+            "node_id": "A22",
+            "label": "112 测试数据规划",
+            "stage": 15,
+            "state": "waiting_human",
+            "completion": "1/1",
+            "result_summary": "needs_human",
+            "stage_card_id": "C5",
+            "stage_card_title": "自动化与测试数据准备",
+            "stage_issue_id": "issue-c5",
+            "stage_issue_identifier": "QAA-C5",
+        },
+    ]
+    spec["actions"] = []
+    multica = FakeMultica(
+        issues={
+            "issue-a15": {
+                "id": "issue-a15",
+                "identifier": "QAA-301",
+                "title": "[REQ-101-r003] A15 契约自动化生成",
+                "created_at": "2026-08-18T00:00:00Z",
+                "status": "done",
+                "project_id": INTERNAL_PROJECT_ID,
+            },
+            "issue-a22-rev": {
+                "id": "issue-a22-rev",
+                "identifier": "QAA-302",
+                "title": "[REQ-101-r003] A22 测试数据规划修正",
+                "created_at": "2026-08-19T00:00:00Z",
+                "status": "in_progress",
+                "project_id": INTERNAL_PROJECT_ID,
+            },
+        }
+    )
+    config = workflow_config()
+    config["node_agents"] = {"A15": "agent-a15", "A22": "agent-a22"}
+    store = ArtifactStore(tmp_path / "input")
+    sync_multica_workflow_center(
+        store.write_json("workflow.json", spec),
+        store.write_json("config.json", config),
+        tmp_path / "output",
+        runner=multica,
+    )
+
+    projection = json.loads(
+        (tmp_path / "output" / "workflow-projection.json").read_text(encoding="utf-8")
+    )
+    states = {node["node_id"]: node["state"] for node in projection["nodes"]}
+    assert states["A15"] == "skipped"
+    assert states["A22"] == "running"
+    assert projection["overall_status"] == "running"
+
+    card_updates = [
+        (command, description)
+        for command, description in multica.calls
+        if command[1:4] == ["issue", "update", "issue-c5"]
+    ]
+    _, description = card_updates[0]
+    assert (
+        "- `A22` 112 测试数据规划 · 运行中 · "
+        "[QAA-302](mention://issue/issue-a22-rev)" in description
+    )
+    assert (
+        "- `A15` 契约自动化生成 · 已跳过 · "
+        "[QAA-301](mention://issue/issue-a15)" in description
+    )
+    a22_updates = [
+        command
+        for command, _ in multica.calls
+        if command[1:4] == ["issue", "update", "issue-a22-rev"]
+    ]
+    assert a22_updates == []
+    a15_updates = [
+        command
+        for command, _ in multica.calls
+        if command[1:4] == ["issue", "update", "issue-a15"]
+    ]
+    assert a15_updates
+    assert a15_updates[0][a15_updates[0].index("--status") + 1] == "done"
 
 
 def test_sync_rejects_conflicting_projection_at_same_revision(tmp_path: Path) -> None:

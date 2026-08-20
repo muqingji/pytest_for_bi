@@ -32,6 +32,21 @@
   "autopilot_runs": [],
   "current_nodes": [
     {
+      "completion": "0/1",
+      "execution_id": "A14-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "bd22cd54-e5ce-4e77-b829-1174f38825c6",
+      "issue_identifier": "QAA-336",
+      "label": "服务端自动化生成",
+      "node_id": "A14",
+      "result_summary": "上游节点已完成，等待调度",
+      "stage": 15,
+      "stage_card_id": "C5",
+      "stage_card_title": "自动化与测试数据准备",
+      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
+      "stage_issue_identifier": "QAA-310",
+      "state": "running"
+    },
+    {
       "approval_items": [
         {
           "id": "a22-test-data-plan-approval",
@@ -42,11 +57,13 @@
           "title": "审批确认"
         }
       ],
-      "artifact_hash": "sha256:6138052639c8cedc2f51b482c8683fb9f7c15c1163946b3f6a46f70c35caade4",
+      "artifact_hash": "sha256:408f191fd87434b60e92cc136943fa6f6fffca8ea5735fd7df80fdcfbdd2bc25",
       "artifact_id": "a22-test-data-plan",
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a22-test-data-plan.json",
       "completion": "1/1",
       "execution_id": "A22-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "bff5ee4c-c45f-4717-b4ac-05334290a9a8",
+      "issue_identifier": "QAA-339",
       "label": "112 测试数据规划",
       "node_id": "A22",
       "result_summary": "needs_human",
@@ -58,11 +75,13 @@
       "state": "waiting_human"
     },
     {
-      "artifact_hash": "sha256:2e6ec4c1a63c46d6dc32d96898050d4e7fefb643bc54aa950a37ee6f3137cab4",
+      "artifact_hash": "sha256:7e44020cd8d6b6a46998e468bb6fcb72eec3804ea20eb7c49987541eb3a40812",
       "artifact_id": "n27-test-data-plan-validation",
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n27-test-data-plan-validation.json",
       "completion": "1/1",
       "execution_id": "N27-detail-drill-i18n-8card-20260817-02",
+      "issue_id": "2d2b6678-2b7c-4364-92c3-8a35d64906f6",
+      "issue_identifier": "QAA-340",
       "label": "测试数据计划安全校验",
       "node_id": "N27",
       "result_summary": "rejected",
@@ -560,7 +579,7 @@
       "stage_card_title": "自动化与测试数据准备",
       "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
       "stage_issue_identifier": "QAA-310",
-      "state": "queued"
+      "state": "running"
     },
     {
       "artifact_hash": "sha256:b8ebd205094bdb51043e348429c0d2e3f9aee19c2800345a48e16bea15568918",
@@ -591,7 +610,7 @@
           "title": "审批确认"
         }
       ],
-      "artifact_hash": "sha256:6138052639c8cedc2f51b482c8683fb9f7c15c1163946b3f6a46f70c35caade4",
+      "artifact_hash": "sha256:408f191fd87434b60e92cc136943fa6f6fffca8ea5735fd7df80fdcfbdd2bc25",
       "artifact_id": "a22-test-data-plan",
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a22-test-data-plan.json",
       "completion": "1/1",
@@ -635,7 +654,7 @@
       "state": "not_started"
     },
     {
-      "artifact_hash": "sha256:2e6ec4c1a63c46d6dc32d96898050d4e7fefb643bc54aa950a37ee6f3137cab4",
+      "artifact_hash": "sha256:7e44020cd8d6b6a46998e468bb6fcb72eec3804ea20eb7c49987541eb3a40812",
       "artifact_id": "n27-test-data-plan-validation",
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n27-test-data-plan-validation.json",
       "completion": "1/1",
@@ -869,9 +888,9 @@
     "percent": 47,
     "total": 36
   },
-  "projection_hash": "sha256:5d3165f45aa1c1671d01e0e3821654eda5ca7dba606abfa614d166b062135bea",
+  "projection_hash": "sha256:84ca9e7b4e088d92489dcfc2fff93f3644e57dcaeb791dc6740d9ac16e3c1654",
   "requirement_id": "REQ-DETAIL-DRILL-I18N-RERUN-20260817-02",
-  "revision": 59,
+  "revision": 60,
   "run_history": [],
   "run_issue": {
     "id": "277d9c07-16bc-4462-8f83-ff8434a84b9e",

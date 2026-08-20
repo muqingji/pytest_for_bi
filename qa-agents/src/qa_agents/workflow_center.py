@@ -303,10 +303,9 @@ def _derive_status(nodes: list[Mapping[str, Any]], actions: list[Mapping[str, An
     raise ContractError("Requirement workflow state cannot be derived")
 
 
-def build_workflow_projection(spec: Mapping[str, Any]) -> dict[str, Any]:
-    """Build the single user-facing state from node executions and human actions."""
+def _projection_core(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Recompute the user-facing projection aggregates from its own nodes."""
 
-    value = _validated_spec(spec)
     nodes = value["nodes"]
     actions = value["actions"]
     status = _derive_status(nodes, actions)
@@ -352,6 +351,27 @@ def build_workflow_projection(spec: Mapping[str, Any]) -> dict[str, Any]:
     }
     core["projection_hash"] = content_hash(core)
     return core
+
+
+def build_workflow_projection(spec: Mapping[str, Any]) -> dict[str, Any]:
+    """Build the single user-facing state from node executions and human actions."""
+
+    value = _validated_spec(spec)
+    return _projection_core(value)
+
+
+def refresh_projection_aggregates(projection: Mapping[str, Any]) -> dict[str, Any]:
+    """Recompute derived fields after a live Issue state override mutated nodes.
+
+    Binding real Issue statuses can change node states (for example an A22
+    revision Issue running while an older needs_human Artifact is still on
+    disk); the overview status, progress, current nodes and hash must follow
+    the mutated nodes instead of the stale artifact-derived projection.
+    """
+
+    refreshed = {**dict(projection), "nodes": [dict(node) for node in projection["nodes"]]}
+    core = _projection_core(refreshed)
+    return {**refreshed, **core}
 
 
 def _issue_mention(value: Mapping[str, Any]) -> str:
@@ -1241,8 +1261,12 @@ def _sync_multica_workflow_center_unlocked(
     security.assert_no_secret_values(spec)
     security.assert_no_secret_values(config)
     projection = build_workflow_projection(spec)
+    # The monotonic guard compares a deterministic, artifact-derived hash so
+    # live Issue binding/state overrides never look like a projection conflict.
+    stable_projection_hash = projection["projection_hash"]
     active_runner = runner or _default_runner
     projection = _bind_discovered_node_issues(projection, config, active_runner)
+    projection = refresh_projection_aggregates(projection)
     markdown = render_workflow_center_markdown(projection)
     security.assert_no_secret_values(projection)
     store = ArtifactStore(output_dir)
@@ -1381,13 +1405,27 @@ def _sync_multica_workflow_center_unlocked(
             for action in projection["actions"]
             if action.get("issue_id")
         }
+        agent_node_ids = {
+            str(node_id) for node_id in (config.get("node_agents") or {}).keys()
+        }
         for node in projection["nodes"]:
             issue_id = str(node.get("issue_id", "")).strip()
             if not issue_id:
                 continue
             item_type = "human_action" if issue_id in action_issue_ids else "node_execution"
             node_state = str(node["state"])
-            status = "in_progress" if node_state == "queued" else NODE_MULTICA_STATUS[node_state]
+            status = NODE_MULTICA_STATUS[node_state]
+            node_id = str(node.get("node_id") or node["execution_id"])
+            if (
+                node_id in agent_node_ids
+                and item_type == "node_execution"
+                and status not in {"done", "cancelled"}
+            ):
+                # The Agent runtime owns open Issue lifecycle
+                # (todo/in_progress/in_review). The workflow sync only writes
+                # terminal statuses so a completed Agent run is never flipped
+                # back to in_review by a stale needs_human Artifact.
+                continue
             _ensure_run_issue_state(
                 active_runner, issue_id, run_project_id, status, workspace_id
             )
@@ -1473,7 +1511,8 @@ def _sync_multica_workflow_center_unlocked(
             "workflow_id": projection["workflow_id"],
             "workflow_run_id": projection["workflow_run_id"],
             "revision": projection["revision"],
-            "projection_hash": projection["projection_hash"],
+            "projection_hash": stable_projection_hash,
+            "published_projection_hash": projection["projection_hash"],
             "result_hash": result["result_hash"],
         },
     )

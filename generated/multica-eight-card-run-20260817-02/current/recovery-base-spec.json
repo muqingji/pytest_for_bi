@@ -1,27 +1,6 @@
 {
   "actions": [
     {
-      "action_id": "G02-detail-drill-i18n-8card-20260817-02",
-      "approval_items": [
-        {
-          "id": "g02-test-case-ir-review-approval",
-          "requirement_ids": [],
-          "severity": "",
-          "source_refs": [],
-          "summary": "Artifact g02-test-case-ir-review accepted",
-          "title": "审批确认"
-        }
-      ],
-      "gate_id": "G02",
-      "issue_id": null,
-      "issue_identifier": null,
-      "item_count": 1,
-      "owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
-      "status": "open",
-      "summary": "Artifact g02-test-case-ir-review accepted",
-      "title": "Test Case IR 人工审核处理"
-    },
-    {
       "action_id": "A22-detail-drill-i18n-8card-20260817-02",
       "approval_items": [
         {
@@ -415,20 +394,20 @@
           "title": "审批确认"
         }
       ],
-      "artifact_hash": "sha256:5347a7d852e2f23626a23f5bf306bce8be6445b9d79e69a31239e3cd26fa16ca",
+      "artifact_hash": "sha256:24154f91cbc0343fd3825acbbb4468697750ec73c0471c3eff36037f937d7498",
       "artifact_id": "g02-test-case-ir-review",
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/g02-test-case-ir-review.json",
       "completion": "1/1",
       "execution_id": "G02-detail-drill-i18n-8card-20260817-02",
       "label": "Test Case IR 人工审核",
       "node_id": "G02",
-      "result_summary": "Artifact g02-test-case-ir-review accepted",
+      "result_summary": "approved",
       "stage": 10,
       "stage_card_id": "C3",
       "stage_card_title": "测试设计与审核",
       "stage_issue_id": "c8e1d570-731f-456d-880f-acecaa7a73d4",
       "stage_issue_identifier": "QAA-308",
-      "state": "waiting_human"
+      "state": "completed"
     },
     {
       "artifact_hash": "sha256:442f3f9583dc1ce3e7fda90bc66a5e11a746acbe611f92f9c21a3c63dae87f6a",
@@ -534,7 +513,7 @@
           "title": "审批确认"
         }
       ],
-      "artifact_hash": "sha256:6138052639c8cedc2f51b482c8683fb9f7c15c1163946b3f6a46f70c35caade4",
+      "artifact_hash": "sha256:408f191fd87434b60e92cc136943fa6f6fffca8ea5735fd7df80fdcfbdd2bc25",
       "artifact_id": "a22-test-data-plan",
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a22-test-data-plan.json",
       "completion": "1/1",
@@ -576,7 +555,7 @@
       "state": "not_started"
     },
     {
-      "artifact_hash": "sha256:2e6ec4c1a63c46d6dc32d96898050d4e7fefb643bc54aa950a37ee6f3137cab4",
+      "artifact_hash": "sha256:7e44020cd8d6b6a46998e468bb6fcb72eec3804ea20eb7c49987541eb3a40812",
       "artifact_id": "n27-test-data-plan-validation",
       "artifact_path": "generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n27-test-data-plan-validation.json",
       "completion": "1/1",
@@ -779,7 +758,7 @@
     "identifier": "QAA-304"
   },
   "requirement_id": "REQ-DETAIL-DRILL-I18N-RERUN-20260817-02",
-  "revision": 58,
+  "revision": 60,
   "run_history": [],
   "run_issue": {
     "id": "277d9c07-16bc-4462-8f83-ff8434a84b9e",
