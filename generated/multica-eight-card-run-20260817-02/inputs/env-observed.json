@@ -1,0 +1,36 @@
+{
+  "schema_version": "environment-observation/1.0",
+  "environment": "112",
+  "requester_id": "qa-sync-detail-drill-i18n-8card-20260817-02",
+  "deployment_commits": [],
+  "dependencies": [],
+  "test_accounts": [],
+  "feature_flags": [],
+  "tenant_configs": [],
+  "test_data": [
+    {
+      "key": "cd_field",
+      "resource_type": "custom_dimension",
+      "case_id": "TC-BE-001-BACKEND",
+      "operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+      "status": "constructed",
+      "resource_id_variable": "cd_field_id",
+      "namespace": "qa-a22-pilot-001-source-v1",
+      "response_hash": "sha256:0b4118cacf88e28ca615117f752b65382709978646dd5dc439e8575d730dcae2",
+      "lifecycle_evidence_hash": "sha256:35d04ac96fe163568e65effbb19bcd8d3de09f73e63e1bf0bb489d76f611d048"
+    }
+  ],
+  "runtime": {
+    "timezone": "Asia/Shanghai",
+    "language": "zh-CN"
+  },
+  "test_namespaces": [
+    {
+      "namespace": "qa-a22-pilot-001-source-v1",
+      "cleanup_policy": {
+        "required": true
+      }
+    }
+  ],
+  "resource_locks": []
+}

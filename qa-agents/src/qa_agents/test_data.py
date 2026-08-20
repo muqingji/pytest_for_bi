@@ -376,6 +376,46 @@ def _assert_no_inline_secrets(value: Any, path: str = "plan") -> None:
             _assert_no_inline_secrets(child, f"{path}[{index}]")
 
 
+def _validate_planning_level_resource(
+    resource: Mapping[str, Any],
+    path: str,
+    *,
+    pairs: Mapping[str, Any],
+    readiness_operations: set[str],
+    default_retention: str,
+) -> None:
+    """Validate the A22 Agent planning-level resource contract.
+
+    The Multica A22 Agent names operations (``setup_operation``) instead of
+    embedding full request/expect operation objects; request-level details are
+    enforced later by N07/N08 against live schemas. N27 still enforces the
+    security-relevant structure: allowed types, operation pairs, retention
+    mode, read-only discovery for existing assets and run-namespace binding.
+    """
+
+    setup_operation = str(resource.get("setup_operation", ""))
+    retention_mode = str(resource.get("retention_mode", default_retention))
+    lifecycle_mode = str(resource.get("lifecycle_mode", "create"))
+    if lifecycle_mode == "existing_read_only":
+        if setup_operation not in readiness_operations:
+            raise SecurityPolicyError(
+                f"{path} existing_read_only setup_operation must be a read-only operation"
+            )
+        return
+    if lifecycle_mode != "create":
+        raise SecurityPolicyError(f"{path}.lifecycle_mode is invalid")
+    if setup_operation not in pairs:
+        raise SecurityPolicyError(f"{path}.setup_operation is not an allowed setup operation")
+    if retention_mode not in {"delete", "retain"}:
+        raise SecurityPolicyError(f"{path}.retention_mode is invalid")
+    if retention_mode == "delete":
+        cleanup_operation = str(pairs.get(setup_operation, ""))
+        if not cleanup_operation:
+            raise SecurityPolicyError(
+                f"{path} delete mode requires a cleanup operation pair for {setup_operation!r}"
+            )
+
+
 def validate_test_data_plan(
     plan: Mapping[str, Any], policy: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -465,6 +505,17 @@ def validate_test_data_plan(
                 raise SecurityPolicyError(f"{path}.resource_type is not allowed")
             if not id_variable:
                 raise ContractError(f"{path}.resource_id_variable is required")
+            setup_operation = resource.get("setup_operation")
+            if isinstance(setup_operation, str) and setup_operation.strip():
+                _validate_planning_level_resource(
+                    resource,
+                    path,
+                    pairs=pairs,
+                    readiness_operations=readiness_operations,
+                    default_retention=str(policy.get("default_retention_mode", "retain")),
+                )
+                validated_resources += 1
+                continue
             setup = resource.get("setup")
             cleanup = resource.get("cleanup")
             retention_mode = str(resource.get("retention_mode", "retain"))
@@ -1046,3 +1097,172 @@ def prepare_test_data_plan(
     }
     store.write_json("test-data-preparation.json", result)
     return result
+
+
+def record_constructed_test_data(
+    a22_plan_path: Path,
+    n08_execution_path: Path,
+    auto_dir: Path,
+    env_observed_path: Path,
+) -> dict[str, Any]:
+    """Register resources actually constructed during N08 into env-observed.
+
+    The A22 plan declares per-case resources with a ``setup_operation``; the N08
+    execution artifact carries per-shard lifecycle evidence recording which
+    operations completed (step status ``completed`` with an HTTP response). Only
+    resources whose setup operation actually completed are registered, so
+    ``env-observed.test_data`` reflects reality instead of the plan. Idempotent:
+    entries with the same ``(case_id, key)`` are replaced, unrelated entries are
+    preserved, and missing evidence degrades to an empty registration.
+    """
+
+    def _payload(path: Path, label: str) -> dict[str, Any]:
+        if not path.exists():
+            return {}
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+        payload = value.get("payload", {}) if isinstance(value, Mapping) else {}
+        return payload if isinstance(payload, Mapping) else {}
+
+    def _lifecycle_cases(path: Path) -> list[Any]:
+        if not path.exists():
+            return []
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return []
+        if not isinstance(value, Mapping):
+            return []
+        cases = value.get("cases", [])
+        return cases if isinstance(cases, list) else []
+
+    plan = _payload(a22_plan_path, "A22 test-data plan")
+    execution = _payload(n08_execution_path, "N08 automation execution")
+    planned: list[dict[str, Any]] = []
+    for case_plan in plan.get("case_plans", []):
+        if not isinstance(case_plan, Mapping):
+            continue
+        case_id = str(case_plan.get("case_id", ""))
+        resources = case_plan.get("resources", [])
+        if not isinstance(resources, list):
+            continue
+        for resource in resources:
+            if not isinstance(resource, Mapping):
+                continue
+            operation = str(resource.get("setup_operation", "")).strip()
+            if not operation:
+                continue
+            planned.append(
+                {
+                    "case_id": case_id,
+                    "key": str(resource.get("resource_key", "")),
+                    "resource_type": str(resource.get("resource_type", "")),
+                    "operation": operation,
+                    "resource_id_variable": str(resource.get("resource_id_variable", "")),
+                }
+            )
+
+    completed: dict[str, set[str]] = {}
+    evidence_hashes: dict[str, str] = {}
+    response_hashes: dict[str, str] = {}
+    shards = execution.get("shards", [])
+    if not isinstance(shards, list):
+        shards = []
+    for shard in shards:
+        if not isinstance(shard, Mapping):
+            continue
+        case_ids = [
+            str(item) for item in shard.get("case_ids", []) if str(item)
+        ]
+        evidence_path = shard.get("lifecycle_evidence_path")
+        evidence_hash = str(shard.get("lifecycle_evidence_hash", "") or "")
+        if isinstance(evidence_path, str) and evidence_path:
+            resolved = auto_dir / evidence_path
+            cases = _lifecycle_cases(resolved)
+            for case in cases:
+                if not isinstance(case, Mapping):
+                    continue
+                case_id = str(case.get("case_id", ""))
+                phases = case.get("phases", {})
+                if not isinstance(phases, Mapping):
+                    continue
+                for phase in ("setup", "test"):
+                    steps = phases.get(phase, [])
+                    if not isinstance(steps, list):
+                        continue
+                    for step in steps:
+                        if not isinstance(step, Mapping):
+                            continue
+                        if str(step.get("status", "")) != "completed":
+                            continue
+                        operation = str(step.get("operation", "")).strip()
+                        if operation:
+                            completed.setdefault(case_id, set()).add(operation)
+                            if evidence_hash:
+                                evidence_hashes[f"{case_id}:{operation}"] = evidence_hash
+                            response_hash = str(step.get("response_hash", "") or "")
+                            if response_hash:
+                                response_hashes[f"{case_id}:{operation}"] = response_hash
+        else:
+            for case_id in case_ids:
+                completed.setdefault(case_id, set())
+
+    namespace = str(plan.get("namespace", "") or "")
+    if env_observed_path.exists():
+        observed = json.loads(env_observed_path.read_text(encoding="utf-8"))
+    else:
+        observed = {}
+    if not isinstance(observed, Mapping):
+        observed = {}
+    if not namespace:
+        namespaces = observed.get("test_namespaces", [])
+        if isinstance(namespaces, list) and namespaces:
+            first = namespaces[0] if isinstance(namespaces[0], Mapping) else {}
+            namespace = str(first.get("namespace", "") or "")
+
+    registered: list[dict[str, Any]] = []
+    by_case_key = {
+        (str(item.get("case_id", "")), str(item.get("key", ""))): item
+        for item in observed.get("test_data", [])
+        if isinstance(item, Mapping)
+    }
+    test_data: list[dict[str, Any]] = []
+    for resource in planned:
+        case_id = resource["case_id"]
+        operations = completed.get(case_id, set())
+        if resource["operation"] not in operations:
+            continue
+        entry = {
+            "key": resource["key"],
+            "resource_type": resource["resource_type"],
+            "case_id": case_id,
+            "operation": resource["operation"],
+            "status": "constructed",
+        }
+        if resource["resource_id_variable"]:
+            entry["resource_id_variable"] = resource["resource_id_variable"]
+        if namespace:
+            entry["namespace"] = namespace
+        evidence_key = f"{case_id}:{resource['operation']}"
+        if evidence_key in response_hashes:
+            entry["response_hash"] = response_hashes[evidence_key]
+        if evidence_key in evidence_hashes:
+            entry["lifecycle_evidence_hash"] = evidence_hashes[evidence_key]
+        by_case_key[(case_id, resource["key"])] = entry
+        registered.append(entry)
+    for item in by_case_key.values():
+        test_data.append(item)
+    test_data.sort(key=lambda item: (str(item.get("case_id", "")), str(item.get("key", ""))))
+    observed["test_data"] = test_data
+    env_observed_path.parent.mkdir(parents=True, exist_ok=True)
+    env_observed_path.write_text(
+        json.dumps(observed, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return {
+        "registered": registered,
+        "planned_resources": len(planned),
+        "constructed_operations": sum(len(value) for value in completed.values()),
+        "namespace": namespace,
+    }

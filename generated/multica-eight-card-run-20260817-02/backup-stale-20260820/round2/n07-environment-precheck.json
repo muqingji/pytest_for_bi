@@ -1,0 +1,150 @@
+{
+  "artifact_hash": "sha256:7779750c9ae8c1aceea0bd1fff61bee93a72c16ef670e5634ff0dcaed9874a07",
+  "artifact_id": "n07-environment-precheck",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-20T07:49:15+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:f5298f8b195a93698b6916a327e56b13e70a649ba42d1fa1933659fad33cd963",
+      "location": "env-target.json",
+      "source_id": "environment-target",
+      "source_type": "target"
+    },
+    {
+      "content_hash": "sha256:ca73166f5a6811c992dcdc909b3a550e962aa6448ccb40186e0eca7c349ec86a",
+      "location": "env-observed.json",
+      "source_id": "environment-observation",
+      "source_type": "observed"
+    },
+    {
+      "content_hash": "sha256:e8fdff2b11393a4c8cf2f29e60b25eeec9e03bbec506817e9d4a25c0c5c90024",
+      "location": "n27-test-data-plan-validation.json",
+      "source_id": "n27-test-data-plan-validation",
+      "source_type": "artifact"
+    }
+  ],
+  "facts": [],
+  "inferences": [],
+  "payload": {
+    "checks": [
+      {
+        "category": "runtime_environment",
+        "evidence": [
+          {
+            "expected": "Asia/Shanghai",
+            "observed": "Asia/Shanghai"
+          }
+        ],
+        "id": "N07-C001",
+        "message": "runtime timezone=Asia/Shanghai (expected Asia/Shanghai)",
+        "name": "runtime:timezone",
+        "source_refs": [
+          {
+            "id": "timezone",
+            "type": "target"
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "category": "runtime_environment",
+        "evidence": [
+          {
+            "expected": "zh-CN",
+            "observed": "zh-CN"
+          }
+        ],
+        "id": "N07-C002",
+        "message": "runtime language=zh-CN (expected zh-CN)",
+        "name": "runtime:language",
+        "source_refs": [
+          {
+            "id": "language",
+            "type": "target"
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "category": "test_namespace",
+        "evidence": [
+          {
+            "observed": {
+              "cleanup_policy": {
+                "required": true
+              },
+              "namespace": "qa-a22-pilot-001-source-v1"
+            }
+          }
+        ],
+        "id": "N07-C003",
+        "message": "test namespace available with cleanup policy",
+        "name": "namespace:available",
+        "source_refs": [
+          {
+            "id": "namespace_policy",
+            "type": "target"
+          }
+        ],
+        "status": "passed"
+      },
+      {
+        "category": "test_data",
+        "evidence": [
+          {
+            "artifact_hash": "sha256:e8fdff2b11393a4c8cf2f29e60b25eeec9e03bbec506817e9d4a25c0c5c90024",
+            "decision": "validated",
+            "deferred_case_count": 0
+          }
+        ],
+        "id": "N07-C004",
+        "message": "N27 decision=validated",
+        "name": "test-data-plan:route",
+        "source_refs": [
+          {
+            "id": "n27-test-data-plan-validation",
+            "type": "artifact"
+          }
+        ],
+        "status": "passed"
+      }
+    ],
+    "decision": "passed",
+    "environment_class": "112",
+    "environment_fingerprint": "sha256:edd75be2ec76eedacf893af2309f768f49a9fc000376dce758ce5f65c201213e",
+    "next_node": "N08",
+    "observed_hash": "sha256:ca73166f5a6811c992dcdc909b3a550e962aa6448ccb40186e0eca7c349ec86a",
+    "production_isolation": false,
+    "schema_version": "n07-environment-precheck/1.0",
+    "source_snapshot_id": "pilot-001-source-v1",
+    "summary": {
+      "failed": 0,
+      "not_applicable": 0,
+      "passed": 4,
+      "warning": 0
+    },
+    "target_hash": "sha256:f5298f8b195a93698b6916a327e56b13e70a649ba42d1fa1933659fad33cd963",
+    "test_data_validation_hash": "sha256:e8fdff2b11393a4c8cf2f29e60b25eeec9e03bbec506817e9d4a25c0c5c90024",
+    "throttle_reason": "",
+    "throttled": false,
+    "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+  },
+  "producer": {
+    "component_id": "N07",
+    "component_version": "0.1.0",
+    "inference_config_hash": "none",
+    "model_provider": "none",
+    "model_snapshot": "deterministic",
+    "profile_version": "1.0.0",
+    "prompt_version": "none",
+    "runtime": "deterministic",
+    "tool_bundle_version": "none"
+  },
+  "reason_code": null,
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

@@ -1,0 +1,32 @@
+{
+  "artifact_hash": "sha256:3d7f917e618f3100b8f68e8c27e1cc934e805ba4e7ce99479e249788892dd95f",
+  "artifact_id": "n13-feedback-capture",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-20T07:49:15+00:00",
+  "evidence_refs": [],
+  "facts": [],
+  "inferences": [],
+  "payload": {
+    "quality_report_hash": "sha256:e06306ee065e75a909c6839e00f3d18766af5c894a27bf7ae16294cabf75d5f9",
+    "schema_version": "n13-feedback-capture/1.0",
+    "status": "ready_for_feedback"
+  },
+  "producer": {
+    "component_id": "N13",
+    "component_version": "0.1.0",
+    "inference_config_hash": "none",
+    "model_provider": "none",
+    "model_snapshot": "deterministic",
+    "profile_version": "1.0.0",
+    "prompt_version": "none",
+    "runtime": "deterministic",
+    "tool_bundle_version": "none"
+  },
+  "reason_code": null,
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

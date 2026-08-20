@@ -2030,6 +2030,19 @@ def test_prepare_and_ingest_multica_a14_generation_input(tmp_path: Path) -> None
     assert bundle["profile_id"] == "A14"
     assert bundle["output_contract"] == "automation-generation/1.0"
     assert bundle["allowed_inputs"]["layer"] == "backend"
+    allowed = bundle["allowed_inputs"]
+    catalog = allowed.get("api_catalog")
+    assert catalog is not None and catalog.get("schema_version") == "http-operation-catalog/1.0"
+    assert catalog.get("operation_count", 0) > 0
+    assert any(str(item.get("operationId", "")) for item in catalog.get("operations", []))
+    for case in allowed.get("cases", []):
+        for item in case.get("expected", []):
+            oracle = item.get("oracle")
+            assert isinstance(oracle, dict)
+            assert oracle.get("matcher") and oracle.get("observation_point")
+            assert "expected_value" in oracle or "expected_values" in oracle or oracle.get("matcher") in {
+                "manual_confirmation", "template_equals"
+            }
     artifact = ingest_multica_output(
         setup["inputs_dir"] / "a14-input.json",
         json.dumps(valid_a14_output(bundle, setup["case_ids"]), ensure_ascii=False),
@@ -2060,6 +2073,134 @@ def test_ingest_a14_rejects_unknown_rejected_case(tmp_path: Path) -> None:
             task_id="task-a14-x",
             issue_id="issue-a14-x",
             attachment_id="attachment-a14-x",
+            model_provider="codex",
+            model_snapshot="gpt-test",
+            prompt_version="1.0.0",
+        )
+
+
+def test_ingest_a14_accepts_candidate_path_alias(tmp_path: Path) -> None:
+    """code_candidates/candidate_files 用 candidate_path 键名时也应能摄入。
+
+    Agent 输出天然会镜像 case_mappings 的 candidate_path 键名；校验器把
+    path/candidate_path 归一化，同时仍以 content 现场计算哈希做权威校验。
+    """
+    setup = build_c5_prepare_inputs(tmp_path)
+    bundle = setup["a14_bundle"]
+    output = valid_a14_output(bundle, setup["case_ids"])
+    for candidate in output["code_candidates"]:
+        candidate["candidate_path"] = candidate.pop("path")
+    for file_item in output["manifest"]["candidate_files"]:
+        file_item["candidate_path"] = file_item.pop("path")
+    artifact = ingest_multica_output(
+        setup["inputs_dir"] / "a14-input.json",
+        json.dumps(output, ensure_ascii=False),
+        tmp_path / "stage14-alias",
+        task_id="task-a14-alias",
+        issue_id="issue-a14-alias",
+        attachment_id="attachment-a14-alias",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.0.0",
+    )
+    assert artifact["artifact_id"] == "a14-backend-automation-generation"
+
+
+def test_ingest_a14_backfills_authoritative_content_hash(tmp_path: Path) -> None:
+    """Agent 自算哈希不可靠：摄入时以 content 现场计算的哈希为权威并回填。
+
+    content 与声明 content_hash 不一致时不再拒掉完整源码，而是把真实哈希写回
+    code_candidates 与 manifest.candidate_files，保证下游绑定一致。
+    """
+    setup = build_c5_prepare_inputs(tmp_path)
+    bundle = setup["a14_bundle"]
+    output = valid_a14_output(bundle, setup["case_ids"])
+    candidate = output["code_candidates"][0]
+    candidate["content"] = candidate["content"] + "\n# trailer"
+    candidate["content_hash"] = "sha256:" + "0" * 64  # 错误声明，应被回填
+    artifact = ingest_multica_output(
+        setup["inputs_dir"] / "a14-input.json",
+        json.dumps(output, ensure_ascii=False),
+        tmp_path / "stage14-hash",
+        task_id="task-a14-hash",
+        issue_id="issue-a14-hash",
+        attachment_id="attachment-a14-hash",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.0.0",
+    )
+    payload = artifact["payload"]
+    stored = payload["code_candidates"][0]
+    computed = content_hash(stored["content"])
+    assert stored["content_hash"] == computed
+    manifest_files = {f["path"]: f["content_hash"] for f in payload["manifest"]["candidate_files"]}
+    assert manifest_files[stored["path"]] == computed
+    assert "candidate_path" not in stored
+
+
+def test_ingest_a14_backfills_execution_and_expected_artifacts(tmp_path: Path) -> None:
+    """Agent 未声明 execution/expected_artifacts 时系统按候选确定性派生回填。
+
+    N05/N08 依赖完整的执行契约；这两个字段可由 candidate_files 精确推导，
+    缺失时摄入归一化回填，避免 Agent 输出缺字段导致 N05 failed_fatal。
+    """
+    setup = build_c5_prepare_inputs(tmp_path)
+    bundle = setup["a14_bundle"]
+    output = valid_a14_output(bundle, setup["case_ids"])
+    manifest = output["manifest"]
+    manifest.pop("execution", None)
+    manifest.pop("expected_artifacts", None)
+    artifact = ingest_multica_output(
+        setup["inputs_dir"] / "a14-input.json",
+        json.dumps(output, ensure_ascii=False),
+        tmp_path / "stage14-exec",
+        task_id="task-a14-exec",
+        issue_id="issue-a14-exec",
+        attachment_id="attachment-a14-exec",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.0.0",
+    )
+    stored_manifest = artifact["payload"]["manifest"]
+    paths = [f["path"] for f in stored_manifest["candidate_files"]]
+    assert stored_manifest["execution"]["command"] == ["pytest", "-q", *paths]
+    assert stored_manifest["execution"]["timeout_seconds"] == 600
+    assert stored_manifest["expected_artifacts"] == ["junit_xml", "stdout", "stderr"]
+
+
+def test_ingest_a14_rejects_undetermined_execution_command(tmp_path: Path) -> None:
+    """Agent 声明 execution 时必须与候选路径精确一致，防命令注入。"""
+    setup = build_c5_prepare_inputs(tmp_path)
+    bundle = setup["a14_bundle"]
+    output = valid_a14_output(bundle, setup["case_ids"])
+    output["manifest"]["execution"]["command"].append("--pdb")
+    with pytest.raises(ContractError):
+        ingest_multica_output(
+            setup["inputs_dir"] / "a14-input.json",
+            json.dumps(output, ensure_ascii=False),
+            tmp_path / "stage14-exec-bad",
+            task_id="task-a14-exec-bad",
+            issue_id="issue-a14-exec-bad",
+            attachment_id="attachment-a14-exec-bad",
+            model_provider="codex",
+            model_snapshot="gpt-test",
+            prompt_version="1.0.0",
+        )
+
+
+def test_ingest_a14_rejects_invalid_expected_artifacts(tmp_path: Path) -> None:
+    setup = build_c5_prepare_inputs(tmp_path)
+    bundle = setup["a14_bundle"]
+    output = valid_a14_output(bundle, setup["case_ids"])
+    output["manifest"]["expected_artifacts"] = []
+    with pytest.raises(ContractError):
+        ingest_multica_output(
+            setup["inputs_dir"] / "a14-input.json",
+            json.dumps(output, ensure_ascii=False),
+            tmp_path / "stage14-artifacts-bad",
+            task_id="task-a14-artifacts-bad",
+            issue_id="issue-a14-artifacts-bad",
+            attachment_id="attachment-a14-artifacts-bad",
             model_provider="codex",
             model_snapshot="gpt-test",
             prompt_version="1.0.0",
@@ -2162,18 +2303,27 @@ def test_ingest_a18_rejects_generation_hash_mismatch(tmp_path: Path) -> None:
         "generator_hidden_reasoning_accessed": False,
         "evaluation_oracle_accessed": False,
     }
-    with pytest.raises(ContractError):
-        ingest_multica_output(
-            setup["inputs_dir"] / "a18-be-input.json",
-            json.dumps(output, ensure_ascii=False),
-            tmp_path / "stage18b",
-            task_id="task-a18-s",
-            issue_id="issue-a18-s",
-            attachment_id="attachment-a18-s",
-            model_provider="codex",
-            model_snapshot="gpt-test",
-            prompt_version="1.0.0",
-        )
+    artifact = ingest_multica_output(
+        setup["inputs_dir"] / "a18-be-input.json",
+        json.dumps(output, ensure_ascii=False),
+        tmp_path / "stage18b",
+        task_id="task-a18-s",
+        issue_id="issue-a18-s",
+        attachment_id="attachment-a18-s",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.0.0",
+    )
+    # 摄入时以冻结输入重算并回填绑定哈希，Agent 自算哈希不再阻塞复核
+    gen_payload = review_bundle["allowed_inputs"]["generation"]
+    payload = artifact["payload"]
+    assert payload["generation_hash"] == content_hash(gen_payload)
+    assert payload["manifest_hash"] == content_hash(gen_payload.get("manifest"))
+    expected_hashes = {
+        str(item.get("path")): str(item.get("content_hash", ""))
+        for item in gen_payload.get("code_candidates", [])
+    }
+    assert payload["candidate_hashes"] == expected_hashes
 
 
 def test_prepare_and_ingest_multica_a22_plan_input(tmp_path: Path) -> None:
@@ -2423,3 +2573,128 @@ def test_ingest_a22_rejects_unknown_case_plan(tmp_path: Path) -> None:
             model_snapshot="gpt-test",
             prompt_version="1.0.0",
         )
+
+
+def test_generation_input_regeneration_round_changes_bundle_hash(
+    tmp_path: Path,
+) -> None:
+    """重生成必须改变输入包哈希，否则幂等摄入会把被删的旧产物恢复回来。"""
+    setup = build_c5_prepare_inputs(tmp_path)
+    plan_path = tmp_path / "stage14" / "artifacts" / "n15-execution-plan.json"
+    first = prepare_multica_automation_generation_input(
+        setup["compiled_path"],
+        plan_path,
+        ROOT / "policies" / "automation-target-policy.json",
+        tmp_path / "c5-inputs-r0",
+        profile_id="A14",
+    )
+    same = prepare_multica_automation_generation_input(
+        setup["compiled_path"],
+        plan_path,
+        ROOT / "policies" / "automation-target-policy.json",
+        tmp_path / "c5-inputs-r0b",
+        profile_id="A14",
+    )
+    rerun = prepare_multica_automation_generation_input(
+        setup["compiled_path"],
+        plan_path,
+        ROOT / "policies" / "automation-target-policy.json",
+        tmp_path / "c5-inputs-r1",
+        profile_id="A14",
+        regeneration_round=1,
+    )
+    assert first["bundle_hash"] == same["bundle_hash"]
+    assert first["bundle_hash"] != rerun["bundle_hash"]
+    assert rerun["regeneration_round"] == "1"
+    assert "regeneration_round" not in first
+def test_generation_input_merges_a22_resources_and_verified_contracts(
+    tmp_path: Path,
+) -> None:
+    """A14 输入必须合并 A22 计划资源为 test_data.resource_requirements，并注入
+    112 已验证构造契约，否则生成器只能编占位 body、N08 setup 必然失败。"""
+    setup = build_c5_prepare_inputs(tmp_path)
+    n15_path = tmp_path / "stage14" / "artifacts" / "n15-execution-plan.json"
+    backend_case_id = str(setup["case_ids"][0])
+    plan = {
+        "schema_version": "test-data-plan/1.0",
+        "environment": "112",
+        "namespace": "qa-a22-pilot-001-source-v1",
+        "status": "completed",
+        "case_plans": [
+            {
+                "case_id": backend_case_id,
+                "requires_data_construction": True,
+                "resources": [
+                    {
+                        "resource_key": "cd_field",
+                        "resource_type": "custom_dimension",
+                        "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+                        "resource_id_variable": "cd_field_id",
+                        "high_risk_write": True,
+                    },
+                    {
+                        "resource_key": "rs_metric",
+                        "resource_type": "aggregate_metric",
+                        "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule",
+                        "resource_id_variable": "rs_metric_id",
+                    },
+                ],
+                "source_refs": [backend_case_id],
+            }
+        ],
+        "paused_cases": [],
+        "unresolved_requirements": [],
+        "planning_mode": "case_explicit",
+    }
+    envelope = ArtifactEnvelope(
+        workflow_run_id=setup["a14_bundle"]["workflow_run_id"],
+        workflow_mode=setup["a14_bundle"]["workflow_mode"],
+        artifact_id="a22-test-data-plan",
+        source_snapshot_id=setup["a14_bundle"]["source_snapshot_id"],
+        producer=Producer(component_id="A22", runtime="agent"),
+        payload=plan,
+        status=ArtifactStatus.COMPLETED,
+    )
+    store = ArtifactStore(tmp_path / "stage-a22")
+    store.write_artifact(envelope)
+    plan_path = tmp_path / "stage-a22" / "artifacts" / "a22-test-data-plan.json"
+
+    bundle = prepare_multica_automation_generation_input(
+        setup["compiled_path"],
+        n15_path,
+        ROOT / "policies" / "automation-target-policy.json",
+        tmp_path / "c5-inputs-contracts",
+        profile_id="A14",
+        test_data_plan_path=plan_path,
+    )
+    case = next(
+        item for item in bundle["allowed_inputs"]["cases"]
+        if str(item["id"]) == backend_case_id
+    )
+    requirements = case["test_data"]["resource_requirements"]
+    assert [item["resource_key"] for item in requirements] == ["cd_field", "rs_metric"]
+    for resource in requirements:
+        assert resource["setup_operation"]
+        assert resource["required_body_keys"]
+    contracts = bundle["allowed_inputs"]["verified_setup_contracts"]
+    assert contracts["schema_version"] == "verified-setup-contracts/1.0"
+    assert "fs_bi_stat.custom_dimension.create_custom_dimension" in contracts["contracts"]
+    assert "required_body_keys" in contracts["contracts"][
+        "fs_bi_stat.custom_dimension.create_custom_dimension"
+    ]
+    assert bundle["allowed_inputs"]["input_bindings"]["verified_setup_contracts_hash"].startswith(
+        "sha256:"
+    )
+    assert any(
+        item["artifact_id"] == "a22-test-data-plan"
+        for item in bundle["upstream_artifacts"]
+    )
+
+    a15 = prepare_multica_automation_generation_input(
+        setup["compiled_path"],
+        n15_path,
+        ROOT / "policies" / "automation-target-policy.json",
+        tmp_path / "c5-inputs-a15",
+        profile_id="A15",
+    )
+    assert "verified_setup_contracts" not in a15["allowed_inputs"]

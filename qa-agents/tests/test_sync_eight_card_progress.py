@@ -14,6 +14,7 @@ from qa_agents.contracts import (
 from qa_agents.multica import (
     ContractError,
     prepare_multica_automation_generation_input,
+    prepare_multica_automation_review_input,
     prepare_multica_oracle_review_input,
     prepare_multica_test_data_plan_input,
     prepare_multica_test_data_plan_revision_input,
@@ -52,6 +53,7 @@ ensure_n27_validation = _sync_module.ensure_n27_validation
 ensure_a22_correction_dispatch = _sync_module.ensure_a22_correction_dispatch
 ensure_n05_aggregation = _sync_module.ensure_n05_aggregation
 ensure_g03_review = _sync_module.ensure_g03_review
+ensure_n07_precheck = _sync_module.ensure_n07_precheck
 _comment_artifact_output = _sync_module._comment_artifact_output
 _ingest_issue = _sync_module._ingest_issue
 
@@ -3474,14 +3476,205 @@ def test_ensure_node_record_issues_creates_record_cards(
     assert "--status" in created
     assert "done" in created
     assert any("n25-compiled-test-cases.json" in str(part) for part in created)
+    # 已存在且状态一致时不重复创建
     rerun = ensure_node_record_issues(
         config,
         "run-1",
         setup["artifact_dir"],
-        {"N25": [{"id": "existing-record"}]},
+        {"N25": [{"id": "existing-record", "status": "done"}]},
         apply=True,
     )
     assert all(record["node_id"] != "N25" for record in rerun)
+    # 已存在但状态与 Artifact 不一致时同步回显（N27 blocked -> completed_with_gaps）
+    synced_calls = []
+
+    def syncing_multica(*args: str, **kwargs):
+        synced_calls.append(list(args))
+        if args[:2] == ("issue", "status"):
+            return {"id": args[2], "status": args[3]}
+        return {"id": f"record-{len(synced_calls)}", "identifier": "QAA-950"}
+
+    monkeypatch.setattr(_sync_module, "_multica", syncing_multica)
+    synced = ensure_node_record_issues(
+        config,
+        "run-1",
+        setup["artifact_dir"],
+        {"N25": [{"id": "existing-record", "status": "blocked"}]},
+        apply=True,
+    )
+    n25_synced = next(record for record in synced if record["node_id"] == "N25")
+    assert n25_synced["action"] == "synced"
+    assert n25_synced["status"] == "done"
+    assert any(call[:2] == ["issue", "status"] and call[3] == "done" for call in synced_calls)
+
+
+def test_ensure_node_record_issues_syncs_blocked_artifact_to_blocked(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A blocked deterministic Artifact must echo blocked on the record Issue
+    (for example N11 quality_blocked), not fall back to the default done."""
+
+    setup = _stage_two_setup(tmp_path)
+    config = _a11_config()
+    calls = []
+
+    def syncing_multica(*args: str, **kwargs):
+        calls.append(list(args))
+        if args[:2] == ("issue", "status"):
+            return {"id": args[2], "status": args[3]}
+        return {"id": f"record-{len(calls)}", "identifier": "QAA-960"}
+
+    monkeypatch.setattr(_sync_module, "_multica", syncing_multica)
+    n25_path = setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json"
+    blocked = json.loads(n25_path.read_text(encoding="utf-8"))
+    blocked["status"] = ArtifactStatus.BLOCKED.value
+    n25_path.write_text(json.dumps(blocked, ensure_ascii=False), encoding="utf-8")
+    synced = ensure_node_record_issues(
+        config,
+        "run-1",
+        setup["artifact_dir"],
+        {"N25": [{"id": "existing-record", "status": "done"}]},
+        apply=True,
+    )
+    n25_synced = next(record for record in synced if record["node_id"] == "N25")
+    assert n25_synced["action"] == "synced"
+    assert n25_synced["status"] == "blocked"
+    assert any(call[:2] == ["issue", "status"] and call[3] == "blocked" for call in calls)
+
+
+def _write_artifact_with_reason(
+    dir_path: Path,
+    artifact_id: str,
+    payload: dict,
+    status: ArtifactStatus,
+    reason_code: str,
+) -> Path:
+    envelope = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id=artifact_id,
+        source_snapshot_id="snapshot-1",
+        producer=Producer("N01"),
+        payload=payload,
+        status=status,
+        reason_code=reason_code,
+    )
+    (dir_path / "artifacts").mkdir(parents=True, exist_ok=True)
+    target = dir_path / "artifacts" / f"{artifact_id}.json"
+    target.write_text(
+        json.dumps(envelope.to_dict(), ensure_ascii=False), encoding="utf-8"
+    )
+    return target
+
+
+def test_ensure_node_record_issues_renders_retry_approval_on_retryable(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A failed_retryable record (N08/N10) must flip to in_review and carry a
+    structured retry-approval block instead of an empty 审核中 card."""
+
+    artifact_dir = tmp_path / "artifacts-auto"
+    n08 = _write_artifact_with_reason(
+        artifact_dir,
+        "n08-automation-execution",
+        {
+            "schema_version": "n08-automation-execution/1.0",
+            "decision": "retryable_infrastructure_failure",
+            "next_node": "N10",
+            "summary": {"total": 6, "failed": 1, "passed": 0, "skipped": 0},
+        },
+        ArtifactStatus.FAILED_RETRYABLE,
+        reason_code="automation_infrastructure_failure",
+    )
+    n10 = _write_artifact_with_reason(
+        artifact_dir,
+        "n10-retry-budget",
+        {
+            "schema_version": "n10-retry-budget/1.0",
+            "attempt": 0,
+            "decision": "retry_allowed",
+            "max_attempts": 1,
+            "next_node": "N07",
+        },
+        ArtifactStatus.FAILED_RETRYABLE,
+        reason_code="environment_retry_allowed",
+    )
+    calls = []
+
+    def fake_multica(*args: str, **kwargs):
+        calls.append(list(args))
+        return {"id": f"record-{len(calls)}", "identifier": f"QAA-{900 + len(calls)}"}
+
+    monkeypatch.setattr(_sync_module, "_multica", fake_multica)
+    records = ensure_node_record_issues(
+        _a11_config(), "run-1", artifact_dir, {}, apply=True
+    )
+    by_node = {record["node_id"]: record for record in records}
+    assert by_node["N08"]["status"] == "in_review"
+    assert by_node["N08"]["approval_rendered"] is True
+    assert by_node["N10"]["status"] == "in_review"
+    assert by_node["N10"]["approval_rendered"] is True
+    n08_desc = (n08.with_name(f"{n08.name}.record.md")).read_text(encoding="utf-8")
+    assert "## 你需要处理" in n08_desc
+    assert "批准重试" in n08_desc
+    assert "重试预算" in n08_desc
+    assert "`automation_infrastructure_failure`" in n08_desc
+    assert "`total=6`" in n08_desc
+    assert "`retry_allowed`" in n08_desc
+    assert "`N07`" in n08_desc
+    n10_desc = (n10.with_name(f"{n10.name}.record.md")).read_text(encoding="utf-8")
+    assert "## 你需要处理" in n10_desc
+    assert "`environment_retry_allowed`" in n10_desc
+    assert "允许重试：`1` 次" in n10_desc
+    created = [call for call in calls if call[:2] == ["issue", "create"]]
+    assert len(created) == 2
+    assert all("--status" in call and call[call.index("--status") + 1] == "in_review" for call in created)
+
+
+def test_ensure_node_record_issues_refreshes_retry_content_when_already_in_review(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A retryable record already in_review with the old generic template must
+    still get its approval block rewritten on the next sync."""
+
+    artifact_dir = tmp_path / "artifacts-auto"
+    n08 = _write_artifact_with_reason(
+        artifact_dir,
+        "n08-automation-execution",
+        {
+            "schema_version": "n08-automation-execution/1.0",
+            "decision": "retryable_infrastructure_failure",
+            "next_node": "N10",
+            "summary": {"total": 6, "failed": 1, "passed": 0, "skipped": 0},
+        },
+        ArtifactStatus.FAILED_RETRYABLE,
+        reason_code="automation_infrastructure_failure",
+    )
+    calls = []
+
+    def fake_multica(*args: str, **kwargs):
+        calls.append(list(args))
+        if args[:2] == ("issue", "update"):
+            return {"id": args[2], "status": args[args.index("--status") + 1]}
+        return {"id": f"record-{len(calls)}", "identifier": "QAA-970"}
+
+    monkeypatch.setattr(_sync_module, "_multica", fake_multica)
+    synced = ensure_node_record_issues(
+        _a11_config(),
+        "run-1",
+        artifact_dir,
+        {"N08": [{"id": "existing-n08", "identifier": "QAA-349", "status": "in_review"}]},
+        apply=True,
+    )
+    n08_synced = next(record for record in synced if record["node_id"] == "N08")
+    assert n08_synced["action"] == "synced"
+    assert n08_synced["approval_rendered"] is True
+    update = next(call for call in calls if call[:2] == ["issue", "update"])
+    assert update[update.index("--status") + 1] == "in_review"
+    assert "--description-file" in update
+    desc = (n08.with_name(f"{n08.name}.record.md")).read_text(encoding="utf-8")
+    assert "## 你需要处理" in desc
+    assert "批准重试" in desc
 
 
 def _c5_config() -> dict:
@@ -3611,7 +3804,19 @@ def _generation_artifact(
 ) -> Path:
     bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
     candidate_path = f"generated/backend/test_{case_ids[0].casefold().replace('-', '_')}.py"
-    content = 'CASE_SPEC = {}\ndef test_x(case_runner):\n    case_runner.execute(CASE_SPEC)\n    case_runner.assert_oracles(observations, CASE_SPEC["expected"])\n'
+    content = (
+        '"""Artifact-only candidate generated from approved Test Case IR."""\n'
+        "CASE_SPEC = {\n"
+        '    "id": "TC-BE-001-BACKEND",\n'
+        '    "test_level": "integration",\n'
+        '    "steps": [{"name": "describe detail", "request": {"api": "fs_bi_stat.describe_query.detail", "json": {}}}],\n'
+        '    "expected": [{"id": "EXP-1", "oracle": {"matcher": "equals", "observation_point": "detail_api.error.code", "expected_value": "s307011534"}}],\n'
+        '    "cleanup": [],\n'
+        "}\n"
+        "def test_x(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        '    case_runner.assert_oracles(observations, CASE_SPEC["expected"])\n'
+    )
     candidate = {
         "path": candidate_path,
         "content": content,
@@ -3749,6 +3954,358 @@ def test_ensure_a18_dispatch_prepares_input_after_generation(tmp_path: Path) -> 
     assert result is not None
     assert result["action"] == "would_dispatch"
     assert (setup["inputs_dir"] / "a18-be-input.json").exists()
+
+
+def test_ensure_a18_dispatch_skips_fresh_review(tmp_path: Path) -> None:
+    """复核 generation_hash 与当前生成载荷一致时视为新鲜，不再派发。"""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    bundle = prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A14",
+    )
+    generation_path = _generation_artifact(
+        setup["artifact_dir"],
+        setup["inputs_dir"] / "a14-input.json",
+        "A14",
+        "a14-backend-automation-generation",
+        ["TC-BE-001-BACKEND"],
+    )
+    generation = json.loads(generation_path.read_text(encoding="utf-8"))
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-be-backend-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": content_hash(generation["payload"]),
+            "approved": True,
+            "issues": [],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    result = ensure_a18_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {},
+        reviewer="A18-BE",
+        apply=False,
+    )
+    assert result is None
+
+
+def test_ensure_a18_dispatch_redispatch_when_review_stale(tmp_path: Path) -> None:
+    """A14 重生成后旧复核失效：移除陈旧 artifact 并触发复核重派。"""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    bundle = prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A14",
+    )
+    generation_path = _generation_artifact(
+        setup["artifact_dir"],
+        setup["inputs_dir"] / "a14-input.json",
+        "A14",
+        "a14-backend-automation-generation",
+        ["TC-BE-001-BACKEND"],
+    )
+    review_path = setup["artifact_dir"] / "artifacts" / "a18-be-backend-automation-review.json"
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-be-backend-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": "sha256:stale-generation",
+            "approved": True,
+            "issues": [],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    assert review_path.exists()
+    result = ensure_a18_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {},
+        reviewer="A18-BE",
+        apply=False,
+    )
+    assert result is not None
+    assert result["action"] == "would_dispatch"
+    assert not review_path.exists()
+
+
+def test_ensure_a18_dispatch_keeps_frozen_bundle_when_issue_in_flight(
+    tmp_path: Path,
+) -> None:
+    """在途复核 issue 存在时不得重建 bundle 或清理 stale artifact。
+
+    回归：A18 曾先重建复核输入 bundle（regeneration_round 递增改变哈希）
+    再在 _dispatch_c5_agent 内发现在途 issue，导致在途 run 绑定哈希被覆盖，
+    完成后摄入哈希不匹配而永久 in_progress/blocked。
+    """
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A14",
+    )
+    generation_path = _generation_artifact(
+        setup["artifact_dir"],
+        setup["inputs_dir"] / "a14-input.json",
+        "A14",
+        "a14-backend-automation-generation",
+        ["TC-BE-001-BACKEND"],
+    )
+    review_path = setup["artifact_dir"] / "artifacts" / "a18-be-backend-automation-review.json"
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-be-backend-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": "sha256:stale-generation",
+            "approved": True,
+            "issues": [],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    prepare_multica_automation_review_input(
+        generation_path,
+        setup["inputs_dir"] / "a14-input.json",
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A18-BE",
+        regeneration_round=0,
+    )
+    bundle_path = setup["inputs_dir"] / "a18-be-input.json"
+    hash_before = content_hash(json.loads(bundle_path.read_text(encoding="utf-8")))
+    assert review_path.exists()
+    in_flight = [
+        {
+            "id": "issue-in-flight",
+            "identifier": "QAA-1",
+            "title": "[REQ-1-r001] A18-BE 服务端自动化独立复核",
+            "status": "in_progress",
+        }
+    ]
+    result = ensure_a18_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {"A18-BE": in_flight},
+        reviewer="A18-BE",
+        apply=False,
+    )
+    assert result is not None
+    assert result["action"] == "already_dispatched"
+    assert content_hash(json.loads(bundle_path.read_text(encoding="utf-8"))) == hash_before
+    assert review_path.exists()
+
+
+def test_ensure_n05_aggregation_recomputes_when_review_changes(tmp_path: Path) -> None:
+    """复核 Artifact 变化后 N05 必须重算，避免用旧复核放行新代码。"""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    bundle = prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A14",
+    )
+    generation_path = _generation_artifact(
+        setup["artifact_dir"],
+        setup["inputs_dir"] / "a14-input.json",
+        "A14",
+        "a14-backend-automation-generation",
+        ["TC-BE-001-BACKEND"],
+    )
+    generation = json.loads(generation_path.read_text(encoding="utf-8"))
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-be-backend-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": content_hash(generation["payload"]),
+            "approved": True,
+            "issues": [],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    first = ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert first is not None and first["status"] == "completed"
+    # 复核内容变化（artifact_hash 变化）后 N05 必须重算。
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-be-backend-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": content_hash(generation["payload"]),
+            "approved": True,
+            "issues": [],
+            "note": "re-reviewed after regeneration",
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    second = ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert second is not None and second["status"] == "completed"
+
+
+def test_ensure_n05_aggregation_excludes_stale_review_after_regeneration(
+    tmp_path: Path,
+) -> None:
+    """A14 重生成后遗留的旧复核（generation_hash 不匹配）不得算 review_passed，
+    否则 N05 会用旧复核放行新候选，G03 卡也会展示错误的"复核已通过"。"""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    bundle = prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A14",
+    )
+    generation_path = _generation_artifact(
+        setup["artifact_dir"],
+        setup["inputs_dir"] / "a14-input.json",
+        "A14",
+        "a14-backend-automation-generation",
+        ["TC-BE-001-BACKEND"],
+    )
+    generation = json.loads(generation_path.read_text(encoding="utf-8"))
+    def _n05_passed() -> bool:
+        artifact = json.loads(
+            (setup["artifact_dir"] / "artifacts" / "n05-automation-code-check.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        return bool(artifact.get("payload", {}).get("passed"))
+
+    no_review = ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert no_review is not None and no_review["status"] == "needs_human"
+    assert _n05_passed() is False
+    # 旧复核：generation_hash 指向旧代，不得计入。
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-be-backend-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": "sha256:old-generation",
+            "approved": True,
+            "issues": [],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    # 陈旧复核被排除后，N05 的证据集与无复核时一致（生成 hash 相同），
+    # 引擎判定无需重算；无论如何 N05 都不能是 passed。
+    ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert _n05_passed() is False
+    # 新复核：generation_hash 绑定当前生成，才计入 review_passed。
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-be-backend-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": content_hash(generation["payload"]),
+            "approved": True,
+            "issues": [],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    second = ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert second is not None and second["status"] == "completed"
+    assert _n05_passed() is True
+    artifact = json.loads(
+        (setup["artifact_dir"] / "artifacts" / "n05-automation-code-check.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert any(
+        str(binding.get("generation_hash", "")) == content_hash(generation["payload"])
+        for binding in artifact["payload"]["input_bindings"]
+    )
+
+
+def test_ensure_n05_aggregation_recomputes_when_review_removed(tmp_path: Path) -> None:
+    """复核被移除（A14 重生成后旧复核失效）必须触发 N05 重算，不能停留在
+    passed=True：无有效复核时 N05 必须是 needs_human。"""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    bundle = prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A14",
+    )
+    generation_path = _generation_artifact(
+        setup["artifact_dir"],
+        setup["inputs_dir"] / "a14-input.json",
+        "A14",
+        "a14-backend-automation-generation",
+        ["TC-BE-001-BACKEND"],
+    )
+    generation = json.loads(generation_path.read_text(encoding="utf-8"))
+    review_path = setup["artifact_dir"] / "artifacts" / "a18-be-backend-automation-review.json"
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-be-backend-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": content_hash(generation["payload"]),
+            "approved": True,
+            "issues": [],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+
+    def _n05_passed() -> bool:
+        artifact = json.loads(
+            (setup["artifact_dir"] / "artifacts" / "n05-automation-code-check.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        return bool(artifact.get("payload", {}).get("passed"))
+
+    assert ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT) is not None
+    assert _n05_passed() is True
+    # 移除复核（旧复核被清理）后必须重算为 needs_human，而不是继续 passed。
+    review_path.unlink()
+    result = ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert result is not None and result["status"] == "needs_human"
+    assert _n05_passed() is False
 
 
 def test_ensure_n27_validation_writes_artifact(tmp_path: Path) -> None:
@@ -4013,6 +4570,7 @@ def test_ensure_n05_aggregation_after_generation_and_reviews(tmp_path: Path) -> 
         "a14-backend-automation-generation",
         ["TC-BE-001-BACKEND"],
     )
+    generation = json.loads(generation_path.read_text(encoding="utf-8"))
     _write_artifact(
         setup["artifact_dir"],
         "a18-be-backend-automation-review",
@@ -4020,6 +4578,7 @@ def test_ensure_n05_aggregation_after_generation_and_reviews(tmp_path: Path) -> 
             "schema_version": "automation-review/1.0",
             "workflow_run_id": "REQ-1-r001",
             "source_snapshot_id": "snapshot-1",
+            "generation_hash": content_hash(generation["payload"]),
             "approved": True,
             "issues": [],
         },
@@ -4083,3 +4642,577 @@ def test_ensure_g03_review_prepares_request(tmp_path: Path) -> None:
     assert result["node_id"] == "G03"
     assert result["action"] == "would_open"
     assert (tmp_path / "g03-auto" / "g03-review-request.json").exists()
+
+
+def test_ensure_a14_dispatch_does_not_overwrite_bundle_while_in_flight(
+    tmp_path: Path,
+) -> None:
+    """A dispatched/running A14 Issue must not trigger a bundle regeneration.
+
+    Regenerating ``a14-input.json`` after dispatch changes its content-addressed
+    hash; the Agent output binds the original hash and ingestion fails forever.
+    """
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    first = ensure_a14_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {},
+        apply=False,
+    )
+    assert first is not None and first["action"] == "would_dispatch"
+    bundle_path = setup["inputs_dir"] / "a14-input.json"
+    original = bundle_path.read_bytes()
+
+    running_issue = {
+        "id": "issue-a14-running",
+        "identifier": "QAA-999",
+        "title": "[REQ-1-r001] A14 服务端自动化生成",
+        "status": "in_progress",
+    }
+    result = ensure_a14_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {"A14": [running_issue]},
+        apply=False,
+    )
+    assert result is not None
+    assert result["action"] == "already_dispatched"
+    assert result["issue_id"] == "issue-a14-running"
+    assert bundle_path.read_bytes() == original
+
+
+def test_ensure_a15_dispatch_does_not_overwrite_bundle_while_in_flight(
+    tmp_path: Path,
+) -> None:
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    first = ensure_a15_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {},
+        apply=False,
+    )
+    assert first is not None and first["action"] == "would_dispatch"
+    bundle_path = setup["inputs_dir"] / "a15-input.json"
+    original = bundle_path.read_bytes()
+
+    running_issue = {
+        "id": "issue-a15-running",
+        "title": "[REQ-1-r001] A15 契约自动化生成",
+        "status": "in_progress",
+    }
+    result = ensure_a15_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {"A15": [running_issue]},
+        apply=False,
+    )
+    assert result is not None
+    assert result["action"] == "already_dispatched"
+    assert bundle_path.read_bytes() == original
+
+
+def test_ensure_a14_dispatch_redispatch_after_failed_attempt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A blocked (ingest-failed) attempt frees the rerun budget: the node can
+    re-dispatch with a fresh bundle instead of staying in_progress forever."""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    config["agent_rerun_budget"] = 1
+
+    def fake_multica(*args: str, **kwargs):
+        if args[:2] == ("issue", "create"):
+            return {"id": "issue-a14-retry", "identifier": "QAA-1000"}
+        return {}
+
+    monkeypatch.setattr(_sync_module, "_multica", fake_multica)
+    failed_issue = {
+        "id": "issue-a14-old",
+        "title": "[REQ-1-r001] A14 服务端自动化生成",
+        "status": "blocked",
+    }
+    result = ensure_a14_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {"A14": [failed_issue]},
+        apply=True,
+    )
+    assert result is not None
+    assert result["action"] == "dispatched"
+    assert result["issue_id"] == "issue-a14-retry"
+    bundles = json.loads(
+        (setup["inputs_dir"] / ".issue-bundles.json").read_text(encoding="utf-8")
+    )
+    assert bundles["issue-a14-retry"].endswith("a14-input.json")
+
+
+def test_ensure_a22_dispatch_gate_respects_rerun_budget(tmp_path: Path) -> None:
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    config["agent_rerun_budget"] = 1
+    done_issues = [
+        {"id": "a22-1", "title": "[REQ-1-r001] A22 112 测试数据规划", "status": "done"},
+        {"id": "a22-2", "title": "[REQ-1-r001] A22 测试数据规划修正", "status": "done"},
+    ]
+    result = ensure_a22_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {"A22": done_issues},
+        apply=False,
+    )
+    assert result is not None
+    assert result["action"] == "rerun_budget_exhausted"
+    assert not (setup["inputs_dir"] / "a22-input.json").exists()
+
+
+def test_ensure_n27_validation_accepts_needs_human_plan_as_gaps(
+    tmp_path: Path,
+) -> None:
+    """A22 may legally return needs_human (unresolved data semantics). N27 must
+    run the security-level structural validation and release the plan as
+    completed_with_gaps instead of dead-locking C5 on rejected."""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    _write_artifact(
+        setup["artifact_dir"],
+        "a22-test-data-plan",
+        {
+            "schema_version": "test-data-plan/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "input_bundle_hash": "sha256:bundle",
+            "status": "needs_human",
+            "environment": "112",
+            "namespace": "qa-a22-pending-human",
+            "planning_mode": "case_explicit",
+            "case_plans": [
+                {
+                    "case_id": "TC-BE-001-BACKEND",
+                    "requires_data_construction": True,
+                    "source_refs": ["TC-BE-001-BACKEND"],
+                    "resources": [
+                        {
+                            "resource_key": "cd_field",
+                            "resource_type": "custom_dimension",
+                            "resource_id_variable": "cd_field_id",
+                            "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+                        }
+                    ],
+                }
+            ],
+            "paused_cases": [],
+            "unresolved_requirements": [
+                {"requirement_id": "UR-01", "reason_code": "chart_create_op_unverified"}
+            ],
+        },
+        ArtifactStatus.NEEDS_HUMAN,
+    )
+    result = ensure_n27_validation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert result is not None
+    assert result["node_id"] == "N27"
+    assert result["status"] == "completed_with_gaps"
+    assert result["valid"] is True
+    n27 = json.loads(
+        (setup["artifact_dir"] / "artifacts" / "n27-test-data-plan-validation.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert n27["payload"]["valid"] is True
+    assert n27["payload"]["pending_human"] is True
+
+
+def test_ensure_n27_validation_still_rejects_invalid_needs_human_plan(
+    tmp_path: Path,
+) -> None:
+    """Security-level violations (for example an unknown setup operation) must
+    stay rejected even when the plan is waiting for human confirmation."""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    _write_artifact(
+        setup["artifact_dir"],
+        "a22-test-data-plan",
+        {
+            "schema_version": "test-data-plan/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "input_bundle_hash": "sha256:bundle",
+            "status": "needs_human",
+            "environment": "112",
+            "namespace": "qa-a22-pending-human",
+            "planning_mode": "case_explicit",
+            "case_plans": [
+                {
+                    "case_id": "TC-BE-001-BACKEND",
+                    "requires_data_construction": True,
+                    "source_refs": ["TC-BE-001-BACKEND"],
+                    "resources": [
+                        {
+                            "resource_key": "cd_field",
+                            "resource_type": "custom_dimension",
+                            "resource_id_variable": "cd_field_id",
+                            "setup_operation": "not.a.real.operation",
+                        }
+                    ],
+                }
+            ],
+            "paused_cases": [],
+            "unresolved_requirements": [],
+        },
+        ArtifactStatus.NEEDS_HUMAN,
+    )
+    result = ensure_n27_validation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert result is not None
+    assert result["status"] == "blocked"
+    assert result["valid"] is False
+    assert result["decision"] == "rejected"
+
+
+def _not_applicable_generation(
+    artifact_dir: Path, bundle_path: Path
+) -> None:
+    """A15-style generation: no contract Cases, manifest stays null."""
+    bundle = json.loads(bundle_path.read_text(encoding="utf-8"))
+    _write_artifact(
+        artifact_dir,
+        "a15-contract-automation-generation",
+        {
+            "schema_version": "automation-generation/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "input_bundle_hash": bundle["bundle_hash"],
+            "status": "not_applicable",
+            "manifest": None,
+            "code_candidates": [],
+            "rejected_cases": [
+                {
+                    "case_id": "TC-CON-001-CONTRACT",
+                    "reason_code": "contract_ref_missing",
+                    "source_refs": ["TC-CON-001-CONTRACT"],
+                }
+            ],
+            "evaluation_oracle_accessed": False,
+        },
+        ArtifactStatus.NOT_APPLICABLE,
+    )
+
+
+def test_ensure_a18_dispatch_marks_reviewer_skipped_for_not_applicable_generation(
+    tmp_path: Path,
+) -> None:
+    """A not_applicable generation (A15) must produce a deterministic
+    not_applicable reviewer marker (A18-CT) instead of leaving the reviewer
+    node not_started and stalling the stage card forever."""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A15",
+    )
+    _not_applicable_generation(setup["artifact_dir"], setup["inputs_dir"] / "a15-input.json")
+    result = ensure_a18_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {},
+        reviewer="A18-CT",
+        apply=False,
+    )
+    assert result is not None
+    assert result["action"] == "skipped_not_applicable"
+    marker = json.loads(
+        (
+            setup["artifact_dir"]
+            / "artifacts"
+            / "a18-ct-contract-automation-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert marker["status"] == "not_applicable"
+    assert marker["payload"]["decision"] == "not_applicable"
+    assert marker["payload"]["generation_hash"] == content_hash(
+        json.loads(
+            (
+                setup["artifact_dir"]
+                / "artifacts"
+                / "a15-contract-automation-generation.json"
+            ).read_text(encoding="utf-8")
+        )["payload"]
+    )
+
+
+def test_ensure_a18_dispatch_not_applicable_marker_is_idempotent(
+    tmp_path: Path,
+) -> None:
+    """The deterministic not_applicable marker must not be rewritten while the
+    generation payload is unchanged."""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A15",
+    )
+    _not_applicable_generation(setup["artifact_dir"], setup["inputs_dir"] / "a15-input.json")
+    first = ensure_a18_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {},
+        reviewer="A18-CT",
+        apply=False,
+    )
+    assert first is not None and first["action"] == "skipped_not_applicable"
+    marker_path = (
+        setup["artifact_dir"]
+        / "artifacts"
+        / "a18-ct-contract-automation-review.json"
+    )
+    marker_before = marker_path.read_text(encoding="utf-8")
+    second = ensure_a18_dispatch(
+        config,
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {},
+        reviewer="A18-CT",
+        apply=False,
+    )
+    assert second is None
+    assert marker_path.read_text(encoding="utf-8") == marker_before
+
+
+def test_ensure_n05_aggregation_ignores_not_applicable_reviewer_marker(
+    tmp_path: Path,
+) -> None:
+    """A deterministic not_applicable reviewer marker is evidence of a skip,
+    not a real review: it must not flip N05 review_passed to False."""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    bundle = prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A14",
+    )
+    _generation_artifact(
+        setup["artifact_dir"],
+        setup["inputs_dir"] / "a14-input.json",
+        "A14",
+        "a14-backend-automation-generation",
+        ["TC-BE-001-BACKEND"],
+    )
+    generation = json.loads(
+        (
+            setup["artifact_dir"]
+            / "artifacts"
+            / "a14-backend-automation-generation.json"
+        ).read_text(encoding="utf-8")
+    )
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-be-backend-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": content_hash(generation["payload"]),
+            "approved": True,
+            "issues": [],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-ct-contract-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": "sha256:not-applicable",
+            "decision": "not_applicable",
+            "approved": False,
+        },
+        ArtifactStatus.NOT_APPLICABLE,
+    )
+    result = ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert result is not None
+    assert result["node_id"] == "N05"
+    assert result["passed"] is True
+    assert result["status"] == "completed"
+
+
+def _c5_terminal_artifacts(artifact_dir: Path) -> None:
+    """Minimal accepted Artifact set that makes _c5_terminal() True."""
+    for artifact_id in (
+        "a14-backend-automation-generation",
+        "a15-contract-automation-generation",
+        "a18-be-backend-automation-review",
+        "n05-automation-code-check",
+        "g03-automation-code-review",
+    ):
+        _write_artifact(
+            artifact_dir,
+            artifact_id,
+            {
+                "schema_version": "artifact/1.0",
+                "workflow_run_id": "REQ-1-r001",
+                "source_snapshot_id": "snapshot-1",
+            },
+            ArtifactStatus.COMPLETED,
+        )
+    n27 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="n27-test-data-plan-validation",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("N27"),
+        payload={
+            "schema_version": "test-data-plan-validation/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "valid": True,
+            "decision": "validated",
+            "deferred_cases": [],
+        },
+        status=ArtifactStatus.COMPLETED,
+    )
+    (artifact_dir / "artifacts" / "n27-test-data-plan-validation.json").write_text(
+        json.dumps(n27.to_dict(), ensure_ascii=False), encoding="utf-8"
+    )
+    _write_artifact(
+        artifact_dir,
+        "a22-test-data-plan",
+        {
+            "schema_version": "test-data-plan/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "status": "completed",
+            "environment": "112",
+            "namespace": "qa-namespace-from-plan",
+        },
+        ArtifactStatus.COMPLETED,
+    )
+
+
+def test_ensure_n07_precheck_synthesizes_env_inputs(tmp_path: Path) -> None:
+    """N07 must synthesize env target/observed from the run's own data instead
+    of waiting forever for a manual environment handoff, so C6 can start."""
+    artifact_dir = tmp_path / "artifacts-auto"
+    inputs_dir = tmp_path / "inputs"
+    inputs_dir.mkdir(parents=True, exist_ok=True)
+    _c5_terminal_artifacts(artifact_dir)
+    config = _c5_config()
+    result = ensure_n07_precheck(
+        config, "REQ-1-r001", artifact_dir, inputs_dir, QA_AGENTS_ROOT
+    )
+    assert result is not None
+    assert result["node_id"] == "N07"
+    assert result["env_input_synthesized"] is True
+    target = json.loads((inputs_dir / "env-target.json").read_text(encoding="utf-8"))
+    observed = json.loads(
+        (inputs_dir / "env-observed.json").read_text(encoding="utf-8")
+    )
+    assert target["schema_version"] == "environment-target/1.0"
+    assert target["environment_class"] == "112"
+    assert observed["schema_version"] == "environment-observation/1.0"
+    assert observed["test_namespaces"][0]["namespace"] == "qa-namespace-from-plan"
+    assert (artifact_dir / "artifacts" / "n07-environment-precheck.json").exists()
+    second = ensure_n07_precheck(
+        config, "REQ-1-r001", artifact_dir, inputs_dir, QA_AGENTS_ROOT
+    )
+    assert second is None
+
+
+def test_policy_path_resolves_hyphenated_default(tmp_path: Path) -> None:
+    """Config keys are underscore-separated but policy files are hyphenated;
+    the fallback must resolve execution_policy to execution-policy.json."""
+    policy = _sync_module._policy_path({}, "execution_policy", QA_AGENTS_ROOT)
+    assert policy is not None
+    assert policy.name == "execution-policy.json"
+
+
+def test_multica_timeout_fails_fast(monkeypatch) -> None:
+    """A hung multica call must raise instead of holding the sync lock forever."""
+    import subprocess as real_subprocess
+
+    def fake_run(*args, **kwargs):
+        raise real_subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs.get("timeout"))
+
+    monkeypatch.setattr(_sync_module.subprocess, "run", fake_run)
+    try:
+        _sync_module._multica("issue", "list", "--project", "p")
+    except RuntimeError as error:
+        assert "timed out" in str(error)
+    else:
+        raise AssertionError("_multica must raise on timeout")
+
+
+def test_multica_binary_falls_back_to_common_paths(monkeypatch) -> None:
+    """launchd runs the timer with a minimal PATH; the script must still find
+    the multica CLI in the common Homebrew/usr/local locations."""
+    monkeypatch.setattr(_sync_module, "_MULTICA_BINARY", None)
+    monkeypatch.setattr(_sync_module.shutil, "which", lambda name: None)
+    monkeypatch.setattr(
+        _sync_module.os.path,
+        "exists",
+        lambda path: path == "/usr/local/bin/multica",
+    )
+    assert _sync_module._multica_binary() == "/usr/local/bin/multica"
+
+
+def test_multica_binary_raises_when_missing(monkeypatch) -> None:
+    monkeypatch.setattr(_sync_module, "_MULTICA_BINARY", None)
+    monkeypatch.setattr(_sync_module.shutil, "which", lambda name: None)
+    monkeypatch.setattr(_sync_module.os.path, "exists", lambda path: False)
+    try:
+        _sync_module._multica_binary()
+    except RuntimeError as error:
+        assert "multica CLI not found" in str(error)
+    else:
+        raise AssertionError("_multica_binary must raise when the CLI is missing")
+
+
+def test_sync_run_lock_reports_holder(tmp_path: Path) -> None:
+    """A starved sync pass must report who holds the lock instead of failing
+    silently, so the unattended timer's skip log is diagnosable."""
+    lock_path = tmp_path / ".sync-eight-card.lock"
+    with _sync_module._sync_run_lock(lock_path):
+        assert lock_path.read_text(encoding="utf-8").startswith("pid=")
+        try:
+            with _sync_module._sync_run_lock(lock_path):
+                pass
+        except OSError as error:
+            assert "already running" in str(error)
+            assert "pid=" in str(error)
+        else:
+            raise AssertionError("second lock acquisition must fail")

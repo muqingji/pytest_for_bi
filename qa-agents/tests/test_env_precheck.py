@@ -161,6 +161,43 @@ def test_n07_accepts_hash_bound_policy_skipped_n27(tmp_path: Path) -> None:
     assert any(item["name"] == "test-data-plan:route" for item in artifact["payload"]["checks"])
 
 
+def test_n07_accepts_pending_human_n27_evidence(tmp_path: Path) -> None:
+    """N27 completed_with_gaps + pending_human (structurally safe plan awaiting
+    the A22 human confirmation) is valid evidence for the N07 environment gate."""
+    target_path = write_json(tmp_path / "target.json", target_dict())
+    observed_path = write_json(tmp_path / "observed.json", observed_dict())
+    n27 = ArtifactEnvelope(
+        workflow_run_id=RUN_ID,
+        workflow_mode="new_requirement",
+        artifact_id="n27-test-data-plan-validation",
+        source_snapshot_id=SNAPSHOT,
+        producer=Producer("N27", runtime="deterministic"),
+        payload={
+            "schema_version": "test-data-plan-validation/1.0",
+            "valid": True,
+            "pending_human": True,
+        },
+        status=ArtifactStatus.COMPLETED_WITH_GAPS,
+        reason_code="test_data_plan_pending_human",
+    )
+    n27_path = write_json(tmp_path / "n27.json", n27.to_dict())
+
+    artifact = run_n07_env_precheck(
+        target_path,
+        observed_path,
+        tmp_path / "out",
+        workflow_run_id=RUN_ID,
+        source_snapshot_id=SNAPSHOT,
+        workflow_mode="new_requirement",
+        test_data_validation_path=n27_path,
+    )
+
+    assert artifact["status"] == "completed"
+    assert artifact["payload"]["decision"] == "passed"
+    assert artifact["payload"]["next_node"] == "N08"
+    assert artifact["payload"]["test_data_validation_hash"] == n27.artifact_hash
+
+
 def test_n07_can_inherit_parent_workflow_mode(tmp_path: Path) -> None:
     target_path = write_json(tmp_path / "target.json", target_dict())
     observed_path = write_json(tmp_path / "observed.json", observed_dict())

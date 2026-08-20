@@ -12,6 +12,7 @@ from typing import Any
 from .card_copy import g03_review_description, g03_review_title
 from .contracts import artifact_hash_from_mapping, content_hash
 from .errors import ContractError, RetryableAgentError, SecurityPolicyError
+from .multica_cli import resolve_multica_binary
 from .security import SecurityPolicy
 from .storage import ArtifactStore
 
@@ -113,6 +114,7 @@ def _request_core(
     generations: dict[str, Mapping[str, Any]],
     reviews: dict[str, Mapping[str, Any]],
     policy: Mapping[str, Any],
+    compiled_cases: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     identities = {
         (
@@ -143,6 +145,7 @@ def _request_core(
         for artifact in (n05, *generations.values(), *reviews.values())
     ]
     issue_items: list[dict[str, Any]] = []
+    generation_cases: list[dict[str, Any]] = []
     candidate_count = 0
     review_issue_count = 0
     for generator_id, generation in generations.items():
@@ -152,19 +155,43 @@ def _request_core(
         candidates = payload.get("code_candidates", [])
         candidate_count += len(candidates) if isinstance(candidates, list) else 0
         rejected = payload.get("rejected_cases", [])
+        manifest = payload.get("manifest") if isinstance(payload.get("manifest"), Mapping) else {}
         issue_items.append(
             {
                 "generator_id": generator_id,
                 "artifact_id": generation["artifact_id"],
                 "candidate_count": len(candidates) if isinstance(candidates, list) else 0,
                 "rejected_count": len(rejected) if isinstance(rejected, list) else 0,
-                "manifest_id": (
-                    payload.get("manifest", {}).get("manifest_id")
-                    if isinstance(payload.get("manifest"), Mapping)
-                    else None
-                ),
+                "manifest_id": manifest.get("manifest_id"),
             }
         )
+        for mapping in manifest.get("case_mappings", []):
+            if not isinstance(mapping, Mapping):
+                continue
+            case_id = str(mapping.get("case_id", ""))
+            if not case_id:
+                continue
+            case_meta = (compiled_cases or {}).get(case_id, {})
+            generation_cases.append(
+                {
+                    "generator_id": generator_id,
+                    "case_id": case_id,
+                    "title": str(case_meta.get("title", "")),
+                    "risk": str(case_meta.get("risk", "")),
+                    "priority": str(case_meta.get("priority", "")),
+                    "candidate_path": str(mapping.get("candidate_path", "")),
+                    "expected_ids": [
+                        str(item)
+                        for item in mapping.get("expected_ids", [])
+                        if isinstance(item, str) and item
+                    ],
+                    "manual_expected_ids": [
+                        str(item)
+                        for item in mapping.get("manual_expected_ids", [])
+                        if isinstance(item, str) and item
+                    ],
+                }
+            )
     for reviewer_id, review in reviews.items():
         payload = review.get("payload")
         if not isinstance(payload, Mapping):
@@ -212,6 +239,7 @@ def _request_core(
             )
         },
         "issue_items": issue_items,
+        "generation_cases": generation_cases,
         "summary": {
             "generation_count": len(generations),
             "review_count": len(reviews),
@@ -250,6 +278,7 @@ def prepare_automation_code_review_request(
     policy_path: Path,
     output_dir: Path,
     *,
+    compiled_cases_path: Path | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
     security = security or SecurityPolicy()
@@ -266,7 +295,25 @@ def prepare_automation_code_review_request(
         reviews[reviewer_id] = _verified_artifact(
             path, REVIEW_ARTIFACTS[reviewer_id], security
         )
-    core = _request_core(n05, generations, reviews, policy)
+    compiled_cases: dict[str, dict[str, Any]] = {}
+    if compiled_cases_path is not None:
+        compiled = _read_mapping(compiled_cases_path, "N25 compiled test cases")
+        payload = compiled.get("payload")
+        if not isinstance(payload, Mapping):
+            raise ContractError("N25 compiled test cases payload is invalid")
+        case_list = payload.get("compiled_cases", payload.get("child_cases"))
+        if isinstance(case_list, list):
+            for item in case_list:
+                if not isinstance(item, Mapping):
+                    continue
+                case_id = str(item.get("id", ""))
+                if case_id:
+                    compiled_cases[case_id] = {
+                        "title": str(item.get("title", "")),
+                        "risk": str(item.get("risk", "")),
+                        "priority": str(item.get("priority", "")),
+                    }
+    core = _request_core(n05, generations, reviews, policy, compiled_cases)
     store = ArtifactStore(output_dir)
     request_path = output_dir / REQUEST_FILE
     if request_path.exists():
@@ -277,7 +324,10 @@ def prepare_automation_code_review_request(
             for key, value in existing.items()
             if key not in {"request_hash", "created_at"}
         }
-        if comparable != core:
+        # 旧格式 request 缺少 generation_cases：逐键比对既有字段即可，
+        # 新字段视为渲染层增强，不改变冻结输入绑定（避免升级期报错）。
+        core_comparable = {key: value for key, value in core.items() if key in comparable}
+        if comparable != core_comparable:
             raise ContractError("Existing G03 request belongs to different frozen inputs")
         return existing
 
@@ -314,7 +364,7 @@ def prepare_automation_code_review_request(
 
 def _default_runner(args: list[str], cwd: Path) -> Mapping[str, Any]:
     completed = subprocess.run(
-        ["multica", *args],
+        [resolve_multica_binary(), *args],
         cwd=cwd,
         check=False,
         capture_output=True,

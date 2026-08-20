@@ -1,8 +1,8 @@
 {
-  "projection_hash": "sha256:ebb8745bc5befaba978ee4239b5cf85f87a42239fe855924ad76ae5056b9c63b",
-  "published_projection_hash": "sha256:84ca9e7b4e088d92489dcfc2fff93f3644e57dcaeb791dc6740d9ac16e3c1654",
-  "result_hash": "sha256:8ac708382128f61a5d88c9050b9881aa3b275b0d56efc5368213bab4de1367f9",
-  "revision": 60,
+  "projection_hash": "sha256:bdc5a33812b82ed67abd32b3f075b1b6ac957d7f99a33dc2c0379120c8a4be9b",
+  "published_projection_hash": "sha256:4c98f74dbb818aaa73cbc8a1e9ccfb8209a691edd6decbec40f9133a3110cf4f",
+  "result_hash": "sha256:e4bd7de998b6710ee1f73e1a381ed564b24a03ac3e1bfe6ac8af135a8dd26aef",
+  "revision": 99,
   "schema_version": "workflow-center-sync-state/1.0",
   "workflow_id": "REQ-DETAIL-DRILL-I18N-RERUN-20260817-02",
   "workflow_run_id": "detail-drill-i18n-8card-20260817-02"

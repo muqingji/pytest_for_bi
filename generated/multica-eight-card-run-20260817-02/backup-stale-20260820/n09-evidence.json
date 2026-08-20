@@ -1,0 +1,126 @@
+{
+  "artifact_hash": "sha256:fa4eb70b685a05e3c0d972b22eea2062fce18ff144884b0bcb07292424eb3c0f",
+  "artifact_id": "n09-evidence",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-20T07:16:46+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:404d78268fd82f76673ae9f603354fa61514bc4becbd08d445f505afa7ba4e7d",
+      "location": "n08-automation-execution.json",
+      "source_id": "n08-automation-execution",
+      "source_type": "artifact"
+    },
+    {
+      "content_hash": "sha256:7314f36af71d3d524e101e0467f0da03d66f548c6ddac5357ebe05e11bc109ef",
+      "location": "n17-manual-execution.json",
+      "source_id": "n17-manual-execution",
+      "source_type": "artifact"
+    },
+    {
+      "content_hash": "sha256:64ab162f8b6152412876a1a99a8907b6967b220ff3c696b4332a5e2b667659e4",
+      "location": "n18-quality-signals.json",
+      "source_id": "n18-quality-signals",
+      "source_type": "artifact"
+    }
+  ],
+  "facts": [],
+  "inferences": [],
+  "payload": {
+    "a19_triage_hash": "sha256:898c09f29f780b4ba50ad7a96aa7b9afa627c1f4829dbff4fe765b0789f7d9e3",
+    "case_results": [
+      {
+        "case_id": "TC-BE-001-BACKEND",
+        "evidence_id": "N08-S001",
+        "mode": "automated",
+        "status": "failed"
+      },
+      {
+        "case_id": "TC-BE-002-BACKEND",
+        "evidence_id": "N08-S002",
+        "mode": "automated",
+        "status": "failed"
+      },
+      {
+        "case_id": "TC-BE-003-BACKEND",
+        "evidence_id": "N08-S003",
+        "mode": "automated",
+        "status": "failed"
+      },
+      {
+        "case_id": "TC-BE-004-BACKEND",
+        "evidence_id": "N08-S004",
+        "mode": "automated",
+        "status": "failed"
+      },
+      {
+        "case_id": "TC-BE-005-BACKEND",
+        "evidence_id": "N08-S005",
+        "mode": "automated",
+        "status": "failed"
+      },
+      {
+        "case_id": "TC-BE-006-BACKEND",
+        "evidence_id": "N08-S006",
+        "mode": "automated",
+        "status": "failed"
+      }
+    ],
+    "failure_clusters": [
+      {
+        "case_ids": [
+          "TC-BE-001-BACKEND",
+          "TC-BE-002-BACKEND",
+          "TC-BE-003-BACKEND",
+          "TC-BE-004-BACKEND",
+          "TC-BE-005-BACKEND",
+          "TC-BE-006-BACKEND"
+        ],
+        "classification": "environment",
+        "cluster_id": "FAIL-001",
+        "detail": null,
+        "evidence_count": 6,
+        "fingerprint": "sha256:90f1f0c99dbf7af40b7a521b840d1bd1b2d19edd833af581abd0b179b8336549",
+        "route_to": "N10",
+        "summary": "traceback (most recent call last): file \"<path> line <n>, in import_plugin mod = importlib.import_module(importspec) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ file \"<path> line <n>, in import_module return _bootstrap._gcd_import(name[level:], package, level) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ file \"<frozen importlib._bootstrap>\", line <n>, in _gcd_import file \"<frozen importlib._bootstrap>\", line <n>, in _find_and_load file \"<frozen importlib._bootstrap>\", line <n>, in _find_and_load"
+      }
+    ],
+    "input_bindings": {
+      "automation_execution_hashes": [
+        "sha256:404d78268fd82f76673ae9f603354fa61514bc4becbd08d445f505afa7ba4e7d"
+      ],
+      "environment_precheck_hash": "sha256:7779750c9ae8c1aceea0bd1fff61bee93a72c16ef670e5634ff0dcaed9874a07",
+      "execution_plan_hash": "sha256:cd895e4b4fa8ea30ce9a3db3bb5e091a8d1de5bd7ed129751d94029b98f052ce",
+      "lifecycle_evidence_bindings": [],
+      "manual_execution_hash": "sha256:7314f36af71d3d524e101e0467f0da03d66f548c6ddac5357ebe05e11bc109ef",
+      "quality_signals_hash": "sha256:64ab162f8b6152412876a1a99a8907b6967b220ff3c696b4332a5e2b667659e4"
+    },
+    "next_nodes": [
+      "N10"
+    ],
+    "schema_version": "n09-evidence/1.0",
+    "summary": {
+      "cluster_count": 1,
+      "failure_count": 6,
+      "pending_manual": 0,
+      "result_count": 6
+    }
+  },
+  "producer": {
+    "component_id": "N09",
+    "component_version": "0.1.0",
+    "inference_config_hash": "none",
+    "model_provider": "none",
+    "model_snapshot": "deterministic",
+    "profile_version": "1.0.0",
+    "prompt_version": "none",
+    "runtime": "deterministic",
+    "tool_bundle_version": "none"
+  },
+  "reason_code": "execution_evidence_has_gaps",
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed_with_gaps",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

@@ -201,6 +201,30 @@ def test_server_quality_tail_reaches_report_with_all_results(tmp_path: Path) -> 
     assert n09["payload"]["input_bindings"]["lifecycle_evidence_bindings"] == lifecycle
 
 
+def test_quality_tail_accepts_pending_human_n27_evidence(tmp_path: Path) -> None:
+    """N27 completed_with_gaps + pending_human (structurally safe plan awaiting
+    the A22 human confirmation) is valid evidence for the quality tail."""
+
+    inputs = _inputs(tmp_path, manual=False)
+    n27 = _artifact(
+        tmp_path / "n27.json",
+        "N27",
+        "n27-test-data-plan-validation",
+        {
+            "schema_version": "test-data-plan-validation/1.0",
+            "valid": True,
+            "pending_human": True,
+        },
+        status=ArtifactStatus.COMPLETED_WITH_GAPS,
+    )
+    result = _run(tmp_path, inputs, test_data_validation_path=n27)
+
+    assert result["decision"] == "passed_with_warning"
+    assert (tmp_path / "out/artifacts/n09-evidence.json").exists()
+    assert (tmp_path / "out/artifacts/n11-quality-decision.json").exists()
+    assert (tmp_path / "out/artifacts/n12-quality-report.json").exists()
+
+
 def test_missing_manual_results_is_inconclusive_not_passed(tmp_path: Path) -> None:
     result = _run(tmp_path, _inputs(tmp_path))
 

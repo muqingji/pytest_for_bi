@@ -513,51 +513,75 @@ def node_record_description(
     label: str,
     *,
     artifact_name: str = "",
+    approval_block: Sequence[str] | None = None,
 ) -> str:
     """Five-section card for a deterministic node record Issue.
 
     Deterministic nodes (for example N25/N26/N15) run locally without an
     Agent. A record Issue is created so the stage-card detail page can link
-    the subtask to its accepted Artifact evidence.
+    the subtask to its accepted Artifact evidence. ``approval_block`` appends
+    a human-decision section when the record carries an actionable decision
+    (for example a retryable automation failure that needs retry approval).
     """
 
     artifact_line = f"- 本节点 Artifact（附件：`{artifact_name}`）" if artifact_name else "- 本节点 Artifact（附件）"
-    return "\n".join(
-        [
-            f"# {node_id} {label}",
-            "",
-            "## 目标",
-            "",
-            "记录本确定性节点的执行结果，作为阶段卡详情页的可点击入口与证据归档。",
-            "",
-            "## 背景",
-            "",
-            "本节点由工作流自动执行，无需 Agent 或人工操作；本卡由系统自动创建并同步状态。",
-            "",
-            "## 范围",
-            "",
-            "包含：",
-            "- 本节点 Artifact 证据",
-            "- 节点状态同步（完成 / 阻塞 / 取消）",
-            "",
-            "不包含：",
-            "- 人工决策与审批",
-            "- 修改其他节点产物",
-            "",
-            "## 输入材料",
-            "",
-            "- 上游已验收 Artifact",
-            "",
-            "## 验收",
-            "",
-            "- 详情页可点击本卡查看 Artifact 证据",
-            "- 状态与本节点一致",
-            "",
-            "## 产出",
-            "",
-            artifact_line,
+    if approval_block:
+        background = (
+            "本节点由工作流自动执行；因执行失败判定可重试，"
+            "需要你审批重试决策（本卡仍由系统自动创建并同步状态）。"
+        )
+        scope_excludes = [
+            "修改其他节点产物",
         ]
-    )
+    else:
+        background = "本节点由工作流自动执行，无需 Agent 或人工操作；本卡由系统自动创建并同步状态。"
+        scope_excludes = [
+            "人工决策与审批",
+            "修改其他节点产物",
+        ]
+    lines = [
+        f"# {node_id} {label}",
+        "",
+        "## 目标",
+        "",
+        "记录本确定性节点的执行结果，作为阶段卡详情页的可点击入口与证据归档。",
+        "",
+        "## 背景",
+        "",
+        background,
+        "",
+        "## 范围",
+        "",
+        "包含：",
+        "- 本节点 Artifact 证据",
+        "- 节点状态同步（完成 / 阻塞 / 取消）",
+        "",
+        "不包含：",
+        *(f"- {item}" for item in scope_excludes),
+        "",
+        "## 输入材料",
+        "",
+        "- 上游已验收 Artifact",
+        "",
+        "## 验收",
+        "",
+        "- 详情页可点击本卡查看 Artifact 证据",
+        "- 状态与本节点一致",
+        "",
+        "## 产出",
+        "",
+        artifact_line,
+    ]
+    if approval_block:
+        lines.extend(
+            [
+                "",
+                "## 你需要处理",
+                "",
+                *approval_block,
+            ]
+        )
+    return "\n".join(lines)
 
 
 def human_correction_title(request: Mapping[str, Any]) -> str:
@@ -741,38 +765,50 @@ def g03_review_description(request: Mapping[str, Any]) -> str:
                 f"{item.get('approved')}，问题 `{item['issue_count']}` 个"
             )
     issue_lines = "\n".join(items) if items else "- 无生成与复核明细"
-    return "\n".join(
+    lines = [
+        "# 自动化代码审核",
+        "",
+        "**目标**",
+        "",
+        "确认 A14/A15 生成的自动化候选、独立复核结论与 N05 确定性代码检查结果一致，"
+        "批准后进入 N08 受控自动化执行。",
+        "",
+        "**背景**",
+        "",
+        f"N05 确定性代码检查已通过（生成 `{summary['generation_count']}` 个、"
+        f"候选 `{summary['candidate_count']}` 个、复核问题 `{summary['review_issue_count']}` 个）。",
+        "",
+        "**范围**",
+        "",
+        "包含：",
+        f"- {summary['candidate_count']} 个自动化候选的 Manifest、候选代码与安全红线。",
+        "- A18-BE / A18-CT 独立复核结论与阻塞问题。",
+        "",
+        "不包含：",
+        "- 修改候选代码本身；需要修改时置 blocked 回流对应生成/复核节点。",
+        "",
+        "**输入材料**",
+        "",
+        upstream,
+        "- 本 Issue 附件：`g03-review-request.json`",
+        "",
+        "**本批生成与复核明细**",
+        "",
+        issue_lines,
+        "",
+    ]
+    case_lines = _render_generation_cases(request.get("generation_cases", []))
+    if case_lines:
+        lines.extend(
+            [
+                "**本批候选覆盖 Case**",
+                "",
+                *case_lines,
+                "",
+            ]
+        )
+    lines.extend(
         [
-            "# 自动化代码审核",
-            "",
-            "**目标**",
-            "",
-            "确认 A14/A15 生成的自动化候选、独立复核结论与 N05 确定性代码检查结果一致，"
-            "批准后进入 N08 受控自动化执行。",
-            "",
-            "**背景**",
-            "",
-            f"N05 确定性代码检查已通过（生成 `{summary['generation_count']}` 个、"
-            f"候选 `{summary['candidate_count']}` 个、复核问题 `{summary['review_issue_count']}` 个）。",
-            "",
-            "**范围**",
-            "",
-            "包含：",
-            f"- {summary['candidate_count']} 个自动化候选的 Manifest、候选代码与安全红线。",
-            "- A18-BE / A18-CT 独立复核结论与阻塞问题。",
-            "",
-            "不包含：",
-            "- 修改候选代码本身；需要修改时置 blocked 回流对应生成/复核节点。",
-            "",
-            "**输入材料**",
-            "",
-            upstream,
-            "- 本 Issue 附件：`g03-review-request.json`",
-            "",
-            "**本批生成与复核明细**",
-            "",
-            issue_lines,
-            "",
             "**怎么反馈**",
             "",
             "这是交付评审，不是审批仪式：",
@@ -790,3 +826,45 @@ def g03_review_description(request: Mapping[str, Any]) -> str:
             "",
         ]
     )
+    return "\n".join(lines)
+
+
+
+def _render_generation_cases(cases: list) -> list[str]:
+    """Render one line per covered Case so the reviewer can approve the actual scope."""
+
+    lines: list[str] = []
+    for index, case in enumerate(cases, start=1):
+        if not isinstance(case, dict):
+            continue
+        case_id = str(case.get("case_id", ""))
+        if not case_id:
+            continue
+        title = str(case.get("title", "")).strip()
+        meta = " / ".join(
+            value
+            for value in (str(case.get("risk", "")), str(case.get("priority", "")))
+            if value
+        )
+        heading = f"{index}. `{case_id}`"
+        if title:
+            heading += f" {title}"
+        if meta:
+            heading += f"（{meta}）"
+        lines.append(heading)
+        path = str(case.get("candidate_path", "")).strip()
+        if path:
+            lines.append(f"   - 候选文件：`{path}`")
+        expected_ids = [
+            str(item) for item in case.get("expected_ids", []) if isinstance(item, str) and item
+        ]
+        manual_ids = [
+            str(item)
+            for item in case.get("manual_expected_ids", [])
+            if isinstance(item, str) and item
+        ]
+        if expected_ids:
+            lines.append(f"   - 覆盖预期：{'、'.join(expected_ids)}")
+        if manual_ids:
+            lines.append(f"   - 人工确认项：{'、'.join(manual_ids)}")
+    return lines

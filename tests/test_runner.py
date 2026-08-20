@@ -696,3 +696,28 @@ def test_static_row_key_label_is_not_recorded_as_returned_folder() -> None:
 )
 def test_row_translate_value_supports_final_response_shapes(row, expected) -> None:
     assert CaseRunner._row_translate_value(row) == expected
+
+
+def test_oracle_accepts_flattened_generated_item() -> None:
+    """Generated Candidates may flatten oracle fields onto the expected item."""
+    observations = {"detail_api.error.code": "s307011534",
+                    "detail_api.error.message.zh_CN": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细"}
+    expected = [
+        {"id": "EXP-BE-001-01", "matcher": "equals",
+         "observation_point": "detail_api.error.code",
+         "expected_value": "s307011534"},
+        {"id": "EXP-BE-001-02", "matcher": "equals",
+         "observation_point": "detail_api.error.message.zh_CN",
+         "expected_value": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细"},
+    ]
+    CaseRunner.assert_oracles(observations, expected)
+
+
+def test_get_by_path_accepts_jsonpath_prefix_and_root() -> None:
+    from framework.core.assertions import get_by_path
+
+    payload = {"Error": {"Code": "s307011534"}, "rows": [{"id": 1}, {"id": 2}]}
+    assert get_by_path(payload, "$.Error.Code") == "s307011534"
+    assert get_by_path(payload, "$.rows[1].id") == 2
+    assert get_by_path(payload, "$") is payload
+    assert get_by_path(payload, "Error.Code") == "s307011534"

@@ -1507,16 +1507,18 @@ def _compact_generation_case(case: Mapping[str, Any]) -> dict[str, Any]:
         if not isinstance(item, Mapping):
             continue
         oracle = item.get("oracle")
+        oracle_value = dict(oracle) if isinstance(oracle, Mapping) else {}
         expected.append(
             {
                 "id": item.get("id"),
                 "description": item.get("description"),
-                "type": oracle.get("type") if isinstance(oracle, Mapping) else None,
-                "matcher": oracle.get("matcher") if isinstance(oracle, Mapping) else None,
-                "observation_point": (
-                    oracle.get("observation_point") if isinstance(oracle, Mapping) else None
-                ),
-                "source_ref": oracle.get("source_ref") if isinstance(oracle, Mapping) else None,
+                "type": oracle_value.get("type"),
+                "matcher": oracle_value.get("matcher"),
+                "observation_point": oracle_value.get("observation_point"),
+                "source_ref": oracle_value.get("source_ref"),
+                "expected_value": oracle_value.get("expected_value"),
+                "expected_values": oracle_value.get("expected_values"),
+                "oracle": oracle_value,
             }
         )
     compact: dict[str, Any] = {
@@ -1546,6 +1548,151 @@ def _compact_generation_case(case: Mapping[str, Any]) -> dict[str, Any]:
     return compact
 
 
+def _http_operation_catalog(framework_root: Path | None = None) -> dict[str, Any]:
+    """Compact operationId/method/path summary of the target repo IDL catalog.
+
+    Generation Agents are sandboxed to their Issue attachment and cannot read the
+    target repository, so the N08 ``case_runner`` API vocabulary must travel with
+    the input bundle. Only the stable identifiers are included (no schemas): the
+    Agent uses them to emit real ``request.api`` operations instead of inventing
+    paths, and N08 resolves them against the runtime ``idl/http`` catalog.
+    """
+
+    root = framework_root or Path(__file__).resolve().parents[3]
+    catalog_dir = root / "idl" / "http"
+    operations: list[dict[str, str]] = []
+    if catalog_dir.is_dir():
+        for path in sorted(catalog_dir.rglob("*.openapi.json")):
+            try:
+                document = _read(path)
+            except (OSError, json.JSONDecodeError):
+                continue
+            for api_path, path_item in document.get("paths", {}).items():
+                if not isinstance(path_item, Mapping):
+                    continue
+                for method, definition in path_item.items():
+                    if str(method).lower() not in {"get", "post", "put", "patch", "delete"}:
+                        continue
+                    operation_id = (
+                        definition.get("operationId")
+                        if isinstance(definition, Mapping) else None
+                    )
+                    if not operation_id:
+                        continue
+                    operations.append(
+                        {
+                            "operationId": str(operation_id),
+                            "method": str(method).upper(),
+                            "path": str(api_path),
+                        }
+                    )
+    return {
+        "schema_version": "http-operation-catalog/1.0",
+        "source": "idl/http",
+        "operation_count": len(operations),
+        "operations": operations,
+    }
+
+
+def _verified_setup_contracts(
+    security: SecurityPolicy,
+    path: Path | None = None,
+) -> dict[str, Any] | None:
+    """Load the 112-verified setup body contracts for A14 data construction.
+
+    The contracts are the only permitted source for setup ``json`` bodies:
+    A14 must reproduce the ``body_template`` verbatim and fill only
+    ``{{PLACEHOLDER}}`` markers, so N08 ``case_runner`` calls succeed against
+    the real 112 environment instead of failing business validation.
+    """
+
+    source = path or Path(__file__).resolve().parents[2] / "knowledge" / "verified-setup-contracts.json"
+    if not source.exists():
+        return None
+    contracts = _read(source)
+    security.assert_no_secret_values(contracts)
+    if contracts.get("schema_version") != "verified-setup-contracts/1.0":
+        raise ContractError("verified-setup-contracts schema version is unsupported")
+    return contracts
+
+
+def _resources_with_contract_keys(
+    resources: Sequence[Mapping[str, Any]],
+    contracts: Mapping[str, Any] | None,
+) -> list[dict[str, Any]]:
+    """Attach the verified contract's required body keys to each resource.
+
+    N05 uses ``required_body_keys`` to reject placeholder setup bodies (only
+    namespace/variant) that would fail 112 business validation at runtime.
+    Read-only resources (no creation body) stay untouched.
+    """
+
+    by_operation = {}
+    if contracts is not None:
+        by_operation = {
+            str(key): value for key, value in contracts.get("contracts", {}).items()
+        }
+    merged: list[dict[str, Any]] = []
+    for resource in resources:
+        item = dict(resource)
+        operation = str(item.get("setup_operation", ""))
+        contract = by_operation.get(operation)
+        if isinstance(contract, Mapping):
+            required = contract.get("required_body_keys")
+            if isinstance(required, list) and required:
+                item["required_body_keys"] = [str(key) for key in required]
+        merged.append(item)
+    return merged
+
+
+def _merge_test_data_plan_resources(
+    layer_cases: list[dict[str, Any]],
+    data_plan: Mapping[str, Any] | None,
+    contracts: Mapping[str, Any] | None,
+) -> None:
+    """Merge A22 plan resources into each generation Case's test_data.
+
+    A22 already planned which resources each Case constructs (resource type,
+    setup_operation, id variable, high_risk_write). The generator needs them as
+    ``test_data.resource_requirements`` so it can emit real setup/cleanup
+    requests instead of inventing placeholder bodies.
+    """
+
+    if data_plan is None:
+        return
+    plan_payload = data_plan.get("payload")
+    case_plans = plan_payload.get("case_plans", []) if isinstance(plan_payload, Mapping) else []
+    resources_by_case: dict[str, list[Mapping[str, Any]]] = {}
+    for case_plan in case_plans:
+        if not isinstance(case_plan, Mapping):
+            continue
+        resources = case_plan.get("resources")
+        if isinstance(resources, list):
+            resources_by_case[str(case_plan.get("case_id", ""))] = resources
+    for layer_case in layer_cases:
+        case_id = str(layer_case.get("id", ""))
+        planned = resources_by_case.get(case_id)
+        if not planned:
+            continue
+        enriched = _resources_with_contract_keys(planned, contracts)
+        test_data = layer_case.get("test_data")
+        if not isinstance(test_data, Mapping):
+            test_data = {}
+            layer_case["test_data"] = test_data
+        existing = test_data.get("resource_requirements")
+        if isinstance(existing, list) and existing:
+            by_key = {
+                str(item.get("resource_key", "")): dict(item)
+                for item in existing
+                if isinstance(item, Mapping)
+            }
+            for item in enriched:
+                by_key[str(item.get("resource_key", ""))] = item
+            test_data["resource_requirements"] = list(by_key.values())
+        else:
+            test_data["resource_requirements"] = enriched
+
+
 def prepare_multica_automation_generation_input(
     compiled_cases_path: Path,
     execution_plan_path: Path,
@@ -1556,9 +1703,17 @@ def prepare_multica_automation_generation_input(
     test_data_plan_path: Path | None = None,
     test_data_validation_path: Path | None = None,
     knowledge_readiness_path: Path | None = None,
+    verified_setup_contracts_path: Path | None = None,
+    regeneration_round: int | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
-    """Compile N25 + N15 + approved automation target into A14/A15 input."""
+    """Compile N25 + N15 + approved automation target into A14/A15 input.
+
+    ``regeneration_round`` stamps a fresh bundle hash for deliberate reruns.
+    Without it, deleting a generation Artifact would just re-ingest the latest
+    completed Agent run (idempotent recovery) and silently restore the stale
+    output, making a genuine regeneration impossible.
+    """
 
     if profile_id not in GENERATION_LAYER_BY_PROFILE:
         raise ContractError(f"Unsupported generation profile: {profile_id}")
@@ -1640,6 +1795,11 @@ def prepare_multica_automation_generation_input(
             }
         )
         input_bindings["test_data_validation_hash"] = data_validation["artifact_hash"]
+    verified_contracts = None
+    if profile_id == "A14":
+        verified_contracts = _verified_setup_contracts(security, verified_setup_contracts_path)
+        if verified_contracts is not None:
+            input_bindings["verified_setup_contracts_hash"] = content_hash(verified_contracts)
     if test_data_plan_path is not None:
         data_plan = _verified_artifact(
             test_data_plan_path, "a22-test-data-plan", security
@@ -1648,6 +1808,7 @@ def prepare_multica_automation_generation_input(
             {"artifact_id": "a22-test-data-plan", "artifact_hash": data_plan["artifact_hash"]}
         )
         input_bindings["test_data_plan_hash"] = data_plan["artifact_hash"]
+        _merge_test_data_plan_resources(layer_cases, data_plan, verified_contracts)
     if knowledge_readiness_path is not None:
         knowledge = _read(knowledge_readiness_path)
         security.assert_no_secret_values(knowledge)
@@ -1671,7 +1832,9 @@ def prepare_multica_automation_generation_input(
                 actions_by_case[str(item["id"])] for item in layer_cases
             ],
             "automation_target": target_config,
+            "api_catalog": _http_operation_catalog(),
             "input_bindings": input_bindings,
+            **({"verified_setup_contracts": verified_contracts} if verified_contracts is not None else {}),
         },
         "upstream_artifacts": upstream,
         "integrity": {
@@ -1681,6 +1844,8 @@ def prepare_multica_automation_generation_input(
             "external_side_effects_allowed": False,
         },
     }
+    if regeneration_round is not None:
+        bundle["regeneration_round"] = str(regeneration_round)
     security.assert_no_secret_values(bundle)
     _assert_no_forbidden_oracle_fields(bundle)
     bundle["bundle_hash"] = content_hash(bundle)
@@ -1696,6 +1861,7 @@ def prepare_multica_automation_review_input(
     output_dir: Path,
     *,
     profile_id: str,
+    regeneration_round: int | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
     """Compile one A14/A15 generation plus N25 scope into A18-BE/A18-CT input."""
@@ -1787,6 +1953,8 @@ def prepare_multica_automation_review_input(
             "external_side_effects_allowed": False,
         },
     }
+    if regeneration_round is not None:
+        bundle["regeneration_round"] = str(regeneration_round)
     security.assert_no_secret_values(bundle)
     _assert_no_forbidden_oracle_fields(bundle)
     bundle["bundle_hash"] = content_hash(bundle)
@@ -3157,18 +3325,27 @@ def _validate_automation_generation_semantics(
     candidate_files = manifest.get("candidate_files", [])
     if not isinstance(candidate_files, list) or not candidate_files:
         raise ContractError(f"{profile_id} manifest candidate_files is empty")
-    candidate_index = {str(item.get("path")): item for item in candidates}
+    # Agent 输出可能把路径写成 ``path`` 或 ``candidate_path``（与 case_mappings
+    # 的键名混用）。这里做归一化，避免仅因键名差异把合法输出拒之门外；
+    # 内容哈希仍以 ``content`` 现场计算为权威，杜绝伪造哈希。
+    candidate_index: dict[str, Mapping[str, Any]] = {}
+    for item in candidates:
+        path = str(item.get("path") or item.get("candidate_path") or "").strip()
+        if path:
+            candidate_index[path] = item
     mapped_paths = {str(item.get("candidate_path")) for item in manifest["case_mappings"]}
     for index, file_item in enumerate(candidate_files):
         if not isinstance(file_item, Mapping):
             raise ContractError(f"{profile_id} candidate_files[{index}] must be an object")
-        path = str(file_item.get("path", ""))
+        path = str(file_item.get("path") or file_item.get("candidate_path") or "").strip()
         if path not in candidate_index:
             raise ContractError(f"{profile_id} candidate_files[{index}] has no candidate code")
-        if str(candidate_index[path].get("content_hash", "")) != str(
-            file_item.get("content_hash", "")
-        ):
-            raise ContractError(f"{profile_id} candidate_files[{index}] content_hash mismatch")
+        candidate = candidate_index[path]
+        content = candidate.get("content")
+        if not isinstance(content, str) or not content.strip():
+            raise ContractError(
+                f"{profile_id} candidate {path} must carry inline content"
+            )
     if mapped_paths and not mapped_paths <= set(candidate_index):
         raise ContractError(f"{profile_id} case_mappings reference missing candidate files")
     expected_manifest_layers = {"backend": "A14", "contract": "A15"}.get(layer)
@@ -3178,6 +3355,33 @@ def _validate_automation_generation_semantics(
         raise ContractError(f"{profile_id} manifest_id is invalid")
     if manifest.get("permissions", {}).get("business_repository_write") is not False:
         raise SecurityPolicyError(f"{profile_id} manifest requests business repository writes")
+    # ``execution`` / ``expected_artifacts`` 是 N05/N08 的确定性派生契约：Agent 若
+    # 提供则必须与候选文件精确一致（防注入），缺失时由摄入归一化按候选派生回填。
+    declared_paths = [
+        str(file_item.get("path") or file_item.get("candidate_path") or "")
+        for file_item in candidate_files
+        if isinstance(file_item, Mapping)
+    ]
+    execution = manifest.get("execution")
+    if execution is not None:
+        if not isinstance(execution, Mapping):
+            raise ContractError(f"{profile_id} manifest execution must be an object")
+        if execution.get("command") != ["pytest", "-q", *declared_paths]:
+            raise ContractError(
+                f"{profile_id} manifest execution command must be derived from candidate paths"
+            )
+        timeout = execution.get("timeout_seconds")
+        if not isinstance(timeout, int) or timeout <= 0:
+            raise ContractError(f"{profile_id} manifest execution timeout_seconds is invalid")
+    expected_artifacts = manifest.get("expected_artifacts")
+    if expected_artifacts is not None and (
+        not isinstance(expected_artifacts, list)
+        or not expected_artifacts
+        or not all(
+            isinstance(item, str) and item.strip() for item in expected_artifacts
+        )
+    ):
+        raise ContractError(f"{profile_id} manifest expected_artifacts is invalid")
     if payload.get("evaluation_oracle_accessed") is not False:
         raise SecurityPolicyError(f"{profile_id} must not access the evaluation Oracle Registry")
 
@@ -3306,6 +3510,97 @@ def _validate_test_data_plan_semantics(
         raise ContractError("A22 complete plan must be completed")
 
 
+def _normalize_automation_generation_payload(
+    payload: dict[str, Any],
+) -> None:
+    """Backfill authoritative content hashes into an A14/A15 generation payload.
+
+    A14/A15 Agents work under a read-only command allowlist and cannot reliably
+    compute sha256 themselves, so the system computes ``content_hash`` from the
+    inline ``content`` and writes it back into ``code_candidates[]`` and
+    ``manifest.candidate_files[]``. Path keys are also canonicalized to ``path``.
+    """
+
+    manifest = payload.get("manifest")
+    candidates = payload.get("code_candidates")
+    if not isinstance(manifest, Mapping) or not isinstance(candidates, list):
+        return
+    for candidate in candidates:
+        if not isinstance(candidate, Mapping):
+            continue
+        content = candidate.get("content")
+        if isinstance(content, str) and content.strip():
+            candidate["content_hash"] = content_hash(content)
+        path = str(candidate.get("path") or candidate.get("candidate_path") or "").strip()
+        if path:
+            candidate["path"] = path
+            candidate.pop("candidate_path", None)
+    by_path = {
+        str(candidate.get("path")): candidate
+        for candidate in candidates
+        if isinstance(candidate, Mapping) and str(candidate.get("path", "")).strip()
+    }
+    files = manifest.get("candidate_files")
+    declared_paths: list[str] = []
+    if isinstance(files, list):
+        for file_item in files:
+            if not isinstance(file_item, Mapping):
+                continue
+            path = str(file_item.get("path") or file_item.get("candidate_path") or "").strip()
+            if not path:
+                continue
+            file_item["path"] = path
+            file_item.pop("candidate_path", None)
+            declared_paths.append(path)
+            candidate = by_path.get(path)
+            if isinstance(candidate, Mapping) and candidate.get("content_hash"):
+                file_item["content_hash"] = candidate["content_hash"]
+    # ``execution`` / ``expected_artifacts`` 由候选文件确定性派生：Agent 未声明时
+    # 系统回填，保证 N05/N08 永远拿到完整执行契约；已声明时校验已确保精确一致。
+    if declared_paths:
+        execution = manifest.get("execution")
+        if not isinstance(execution, Mapping):
+            execution = {
+                "command": ["pytest", "-q", *declared_paths],
+                "timeout_seconds": 600,
+            }
+            manifest["execution"] = execution
+        elif not execution.get("command"):
+            execution["command"] = ["pytest", "-q", *declared_paths]
+        if manifest.get("expected_artifacts") is None:
+            manifest["expected_artifacts"] = ["junit_xml", "stdout", "stderr"]
+
+
+def _normalize_automation_review_bindings(
+    bundle: Mapping[str, Any],
+    payload: dict[str, Any],
+) -> None:
+    """Backfill A18-BE/A18-CT review hash bindings from the frozen inputs.
+
+    Review Agents cannot reliably compute sha256 under the read-only command
+    allowlist; the system recomputes ``generation_hash`` / ``manifest_hash`` /
+    ``candidate_hashes`` from ``allowed_inputs.generation`` and overwrites the
+    agent's best-effort values before semantic validation.
+    """
+
+    allowed_inputs = bundle.get("allowed_inputs", {})
+    generation = allowed_inputs.get("generation", {}) if isinstance(allowed_inputs, Mapping) else {}
+    if not isinstance(generation, Mapping):
+        return
+    manifest = generation.get("manifest")
+    payload["generation_hash"] = content_hash(generation)
+    payload["manifest_hash"] = content_hash(manifest) if isinstance(manifest, Mapping) else ""
+    candidate_hashes: dict[str, str] = {}
+    for item in generation.get("code_candidates", []):
+        if not isinstance(item, Mapping):
+            continue
+        path = str(item.get("path") or item.get("candidate_path") or "").strip()
+        content = item.get("content")
+        if path and isinstance(content, str) and content.strip():
+            candidate_hashes[path] = content_hash(content)
+    payload["candidate_hashes"] = candidate_hashes
+
+
 def ingest_multica_output(
     bundle_path: Path,
     raw_output: str,
@@ -3365,7 +3660,11 @@ def ingest_multica_output(
         raise ContractError(f"Multica output is missing required fields: {', '.join(missing)}")
     _validate_evidence_collections(payload, output_config["evidence_collections"])
     _validate_collection_item_fields(payload, output_config["collection_item_fields"])
+    if profile_id in {"A18-BE", "A18-CT"}:
+        _normalize_automation_review_bindings(bundle, payload)
     _validate_profile_semantics(profile_id, bundle, payload)
+    if profile_id in {"A14", "A15"}:
+        _normalize_automation_generation_payload(payload)
 
     try:
         status = ArtifactStatus(str(payload.get("status", "")))

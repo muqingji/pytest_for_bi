@@ -1,0 +1,20 @@
+{
+  "action": "continue",
+  "decision": "approved",
+  "decision_hash": "sha256:1aa8e2823fdd254d66f20928f0c87cc2c63a3fcb68a18b69e4a423655ed692e2",
+  "gate_id": "G03",
+  "idempotency_key": "sha256:4659a78ea1e6590ec8b89780eba7321fa4c0f6e34cdf82adec36615aee72dfc3",
+  "invalidation": {
+    "include_all_descendants": false,
+    "roots": []
+  },
+  "next_node": "N08",
+  "outcome_hash": "sha256:a2ed205dba0d9415a7cb4f2b878506030e1d13efdfd849582abe824a75096153",
+  "request_hash": "sha256:81d970e110e109445e08f0219e7517ab31b4e2e88feabb40875c0d0030f9f645",
+  "resume_at": "N08",
+  "review_key": "sha256:f4deab24065ca177e39c219a8f5ac6656a40f40f53c1b708c8fdd82754e3dda4",
+  "schema_version": "automation-code-review-outcome/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import json
+import os
 from contextlib import contextmanager
 from pathlib import Path
 import shutil
@@ -16,6 +17,7 @@ from datetime import datetime, timezone
 from qa_agents.autopilot import (
     ARTIFACT_NODE_MAP,
     SERVER_NODE_DEFINITIONS,
+    _confirmation_binds,
     reconcile_autopilot,
 )
 from qa_agents.card_copy import node_issue_description, node_issue_title, node_record_description
@@ -40,7 +42,10 @@ from qa_agents.g03_review import (
     sync_multica_automation_code_review,
 )
 from qa_agents.automation import AutomationPolicy, check_automation_generation
-from qa_agents.test_data import validate_test_data_plan
+from qa_agents.env_precheck import run_n07_env_precheck
+from qa_agents.execution import run_n08_automation
+from qa_agents.quality_pipeline import run_server_quality_tail
+from qa_agents.test_data import record_constructed_test_data, validate_test_data_plan
 from qa_agents.human_correction import (
     open_multica_human_correction,
     prepare_human_correction_request,
@@ -60,6 +65,7 @@ from qa_agents.multica import (
     prepare_multica_test_design_correction_input,
     prepare_multica_test_design_input,
 )
+from qa_agents.multica_cli import resolve_multica_binary
 from qa_agents.reporting import render_scope_review_markdown
 from qa_agents.risk import run_risk_strategy_after_g01
 from qa_agents.security import SecurityPolicy
@@ -75,15 +81,30 @@ from qa_agents.workflow_center import sync_multica_workflow_center
 
 @contextmanager
 def _sync_run_lock(lock_path: Path):
-    """Serialize whole sync passes so an unattended timer never overlaps."""
+    """Serialize whole sync passes so an unattended timer never overlaps.
+
+    The holder records its PID and start time inside the lock file so a
+    starved timer can report who is holding the pass instead of failing
+    silently. A hung holder self-heals because every multica call has a
+    timeout; the lock is never held by a dead process (flock is released with
+    the file descriptor).
+    """
 
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_file = lock_path.open("a+", encoding="utf-8")
     try:
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
+        lock_file.seek(0)
+        holder = lock_file.read().strip() or "unknown"
         lock_file.close()
-        raise
+        raise OSError(f"sync pass already running (lock holder: {holder})")
+    lock_file.seek(0)
+    lock_file.truncate()
+    lock_file.write(
+        f"pid={os.getpid()} since={datetime.now(timezone.utc).isoformat(timespec='seconds')}"
+    )
+    lock_file.flush()
     try:
         yield
     finally:
@@ -626,14 +647,44 @@ def publish_g01_decision_artifact(
     }
 
 
+_MULTICA_BINARY: str | None = None
+
+
+def _multica_binary() -> str:
+    """Resolve the multica CLI, including under launchd's minimal PATH.
+
+    launchd LaunchAgents inherit PATH=/usr/bin:/bin:/usr/sbin:/sbin, which does
+    not include /usr/local/bin or /opt/homebrew/bin. Without this fallback the
+    unattended timer dies on FileNotFoundError at the very first call and the
+    workflow only advances when someone runs the sync manually from a shell.
+    """
+
+    global _MULTICA_BINARY
+    if _MULTICA_BINARY:
+        return _MULTICA_BINARY
+    resolved = resolve_multica_binary()
+    _MULTICA_BINARY = resolved
+    return resolved
+
+
 def _multica(*args: str, cwd: Path | None = None) -> Any:
-    result = subprocess.run(
-        ["multica", *args, "--output", "json"],
-        cwd=cwd,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+    timeout_seconds = float(os.environ.get("SYNC_MULTICA_TIMEOUT_SECONDS", "180"))
+    try:
+        result = subprocess.run(
+            [_multica_binary(), *args, "--output", "json"],
+            cwd=cwd,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as error:
+        # A hung multica call must fail the pass and release the sync lock;
+        # otherwise the launchd timer only ever logs "another sync pass is
+        # already running" and the workflow silently stops advancing.
+        raise RuntimeError(
+            f"multica timed out after {timeout_seconds:.0f}s: {' '.join(args[:2])}"
+        ) from error
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or result.stdout.strip() or "multica failed")
     return json.loads(result.stdout)
@@ -817,10 +868,11 @@ def _ensure_agent_instruction(
     if not isinstance(current, dict):
         raise RuntimeError(f"multica agent get returned invalid data for {node_id}")
     hosted = str(current.get("instructions", ""))
-    header = instruction_path.read_text(encoding="utf-8").splitlines()[0].strip()
-    if header and header in hosted:
-        return {"node_id": node_id, "profile_version": profile_version, "unchanged": True}
     text = instruction_path.read_text(encoding="utf-8")
+    # 对比完整指令内容而不是只看首行标题，保证指令文件内容更新
+    # （例如补充 manifest schema_version 契约）一定能推送到已部署 Agent。
+    if text.strip() == hosted.strip():
+        return {"node_id": node_id, "profile_version": profile_version, "unchanged": True}
     _multica("agent", "update", agent_id, "--instructions", text)
     return {"node_id": node_id, "profile_version": profile_version, "updated": True}
 
@@ -876,6 +928,41 @@ def _save_ingest_failures(artifact_root: Path, failures: dict[str, list[dict[str
     path = artifact_root / ".ingest-failures.json"
     ArtifactStore(artifact_root).write_json(".ingest-failures.json", failures)
     return None
+
+
+def _record_ingest_failure(
+    failures: dict[str, list[dict[str, Any]]],
+    node_id: str,
+    issue_id: str,
+    run_id: str,
+    bundle_path: Path,
+) -> None:
+    """Append an ingest-failure record, pinning the bundle hash at failure time."""
+
+    entry: dict[str, Any] = {"issue_id": str(issue_id), "run_id": str(run_id)}
+    try:
+        bundle = _read(bundle_path)
+    except (OSError, json.JSONDecodeError):
+        bundle = {}
+    if isinstance(bundle, Mapping):
+        entry["bundle_hash"] = str(bundle.get("bundle_hash", ""))
+    failures.setdefault(node_id, []).append(entry)
+
+
+def _mark_issue_blocked(issue: dict[str, Any]) -> None:
+    """Move a node Issue out of the running state after its run failed ingestion.
+
+    A completed run whose output cannot be ingested must not keep the Issue
+    ``in_progress`` forever: the state is projected as ``running`` on the stage
+    card and blocks every re-dispatch attempt. ``blocked`` is the honest
+    terminal state for a failed attempt (``failed`` is not a valid Multica
+    status) and lets the rerun budget count the attempt.
+    """
+
+    status = str(issue.get("status", "")).strip()
+    if status in {"blocked", "done", "cancelled"}:
+        return
+    _multica("issue", "status", str(issue.get("id", "")), "blocked")
 
 
 def _load_issue_bundles(inputs_dir: Path) -> dict[str, str]:
@@ -962,6 +1049,9 @@ def _create_node_issue(
         agent_id,
         "--attachment",
         str(attachment_path),
+        # 上一轮尝试可能因摄入失败被置为 blocked（multica 仍视为 active），
+        # 重派/修正时必须允许创建新的 Issue 才能推进，而不是永远卡住。
+        "--allow-duplicate",
     ]
     created = _multica(*command, cwd=description_path.parent)
     if not isinstance(created, dict) or not created.get("id"):
@@ -2374,6 +2464,41 @@ C5_GENERATION_REVIEWER = {
 }
 
 
+def _dispatch_c5_gate(
+    config: dict[str, Any],
+    node_id: str,
+    issues_by_node: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any] | None:
+    """Pre-dispatch gate: never regenerate an input bundle while a node attempt
+    is in flight or the rerun budget is exhausted.
+
+    ``ensure_a14/a15/a22_dispatch`` prepare the hash-bound input bundle before
+    calling the shared dispatch helper. Regenerating that bundle when an Issue
+    was already dispatched replaces the frozen input the running Agent bound to
+    (hash mismatch at ingestion, permanent ``in_progress``). The gate mirrors
+    the helper's own checks but runs *before* the bundle is (re)written.
+    """
+
+    existing = issues_by_node.get(node_id, [])
+    if not existing:
+        return None
+    running = next((issue for issue in existing if _issue_running(issue)), None)
+    if running is not None:
+        return {
+            "node_id": node_id,
+            "action": "already_dispatched",
+            "issue_id": str(running.get("id", "")),
+            "issue_identifier": str(running.get("identifier", "")),
+        }
+    if not _rerun_budget_available(config, node_id, existing):
+        return {
+            "node_id": node_id,
+            "action": "rerun_budget_exhausted",
+            "attempts": len(existing),
+        }
+    return None
+
+
 def _dispatch_c5_agent(
     config: dict[str, Any],
     run_id: str,
@@ -2484,6 +2609,9 @@ def ensure_a14_dispatch(
     data_ready = _test_data_plan_valid(n27_path)
     if n27_path.exists() and not data_ready:
         return None
+    gate = _dispatch_c5_gate(config, "A14", issues_by_node)
+    if gate is not None:
+        return gate
     inputs_dir.mkdir(parents=True, exist_ok=True)
     bundle = prepare_multica_automation_generation_input(
         n25_path,
@@ -2493,6 +2621,7 @@ def ensure_a14_dispatch(
         profile_id="A14",
         test_data_plan_path=a22_path if data_ready else None,
         test_data_validation_path=n27_path if data_ready else None,
+        regeneration_round=len(issues_by_node.get("A14", [])),
     )
     return _dispatch_c5_agent(
         config,
@@ -2533,9 +2662,17 @@ def ensure_a15_dispatch(
     n27_path = auto_dir / "artifacts" / "n27-test-data-plan-validation.json"
     if n27_path.exists() and not _test_data_plan_valid(n27_path):
         return None
+    gate = _dispatch_c5_gate(config, "A15", issues_by_node)
+    if gate is not None:
+        return gate
     inputs_dir.mkdir(parents=True, exist_ok=True)
     bundle = prepare_multica_automation_generation_input(
-        n25_path, n15_path, policy_path, inputs_dir, profile_id="A15"
+        n25_path,
+        n15_path,
+        policy_path,
+        inputs_dir,
+        profile_id="A15",
+        regeneration_round=len(issues_by_node.get("A15", [])),
     )
     return _dispatch_c5_agent(
         config,
@@ -2573,6 +2710,9 @@ def ensure_a22_dispatch(
         return None
     catalog_path = _config_path(config, "capability_catalog", repo_root)
     sources_path = _config_path(config, "knowledge_sources", repo_root)
+    gate = _dispatch_c5_gate(config, "A22", issues_by_node)
+    if gate is not None:
+        return gate
     inputs_dir.mkdir(parents=True, exist_ok=True)
     bundle = prepare_multica_test_data_plan_input(
         n25_path,
@@ -2687,6 +2827,85 @@ def ensure_a22_correction_dispatch(
     return result
 
 
+def _ensure_reviewer_skipped_for_not_applicable_generation(
+    auto_dir: Path,
+    reviewer: str,
+    generation: Mapping[str, Any],
+    generation_payload: Mapping[str, Any],
+    target: Path,
+) -> dict[str, Any] | None:
+    """Record a deterministic ``not_applicable`` reviewer Artifact.
+
+    When a generation branch is not applicable (for example A15 without any
+    contract Case), the paired A18 reviewer is never dispatched. Without a
+    terminal marker the reviewer node stays ``not_started`` forever and the
+    stage card can never reach ``done``, so the next stage never starts. The
+    deterministic marker keeps the "unselected branch is skipped" invariant
+    from the flow design: merge nodes and stage cards must not wait forever on
+    a branch that was not selected.
+    """
+
+    generation_hash = content_hash(dict(generation_payload))
+    if target.exists():
+        try:
+            existing = _read(target)
+        except (OSError, json.JSONDecodeError):
+            existing = {}
+        existing_payload = existing.get("payload", {})
+        if (
+            existing.get("status") == ArtifactStatus.NOT_APPLICABLE.value
+            and isinstance(existing_payload, Mapping)
+            and str(existing_payload.get("generation_hash", "")) == generation_hash
+        ):
+            return None
+    identity = (
+        str(generation.get("workflow_run_id", "")),
+        str(generation.get("workflow_mode", "")),
+        str(generation.get("source_snapshot_id", "")),
+    )
+    review = ArtifactEnvelope(
+        workflow_run_id=identity[0],
+        workflow_mode=identity[1],
+        artifact_id=C5_REVIEW_ARTIFACTS[reviewer],
+        source_snapshot_id=identity[2],
+        producer=Producer(
+            component_id=reviewer,
+            component_version="1.0.0",
+            runtime="deterministic-node",
+            profile_version="1.0.0",
+            model_provider="deterministic",
+            model_snapshot="none",
+            prompt_version="none",
+            tool_bundle_version="none",
+        ),
+        payload={
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": identity[0],
+            "source_snapshot_id": identity[2],
+            "generation_hash": generation_hash,
+            "decision": "not_applicable",
+            "reason": "generation branch is not applicable; review not required",
+        },
+        status=ArtifactStatus.NOT_APPLICABLE,
+        reason_code="generation_not_applicable",
+        evidence_refs=(
+            EvidenceRef(
+                source_type="artifact",
+                source_id=str(generation.get("artifact_id", "")),
+                location=f"{generation.get('artifact_id', '')}.json",
+                content_hash=str(generation.get("artifact_hash", "")),
+            ),
+        ),
+    )
+    ArtifactStore(auto_dir).write_artifact(review)
+    return {
+        "node_id": reviewer,
+        "action": "skipped_not_applicable",
+        "artifact_id": review.artifact_id,
+        "artifact_hash": review.artifact_hash,
+    }
+
+
 def ensure_a18_dispatch(
     config: dict[str, Any],
     run_id: str,
@@ -2703,8 +2922,6 @@ def ensure_a18_dispatch(
     if reviewer not in C5_REVIEW_ARTIFACTS:
         raise RuntimeError(f"unsupported A18 reviewer: {reviewer}")
     target = auto_dir / "artifacts" / f"{C5_REVIEW_ARTIFACTS[reviewer]}.json"
-    if target.exists():
-        return None
     generator = C5_REVIEW_GENERATOR[reviewer]
     generation_path = auto_dir / "artifacts" / f"{C5_GENERATION_ARTIFACTS[generator]}.json"
     n25_path = auto_dir / "artifacts" / "n25-compiled-test-cases.json"
@@ -2715,7 +2932,37 @@ def ensure_a18_dispatch(
     if not isinstance(generation_payload, Mapping) or not isinstance(
         generation_payload.get("manifest"), Mapping
     ):
+        if generation.get("status") in {
+            ArtifactStatus.NOT_APPLICABLE.value,
+            ArtifactStatus.SKIPPED_BY_POLICY.value,
+        }:
+            return _ensure_reviewer_skipped_for_not_applicable_generation(
+                auto_dir, reviewer, generation, generation_payload, target
+            )
         return None
+    if target.exists():
+        # 复核必须绑定当前生成载荷：A14/A15 重生成后旧复核自动失效。移除
+        # 陈旧 artifact 触发复核重派，避免用旧复核放行新候选代码。
+        try:
+            review = _read(target)
+        except (OSError, json.JSONDecodeError):
+            review = {}
+        review_payload = review.get("payload", {})
+        if isinstance(review_payload, Mapping) and str(
+            review_payload.get("generation_hash", "")
+        ) == content_hash(generation_payload):
+            return None
+    # 在途/预算 gate 必须先于 bundle 重建与 stale 清理：复核输入 bundle 的
+    # 哈希会被 run 冻结绑定，若在途时重写文件，run 完成后摄入时哈希不匹配
+    # 会永久 in_progress/blocked。gate 返回非 None 时不得改动任何状态。
+    gate = _dispatch_c5_gate(config, reviewer, issues_by_node)
+    if gate is not None:
+        return gate
+    if target.exists():
+        target.unlink()
+        record = target.with_name(f"{target.name}.record.md")
+        if record.exists():
+            record.unlink()
     bundle_path = _artifact_bundle_path(generation_payload, inputs_dir, generator)
     if bundle_path is None:
         return None
@@ -2730,6 +2977,7 @@ def ensure_a18_dispatch(
         policy_path,
         inputs_dir,
         profile_id=reviewer,
+        regeneration_round=len(issues_by_node.get(reviewer, [])),
     )
     return _dispatch_c5_agent(
         config,
@@ -2777,14 +3025,18 @@ def ensure_n27_validation(
     policy = _read(policy_path)
     try:
         validation = validate_test_data_plan(a22_payload, policy)
-        n27_status = (
-            ArtifactStatus.COMPLETED
-            if a22.get("status") == ArtifactStatus.COMPLETED.value
-            else ArtifactStatus.BLOCKED
-        )
-        reason_code = (
-            None if n27_status == ArtifactStatus.COMPLETED else "test_data_plan_incomplete"
-        )
+        if a22.get("status") == ArtifactStatus.NEEDS_HUMAN.value:
+            # A22 把无法自动验证的数据语义（图表创建接口、权限夹具、历史种子、
+            # 故障注入等）路由给人工确认是合法输出。N27 对这类计划做结构安全校验
+            # （环境/命名空间/无密钥/资源类型/操作对），通过后以
+            # completed_with_gaps 放行，等待人工在 A22 节点处理未决需求，
+            # 而不是把 C5 整条链路死锁在 rejected。
+            n27_status = ArtifactStatus.COMPLETED_WITH_GAPS
+            reason_code = "test_data_plan_pending_human"
+            validation = {**validation, "pending_human": True}
+        else:
+            n27_status = ArtifactStatus.COMPLETED
+            reason_code = None
     except Exception as error:
         validation = {
             "schema_version": "test-data-plan-validation/1.0",
@@ -2841,6 +3093,27 @@ def ensure_n27_validation(
     }
 
 
+def _review_binds_generation(review: Mapping[str, Any], generation_payload: Mapping[str, Any]) -> bool:
+    """Whether an A18 review actually reviewed the current generation payload.
+
+    A14/A15 regeneration replaces the generation Artifact; any review left over
+    from a previous round binds an older ``generation_hash`` and must not count
+    as evidence for the new candidates. Without this check N05 would aggregate
+    the stale approval and G03 would open a human review card that claims
+    machine review passed for code the reviewer never saw.
+    """
+
+    if review.get("status") in {
+        ArtifactStatus.NOT_APPLICABLE.value,
+        ArtifactStatus.SKIPPED_BY_POLICY.value,
+    }:
+        return True
+    review_payload = review.get("payload")
+    if not isinstance(review_payload, Mapping):
+        return False
+    return str(review_payload.get("generation_hash", "")) == content_hash(generation_payload)
+
+
 def ensure_n05_aggregation(
     config: dict[str, Any],
     auto_dir: Path,
@@ -2862,7 +3135,14 @@ def ensure_n05_aggregation(
         reviewer = C5_GENERATION_REVIEWER[generator_id]
         review_path = auto_dir / "artifacts" / f"{C5_REVIEW_ARTIFACTS[reviewer]}.json"
         if review_path.exists():
-            reviews[reviewer] = _read(review_path)
+            review = _read(review_path)
+            # A deterministic not_applicable reviewer marker (generation branch
+            # not selected) is evidence of the skip, not a real review: it must
+            # not flip review_passed to False and stall the merge node. A review
+            # bound to an older generation (A14/A15 重生成后遗留) 同样不能作为
+            # 证据：只有复核过当前候选的结论才能算 review_passed。
+            if _review_binds_generation(review, payload):
+                reviews[reviewer] = review
     if not generations:
         return None
     policy_path = _config_path(config, "automation_target_policy", repo_root)
@@ -2877,8 +3157,13 @@ def ensure_n05_aggregation(
             for item in existing.get("evidence_refs", [])
             if isinstance(item, Mapping)
         }
-        current_hashes = {str(item.get("artifact_hash", "")) for item in generations}
-        if current_hashes and current_hashes <= existing_hashes:
+        # 生成或复核任一 Artifact 变化（A14/A15 重生成、A18 重复核、陈旧复核被
+        # 排除/移除）都必须重算，否则会用旧复核/旧生成的结果放行新代码。子集
+        # 判断只覆盖"新增"，复核被移除后必须显式重算（无复核不得 passed）。
+        current_hashes = {
+            str(item.get("artifact_hash", "")) for item in generations
+        } | {str(item.get("artifact_hash", "")) for item in reviews.values()}
+        if current_hashes and current_hashes == existing_hashes:
             return None
     checks = [check_automation_generation(item.get("payload", {}), policy) for item in generations]
     issues = [item for check in checks for item in check["issues"]]
@@ -2957,6 +3242,15 @@ def ensure_n05_aggregation(
                 content_hash=str(item["artifact_hash"]),
             )
             for item in generations
+        )
+        + tuple(
+            EvidenceRef(
+                source_type="artifact",
+                source_id=str(item["artifact_id"]),
+                location=f"{item['artifact_id']}.json",
+                content_hash=str(item["artifact_hash"]),
+            )
+            for item in reviews.values()
         ),
     )
     ArtifactStore(auto_dir).write_artifact(n05)
@@ -3086,7 +3380,11 @@ def ensure_g03_review(
         reviewer = C5_GENERATION_REVIEWER[generator_id]
         review_path = auto_dir / "artifacts" / f"{C5_REVIEW_ARTIFACTS[reviewer]}.json"
         if review_path.exists():
-            review_paths[reviewer] = review_path
+            # 重生成后遗留的旧复核不得作为本次 G03 的证据，否则卡片会展示
+            # "复核已通过"但实际复核的是旧候选代码。
+            review = _read(review_path)
+            if _review_binds_generation(review, generation_payload):
+                review_paths[reviewer] = review_path
     if not generation_paths:
         return None
     review_dir.mkdir(parents=True, exist_ok=True)
@@ -3097,12 +3395,16 @@ def ensure_g03_review(
             raise RuntimeError(f"G03 round archive already exists: {archive}")
         review_dir.rename(archive)
         review_dir.mkdir(parents=True, exist_ok=True)
+    compiled_cases_path = auto_dir / "artifacts" / "n25-compiled-test-cases.json"
+    if not compiled_cases_path.exists():
+        compiled_cases_path = None
     request = prepare_automation_code_review_request(
         n05_path,
         generation_paths,
         review_paths,
         policy_path,
         review_dir,
+        compiled_cases_path=compiled_cases_path,
     )
     result = {
         "node_id": "G03",
@@ -3151,12 +3453,443 @@ def ensure_g03_review(
     return result
 
 
+def _policy_path(config: dict[str, Any], key: str, repo_root: Path) -> Path | None:
+    """Resolve a policy path from config, falling back to the repo policies dir."""
+
+    configured = _config_path(config, key, repo_root)
+    if configured is not None:
+        return configured
+    # Policy files use hyphenated names (execution-policy.json) while config
+    # keys are underscore-separated (execution_policy). Try both spellings so
+    # a run config that omits the key still resolves the bundled default.
+    # Also accept either repo layout (repo-root/qa-agents/policies or a bare
+    # qa-agents root) because tests and deployments pass different roots.
+    candidates = (
+        repo_root / "qa-agents" / "policies" / f"{key}.json",
+        repo_root / "qa-agents" / "policies" / f"{key.replace('_', '-')}.json",
+        repo_root / "policies" / f"{key}.json",
+        repo_root / "policies" / f"{key.replace('_', '-')}.json",
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _c5_terminal(auto_dir: Path) -> bool:
+    """Whether every C5 node reached a terminal state (A22 confirmation included)."""
+
+    required = [
+        "a14-backend-automation-generation",
+        "a15-contract-automation-generation",
+        "a18-be-backend-automation-review",
+        "n27-test-data-plan-validation",
+        "n05-automation-code-check",
+        "g03-automation-code-review",
+    ]
+    blocked_statuses = {
+        ArtifactStatus.NEEDS_HUMAN.value,
+        ArtifactStatus.BLOCKED.value,
+        ArtifactStatus.BLOCKED_INPUT.value,
+        ArtifactStatus.FAILED_FATAL.value,
+    }
+    for name in required:
+        path = auto_dir / "artifacts" / f"{name}.json"
+        if not path.exists():
+            return False
+        if _read(path).get("status") in blocked_statuses:
+            return False
+    a22_path = auto_dir / "artifacts" / "a22-test-data-plan.json"
+    if not a22_path.exists():
+        return False
+    a22 = _read(a22_path)
+    if a22.get("status") != ArtifactStatus.NEEDS_HUMAN.value:
+        return True
+    confirmation_path = auto_dir / "artifacts" / "a22-human-confirmation.json"
+    if not confirmation_path.exists():
+        return False
+    return _confirmation_binds(_read(confirmation_path), a22)
+
+
+def ensure_a22_human_confirmation(
+    run_id: str,
+    auto_dir: Path,
+    issues_by_node: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any] | None:
+    """Record a human confirmation once the A22 review Issue is set to done.
+
+    A22 plans with unresolved data requirements are ``needs_human`` by design.
+    The owner confirms them on Multica (Issue done); the confirmation Artifact
+    lets the C5 stage reach a terminal state automatically instead of keeping
+    the whole workflow in ``in_review`` forever.
+    """
+
+    a22_path = auto_dir / "artifacts" / "a22-test-data-plan.json"
+    if not a22_path.exists():
+        return None
+    a22 = _read(a22_path)
+    if a22.get("status") != ArtifactStatus.NEEDS_HUMAN.value:
+        return None
+    target = auto_dir / "artifacts" / "a22-human-confirmation.json"
+    if target.exists():
+        existing = _read(target)
+        if _confirmation_binds(existing, a22):
+            return None
+    issues = issues_by_node.get("A22", [])
+    done_issues = [
+        issue for issue in issues if str(issue.get("status", "")).strip() == "done"
+    ]
+    if not done_issues:
+        return None
+    payload = a22.get("payload", {})
+    unresolved = payload.get("unresolved_requirements", [])
+    confirmed_ids = [
+        str(item.get("requirement_id") or item.get("reason_code") or item.get("id") or "")
+        for item in unresolved
+        if isinstance(item, Mapping)
+    ]
+    confirmed_ids = [value for value in confirmed_ids if value]
+    identity = (
+        str(a22.get("workflow_run_id", "")),
+        str(a22.get("workflow_mode", "")),
+        str(a22.get("source_snapshot_id", "")),
+    )
+    confirmation = ArtifactEnvelope(
+        workflow_run_id=identity[0],
+        workflow_mode=identity[1],
+        artifact_id="a22-human-confirmation",
+        source_snapshot_id=identity[2],
+        producer=Producer(
+            component_id="A22-HUMAN",
+            component_version="1.0.0",
+            runtime="human-confirmation",
+            profile_version="1.0.0",
+            model_provider="deterministic",
+            model_snapshot="none",
+            prompt_version="none",
+            tool_bundle_version="none",
+        ),
+        payload={
+            "schema_version": "human-confirmation/1.0",
+            "gate_id": "A22",
+            "decision": "confirmed",
+            "plan_artifact_id": "a22-test-data-plan",
+            "plan_artifact_hash": str(a22.get("artifact_hash", "")),
+            "confirmed_requirement_ids": confirmed_ids,
+            "actor": {
+                "type": "human",
+                "issue_identifier": str(
+                    done_issues[0].get("identifier", "")
+                ),
+            },
+        },
+        status=ArtifactStatus.COMPLETED_WITH_GAPS,
+        reason_code="unresolved_requirements_confirmed",
+        evidence_refs=(
+            EvidenceRef(
+                source_type="artifact",
+                source_id="a22-test-data-plan",
+                location="a22-test-data-plan.json",
+                content_hash=str(a22.get("artifact_hash", "")),
+            ),
+        ),
+    )
+    ArtifactStore(auto_dir).write_artifact(confirmation)
+    return {
+        "node_id": "A22",
+        "artifact_id": confirmation.artifact_id,
+        "artifact_hash": confirmation.artifact_hash,
+        "status": confirmation.status.value,
+        "confirmed": len(confirmed_ids),
+    }
+
+
+def _ensure_n07_env_inputs(
+    config: dict[str, Any],
+    run_id: str,
+    auto_dir: Path,
+    inputs_dir: Path,
+    repo_root: Path,
+) -> tuple[Path, Path, bool]:
+    """Resolve N07 env target/observed; synthesize minimal defaults when absent.
+
+    A run that does not pin explicit environment fingerprints still gets a
+    deterministic minimal target/observation derived from its own data (the
+    A22 plan environment class and test namespace), so C6 can start without a
+    manual environment-input handoff. Explicit ``n07_target``/``n07_observed``
+    in the workflow config always win; synthesized files are written once and
+    reused by later passes.
+    """
+
+    env_target = _config_path(config, "n07_target", repo_root)
+    env_observed = _config_path(config, "n07_observed", repo_root)
+    if env_target is None:
+        env_target = inputs_dir / "env-target.json"
+    if env_observed is None:
+        env_observed = inputs_dir / "env-observed.json"
+    if env_target.exists() and env_observed.exists():
+        return env_target, env_observed, False
+    environment = "test"
+    namespace = f"qa-{run_id}"
+    a22_path = auto_dir / "artifacts" / "a22-test-data-plan.json"
+    if a22_path.exists():
+        try:
+            a22_payload = _read(a22_path).get("payload", {})
+        except (OSError, json.JSONDecodeError):
+            a22_payload = {}
+        if isinstance(a22_payload, Mapping):
+            environment = str(a22_payload.get("environment") or environment)
+            namespace = str(a22_payload.get("namespace") or namespace)
+    inputs_dir.mkdir(parents=True, exist_ok=True)
+    target_payload = {
+        "schema_version": "environment-target/1.0",
+        "environment_class": environment,
+        "production_isolation": False,
+        "expected": {
+            "deployment_commits": [],
+            "dependencies": [],
+            "test_accounts": [],
+            "feature_flags": [],
+            "tenant_configs": [],
+            "test_data_requirements": [],
+            "runtime": {"timezone": "Asia/Shanghai", "language": "zh-CN"},
+            "namespace_policy": {"prefix": "qa-", "cleanup": {"required": True}},
+            "required_locks": [],
+        },
+    }
+    observed_payload = {
+        "schema_version": "environment-observation/1.0",
+        "environment": environment,
+        "requester_id": f"qa-sync-{run_id}",
+        "deployment_commits": [],
+        "dependencies": [],
+        "test_accounts": [],
+        "feature_flags": [],
+        "tenant_configs": [],
+        "test_data": [],
+        "runtime": {"timezone": "Asia/Shanghai", "language": "zh-CN"},
+        "test_namespaces": [
+            {"namespace": namespace, "cleanup_policy": {"required": True}}
+        ],
+        "resource_locks": [],
+    }
+    env_target.write_text(
+        json.dumps(target_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    env_observed.write_text(
+        json.dumps(observed_payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return env_target, env_observed, True
+
+
+def ensure_n07_precheck(
+    config: dict[str, Any],
+    run_id: str,
+    auto_dir: Path,
+    inputs_dir: Path,
+    repo_root: Path,
+) -> dict[str, Any] | None:
+    """Auto-run the deterministic N07 environment precheck once C5 is terminal."""
+
+    if not _c5_terminal(auto_dir):
+        return None
+    target_path = auto_dir / "artifacts" / "n07-environment-precheck.json"
+    if target_path.exists():
+        return None
+    n27_path = auto_dir / "artifacts" / "n27-test-data-plan-validation.json"
+    a14_path = auto_dir / "artifacts" / "a14-backend-automation-generation.json"
+    if not a14_path.exists():
+        return None
+    env_target, env_observed, synthesized = _ensure_n07_env_inputs(
+        config, run_id, auto_dir, inputs_dir, repo_root
+    )
+    identity = _read(a14_path)
+    artifact = run_n07_env_precheck(
+        env_target,
+        env_observed,
+        auto_dir,
+        workflow_run_id=str(identity.get("workflow_run_id", "")),
+        source_snapshot_id=str(identity.get("source_snapshot_id", "")),
+        workflow_mode=str(identity.get("workflow_mode", "new_requirement")),
+        test_data_validation_path=n27_path if n27_path.exists() else None,
+    )
+    result = {
+        "node_id": "N07",
+        "artifact_id": str(artifact.get("artifact_id", "")),
+        "artifact_hash": str(artifact.get("artifact_hash", "")),
+        "status": str(artifact.get("status", "")),
+        "decision": str(artifact.get("payload", {}).get("decision", "")),
+    }
+    if synthesized:
+        result["env_input_synthesized"] = True
+        result["target"] = str(env_target)
+        result["observed"] = str(env_observed)
+    return result
+
+
+def ensure_n08_execution(
+    config: dict[str, Any],
+    auto_dir: Path,
+    repo_root: Path,
+) -> dict[str, Any] | None:
+    """Auto-run N08 controlled execution after a passed N07 precheck."""
+
+    precheck_path = auto_dir / "artifacts" / "n07-environment-precheck.json"
+    if not precheck_path.exists():
+        return None
+    precheck = _read(precheck_path)
+    precheck_payload = precheck.get("payload", {})
+    if not isinstance(precheck_payload, Mapping):
+        return None
+    if (
+        precheck.get("status") not in {ArtifactStatus.COMPLETED.value, ArtifactStatus.COMPLETED_WITH_GAPS.value}
+        or precheck_payload.get("decision") not in {"passed", "passed_with_warnings"}
+        or precheck_payload.get("next_node") != "N08"
+    ):
+        return None
+    target = auto_dir / "artifacts" / "n08-automation-execution.json"
+    if target.exists():
+        return None
+    generation_path = auto_dir / "artifacts" / "a14-backend-automation-generation.json"
+    review_path = auto_dir / "artifacts" / "a18-be-backend-automation-review.json"
+    code_check_path = auto_dir / "artifacts" / "n05-automation-code-check.json"
+    automation_policy = _policy_path(config, "automation_target_policy", repo_root)
+    execution_policy = _policy_path(config, "execution_policy", repo_root)
+    if (
+        not all(path.exists() for path in (generation_path, review_path, code_check_path))
+        or automation_policy is None
+        or execution_policy is None
+    ):
+        return None
+    artifact = run_n08_automation(
+        generation_path,
+        review_path,
+        code_check_path,
+        precheck_path,
+        automation_policy,
+        execution_policy,
+        auto_dir,
+    )
+    return {
+        "node_id": "N08",
+        "artifact_id": str(artifact.get("artifact_id", "")),
+        "artifact_hash": str(artifact.get("artifact_hash", "")),
+        "status": str(artifact.get("status", "")),
+        "decision": str(artifact.get("payload", {}).get("decision", "")),
+    }
+
+
+def ensure_quality_tail(
+    config: dict[str, Any],
+    auto_dir: Path,
+    repo_root: Path,
+) -> dict[str, Any] | None:
+    """Auto-run the C7/C8 quality tail after N08 execution evidence exists."""
+
+    n08_path = auto_dir / "artifacts" / "n08-automation-execution.json"
+    if not n08_path.exists():
+        return None
+    n18_path = auto_dir / "artifacts" / "n18-quality-signals.json"
+    if n18_path.exists():
+        return None
+    plan_path = auto_dir / "artifacts" / "n15-execution-plan.json"
+    compiled_path = auto_dir / "artifacts" / "n25-compiled-test-cases.json"
+    precheck_path = auto_dir / "artifacts" / "n07-environment-precheck.json"
+    quality_policy = _policy_path(config, "quality_policy", repo_root)
+    if (
+        not all(path.exists() for path in (plan_path, compiled_path, precheck_path))
+        or quality_policy is None
+    ):
+        return None
+    result = run_server_quality_tail(
+        plan_path,
+        compiled_path,
+        precheck_path,
+        auto_dir,
+        test_data_validation_path=auto_dir / "artifacts" / "n27-test-data-plan-validation.json",
+        automation_execution_paths=[n08_path],
+        quality_policy_path=quality_policy,
+    )
+    return {
+        "node_id": "QUALITY_TAIL",
+        "status": str(result.get("status", "")),
+        "current_node": str(result.get("current_node", "")),
+        "next_node": str(result.get("next_node", "")),
+    }
+
+
 _RECORD_ISSUE_STATUS = {
     "completed": "done",
+    "completed_with_gaps": "done",
     "needs_human": "in_review",
+    "blocked": "blocked",
     "blocked_input": "blocked",
+    "not_applicable": "done",
+    "skipped_by_policy": "done",
+    "stale": "done",
+    "inconclusive": "in_review",
+    "failed_retryable": "in_review",
+    "failed_fatal": "blocked",
     "cancelled": "cancelled",
 }
+
+
+def _retry_approval_block(
+    artifact: Mapping[str, Any],
+    retry_budget: Mapping[str, Any] | None,
+) -> list[str] | None:
+    """Build the human-decision block for a retryable-failure record card.
+
+    A ``failed_retryable`` deterministic node (N08 execution or N10 retry
+    budget) flips its record Issue to ``in_review``. The card must show what
+    failed and what the retry budget allows, otherwise the user sees an empty
+    "审核中" card with nothing to approve.
+    """
+
+    if str(artifact.get("status", "")) != ArtifactStatus.FAILED_RETRYABLE.value:
+        return None
+    payload = artifact.get("payload", {})
+    if not isinstance(payload, Mapping):
+        payload = {}
+    artifact_id = str(artifact.get("artifact_id", ""))
+    lines = [
+        "本节点执行判定为可重试失败（`failed_retryable`），需要你决定是否批准重试。",
+        "",
+        "### 失败摘要",
+        f"- 失败原因：`{artifact.get('reason_code') or '未说明'}`",
+    ]
+    if payload.get("decision"):
+        lines.append(f"- 执行决策：`{payload['decision']}`")
+    summary = payload.get("summary")
+    if isinstance(summary, Mapping) and summary:
+        lines.append(
+            "- 执行摘要：" + "、".join(f"`{key}={value}`" for key, value in summary.items())
+        )
+    budget = retry_budget
+    if budget is None and artifact_id == "n10-retry-budget":
+        budget = artifact
+    lines.extend(["", "### 重试预算"])
+    if budget is None:
+        lines.append("- 未生成重试预算 Artifact，无法自动重试。")
+    else:
+        budget_payload = budget.get("payload", {})
+        if not isinstance(budget_payload, Mapping):
+            budget_payload = {}
+        lines.append(f"- 判定：`{budget_payload.get('decision') or budget.get('status')}`")
+        if budget_payload.get("max_attempts") is not None:
+            lines.append(f"- 允许重试：`{budget_payload['max_attempts']}` 次（当前 attempt=`{budget_payload.get('attempt', 0)}`）")
+        if budget_payload.get("next_node"):
+            lines.append(f"- 重试起点：从 `{budget_payload['next_node']}` 重新执行")
+    lines.extend(
+        [
+            "",
+            "### 决策动作",
+            "- 置 **done**：批准重试，系统按上述预算从重试起点重新执行。",
+            "- 置 **cancelled**：拒绝重试，终止当前执行路径。",
+            "- 置 **blocked**：暂不处理，保持等待。",
+        ]
+    )
+    return lines
 
 
 def _ensure_node_record_issue(
@@ -3169,10 +3902,70 @@ def _ensure_node_record_issue(
     *,
     apply: bool,
 ) -> dict[str, Any] | None:
-    """Create (idempotently) one record Issue for a deterministic node."""
+    """Create (idempotently) one record Issue for a deterministic node.
 
-    if any(str(issue.get("id", "")) for issue in issues_by_node.get(node_id, [])):
-        return None
+    The record Issue mirrors the deterministic Artifact state (例如 N27 从
+    blocked 变为 completed_with_gaps 后，Issue 也必须同步为 done)，保证子任务
+    状态回显与真实状态一致。
+    """
+
+    artifact = _read(artifact_path)
+    expected_status = _RECORD_ISSUE_STATUS.get(str(artifact.get("status", "")), "done")
+    retry_budget = None
+    if str(artifact.get("artifact_id", "")) == "n08-automation-execution":
+        budget_path = artifact_path.parent / "n10-retry-budget.json"
+        if budget_path.exists():
+            try:
+                retry_budget = _read(budget_path)
+            except (OSError, json.JSONDecodeError):
+                retry_budget = None
+    approval_block = _retry_approval_block(artifact, retry_budget)
+    description = node_record_description(
+        node_id,
+        label,
+        artifact_name=artifact_path.name,
+        approval_block=approval_block,
+    )
+    existing = next(
+        (issue for issue in issues_by_node.get(node_id, []) if issue.get("id")),
+        None,
+    )
+    if existing is not None:
+        live_status = str(existing.get("status", "")).strip()
+        if not apply:
+            return None
+        if live_status == expected_status and approval_block is None:
+            return None
+        if approval_block is not None:
+            description_path = artifact_path.with_name(f"{artifact_path.name}.record.md")
+            description_path.write_text(description, encoding="utf-8")
+            try:
+                _multica(
+                    "issue", "update",
+                    str(existing["id"]),
+                    "--description-file", description_path.name,
+                    "--title", node_issue_title(run_id, node_id, label),
+                    "--project", str(config["internal_project_id"]),
+                    "--status", expected_status,
+                    cwd=description_path.parent,
+                )
+            except Exception as error:
+                raise RuntimeError(f"multica could not sync the {node_id} record Issue") from error
+        else:
+            try:
+                _multica("issue", "status", str(existing["id"]), expected_status)
+            except Exception as error:
+                raise RuntimeError(f"multica could not sync the {node_id} record Issue status") from error
+        return {
+            "node_id": node_id,
+            "label": label,
+            "action": "synced",
+            "issue_id": str(existing["id"]),
+            "issue_identifier": str(existing.get("identifier", "")),
+            "artifact": str(artifact_path),
+            "status": expected_status,
+            "approval_rendered": approval_block is not None,
+        }
     if not apply:
         return {
             "node_id": node_id,
@@ -3180,8 +3973,6 @@ def _ensure_node_record_issue(
             "action": "would_create",
             "artifact": str(artifact_path),
         }
-    artifact = _read(artifact_path)
-    description = node_record_description(node_id, label, artifact_name=artifact_path.name)
     description_path = artifact_path.with_name(f"{artifact_path.name}.record.md")
     description_path.write_text(description, encoding="utf-8")
     command = [
@@ -3207,7 +3998,8 @@ def _ensure_node_record_issue(
         "issue_id": str(created["id"]),
         "issue_identifier": str(created.get("identifier", "")),
         "artifact": str(artifact_path),
-        "status": _RECORD_ISSUE_STATUS.get(str(artifact.get("status", "")), "done"),
+        "status": expected_status,
+        "approval_rendered": approval_block is not None,
     }
 
 
@@ -3369,6 +4161,13 @@ def _run_sync_once(args: argparse.Namespace) -> int:
         if _ingest_already_failed(
             ingest_failures, node_id, str(issue["id"]), node_run_id
         ):
+            if args.apply:
+                try:
+                    _mark_issue_blocked(issue)
+                except Exception as error:
+                    errors.append(
+                        {"node_id": node_id, "error": f"ingest-failed status: {error}"}
+                    )
             continue
         if _already_ingested(auto_dir, bundle_path, node_run_id):
             if args.apply:
@@ -3397,9 +4196,16 @@ def _run_sync_once(args: argparse.Namespace) -> int:
                     _multica("issue", "status", str(issue["id"]), "done")
         except Exception as error:  # keep other nodes progressing
             errors.append({"node_id": node_id, "error": str(error)})
-            ingest_failures.setdefault(node_id, []).append(
-                {"issue_id": str(issue["id"]), "run_id": node_run_id}
+            _record_ingest_failure(
+                ingest_failures, node_id, str(issue["id"]), node_run_id, bundle_path
             )
+            if args.apply:
+                try:
+                    _mark_issue_blocked(issue)
+                except Exception as status_error:
+                    errors.append(
+                        {"node_id": node_id, "error": f"ingest-failed status: {status_error}"}
+                    )
     _save_ingest_failures(artifact_root, ingest_failures)
 
     refreshed_node_cards = _refresh_waiting_node_cards(
@@ -3786,6 +4592,51 @@ def _run_sync_once(args: argparse.Namespace) -> int:
         )
     except Exception as error:
         errors.append({"node_id": "G03", "error": str(error)})
+    a22_confirmation_result = None
+    n07_result = None
+    n08_result = None
+    quality_tail_result = None
+    try:
+        a22_confirmation_result = ensure_a22_human_confirmation(
+            run_id, auto_dir, issues_by_node
+        )
+    except Exception as error:
+        errors.append({"node_id": "A22", "error": f"human confirmation: {error}"})
+    try:
+        n07_result = ensure_n07_precheck(
+            config, run_id, auto_dir, artifact_root / "inputs", repo_root
+        )
+    except Exception as error:
+        errors.append({"node_id": "N07", "error": str(error)})
+    try:
+        n08_result = ensure_n08_execution(config, auto_dir, repo_root)
+    except Exception as error:
+        errors.append({"node_id": "N08", "error": str(error)})
+    try:
+        env_observed = _config_path(config, "n07_observed", repo_root)
+        if env_observed is None:
+            env_observed = artifact_root / "inputs" / "env-observed.json"
+        registered = record_constructed_test_data(
+            auto_dir / "artifacts" / "a22-test-data-plan.json",
+            auto_dir / "artifacts" / "n08-automation-execution.json",
+            auto_dir,
+            env_observed,
+        )
+        if registered.get("registered"):
+            result_marker = {
+                "registered_resources": len(registered["registered"]),
+                "namespace": registered.get("namespace", ""),
+            }
+            if n08_result and isinstance(n08_result, dict):
+                n08_result["constructed_test_data"] = result_marker
+            else:
+                n08_result = {"node_id": "N08", "constructed_test_data": result_marker}
+    except Exception as error:
+        errors.append({"node_id": "N08", "error": f"test-data registration: {error}"})
+    try:
+        quality_tail_result = ensure_quality_tail(config, auto_dir, repo_root)
+    except Exception as error:
+        errors.append({"node_id": "QUALITY_TAIL", "error": str(error)})
     try:
         node_records = ensure_node_record_issues(
             config, run_id, auto_dir, issues_by_node, apply=args.apply
@@ -3845,6 +4696,10 @@ def _run_sync_once(args: argparse.Namespace) -> int:
         "a22_correction": a22_correction_result,
         "n05": n05_result,
         "g03": g03_result,
+        "a22_confirmation": a22_confirmation_result,
+        "n07": n07_result,
+        "n08": n08_result,
+        "quality_tail": quality_tail_result,
         "node_records": node_records,
         "reconciled": reconciled,
         "sync": sync_result,
@@ -3861,10 +4716,18 @@ def main() -> int:
         try:
             with _sync_run_lock(lock_path):
                 return _run_sync_once(args)
-        except OSError:
+        except OSError as error:
+            if "sync pass already running" not in str(error):
+                # Real failures (for example the multica CLI missing) must not
+                # be masked as a benign lock skip: report them loudly.
+                print(json.dumps({"fatal": str(error)}, ensure_ascii=False))
+                return 2
             print(
                 json.dumps(
-                    {"skipped": "another sync pass is already running"},
+                    {
+                        "skipped": "another sync pass is already running",
+                        "lock_holder": str(error),
+                    },
                     ensure_ascii=False,
                 )
             )
@@ -3886,8 +4749,19 @@ def main() -> int:
         try:
             with _sync_run_lock(lock_path):
                 code = _run_sync_once(args)
-        except OSError:
-            print(json.dumps({"skipped": "another sync pass is running"}, ensure_ascii=False))
+        except OSError as error:
+            if "sync pass already running" not in str(error):
+                print(json.dumps({"fatal": str(error)}, ensure_ascii=False))
+                continue
+            print(
+                json.dumps(
+                    {
+                        "skipped": "another sync pass is running",
+                        "lock_holder": str(error),
+                    },
+                    ensure_ascii=False,
+                )
+            )
         except Exception as error:
             code = 2
             print(json.dumps({"fatal": str(error)}, ensure_ascii=False))

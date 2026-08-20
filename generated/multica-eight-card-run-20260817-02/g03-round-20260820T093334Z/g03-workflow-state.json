@@ -1,0 +1,16 @@
+{
+  "decision_hash": "sha256:1aa8e2823fdd254d66f20928f0c87cc2c63a3fcb68a18b69e4a423655ed692e2",
+  "gate_id": "G03",
+  "issue_id": "b2328d7d-e868-451e-9122-51ab968e51d2",
+  "next_node": "N08",
+  "observed_multica_status": "done",
+  "outcome_hash": "sha256:a2ed205dba0d9415a7cb4f2b878506030e1d13efdfd849582abe824a75096153",
+  "processed_event_id": "sha256:ad67e4ba41c582686cbb8642482026a80d2a035cb6288574ace103a2d7a63f14",
+  "request_hash": "sha256:81d970e110e109445e08f0219e7517ab31b4e2e88feabb40875c0d0030f9f645",
+  "review_key": "sha256:f4deab24065ca177e39c219a8f5ac6656a40f40f53c1b708c8fdd82754e3dda4",
+  "schema_version": "workflow-gate-state/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "state": "resumed",
+  "state_hash": "sha256:72400031d807bd654aafaf189f5209f5dc631587c24e8792421583b674040fcf",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

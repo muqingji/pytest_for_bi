@@ -396,10 +396,19 @@ def run_server_quality_tail(
             "completed", "completed_with_gaps", "skipped_by_policy"
         }:
             raise ContractError("Server quality requires valid N27 data routing")
-        if data_validation.get("status") == "completed_with_gaps" and (
-            data_payload.get("decision") != "partial_capability_routing"
-            or not isinstance(data_payload.get("executable_case_ids"), list)
-            or not isinstance(data_payload.get("deferred_cases"), list)
+        pending_human_evidence = (
+            data_validation.get("status") == "completed_with_gaps"
+            and data_payload.get("valid") is True
+            and data_payload.get("pending_human") is True
+        )
+        partial_routing_evidence = (
+            data_validation.get("status") == "completed_with_gaps"
+            and data_payload.get("decision") == "partial_capability_routing"
+            and isinstance(data_payload.get("executable_case_ids"), list)
+            and isinstance(data_payload.get("deferred_cases"), list)
+        )
+        if data_validation.get("status") == "completed_with_gaps" and not (
+            partial_routing_evidence or pending_human_evidence
         ):
             raise ContractError("Partial N27 routing contract is invalid")
         deferred_routes = {

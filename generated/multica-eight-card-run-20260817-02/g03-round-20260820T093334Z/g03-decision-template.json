@@ -1,0 +1,22 @@
+{
+  "actor": {
+    "id": "",
+    "multica_member_id": "",
+    "role": "",
+    "type": "human"
+  },
+  "decided_at": "",
+  "decision": "",
+  "gate_id": "G03",
+  "multica_event": {
+    "event_id": "",
+    "issue_id": "",
+    "status": ""
+  },
+  "reason": "",
+  "request_hash": "sha256:81d970e110e109445e08f0219e7517ab31b4e2e88feabb40875c0d0030f9f645",
+  "review_key": "sha256:f4deab24065ca177e39c219a8f5ac6656a40f40f53c1b708c8fdd82754e3dda4",
+  "schema_version": "automation-code-review-decision/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

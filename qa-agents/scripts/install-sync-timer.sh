@@ -7,6 +7,12 @@ PLIST_SRC="$ROOT/qa-agents/scripts/com.qa.sync-eight-card.plist"
 PLIST_DST="$HOME/Library/LaunchAgents/com.qa.sync-eight-card.plist"
 mkdir -p "$HOME/Library/LaunchAgents"
 cp "$PLIST_SRC" "$PLIST_DST"
+# 重载前先确认 multica CLI 存在，避免定时器在 launchd 的最小 PATH 下
+# 因找不到 multica 而每次崩溃（旧版本曾以 “skipped” 静默掩盖该错误）。
+if ! command -v multica >/dev/null 2>&1; then
+  echo "错误：multica CLI 不在 PATH 中，请先安装 multica 再安装定时器" >&2
+  exit 1
+fi
 launchctl bootout gui/$(id -u)/com.qa.sync-eight-card 2>/dev/null || true
 launchctl bootstrap gui/$(id -u) "$PLIST_DST"
 launchctl enable gui/$(id -u)/com.qa.sync-eight-card

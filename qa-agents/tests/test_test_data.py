@@ -388,3 +388,221 @@ def test_existing_automation_managed_plan_is_completed_and_hash_bound(tmp_path: 
     n27 = json.loads((tmp_path / "out/artifacts/n27-test-data-plan-validation.json").read_text())
     assert n27["payload"]["decision"] == "existing_automation_managed"
     assert n27["payload"]["execution_plan_hash"] == execution.artifact_hash
+
+
+def _planning_level_plan() -> dict:
+    """A22 Agent planning-level contract: resources name operations via
+    ``setup_operation`` instead of embedding full request/expect objects."""
+    return {
+        "schema_version": "test-data-plan/1.0",
+        "environment": "112",
+        "namespace": "qa-a22-planning-level",
+        "status": "needs_human",
+        "planning_mode": "case_explicit",
+        "case_plans": [
+            {
+                "case_id": "TC-BE-001-BACKEND",
+                "requires_data_construction": True,
+                "source_refs": ["TC-BE-001-BACKEND"],
+                "resources": [
+                    {
+                        "resource_key": "cd_field",
+                        "resource_type": "custom_dimension",
+                        "resource_id_variable": "cd_field_id",
+                        "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+                        "high_risk_write": True,
+                    }
+                ],
+            },
+            {
+                "case_id": "TC-BE-002-BACKEND",
+                "requires_data_construction": True,
+                "source_refs": ["TC-BE-002-BACKEND"],
+                "resources": [
+                    {
+                        "resource_key": "ordinary_field_fixture",
+                        "resource_type": "crm_field",
+                        "resource_id_variable": "ordinary_field_id",
+                        "lifecycle_mode": "existing_read_only",
+                        "setup_operation": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+                    }
+                ],
+            },
+        ],
+        "paused_cases": [],
+        "unresolved_requirements": [
+            {"requirement_id": "UR-01", "reason_code": "chart_create_op_unverified"}
+        ],
+    }
+
+
+def test_validate_test_data_plan_accepts_planning_level_contract() -> None:
+    plan = _planning_level_plan()
+    result = validate_test_data_plan(plan, _policy())
+    assert result["valid"] is True
+    assert result["validated_resource_count"] == 2
+    assert result["write_authorized"] is True
+
+
+def test_validate_test_data_plan_rejects_unknown_setup_operation() -> None:
+    plan = _planning_level_plan()
+    plan["case_plans"][0]["resources"][0]["setup_operation"] = "not.a.real.operation"
+    with pytest.raises(SecurityPolicyError):
+        validate_test_data_plan(plan, _policy())
+
+
+def test_validate_test_data_plan_rejects_delete_without_cleanup_pair() -> None:
+    plan = _planning_level_plan()
+    plan["case_plans"][0]["resources"][0]["retention_mode"] = "delete"
+    # create_custom_dimension has a cleanup pair, so use a setup op without one
+    plan["case_plans"][0]["resources"][0]["setup_operation"] = "fs_bi_dev.lwt_manager.save"
+    plan["case_plans"][0]["resources"][0]["retention_mode"] = "delete"
+    with pytest.raises(SecurityPolicyError):
+        validate_test_data_plan(plan, _policy())
+
+
+def _plan_artifact(tmp_path: Path, payload: dict) -> Path:
+    path = tmp_path / "a22-test-data-plan.json"
+    path.write_text(json.dumps({"payload": payload}, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def test_record_constructed_test_data_registers_completed_setup_operations(
+    tmp_path: Path,
+) -> None:
+    from qa_agents.test_data import record_constructed_test_data
+
+    plan = _plan_artifact(
+        tmp_path,
+        {
+            "namespace": "qa-pilot-001-source-v1",
+            "case_plans": [
+                {
+                    "case_id": "TC-BE-001-BACKEND",
+                    "resources": [
+                        {
+                            "resource_key": "cd_field",
+                            "resource_type": "custom_dimension",
+                            "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+                            "resource_id_variable": "cd_field_id",
+                        },
+                        {
+                            "resource_key": "never_created_metric",
+                            "resource_type": "aggregate_metric",
+                            "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule",
+                        },
+                    ],
+                }
+            ],
+        },
+    )
+    auto_dir = tmp_path / "auto"
+    evidence = auto_dir / "evidence" / "N08-S001" / "lifecycle.json"
+    evidence.parent.mkdir(parents=True)
+    evidence.write_text(
+        json.dumps(
+            {
+                "schema_version": "shard-lifecycle-evidence/1.0",
+                "cases": [
+                    {
+                        "case_id": "TC-BE-001-BACKEND",
+                        "phases": {
+                            "setup": [
+                                {
+                                    "name": "create_custom_dimension_variants",
+                                    "operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+                                    "status": "completed",
+                                    "status_code": 200,
+                                    "response_hash": "sha256:abc",
+                                }
+                            ],
+                            "test": [],
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    n08 = tmp_path / "n08-automation-execution.json"
+    n08.write_text(
+        json.dumps(
+            {
+                "payload": {
+                    "shards": [
+                        {
+                            "case_ids": ["TC-BE-001-BACKEND"],
+                            "lifecycle_evidence_path": "evidence/N08-S001/lifecycle.json",
+                            "lifecycle_evidence_hash": "sha256:ev",
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    observed = tmp_path / "env-observed.json"
+    observed.write_text(
+        json.dumps(
+            {
+                "schema_version": "environment-observation/1.0",
+                "environment": "112",
+                "test_data": [{"key": "existing", "resource_type": "fixture", "status": "constructed"}],
+                "test_namespaces": [{"namespace": "qa-pilot-001-source-v1", "cleanup_policy": {"required": True}}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = record_constructed_test_data(plan, n08, auto_dir, observed)
+
+    assert result["registered"][0]["key"] == "cd_field"
+    assert result["registered"][0]["namespace"] == "qa-pilot-001-source-v1"
+    assert result["registered"][0]["response_hash"] == "sha256:abc"
+    assert len(result["registered"]) == 1  # never_created_metric 未构造，不登记
+    updated = json.loads(observed.read_text(encoding="utf-8"))
+    keys = {(item.get("case_id"), item.get("key")) for item in updated["test_data"]}
+    assert ("TC-BE-001-BACKEND", "cd_field") in keys
+    assert (None, "existing") in keys  # 无关条目保留
+
+
+def test_record_constructed_test_data_is_idempotent_and_degradable(
+    tmp_path: Path,
+) -> None:
+    from qa_agents.test_data import record_constructed_test_data
+
+    plan = _plan_artifact(
+        tmp_path,
+        {
+            "namespace": "qa-pilot-001-source-v1",
+            "case_plans": [
+                {
+                    "case_id": "TC-BE-001-BACKEND",
+                    "resources": [
+                        {
+                            "resource_key": "cd_field",
+                            "resource_type": "custom_dimension",
+                            "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    auto_dir = tmp_path / "auto"
+    n08 = tmp_path / "n08-automation-execution.json"
+    n08.write_text(
+        json.dumps({"payload": {"shards": []}}), encoding="utf-8"
+    )
+    observed = tmp_path / "env-observed.json"
+    observed.write_text(
+        json.dumps({"schema_version": "environment-observation/1.0", "test_data": []}),
+        encoding="utf-8",
+    )
+
+    first = record_constructed_test_data(plan, n08, auto_dir, observed)
+    second = record_constructed_test_data(plan, n08, auto_dir, observed)
+
+    assert first["registered"] == []
+    assert second["registered"] == []
+    assert json.loads(observed.read_text(encoding="utf-8"))["test_data"] == []

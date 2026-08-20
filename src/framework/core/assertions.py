@@ -13,9 +13,22 @@ _PATH_PART = re.compile(r"([^.[\]]+)|\[([0-9]+)\]")
 
 
 def get_by_path(value: Any, path: str) -> Any:
-    """Read ``a.b[0].c`` from a dict/list result."""
+    """Read ``a.b[0].c`` from a dict/list result.
+
+    Also accepts JSONPath-ish spellings ``$.a.b`` and ``$`` (root) so generated
+    Candidates may use either the framework dot notation or ``$``-prefixed paths.
+    """
+    normalized = path
+    if normalized.startswith("body."):
+        normalized = normalized[len("body."):]
+    elif normalized.startswith("$."):
+        normalized = normalized[len("$."):]
+    elif normalized == "$":
+        normalized = ""
     current = value
-    for name, index in _PATH_PART.findall(path.removeprefix("body.")):
+    if isinstance(current, dict) and normalized in current:
+        return current[normalized]
+    for name, index in _PATH_PART.findall(normalized):
         if name:
             if not isinstance(current, dict) or name not in current:
                 raise AssertionError(f"Path '{path}' does not exist at '{name}'")

@@ -176,6 +176,61 @@ def test_prepare_g03_is_content_addressed_and_idempotent(tmp_path: Path) -> None
     assert again["request_hash"] == setup["request"]["request_hash"]
 
 
+def test_prepare_g03_lists_covered_cases_in_request_and_markdown(tmp_path: Path) -> None:
+    setup = _prepare(tmp_path)
+    cases = [item for item in setup["request"]["generation_cases"] if item["case_id"] == "A14-001"]
+    assert len(cases) == 1
+    assert cases[0]["candidate_path"] == "generated/A14/test_a.py"
+    assert cases[0]["expected_ids"] == ["E1"]
+    assert cases[0]["manual_expected_ids"] == []
+    md = (setup["review_dir"] / "g03-review-request.md").read_text(encoding="utf-8")
+    assert "本批候选覆盖 Case" in md
+    assert "`A14-001`" in md
+    assert "generated/A14/test_a.py" in md
+    assert "E1" in md
+
+
+def test_prepare_g03_includes_case_titles_from_n25(tmp_path: Path) -> None:
+    setup = _prepare(tmp_path)
+    store = ArtifactStore(tmp_path)
+    common = {
+        "workflow_run_id": "multica-run-1",
+        "workflow_mode": "new_requirement",
+        "source_snapshot_id": "snapshot-1",
+    }
+    n25 = ArtifactEnvelope(
+        **common,
+        artifact_id="n25-compiled-test-cases",
+        producer=Producer(component_id="N25", runtime="deterministic"),
+        payload={
+            "schema_version": "n25-compiled-test-cases/1.0",
+            "compiled_cases": [
+                {
+                    "id": "A14-001",
+                    "title": "自定义维度三类位置的专用错误与双语提示",
+                    "risk": "critical",
+                    "priority": "P0",
+                }
+            ],
+        },
+        status=ArtifactStatus.COMPLETED,
+    )
+    store.write_artifact(n25)
+    request = prepare_automation_code_review_request(
+        setup["n05"],
+        {"A14": setup["a14"], "A15": setup["a15"]},
+        {"A18-BE": setup["a18_be"], "A18-CT": setup["a18_ct"]},
+        POLICY_PATH,
+        tmp_path / "g03-with-n25",
+        compiled_cases_path=tmp_path / "artifacts" / "n25-compiled-test-cases.json",
+    )
+    case = next(item for item in request["generation_cases"] if item["case_id"] == "A14-001")
+    assert case["title"] == "自定义维度三类位置的专用错误与双语提示"
+    assert case["risk"] == "critical"
+    md = (tmp_path / "g03-with-n25" / "g03-review-request.md").read_text(encoding="utf-8")
+    assert "自定义维度三类位置的专用错误与双语提示" in md
+
+
 def test_prepare_g03_rejects_failed_n05(tmp_path: Path) -> None:
     paths = write_valid_c5_artifacts(tmp_path, n05_passed=False)
     with pytest.raises(ContractError):

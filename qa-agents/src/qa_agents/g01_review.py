@@ -11,6 +11,7 @@ from typing import Any
 
 from .card_copy import scope_review_title
 from .contracts import content_hash
+from .multica_cli import resolve_multica_binary
 from .errors import ContractError, RetryableAgentError, SecurityPolicyError
 from .gates import build_scope_review_outcome, validate_scope_review_decision
 from .security import SecurityPolicy
@@ -109,7 +110,7 @@ def _load_bound_inputs(
 
 def _default_runner(args: list[str], cwd: Path) -> Any:
     completed = subprocess.run(
-        ["multica", *args],
+        [resolve_multica_binary(), *args],
         cwd=cwd,
         capture_output=True,
         text=True,

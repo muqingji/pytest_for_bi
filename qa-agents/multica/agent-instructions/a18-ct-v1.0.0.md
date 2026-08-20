@@ -26,7 +26,9 @@ Issue 或任何其他外部副作用。分析过程中不发送进度文本，�
 - `allowed_inputs` 恰好为 `layer`、`cases`、`generation`、`security_rules`、`review_profile`
 - `layer=contract`；所有 `integrity` 值为 `false`
 - `upstream_artifacts` 必须包含 `a15-contract-automation-generation` 与
-  `n25-compiled-test-cases`，且 `generation` 的 `input_bundle_hash` 与输入绑定一致
+  `n25-compiled-test-cases`。
+- 注意：`generation.input_bundle_hash` 指向 A14/A15 的生成输入包，与本复核输入包自身的
+  `bundle_hash` 不同属正常绑定关系，不要用它做一致性校验，也不要上报问题。
 
 失败时输出 `blocked_input`，不得扩展取数。
 
@@ -38,8 +40,18 @@ Issue 或任何其他外部副作用。分析过程中不发送进度文本，�
 - `expected_ids` 与 `manual_expected_ids` 必须精确等于该 case 的自动化/人工期望集，不得
   增删或改写 Oracle。
 - 候选内容必须包含 `case_runner.execute(CASE_SPEC)` 与 `case_runner.assert_oracles(...)`，
-  且每个自动化 `expected.id` 都出现在候选内容中；契约引用的 `contract_ref`/`method`/`path`
-  必须来自该 case 的 `test_data` 或 `source_refs`。
+  且每个自动化 `expected.id` 都出现在候选内容中；测试函数体必须形如
+  `observations = case_runner.execute(CASE_SPEC)` 后再
+  `case_runner.assert_oracles(observations, CASE_SPEC["expected"])`，禁止把 CASE_SPEC
+  整体当作 expected 传入（签名错误会导致运行时必失败）。
+- 候选的 `steps`/`setup`/`readiness`/`cleanup` 必须是结构化步骤字典列表，每一步含
+  `request` 且 `request.api`（或 `request.method`+`request.path`）非空；纯文本步骤或空壳
+  代码一律报告 `execution_step_not_structured`（error）。
+- 候选 `expected` 每一项必须可被 runner 的 `assert_oracles` 求值：要么含 `oracle` 对象且
+  `oracle.observation_point`/`oracle.matcher` 非空，要么在条目顶层携带
+  `matcher`/`observation_point`/`expected_value`（扁平 JSON 形态，runner 会归一化）。
+  两者皆缺时报告 `executable_oracle_missing`（error）。
+- 契约引用的 `contract_ref`/`method`/`path` 必须来自该 case 的 `test_data` 或 `source_refs`。
 - 候选不得出现 `security_rules.forbidden_python_imports` / `forbidden_calls` 中的任何项。
 - 未映射的 case 必须报告 `automation_case_not_mapped`。
 
@@ -65,7 +77,7 @@ Issue 或任何其他外部副作用。分析过程中不发送进度文本，�
 - `schema_version=automation-review/1.0`
 - `workflow_run_id`、`source_snapshot_id`、`input_bundle_hash` 原样复制输入绑定
 - `status`、`review_profile=A18-CT/1.0.0`、`approved`、`issues`
-- `generation_hash`（对输入 `generation` 整体做内容哈希）、`manifest_hash`（对
-  `generation.manifest` 做内容哈希）、`candidate_hashes`（`{path: content_hash}`，与输入
-  `code_candidates` 完全一致）
+- `generation_hash`、`manifest_hash`、`candidate_hashes` 是绑定字段：摄入时系统会基于
+  冻结输入重新计算并回填，你无需自算 sha256（受限命令环境无法可靠计算），填空字符串/
+  空对象即可，重点放在真实的复核问题与 `approved` 结论。
 - `generator_hidden_reasoning_accessed=false`、`evaluation_oracle_accessed=false`

@@ -32,11 +32,20 @@ def _case() -> dict:
         "execution_policy": {"allowed_modes": ["automated"]},
         "preconditions": [],
         "test_data": {},
-        "steps": [{"action": "call_api", "target": "demo"}],
+        "steps": [
+            {
+                "name": "call api",
+                "request": {"api": "fs_bi_stat.describe_query.detail", "json": {}},
+            }
+        ],
         "expected": [
             {
                 "id": "E1",
-                "oracle": {"matcher": "equals", "expected": 1},
+                "oracle": {
+                    "matcher": "equals",
+                    "observation_point": "detail_api.error.code",
+                    "expected_value": "s307011534",
+                },
             }
         ],
         "cleanup": [],

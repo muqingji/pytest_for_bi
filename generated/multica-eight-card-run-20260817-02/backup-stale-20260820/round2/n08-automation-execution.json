@@ -1,0 +1,302 @@
+{
+  "artifact_hash": "sha256:148fa30e4ab4ae73040d449798308a133bc9367130f3e6099b2847e7d771d43e",
+  "artifact_id": "n08-automation-execution",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-20T07:49:15+00:00",
+  "evidence_refs": [],
+  "facts": [],
+  "inferences": [],
+  "payload": {
+    "automation_policy_hash": "sha256:7d2ab88f7a25f49d70548cfdf3d6032f91e8d270ae4958d9a833d706fc3037fe",
+    "completed_at": "2026-08-20T07:49:15+00:00",
+    "decision": "retryable_infrastructure_failure",
+    "environment_fingerprint": "sha256:edd75be2ec76eedacf893af2309f768f49a9fc000376dce758ce5f65c201213e",
+    "execution_policy_hash": "sha256:d5b2b874f35dca39530c2440e1f631f56505bb920b544da7ab67651eb47cceb1",
+    "input_bindings": {
+      "code_check_hash": "sha256:75fa18f8e26cb1e76a3840f5b0d36999280b4276ecab22fa5b1ac229e36419ea",
+      "environment_precheck_hash": "sha256:7779750c9ae8c1aceea0bd1fff61bee93a72c16ef670e5634ff0dcaed9874a07",
+      "generation_hash": "sha256:74d222b347caf79b731023a43dcb7094ea9803fa7d9a4363373e4c6c94806b53",
+      "manifest_hash": "sha256:664da057fcb2a650fba1bb2199f8db43e9ab3969d8826216dd2cf1df8e7b0334",
+      "review_hash": "sha256:3391a8255b0ac9d804e51cafc0e90bc5751d71c1617357cbe99e59cb8efbb72d",
+      "runner_bundle_hash": "sha256:cedb792927872a8753fe4f2f6a349f3b748bf3968d6b566493e54c058e6b3136"
+    },
+    "next_node": "N10",
+    "runner": {
+      "backend": "controlled_env_reference",
+      "environment_class": "112",
+      "network": true,
+      "production_isolated": false,
+      "secrets": [
+        "FXIAOKE_112_ENTERPRISE_ACCOUNT",
+        "FXIAOKE_112_USERNAME",
+        "FXIAOKE_112_PASSWORD"
+      ],
+      "shell": false
+    },
+    "schema_version": "n08-automation-execution/1.0",
+    "shards": [
+      {
+        "candidate_path": "generated/backend/test_tc_be_001_backend.py",
+        "case_ids": [
+          "TC-BE-001-BACKEND"
+        ],
+        "collection_complete": false,
+        "coverage_json_path": null,
+        "coverage_summary": null,
+        "duration_ms": 43,
+        "effective_command": [
+          "pytest",
+          "-q",
+          "generated/backend/test_tc_be_001_backend.py",
+          "--junitxml=<evidence>"
+        ],
+        "junit_summary": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 0
+        },
+        "junit_xml_hash": null,
+        "junit_xml_path": null,
+        "junit_xml_present": false,
+        "junit_xml_valid": false,
+        "lifecycle_evidence_hash": null,
+        "lifecycle_evidence_path": null,
+        "lifecycle_evidence_present": false,
+        "lifecycle_evidence_required": false,
+        "manifest_command_hash": "sha256:ca99eadb0c2090aaafae655f98653222b1f62fcb87eaba3da773be4b2ddcb12e",
+        "outcome": "infrastructure_error",
+        "return_code": 1,
+        "shard_id": "N08-S001",
+        "stderr": "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13: No module named pytest\n",
+        "stderr_truncated": false,
+        "stdout": "",
+        "stdout_truncated": false,
+        "timed_out": false
+      },
+      {
+        "candidate_path": "generated/backend/test_tc_be_002_backend.py",
+        "case_ids": [
+          "TC-BE-002-BACKEND"
+        ],
+        "collection_complete": false,
+        "coverage_json_path": null,
+        "coverage_summary": null,
+        "duration_ms": 47,
+        "effective_command": [
+          "pytest",
+          "-q",
+          "generated/backend/test_tc_be_002_backend.py",
+          "--junitxml=<evidence>"
+        ],
+        "junit_summary": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 0
+        },
+        "junit_xml_hash": null,
+        "junit_xml_path": null,
+        "junit_xml_present": false,
+        "junit_xml_valid": false,
+        "lifecycle_evidence_hash": null,
+        "lifecycle_evidence_path": null,
+        "lifecycle_evidence_present": false,
+        "lifecycle_evidence_required": false,
+        "manifest_command_hash": "sha256:ca99eadb0c2090aaafae655f98653222b1f62fcb87eaba3da773be4b2ddcb12e",
+        "outcome": "infrastructure_error",
+        "return_code": 1,
+        "shard_id": "N08-S002",
+        "stderr": "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13: No module named pytest\n",
+        "stderr_truncated": false,
+        "stdout": "",
+        "stdout_truncated": false,
+        "timed_out": false
+      },
+      {
+        "candidate_path": "generated/backend/test_tc_be_003_backend.py",
+        "case_ids": [
+          "TC-BE-003-BACKEND"
+        ],
+        "collection_complete": false,
+        "coverage_json_path": null,
+        "coverage_summary": null,
+        "duration_ms": 51,
+        "effective_command": [
+          "pytest",
+          "-q",
+          "generated/backend/test_tc_be_003_backend.py",
+          "--junitxml=<evidence>"
+        ],
+        "junit_summary": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 0
+        },
+        "junit_xml_hash": null,
+        "junit_xml_path": null,
+        "junit_xml_present": false,
+        "junit_xml_valid": false,
+        "lifecycle_evidence_hash": null,
+        "lifecycle_evidence_path": null,
+        "lifecycle_evidence_present": false,
+        "lifecycle_evidence_required": false,
+        "manifest_command_hash": "sha256:ca99eadb0c2090aaafae655f98653222b1f62fcb87eaba3da773be4b2ddcb12e",
+        "outcome": "infrastructure_error",
+        "return_code": 1,
+        "shard_id": "N08-S003",
+        "stderr": "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13: No module named pytest\n",
+        "stderr_truncated": false,
+        "stdout": "",
+        "stdout_truncated": false,
+        "timed_out": false
+      },
+      {
+        "candidate_path": "generated/backend/test_tc_be_004_backend.py",
+        "case_ids": [
+          "TC-BE-004-BACKEND"
+        ],
+        "collection_complete": false,
+        "coverage_json_path": null,
+        "coverage_summary": null,
+        "duration_ms": 46,
+        "effective_command": [
+          "pytest",
+          "-q",
+          "generated/backend/test_tc_be_004_backend.py",
+          "--junitxml=<evidence>"
+        ],
+        "junit_summary": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 0
+        },
+        "junit_xml_hash": null,
+        "junit_xml_path": null,
+        "junit_xml_present": false,
+        "junit_xml_valid": false,
+        "lifecycle_evidence_hash": null,
+        "lifecycle_evidence_path": null,
+        "lifecycle_evidence_present": false,
+        "lifecycle_evidence_required": false,
+        "manifest_command_hash": "sha256:ca99eadb0c2090aaafae655f98653222b1f62fcb87eaba3da773be4b2ddcb12e",
+        "outcome": "infrastructure_error",
+        "return_code": 1,
+        "shard_id": "N08-S004",
+        "stderr": "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13: No module named pytest\n",
+        "stderr_truncated": false,
+        "stdout": "",
+        "stdout_truncated": false,
+        "timed_out": false
+      },
+      {
+        "candidate_path": "generated/backend/test_tc_be_005_backend.py",
+        "case_ids": [
+          "TC-BE-005-BACKEND"
+        ],
+        "collection_complete": false,
+        "coverage_json_path": null,
+        "coverage_summary": null,
+        "duration_ms": 39,
+        "effective_command": [
+          "pytest",
+          "-q",
+          "generated/backend/test_tc_be_005_backend.py",
+          "--junitxml=<evidence>"
+        ],
+        "junit_summary": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 0
+        },
+        "junit_xml_hash": null,
+        "junit_xml_path": null,
+        "junit_xml_present": false,
+        "junit_xml_valid": false,
+        "lifecycle_evidence_hash": null,
+        "lifecycle_evidence_path": null,
+        "lifecycle_evidence_present": false,
+        "lifecycle_evidence_required": false,
+        "manifest_command_hash": "sha256:ca99eadb0c2090aaafae655f98653222b1f62fcb87eaba3da773be4b2ddcb12e",
+        "outcome": "infrastructure_error",
+        "return_code": 1,
+        "shard_id": "N08-S005",
+        "stderr": "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13: No module named pytest\n",
+        "stderr_truncated": false,
+        "stdout": "",
+        "stdout_truncated": false,
+        "timed_out": false
+      },
+      {
+        "candidate_path": "generated/backend/test_tc_be_006_backend.py",
+        "case_ids": [
+          "TC-BE-006-BACKEND"
+        ],
+        "collection_complete": false,
+        "coverage_json_path": null,
+        "coverage_summary": null,
+        "duration_ms": 37,
+        "effective_command": [
+          "pytest",
+          "-q",
+          "generated/backend/test_tc_be_006_backend.py",
+          "--junitxml=<evidence>"
+        ],
+        "junit_summary": {
+          "errors": 0,
+          "failures": 0,
+          "skipped": 0,
+          "tests": 0
+        },
+        "junit_xml_hash": null,
+        "junit_xml_path": null,
+        "junit_xml_present": false,
+        "junit_xml_valid": false,
+        "lifecycle_evidence_hash": null,
+        "lifecycle_evidence_path": null,
+        "lifecycle_evidence_present": false,
+        "lifecycle_evidence_required": false,
+        "manifest_command_hash": "sha256:ca99eadb0c2090aaafae655f98653222b1f62fcb87eaba3da773be4b2ddcb12e",
+        "outcome": "infrastructure_error",
+        "return_code": 1,
+        "shard_id": "N08-S006",
+        "stderr": "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13: No module named pytest\n",
+        "stderr_truncated": false,
+        "stdout": "",
+        "stdout_truncated": false,
+        "timed_out": false
+      }
+    ],
+    "source_snapshot_id": "pilot-001-source-v1",
+    "started_at": "2026-08-20T07:49:15+00:00",
+    "summary": {
+      "failed": 0,
+      "infrastructure_error": 6,
+      "passed": 0,
+      "timed_out": 0,
+      "total": 6
+    },
+    "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+  },
+  "producer": {
+    "component_id": "N08",
+    "component_version": "0.1.0",
+    "inference_config_hash": "none",
+    "model_provider": "none",
+    "model_snapshot": "deterministic",
+    "profile_version": "1.0.0",
+    "prompt_version": "none",
+    "runtime": "qa-agents-local",
+    "tool_bundle_version": "none"
+  },
+  "reason_code": "automation_infrastructure_failure",
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "failed_retryable",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

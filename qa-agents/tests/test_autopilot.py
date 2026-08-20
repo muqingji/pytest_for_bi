@@ -587,3 +587,44 @@ def test_autopilot_rejects_tampered_registry(tmp_path: Path) -> None:
         initialize_autopilot(
             request, config, tmp_path / "registry", tmp_path / "run-2", runner=multica
         )
+
+
+def test_artifact_summary_needs_human_lists_unresolved_requirements() -> None:
+    artifact = {
+        "artifact_id": "a22-test-data-plan",
+        "payload": {
+            "status": "needs_human",
+            "unresolved_requirements": [
+                {"requirement_id": "UR-01", "reason_code": "chart_create_op_unverified"},
+                {"requirement_id": "UR-02", "reason_code": "relation_topology_params_unconfirmed"},
+                {"requirement_id": "UR-03", "reason_code": "permission_fixture_unverified"},
+                {"requirement_id": "UR-04", "reason_code": "historical_fixture_seed_unverified"},
+                {"requirement_id": "UR-05", "reason_code": "fault_injection_capability_unconfirmed"},
+            ],
+        },
+    }
+    summary = _artifact_summary(artifact)
+    assert "5 个未决数据需求需人工确认" in summary
+    assert "UR-01" in summary
+
+
+def test_approval_items_carry_a22_unresolved_requirements() -> None:
+    artifact = {
+        "artifact_id": "a22-test-data-plan",
+        "payload": {
+            "status": "needs_human",
+            "unresolved_requirements": [
+                {
+                    "requirement_id": "UR-01",
+                    "reason_code": "chart_create_op_unverified",
+                    "requirement": "stat_chart 创建接口及参数未验证，图表 setup_operation 需人工确认",
+                }
+            ],
+        },
+    }
+    items = _approval_items(artifact)
+    assert len(items) == 1
+    assert items[0]["id"] == "UR-01"
+    assert items[0]["title"] == "未决数据需求"
+    assert "stat_chart 创建接口及参数未验证" in items[0]["summary"]
+    assert items[0]["category"] == "test_data_pending_human"

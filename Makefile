@@ -19,7 +19,7 @@ test-framework:
 	$(PYTHON) -m pytest --alluredir=allure-results
 
 test-qa-agents:
-	PYTHONPATH=qa-agents/src $(PYTHON) -m pytest -q qa-agents/tests
+	cd qa-agents && PYTHONPATH=src $(PYTHON) -m pytest -q tests
 
 auth-preflight-112:
 	PYTHONPATH=src $(PYTHON) scripts/preflight_112_auth.py

@@ -465,13 +465,25 @@ def run_n07_env_precheck(
             and isinstance(payload.get("executable_case_ids"), list)
             and isinstance(payload.get("deferred_cases"), list)
         ) or (
+            # N27 routes structurally safe plans with unresolved data
+            # requirements to a human confirmation (completed_with_gaps +
+            # pending_human). That is still valid evidence for the N07
+            # environment gate: the plan was security-validated, only the
+            # outstanding requirements await the A22 confirmation.
+            data_validation.get("status") == "completed_with_gaps"
+            and payload.get("valid") is True
+            and payload.get("pending_human") is True
+        ) or (
             data_validation.get("status") == "skipped_by_policy"
             and payload.get("valid") is True
             and payload.get("decision") == "skipped_by_policy"
             and payload.get("next_node") == "N07"
         )
         if not accepted:
-            raise ContractError("N07 requires completed or policy-skipped valid N27 evidence")
+            raise ContractError(
+                "N07 requires completed, completed_with_gaps (partial or "
+                "pending-human) or policy-skipped valid N27 evidence"
+            )
         checks.append(
             _check(
                 "test_data",

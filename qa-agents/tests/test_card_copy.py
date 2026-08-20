@@ -5,6 +5,7 @@ from qa_agents.card_copy import (
     human_correction_title,
     node_issue_description,
     node_issue_title,
+    node_record_description,
     g02_review_description,
     g02_review_title,
     scope_review_title,
@@ -41,6 +42,29 @@ def test_node_issue_title_and_description_are_readable() -> None:
     assert "## 验收" in description
     assert "本卡为修正轮" in description
     assert "（附件：`a08-input.json`）" in description
+
+
+def test_node_record_description_appends_approval_block_when_provided() -> None:
+    plain = node_record_description("N08", "受控自动化执行", artifact_name="n08-automation-execution.json")
+    assert "## 你需要处理" not in plain
+    assert "无需 Agent 或人工操作" in plain
+    block = [
+        "本节点执行判定为可重试失败（`failed_retryable`），需要你决定是否批准重试。",
+        "",
+        "### 决策动作",
+        "- 置 **done**：批准重试。",
+    ]
+    with_block = node_record_description(
+        "N08",
+        "受控自动化执行",
+        artifact_name="n08-automation-execution.json",
+        approval_block=block,
+    )
+    assert "## 你需要处理" in with_block
+    assert "批准重试" in with_block
+    assert with_block.index("## 你需要处理") > with_block.index("## 产出")
+    assert "无需 Agent 或人工操作" not in with_block
+    assert "需要你审批重试决策" in with_block
 
 
 def test_node_issue_description_includes_approval_details() -> None:

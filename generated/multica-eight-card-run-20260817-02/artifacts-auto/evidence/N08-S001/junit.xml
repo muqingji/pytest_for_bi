@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.540" timestamp="2026-08-20T18:11:33.191063+08:00" hostname="MacBook-Pro-3.local"><testcase classname="generated.backend.test_TC_BE_001_BACKEND" name="test_TC_BE_001_BACKEND" time="0.406"><failure message="AssertionError: Path '$.data.fieldId' does not exist at 'data'&#10;Lifecycle finalization also failed: &quot;Template variable '{{ cd_field_id }}' was not found&quot;">case_runner = &lt;framework.core.runner.CaseRunner object at 0x107f3af90&gt;
+
+    def test_TC_BE_001_BACKEND(case_runner):
+&gt;       observations = case_runner.execute(CASE_SPEC)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+generated/backend/test_TC_BE_001_BACKEND.py:75: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/liushanshan/code/my/pytest_for_bi/src/framework/core/runner.py:205: in execute
+    return self.run(case)
+           ^^^^^^^^^^^^^^
+/Users/liushanshan/code/my/pytest_for_bi/src/framework/core/runner.py:168: in run
+    raise primary_error
+/Users/liushanshan/code/my/pytest_for_bi/src/framework/core/runner.py:105: in run
+    self._run_steps(case.get("setup", []), context, "setup")
+/Users/liushanshan/code/my/pytest_for_bi/src/framework/core/runner.py:231: in _run_steps
+    self._extract(response, step.get("extract", {}), context)
+/Users/liushanshan/code/my/pytest_for_bi/src/framework/core/runner.py:807: in _extract
+    context[variable] = get_by_path(response.body, path)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = {'Result': {'FailureCode': 0, 'FailureMessage': '系统出现异常，请稍后重试或保存截图并反馈给系统管理员。错误代码:1-d57c6f 服务:BI团队 (08-20 18:11:33)', '...EmployeeID': 1002, 'EnterpriseAccount': '91863'}}, 'Error': {'Code': 's307060325', 'Message': 'BI未知异常'}, 'Value': None}
+path = '$.data.fieldId'
+
+    def get_by_path(value: Any, path: str) -&gt; Any:
+        """Read ``a.b[0].c`` from a dict/list result.
+    
+        Also accepts JSONPath-ish spellings ``$.a.b`` and ``$`` (root) so generated
+        Candidates may use either the framework dot notation or ``$``-prefixed paths.
+        """
+        normalized = path
+        if normalized.startswith("body."):
+            normalized = normalized[len("body."):]
+        elif normalized.startswith("$."):
+            normalized = normalized[len("$."):]
+        elif normalized == "$":
+            normalized = ""
+        current = value
+        if isinstance(current, dict) and normalized in current:
+            return current[normalized]
+        for name, index in _PATH_PART.findall(normalized):
+            if name:
+                if not isinstance(current, dict) or name not in current:
+&gt;                   raise AssertionError(f"Path '{path}' does not exist at '{name}'")
+E                   AssertionError: Path '$.data.fieldId' does not exist at 'data'
+E                   Lifecycle finalization also failed: "Template variable '{{ cd_field_id }}' was not found"
+
+/Users/liushanshan/code/my/pytest_for_bi/src/framework/core/assertions.py:34: AssertionError</failure></testcase></testsuite></testsuites>

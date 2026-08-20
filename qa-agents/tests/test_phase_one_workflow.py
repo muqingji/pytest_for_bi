@@ -92,7 +92,12 @@ class AutomatedBackendDesigner:
             "source_refs": source_refs,
             "preconditions": ["准备测试账号"],
             "test_data": {"request": {"method": "GET", "path": "/api/report"}},
-            "steps": ["请求接口"],
+            "steps": [
+                {
+                    "name": "请求接口",
+                    "request": {"api": "fs_bi_stat.describe_query.detail", "json": {}},
+                }
+            ],
             "expected": [
                 {
                     "id": "EXP-01",
@@ -210,7 +215,12 @@ class MultiLayerDesigner:
             "priority": "P1",
             "source_refs": source_refs,
             "preconditions": ["准备测试账号"],
-            "steps": ["执行场景"],
+            "steps": [
+                {
+                    "name": "执行场景",
+                    "request": {"api": "fs_bi_stat.describe_query.detail", "json": {}},
+                }
+            ],
             "expected": [
                 {
                     "id": "EXP-01",

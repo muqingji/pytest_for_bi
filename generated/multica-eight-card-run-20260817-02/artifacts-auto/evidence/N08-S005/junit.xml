@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="0.405" timestamp="2026-08-20T15:51:46.706985+08:00" hostname="MacBook-Pro-3.local"><testcase classname="generated.backend.test_tc_be_005_backend" name="test_TC_BE_005_BACKEND" time="0.316"><failure message="AssertionError: Path 'detail_api.error_message_count' does not exist at 'detail_api'">case_runner = &lt;framework.core.runner.CaseRunner object at 0x106c76f90&gt;
+
+    def test_TC_BE_005_BACKEND(case_runner):
+        observations = case_runner.execute(CASE_SPEC)
+&gt;       case_runner.assert_oracles(observations, CASE_SPEC["expected"])
+
+generated/backend/test_tc_be_005_backend.py:4: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/Users/liushanshan/code/my/pytest_for_bi/src/framework/core/runner.py:319: in assert_oracles
+    actual = CaseRunner._oracle_observation(observations, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/liushanshan/code/my/pytest_for_bi/src/framework/core/runner.py:357: in _oracle_observation
+    return get_by_path(observations, path)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+value = {'config': {'name': '112', 'http': {'base_url': 'https://crm.ceshi112.com', 'headers': {}, 'timeout': 30, 'verify': 's... False, ...}}, '__case_name': 'TC-BE-005-BACKEND', '__classification_path': None, '__classification_values': None, ...}
+path = 'detail_api.error_message_count'
+
+    def get_by_path(value: Any, path: str) -&gt; Any:
+        """Read ``a.b[0].c`` from a dict/list result.
+    
+        Also accepts JSONPath-ish spellings ``$.a.b`` and ``$`` (root) so generated
+        Candidates may use either the framework dot notation or ``$``-prefixed paths.
+        """
+        normalized = path
+        if normalized.startswith("body."):
+            normalized = normalized[len("body."):]
+        elif normalized.startswith("$."):
+            normalized = normalized[len("$."):]
+        elif normalized == "$":
+            normalized = ""
+        current = value
+        if isinstance(current, dict) and normalized in current:
+            return current[normalized]
+        for name, index in _PATH_PART.findall(normalized):
+            if name:
+                if not isinstance(current, dict) or name not in current:
+&gt;                   raise AssertionError(f"Path '{path}' does not exist at '{name}'")
+E                   AssertionError: Path 'detail_api.error_message_count' does not exist at 'detail_api'
+
+/Users/liushanshan/code/my/pytest_for_bi/src/framework/core/assertions.py:34: AssertionError</failure></testcase></testsuite></testsuites>

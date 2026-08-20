@@ -1,0 +1,60 @@
+{
+  "artifact_hash": "sha256:64ab162f8b6152412876a1a99a8907b6967b220ff3c696b4332a5e2b667659e4",
+  "artifact_id": "n18-quality-signals",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-20T07:16:46+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:404d78268fd82f76673ae9f603354fa61514bc4becbd08d445f505afa7ba4e7d",
+      "location": "n08-automation-execution.json",
+      "source_id": "n08-automation-execution",
+      "source_type": "artifact"
+    }
+  ],
+  "facts": [],
+  "inferences": [],
+  "payload": {
+    "execution_hashes": [
+      "sha256:404d78268fd82f76673ae9f603354fa61514bc4becbd08d445f505afa7ba4e7d"
+    ],
+    "gaps": [
+      "code_coverage_not_collected",
+      "pytest_collection_incomplete:N08-S001",
+      "pytest_collection_incomplete:N08-S002",
+      "pytest_collection_incomplete:N08-S003",
+      "pytest_collection_incomplete:N08-S004",
+      "pytest_collection_incomplete:N08-S005",
+      "pytest_collection_incomplete:N08-S006"
+    ],
+    "lifecycle_evidence_bindings": [],
+    "next_node": "N09",
+    "schema_version": "n18-quality-signals/1.0",
+    "signals": {
+      "automation_shards": 6,
+      "branch_coverage_percent": null,
+      "coverage_shard_count": 0,
+      "duration_ms": 2823,
+      "junit_tests": 0,
+      "lifecycle_evidence_count": 0,
+      "statement_coverage_percent": null
+    }
+  },
+  "producer": {
+    "component_id": "N18",
+    "component_version": "0.1.0",
+    "inference_config_hash": "none",
+    "model_provider": "none",
+    "model_snapshot": "deterministic",
+    "profile_version": "1.0.0",
+    "prompt_version": "none",
+    "runtime": "deterministic",
+    "tool_bundle_version": "none"
+  },
+  "reason_code": "quality_signal_gaps",
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed_with_gaps",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

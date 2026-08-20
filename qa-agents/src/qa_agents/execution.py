@@ -107,6 +107,17 @@ def _load(path: Path, label: str) -> dict[str, Any]:
     return value
 
 
+def _lookup_dotted(mapping: Mapping[str, Any], dotted_path: str) -> Any:
+    """Return the value at a dotted path (``auth.username``) or None."""
+
+    current: Any = mapping
+    for part in dotted_path.split("."):
+        if not part or not isinstance(current, Mapping) or part not in current:
+            return None
+        current = current[part]
+    return current
+
+
 def _validate_artifact(artifact: Mapping[str, Any], label: str) -> None:
     if artifact.get("schema_version") != "artifact-envelope/1.0":
         raise ContractError(f"{label} is not an Artifact Envelope")
@@ -170,6 +181,13 @@ def run_n08_automation(
     precheck_artifact = _load(environment_precheck_path, "N07 precheck Artifact")
     execution_policy = _load(execution_policy_path, "execution policy")
     framework_root = Path.cwd().parent if Path.cwd().name == "qa-agents" else Path.cwd()
+    if not (framework_root / "src/framework/core/runner.py").exists():
+        # launchd and other non-shell drivers run with an arbitrary cwd
+        # (usually /), so cwd-based resolution is unreliable. Fall back to the
+        # repository layout that contains this module.
+        module_root = Path(__file__).resolve().parents[3]
+        if (module_root / "src/framework/core/runner.py").exists():
+            framework_root = module_root
     runner_sources = [
         framework_root / "src/framework/core/runner.py",
         framework_root / "src/framework/core/assertions.py",
@@ -226,7 +244,14 @@ def run_n08_automation(
 
     generation = generation_artifact.get("payload", {})
     manifest = generation.get("manifest")
-    if generation_artifact.get("status") != "completed" or not isinstance(manifest, Mapping):
+    if generation_artifact.get("status") not in {
+        ArtifactStatus.COMPLETED.value,
+        ArtifactStatus.COMPLETED_WITH_GAPS.value,
+    } or not isinstance(manifest, Mapping):
+        # completed_with_gaps is the normal A14 terminal state for a runnable
+        # manifest with rejected/unrunnable Cases; the whole C5 gate (A18/N05/
+        # G03) already approved it, so N08 must not refuse it based on the
+        # literal status string.
         raise ContractError("N08 requires a completed automation generation")
     generator_id = str(manifest.get("generator_profile", "")).split("/", 1)[0]
     if not generator_id:
@@ -340,7 +365,34 @@ def run_n08_automation(
     if execution_policy.get("require_production_isolation") and not active_runner.production_isolated:
         raise SecurityPolicyError("Execution policy requires a production-isolated runner")
     if command[0] == "pytest":
-        executable_prefix = [sys.executable, "-m", "pytest"]
+        if needs_network or needs_secrets:
+            # Controlled runs load the framework pytest plugin and fixtures
+            # (framework.auth/clients pull httpx and other runtime deps), so
+            # they must execute under the framework venv declared by the
+            # policy, not the driver interpreter (which may only ship the
+            # qa-agents dependency set). Falling back silently would produce
+            # ImportError evidence that looks like an infra failure.
+            configured_python = str(controlled.get("python_executable", "")).strip()
+            if configured_python:
+                declared = Path(configured_python)
+                if declared.is_absolute() or ".." in declared.parts:
+                    raise InputError(
+                        "Controlled runner python must be a repository-relative path"
+                    )
+                python_path = framework_root / declared
+                if not python_path.is_file():
+                    raise InputError(
+                        f"Controlled runner python is unavailable: {configured_python}"
+                    )
+                # 保持词法路径而不是 resolve：仓库 .venv/bin/python 是指向系统
+                # 解释器的符号链接，resolve 会脱离 venv 上下文，导致 venv
+                # site-packages（pytest 等）丢失。词法约束 + 存在性检查已保证
+                # 路径仍在仓库内。
+                executable_prefix = [str(framework_root / declared), "-m", "pytest"]
+            else:
+                executable_prefix = [sys.executable, "-m", "pytest"]
+        else:
+            executable_prefix = [sys.executable, "-m", "pytest"]
     else:
         executable = shutil.which(command[0])
         if not executable:
@@ -401,6 +453,7 @@ def run_n08_automation(
                 key = str(name)
                 if key and key in os.environ and key not in env:
                     env[key] = os.environ[key]
+            provider_value: dict[str, Any] = {}
             for name in requested_secrets:
                 if name in os.environ and os.environ[name]:
                     env[name] = os.environ[name]
@@ -410,19 +463,38 @@ def run_n08_automation(
                 provider_names = {
                     str(item) for item in provider.get("secret_names", [])
                 } if isinstance(provider, Mapping) else set()
-                provider_path = Path.cwd() / str(provider.get("path", ""))
-                repository_root = Path.cwd().parent.resolve()
+                # Resolve relative to the repository layout instead of the
+                # caller cwd: launchd and other non-shell drivers run with an
+                # arbitrary cwd (usually /), where ../config would escape to the
+                # filesystem root and the provider file would never be found.
+                qa_agents_root = framework_root / "qa-agents"
+                provider_path = (qa_agents_root / str(provider.get("path", ""))).resolve()
+                repository_root = framework_root.resolve()
+                mode = provider_path.stat().st_mode if provider_path.is_file() else 0
                 if (
                     provider.get("type") != "environment_local_config"
                     or name not in provider_names
                     or not provider_path.is_file()
-                    or repository_root not in provider_path.resolve().parents
+                    or repository_root not in provider_path.parents
+                    or (os.name != "nt" and mode & 0o077)
                 ):
                     raise InputError(
                         f"Required secret is unavailable from an approved provider: {name}"
                     )
+                if not provider_value:
+                    provider_value = _load(provider_path, "secret provider")
+                secret_map = provider.get("secret_map", {}) if isinstance(provider, Mapping) else {}
+                secret_value = _lookup_dotted(
+                    provider_value,
+                    str(secret_map.get(name, "") if isinstance(secret_map, Mapping) else ""),
+                )
+                if secret_value is None:
+                    raise InputError(
+                        f"Required secret is unavailable from an approved provider: {name}"
+                    )
+                env[name] = str(secret_value)
             pythonpath_entries = [
-                str((Path.cwd() / item).resolve())
+                str((framework_root / item).resolve())
                 for item in controlled.get("framework_pythonpath_entries", [])
             ]
             existing = env.get("PYTHONPATH", "")

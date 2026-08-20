@@ -14,6 +14,7 @@ from typing import Any
 from .card_copy import stage_card_sections, stage_card_title
 from .contracts import content_hash
 from .errors import ContractError, InputError, RetryableAgentError
+from .multica_cli import resolve_multica_binary
 from .security import SecurityPolicy
 from .storage import ArtifactStore
 
@@ -704,8 +705,11 @@ def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
 
 
 def _default_runner(command: list[str], stdin: str | None) -> Any:
+    resolved_command = list(command)
+    if resolved_command and resolved_command[0] == "multica":
+        resolved_command[0] = resolve_multica_binary()
     completed = subprocess.run(
-        command,
+        resolved_command,
         input=stdin,
         check=False,
         capture_output=True,

@@ -156,3 +156,170 @@ def test_manual_oracle_is_not_generated_as_automation() -> None:
     assert generation.status == ArtifactStatus.NOT_APPLICABLE
     assert generation.reason_code == "no_machine_executable_integration_or_functional_case"
     assert generation.payload["manifest"] is None
+
+
+def test_n05_allows_truthful_network_and_112_secrets_declaration() -> None:
+    """A backend integration Manifest that declares network plus the policy
+    allowlisted 112 credential names must pass N05 (business repo writes remain
+    the only forbidden permission)."""
+
+    generation = BackendAutomationAgent().run(
+        context(),
+        {
+            "cases": [backend_case()],
+            "target": {
+                "repository_id": "pytest_for_bi",
+                "access_class": "approved_automation_repository",
+                "timeout_seconds": 300,
+                "network": True,
+                "secrets": [
+                    "FXIAOKE_112_ENTERPRISE_ACCOUNT",
+                    "FXIAOKE_112_USERNAME",
+                    "FXIAOKE_112_PASSWORD",
+                ],
+            },
+        },
+        SecurityPolicy(),
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    code_check = check_automation_generation(generation, policy)
+    assert code_check["passed"] is True
+    assert code_check["fatal_security_violation"] is False
+
+
+def test_n05_rejects_non_executable_skeleton_candidate() -> None:
+    """N05 必须拦下纯文本骨架：A14 曾生成 steps/cleanup 为字符串、expected 无
+    oracle、assert_oracles 签名错误的候选，N08 运行必然失败。"""
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    skeleton = (
+        'CASE_SPEC = {"id": "TC-BE-001-BACKEND", "steps": ["对 A/B/C 调用真实接口"], '
+        '"expected": [{"id": "EXP-1", "expected_value": "s307011534"}], '
+        '"cleanup": ["删除统计图和自定义维度。"]}\n'
+        "def test_tc_be_001_backend(case_runner):\n"
+        "    case_runner.execute(CASE_SPEC)\n"
+        "    case_runner.assert_oracles(CASE_SPEC)\n"
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = skeleton
+    candidate["content_hash"] = content_hash(skeleton)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+    result = check_automation_generation(generation, policy)
+    assert result["passed"] is False
+    codes = {item["issue_code"] for item in result["issues"]}
+    assert "execution_step_not_structured" in codes
+    assert "executable_oracle_missing" in codes
+    assert "assert_oracles_signature_invalid" in codes
+    assert result["fatal_security_violation"] is False
+
+
+def test_n05_rejects_json_style_literals_in_case_spec() -> None:
+    """N05 门禁必须与 pytest 运行时语义一致：候选文件是纯 Python 源码，
+    JSON 风格 true/false/null（裸名）导入时会抛 NameError，必须在 N05 拦截，
+    而不是放行后让 N08 在运行时以 infrastructure_error 失败。"""
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        'CASE_SPEC = {"id": "TC-BE-004-BACKEND", "test_level": "integration", '
+        '"topic_restriction": false, "dataset": null, "steps": ['
+        '{"name": "call", "request": {"api": "fs_bi_stat.stat_base.detail_data_query", "json": {}}}], '
+        '"expected": [{"id": "EXP-1", "matcher": "equals", "observation_point": "detail_api.error.code", '
+        '"expected_value": "s307011534"}], "cleanup": []}\n'
+        "def test_tc_be_004_backend(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        '    case_runner.assert_oracles(observations, CASE_SPEC["expected"])\n'
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+    result = check_automation_generation(generation, policy)
+    assert result["passed"] is False
+    codes = {item["issue_code"] for item in result["issues"]}
+    assert "case_spec_json_literals_not_python" in codes
+    assert result["fatal_security_violation"] is False
+
+
+def test_n05_rejects_placeholder_setup_body_missing_contract_fields() -> None:
+    """N05 必须拦下 setup 阶段仅含 namespace/variant 的占位 body：112 业务校验
+    会拒绝这类请求，放行只会让 N08 以 infrastructure_error 失败。"""
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        'CASE_SPEC = {"id": "TC-BE-001-BACKEND", "test_level": "integration", '
+        '"test_data": {"resource_requirements": ['
+        '{"resource_key": "cd_field", "resource_type": "custom_dimension", '
+        '"setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension", '
+        '"required_body_keys": ["topologyDescribeId", "customType", "dimensionName", '
+        '"dimensionConfig", "describeApiName", "sourceField"]}]}, '
+        '"setup": [{"name": "create", "request": {"api": '
+        '"fs_bi_stat.custom_dimension.create_custom_dimension", '
+        '"json": {"namespace": "qa-a22-pilot-001-source-v1", "variants": ["baseline"]}}}], '
+        '"steps": [{"name": "query", "request": {"api": '
+        '"fs_bi_stat.custom_dimension.get_custom_dimension", "json": {}}}], '
+        '"expected": [{"id": "EXP-1", "matcher": "equals", "observation_point": "detail_api.error.code", '
+        '"expected_value": "s307011534"}], "cleanup": []}\n'
+        "def test_tc_be_001_backend(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        '    case_runner.assert_oracles(observations, CASE_SPEC["expected"])\n'
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+    result = check_automation_generation(generation, policy)
+    assert result["passed"] is False
+    codes = {item["issue_code"] for item in result["issues"]}
+    assert "setup_body_missing_contract_fields" in codes
+    assert result["fatal_security_violation"] is False
+
+
+def test_n05_allows_setup_body_with_verified_contract_keys() -> None:
+    """完整携带 required_body_keys 的 setup body 不再被占位校验拦截。"""
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        'CASE_SPEC = {"id": "TC-BE-001-BACKEND", "test_level": "integration", '
+        '"test_data": {"resource_requirements": ['
+        '{"resource_key": "cd_field", "resource_type": "custom_dimension", '
+        '"setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension", '
+        '"required_body_keys": ["topologyDescribeId", "customType", "dimensionName", '
+        '"dimensionConfig", "describeApiName", "sourceField"]}]}, '
+        '"setup": [{"name": "create", "request": {"api": '
+        '"fs_bi_stat.custom_dimension.create_custom_dimension", '
+        '"json": {"topologyDescribeId": "BI_5bcebcdc3060e20001e79977", '
+        '"customType": "enum_group", "dimensionName": "qa-a22-pilot-001-source-v1-baseline", '
+        '"description": "auto", "dimensionConfig": "{}", "describeApiName": "AccountObj", '
+        '"sourceField": {"fieldId": "BI_5bcebcddcab2980001ee22b3", "apiName": "account_level"}}}], '
+        '"steps": [{"name": "query", "request": {"api": '
+        '"fs_bi_stat.custom_dimension.get_custom_dimension", "json": {}}}], '
+        '"expected": [{"id": "EXP-1", "matcher": "equals", "observation_point": "detail_api.error.code", '
+        '"expected_value": "s307011534"}], "cleanup": []}\n'
+        "def test_tc_be_001_backend(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        '    case_runner.assert_oracles(observations, CASE_SPEC["expected"])\n'
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+    result = check_automation_generation(generation, policy)
+    codes = {item["issue_code"] for item in result["issues"]}
+    assert "setup_body_missing_contract_fields" not in codes
+

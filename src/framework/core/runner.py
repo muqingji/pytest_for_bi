@@ -6,6 +6,7 @@ import json
 import hashlib
 import os
 import re
+from collections.abc import Mapping
 from contextlib import nullcontext
 from copy import deepcopy
 from pathlib import Path
@@ -108,6 +109,17 @@ class CaseRunner:
             primary_error = error
         finally:
             for raw_step in reversed(list(case.get("cleanup", []))):
+                if not isinstance(raw_step, Mapping):
+                    # 生成器常把 N25 的人类可读清理说明原样写入 cleanup；清理是
+                    # 尽力而为的拆除动作，文本说明不能把已通过的测试打成失败。
+                    context["__lifecycle__"]["cleanup"].append(
+                        {
+                            "name": str(raw_step),
+                            "status": "skipped",
+                            "reason_code": "cleanup_step_not_structured",
+                        }
+                    )
+                    continue
                 when_variable = str(raw_step.get("when_variable", "") or "")
                 if when_variable and when_variable not in context:
                     context["__lifecycle__"]["cleanup"].append(
@@ -123,6 +135,15 @@ class CaseRunner:
                 except BaseException as error:
                     cleanup_errors.append(error)
             for raw_step in list(case.get("residue_checks", [])):
+                if not isinstance(raw_step, Mapping):
+                    context["__lifecycle__"]["residue"].append(
+                        {
+                            "name": str(raw_step),
+                            "status": "skipped",
+                            "reason_code": "residue_step_not_structured",
+                        }
+                    )
+                    continue
                 when_variable = str(raw_step.get("when_variable", "") or "")
                 if when_variable and when_variable not in context:
                     context["__lifecycle__"]["residue"].append(
@@ -279,9 +300,20 @@ class CaseRunner:
     def assert_oracles(
         observations: dict[str, Any], expected: list[dict[str, Any]]
     ) -> None:
-        """Evaluate the deterministic Oracle subset used by generated Cases."""
+        """Evaluate the deterministic Oracle subset used by generated Cases.
+
+        Accepts both ``{"oracle": {...}}`` items and flattened items that carry
+        ``matcher``/``observation_point``/``expected_value`` at the top level
+        (some generators emit the JSON-ish flattened form).
+        """
         for item in expected:
-            oracle = item.get("oracle", {})
+            oracle = item.get("oracle")
+            if not isinstance(oracle, Mapping):
+                oracle = {
+                    key: item.get(key)
+                    for key in ("matcher", "observation_point", "expected_value", "expected_values")
+                    if key in item
+                }
             matcher = str(oracle.get("matcher", "equals"))
             path = str(oracle.get("observation_point", "response"))
             actual = CaseRunner._oracle_observation(observations, path)

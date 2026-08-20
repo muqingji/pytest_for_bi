@@ -1,0 +1,87 @@
+{
+  "created_at": "2026-08-20T10:11:32+00:00",
+  "gate_id": "G03",
+  "generation_cases": [
+    {
+      "candidate_path": "generated/backend/test_TC_BE_001_BACKEND.py",
+      "case_id": "TC-BE-001-BACKEND",
+      "expected_ids": [
+        "EXP-BE-001-01",
+        "EXP-BE-001-02",
+        "EXP-BE-001-03"
+      ],
+      "generator_id": "A14",
+      "manual_expected_ids": [],
+      "priority": "P0",
+      "risk": "critical",
+      "title": "自定义维度三类位置的专用错误与双语提示"
+    }
+  ],
+  "issue_items": [
+    {
+      "artifact_id": "a14-backend-automation-generation",
+      "candidate_count": 1,
+      "generator_id": "A14",
+      "manifest_id": "manifest-a14-backend",
+      "rejected_count": 5
+    },
+    {
+      "approved": true,
+      "artifact_id": "a18-be-backend-automation-review",
+      "issue_count": 0,
+      "reviewer_id": "A18-BE"
+    }
+  ],
+  "n05_payload": {
+    "fatal_security_violation": false,
+    "generation_count": 1,
+    "issues": [],
+    "passed": true,
+    "planned_generation_count": 1,
+    "rejected_cases": [
+      "TC-BE-002-BACKEND",
+      "TC-BE-003-BACKEND",
+      "TC-BE-004-BACKEND",
+      "TC-BE-005-BACKEND",
+      "TC-BE-006-BACKEND"
+    ],
+    "repair_routes": []
+  },
+  "request_hash": "sha256:ef01ee6c42240a63d9e5887d13069fba2422f7da705898f4b0331aff988141f8",
+  "review_key": "sha256:189b6e872b0355e07e734178533c141b4f8928f0cfef3d63b37cf7f6418eda4d",
+  "review_policy": {
+    "gate_id": "G03",
+    "policy_hash": "sha256:2651736968300adbcfdeb024b416183c501fc9b009ee3fa2fcf80fcf767ac54a"
+  },
+  "schema_version": "automation-code-review-request/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "summary": {
+    "candidate_count": 1,
+    "generation_count": 1,
+    "n05_passed": true,
+    "review_count": 1,
+    "review_issue_count": 0
+  },
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:02516229dc95e55f3bb2c519728374b459fb0d018d904729f7f7a4f6829735b8",
+      "artifact_id": "n05-automation-code-check",
+      "reason_code": null,
+      "status": "completed"
+    },
+    {
+      "artifact_hash": "sha256:9ba9e7f97f436f2e0cd5e596aaedaad81cd0443bd77d431f4e2c7152c0287d51",
+      "artifact_id": "a14-backend-automation-generation",
+      "reason_code": null,
+      "status": "completed_with_gaps"
+    },
+    {
+      "artifact_hash": "sha256:18c7ee682b4a43018af6ed8c011bed0edc3327b29b4ffbeb68391df59c27b462",
+      "artifact_id": "a18-be-backend-automation-review",
+      "reason_code": null,
+      "status": "completed"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

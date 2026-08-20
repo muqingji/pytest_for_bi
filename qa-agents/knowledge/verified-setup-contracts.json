@@ -1,0 +1,147 @@
+{
+  "schema_version": "verified-setup-contracts/1.0",
+  "environment": "112",
+  "verified_from": "retained asset run 2026-08-11/08-13 (live create + readback)",
+  "usage": "A14 setup 阶段必须逐字使用下列 body_template，只替换 {{PLACEHOLDER}} 标记；禁止自造字段或发送仅含 namespace/variant 的占位 body。",
+  "contracts": {
+    "fs_bi_stat.custom_dimension.create_custom_dimension": {
+      "resource_type": "custom_dimension",
+      "status": "verified_112",
+      "evidence": "generated/112-custom-dimension-create-evidence.json; tests/test_112_create_retained_requirement_assets.py",
+      "body_template": {
+        "topologyDescribeId": "BI_5bcebcdc3060e20001e79977",
+        "customType": "enum_group",
+        "dimensionName": "{{namespace}}-{{variant_name}}",
+        "description": "需求：统计图查看明细限制原因提示优化；A22 命名空间构造并长期保留",
+        "dimensionConfig": "{{dimension_config_json}}",
+        "describeApiName": "AccountObj",
+        "sourceField": {
+          "fieldId": "BI_5bcebcddcab2980001ee22b3",
+          "apiName": "account_level",
+          "type": "select_one",
+          "describeApiName": "AccountObj"
+        }
+      },
+      "substitutions": {
+        "namespace": "A22 计划 namespace（形如 qa-a22-pilot-001-source-v1）或其派生 {namespace}/TC-<case_id>",
+        "variant_name": "用例语义名（如 baseline / variant-a），必须含 namespace 前缀",
+        "dimension_config_json": "JSON 字符串，groups 的 values 必须来自 112 实时 get_ui_type 枚举（evidence 中 optionCode 为 1/2/3/other）"
+      },
+      "readback_operation": "fs_bi_stat.custom_dimension.get_custom_dimension",
+      "required_body_keys": [
+        "topologyDescribeId",
+        "customType",
+        "dimensionName",
+        "dimensionConfig",
+        "describeApiName",
+        "sourceField"
+      ]
+    },
+    "fs_bi_stat.agg_rule.add_new_agg_rule": {
+      "resource_type": "aggregate_metric",
+      "status": "verified_112",
+      "evidence": "generated/retained-test-assets.json; tests/test_112_create_retained_requirement_assets.py",
+      "body_template": {
+        "schemaId": "BI_5be1351956fc11448cdde39e",
+        "schemaObjectName": "biz_sales_order",
+        "displayName": "{{namespace}}-{{metric_name}}",
+        "aggObject": {
+          "dbFieldName": "mc_exchange_rate",
+          "fieldName": "汇率",
+          "fieldType": "Number",
+          "dbObjName": "object_1Lhg5__c",
+          "fieldId": "BI_a23fbc479ea07edab8c7fd5fddf90cc7"
+        },
+        "aggField": {
+          "dbFieldName": "mc_exchange_rate",
+          "fieldName": "汇率",
+          "fieldType": "Number",
+          "dbObjName": "object_1Lhg5__c",
+          "fieldId": "BI_a23fbc479ea07edab8c7fd5fddf90cc7"
+        },
+        "aggFieldTime": {
+          "dbFieldName": "create_time",
+          "fieldName": "创建时间",
+          "fieldType": "Date",
+          "dbObjName": "object_1Lhg5__c",
+          "fieldId": "BI_f6b5bbe13117f9e4e2f96790b31115a9"
+        },
+        "filterLists": [],
+        "checkFieldAggregateType": 2,
+        "initStatus": 1,
+        "timeZone": "Asia/Shanghai"
+      },
+      "substitutions": {
+        "namespace": "A22 计划 namespace 或派生",
+        "metric_name": "用例语义名（如 rs-metric / mr-metric），必须含 namespace 前缀"
+      },
+      "readback_operation": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+      "required_body_keys": [
+        "schemaId",
+        "schemaObjectName",
+        "displayName",
+        "aggObject",
+        "aggField",
+        "aggFieldTime",
+        "filterLists",
+        "checkFieldAggregateType",
+        "initStatus",
+        "timeZone"
+      ]
+    },
+    "fs_bi_stat.stat_calc_field.save_calc_field": {
+      "resource_type": "calculated_metric",
+      "status": "verified_112",
+      "evidence": "tests/test_112_calculated_metric_lifecycle.py",
+      "body_template": {
+        "calcFieldId": "",
+        "fieldName": "{{namespace}}-{{calc_name}}",
+        "formula": "[{{base_agg_field_id}}_2]",
+        "formatStr": "0.00",
+        "ratioType": 0
+      },
+      "substitutions": {
+        "namespace": "A22 计划 namespace 或派生",
+        "calc_name": "计算指标语义名，必须含 namespace 前缀",
+        "base_agg_field_id": "必须先 add_new_agg_rule 创建聚合指标，取其返回的 fieldId"
+      },
+      "readback_operation": "fs_bi_stat.stat_calc_field.query_calc_field",
+      "required_body_keys": [
+        "calcFieldId",
+        "fieldName",
+        "formula",
+        "formatStr",
+        "ratioType"
+      ]
+    },
+    "fs_bi_dev.lwt_manager.save": {
+      "resource_type": "joined_table",
+      "status": "verified_112",
+      "evidence": "generated/112-joined-table-create-evidence.json; tests/test_112_create_minimal_joined_table.py",
+      "notes": "拼表 body 必须从 112 实时来源拼表 queryArgDetail 派生（source_args），再更新 categoryID/viewName/description/saveType=0/queryLwtArg.id=\"\"/lwtArgs.lwtId=\"\"；禁止凭空构造 dataSources/relations。",
+      "body_template": null,
+      "derivation": {
+        "source_discovery": "fs_bi_dev.lwt_manager.query_arg_detail",
+        "required_updates": [
+          "categoryID",
+          "viewName",
+          "description",
+          "saveType=0",
+          "queryLwtArg.id=\"\"",
+          "lwtArgs.lwtId=\"\""
+        ]
+      },
+      "readback_operation": "fs_bi_dev.lwt_manager.query_arg_detail",
+      "required_body_keys": [
+        "categoryID",
+        "viewName",
+        "description",
+        "saveType",
+        "queryLwtArg",
+        "lwtArgs",
+        "dataSources",
+        "relations"
+      ]
+    }
+  }
+}

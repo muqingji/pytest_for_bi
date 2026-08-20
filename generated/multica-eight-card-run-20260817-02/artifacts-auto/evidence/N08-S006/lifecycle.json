@@ -1,0 +1,63 @@
+{
+  "cases": [
+    {
+      "case_id": "TC-BE-006-BACKEND",
+      "environment": "112",
+      "namespace": null,
+      "phases": {
+        "cleanup": [
+          {
+            "name": "确认权限基线数据未被修改。",
+            "reason_code": "cleanup_step_not_structured",
+            "status": "skipped"
+          },
+          {
+            "name": "撤销临时账号权限。",
+            "reason_code": "cleanup_step_not_structured",
+            "status": "skipped"
+          },
+          {
+            "name": "删除敏感指标和受限图表。",
+            "reason_code": "cleanup_step_not_structured",
+            "status": "skipped"
+          }
+        ],
+        "readiness": [],
+        "residue": [],
+        "setup": [],
+        "test": [
+          {
+            "name": "create_restricted_chart",
+            "operation": "fs_bi_crm.stat_create.create_stat_view",
+            "response_hash": "sha256:0874494ea6b726d09ea65ff91b8acceef1e5563ea60d4c64a71350b38530d4fb",
+            "status": "completed",
+            "status_code": 200
+          },
+          {
+            "name": "detail_query_account_A",
+            "operation": "fs_bi_stat.stat_base.detail_data_query",
+            "response_hash": "sha256:6e1e4157b18a0c541d4ce623ce77d50a7c22d89b108bb6e45e91572f1e0b6c3c",
+            "status": "completed",
+            "status_code": 200
+          },
+          {
+            "name": "detail_query_account_B",
+            "operation": "fs_bi_stat.stat_base.detail_data_query",
+            "response_hash": "sha256:6e1e4157b18a0c541d4ce623ce77d50a7c22d89b108bb6e45e91572f1e0b6c3c",
+            "status": "completed",
+            "status_code": 200
+          },
+          {
+            "name": "detail_query_account_C",
+            "operation": "fs_bi_stat.stat_base.detail_data_query",
+            "response_hash": "sha256:6e1e4157b18a0c541d4ce623ce77d50a7c22d89b108bb6e45e91572f1e0b6c3c",
+            "status": "completed",
+            "status_code": 200
+          }
+        ]
+      },
+      "schema_version": "case-lifecycle-evidence/1.0"
+    }
+  ],
+  "schema_version": "shard-lifecycle-evidence/1.0"
+}

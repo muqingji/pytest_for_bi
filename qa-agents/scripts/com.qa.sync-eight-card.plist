@@ -18,5 +18,8 @@
   <key>StandardOutPath</key><string>/tmp/qa-sync-eight-card.out.log</string>
   <key>StandardErrorPath</key><string>/tmp/qa-sync-eight-card.err.log</string>
   <key>EnvironmentVariables</key>
-  <dict><key>PYTHONPATH</key><string>/Users/liushanshan/code/my/pytest_for_bi/qa-agents/src</string></dict>
+  <dict>
+    <key>PYTHONPATH</key><string>/Users/liushanshan/code/my/pytest_for_bi/qa-agents/src</string>
+    <key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
 </dict></plist>

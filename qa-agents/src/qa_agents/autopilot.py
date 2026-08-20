@@ -18,6 +18,7 @@ from .contracts import (
     content_hash,
 )
 from .errors import ContractError, InputError, RetryableAgentError
+from .multica_cli import resolve_multica_binary
 from .security import SecurityPolicy
 from .storage import ArtifactStore
 
@@ -96,6 +97,40 @@ def _stage_card_by_node() -> dict[str, tuple[str, str]]:
             f"missing={sorted(missing)}, unknown={sorted(unknown)}"
         )
     return result
+
+# Human-gate confirmation artifacts: they never replace the producer Artifact
+# in ``selected``, but upgrade a needs_human node to a terminal state once the
+# human owner confirms the review Issue on Multica.
+HUMAN_CONFIRMATION_ARTIFACTS = {
+    "a22-human-confirmation": "A22",
+}
+
+
+def _confirmation_binds(
+    confirmation: Mapping[str, Any], artifact: Mapping[str, Any]
+) -> bool:
+    payload = confirmation.get("payload")
+    return (
+        isinstance(payload, Mapping)
+        and str(payload.get("plan_artifact_hash", ""))
+        == str(artifact.get("artifact_hash", ""))
+        and str(payload.get("plan_artifact_id", ""))
+        == str(artifact.get("artifact_id", ""))
+    )
+
+
+def _confirmation_summary(
+    confirmation: Mapping[str, Any], artifact: Mapping[str, Any]
+) -> str:
+    payload = confirmation.get("payload", {})
+    confirmed = payload.get("confirmed_requirement_ids", [])
+    if isinstance(confirmed, list) and confirmed:
+        names = "、".join(str(item) for item in confirmed[:4])
+        if len(confirmed) > 4:
+            names += f" 等 {len(confirmed)} 项"
+        return f"人工已确认 {len(confirmed)} 项未决数据需求（{names}）"
+    return "人工已确认未决数据需求，节点进入完成态"
+
 
 ARTIFACT_NODE_MAP = {
     "n00-workflow-route": "N00",
@@ -289,8 +324,11 @@ def _text(value: Mapping[str, Any], field: str, label: str) -> str:
 
 
 def _default_runner(command: list[str], stdin: str | None) -> Any:
+    resolved_command = list(command)
+    if resolved_command and resolved_command[0] == "multica":
+        resolved_command[0] = resolve_multica_binary()
     completed = subprocess.run(
-        command,
+        resolved_command,
         input=stdin,
         check=False,
         capture_output=True,
@@ -800,6 +838,19 @@ def _artifact_summary(artifact: Mapping[str, Any]) -> str:
             return ", ".join(f"{key}={item}" for key, item in sorted(value.items()))[:500]
     status = str(payload.get("status") or "").strip()
     if status == "needs_human" and isinstance(payload, Mapping):
+        requirements = payload.get("unresolved_requirements")
+        if isinstance(requirements, list) and requirements:
+            codes = [
+                str(item.get("requirement_id") or item.get("reason_code") or "").strip()
+                for item in requirements
+                if isinstance(item, Mapping)
+            ]
+            codes = [code for code in codes if code]
+            if codes:
+                names = "、".join(codes[:4])
+                if len(codes) > 4:
+                    names += f" 等 {len(codes)} 项"
+                return f"发现 {len(codes)} 个未决数据需求需人工确认（{names}）"
         issues = payload.get("issues")
         if isinstance(issues, list):
             codes = [
@@ -822,7 +873,7 @@ def _action_count(artifact: Mapping[str, Any]) -> int:
     payload = artifact.get("payload", {})
     if not isinstance(payload, Mapping):
         return 1
-    for field in ("issues", "tasks", "unresolved_items"):
+    for field in ("issues", "tasks", "unresolved_items", "unresolved_requirements"):
         value = payload.get(field)
         if isinstance(value, list) and value:
             return len(value)
@@ -851,7 +902,9 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
         confirm_action: str = "",
         category: str = "",
     ) -> None:
-        item_id = str(item.get("issue_id") or item.get("id") or "").strip()
+        item_id = str(
+            item.get("issue_id") or item.get("id") or item.get("requirement_id") or ""
+        ).strip()
         if not item_id:
             item_id = f"{artifact['artifact_id']}-{len(items) + 1}"
         if item_id in seen:
@@ -929,6 +982,15 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
             ).strip(),
             confirm_action=str(item.get("confirm_action") or "").strip(),
             category=str(item.get("category") or "").strip(),
+        )
+    for item in payload.get("unresolved_requirements", []):
+        if not isinstance(item, Mapping):
+            continue
+        append(
+            item,
+            title="未决数据需求",
+            summary=str(item.get("requirement") or item.get("summary") or item.get("reason_code") or "").strip(),
+            category="test_data_pending_human",
         )
     for field in ("tasks", "unresolved_items", "questions", "approval_items"):
         for item in payload.get(field, []):
@@ -1042,6 +1104,7 @@ def reconcile_autopilot(
                             "stage_cards": refreshed_stage_cards,
                         }
         selected: dict[str, dict[str, Any]] = {}
+        human_confirmations: dict[str, dict[str, Any]] = {}
         for root in artifact_roots:
             if not root.exists():
                 continue
@@ -1060,7 +1123,22 @@ def reconcile_autopilot(
                 if artifact_hash_from_mapping(value) != value.get("artifact_hash"):
                     raise ContractError(f"Autopilot found a tampered Artifact: {path}")
                 security.assert_no_secret_values(value)
-                node_id = ARTIFACT_NODE_MAP.get(str(value.get("artifact_id", "")))
+                artifact_id = str(value.get("artifact_id", ""))
+                # Human-gate confirmations are secondary evidence: they upgrade a
+                # needs_human Artifact (for example the A22 plan with unresolved
+                # data requirements) once the owner confirms the review Issue.
+                bound_node = HUMAN_CONFIRMATION_ARTIFACTS.get(artifact_id)
+                if bound_node:
+                    candidate = {**value, "_path": str(path)}
+                    current = human_confirmations.get(bound_node)
+                    if current is None or (
+                        str(candidate.get("created_at", "")), str(candidate.get("artifact_hash", ""))
+                    ) > (
+                        str(current.get("created_at", "")), str(current.get("artifact_hash", ""))
+                    ):
+                        human_confirmations[bound_node] = candidate
+                    continue
+                node_id = ARTIFACT_NODE_MAP.get(artifact_id)
                 if not node_id:
                     continue
                 candidate = {**value, "_path": str(path)}
@@ -1088,8 +1166,20 @@ def reconcile_autopilot(
                     # G01 issue.route_to records the upstream correction owner;
                     # it does not turn the Gate itself into an automatic return.
                     item["state"] = "waiting_human"
+                confirmation = human_confirmations.get(node_id)
+                if (
+                    artifact.get("status") == "needs_human"
+                    and confirmation is not None
+                    and _confirmation_binds(confirmation, artifact)
+                ):
+                    # 人工在确认 Issue 上置 done 后，节点进入终态而不再等待。
+                    item["state"] = "completed"
+                    item["result_summary"] = _confirmation_summary(
+                        confirmation, artifact
+                    )
                 item["completion"] = "1/1"
-                item["result_summary"] = _artifact_summary(artifact)
+                if item["state"] != "completed" or "result_summary" not in item:
+                    item["result_summary"] = _artifact_summary(artifact)
                 item["artifact_id"] = artifact["artifact_id"]
                 item["artifact_hash"] = artifact["artifact_hash"]
                 item["artifact_path"] = artifact["_path"]

@@ -11,7 +11,8 @@ from qa_agents.agents import BackendAutomationAgent, BackendAutomationReviewAgen
 from qa_agents.agents.base import AgentContext
 from qa_agents.automation import AutomationPolicy, check_automation_generation
 from qa_agents.contracts import ArtifactEnvelope, ArtifactStatus, Producer
-from qa_agents.errors import ContractError, SecurityPolicyError
+from qa_agents.errors import ContractError, InputError, SecurityPolicyError
+from qa_agents import execution as execution_module
 from qa_agents.execution import ProcessResult, run_n08_automation
 from qa_agents.security import SecurityPolicy
 
@@ -33,7 +34,12 @@ def _case(case_id: str = "CASE-001-BACKEND") -> dict:
         "source_refs": [{"type": "requirement", "id": "REQ-1", "location": "s1"}],
         "preconditions": ["无权限账号"],
         "test_data": {"request": {"method": "GET", "path": "/api/report"}},
-        "steps": ["请求接口"],
+        "steps": [
+            {
+                "name": "请求接口",
+                "request": {"api": "fs_bi_stat.describe_query.detail", "json": {}},
+            }
+        ],
         "expected": [{
             "id": "EXP-01",
             "description": "返回 403",
@@ -174,6 +180,21 @@ def test_n08_executes_bound_candidates_without_shell(tmp_path: Path) -> None:
     assert (tmp_path / "out/artifacts/n08-automation-execution.json").exists()
 
 
+def test_n08_framework_root_falls_back_from_arbitrary_cwd(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """N08 must resolve the framework runner bundle from the repository layout
+    even when the driver runs with an unrelated cwd (for example launchd)."""
+    paths = _inputs(tmp_path)
+    runner = FakeRunner()
+    monkeypatch.setattr(
+        execution_module.Path, "cwd", classmethod(lambda cls: Path("/"))
+    )
+    artifact = _run(tmp_path, paths, runner)
+    assert artifact["status"] == "completed"
+    assert artifact["payload"]["decision"] == "passed"
+
+
 def test_controlled_n08_loads_only_policy_registered_fixture_plugin(tmp_path: Path) -> None:
     paths = _inputs(tmp_path, network=True)
     runner = FakeRunner()
@@ -186,6 +207,145 @@ def test_controlled_n08_loads_only_policy_registered_fixture_plugin(tmp_path: Pa
     )
     _run(tmp_path, paths, runner)
     assert runner.commands[0][3:7] == ["-p", "framework.pytest_plugin", "--env=112", "-q"]
+
+
+def test_controlled_n08_runs_pytest_under_policy_python(tmp_path: Path) -> None:
+    """Controlled runs execute under the policy-declared framework venv, not the
+    driver interpreter: framework.auth/clients need httpx which only the
+    framework venv ships. Regression: N08 on the 112 runner died in every shard
+    with ``No module named 'httpx'`` because pytest ran under qa-agents/.venv."""
+    paths = _inputs(tmp_path, network=True)
+    runner = FakeRunner()
+    runner.backend = "controlled_env_reference"
+    precheck = json.loads(paths["precheck"].read_text())
+    precheck["payload"]["environment_class"] = "112"
+    paths["precheck"] = _write_artifact(
+        paths["precheck"],
+        _envelope("N07", "n07-precheck", precheck["payload"], ArtifactStatus.COMPLETED),
+    )
+    _run(tmp_path, paths, runner)
+    python_path = ROOT.parent / ".venv/bin/python"
+    assert runner.commands[0][0] == str(python_path)
+    assert runner.commands[0][1:3] == ["-m", "pytest"]
+
+
+def test_controlled_n08_rejects_missing_policy_python(tmp_path: Path) -> None:
+    """A declared but missing framework venv must fail the run loudly instead of
+    silently falling back to an interpreter that cannot import the plugin."""
+    paths = _inputs(tmp_path, network=True)
+    precheck = json.loads(paths["precheck"].read_text())
+    precheck["payload"]["environment_class"] = "112"
+    paths["precheck"] = _write_artifact(
+        paths["precheck"],
+        _envelope("N07", "n07-precheck", precheck["payload"], ArtifactStatus.COMPLETED),
+    )
+    policy = json.loads(
+        (ROOT / "policies/execution-policy.json").read_text(encoding="utf-8")
+    )
+    policy["controlled_environment"]["python_executable"] = ".venv/bin/missing-python"
+    policy_path = tmp_path / "execution-policy.json"
+    policy_path.write_text(json.dumps(policy, ensure_ascii=False), encoding="utf-8")
+    runner = FakeRunner()
+    runner.backend = "controlled_env_reference"
+    with pytest.raises(InputError, match="Controlled runner python is unavailable"):
+        run_n08_automation(
+            paths["generation"],
+            paths["review"],
+            paths["check"],
+            paths["precheck"],
+            ROOT / "policies/automation-target-policy.json",
+            policy_path,
+            tmp_path / "out",
+            runner=runner,
+        )
+
+
+def test_controlled_n08_112_env_class_adds_env_flag_and_resolves_provider(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """N07 environment_class=112 must map to the 112 pytest arguments and the
+    environment.112.local.json secret provider, even when the caller cwd is an
+    arbitrary directory (launchd runs with cwd=/)."""
+
+    from qa_agents.execution import ControlledEnvironmentRunner, ProcessResult
+
+    repo = tmp_path / "repo"
+    for relative in (
+        "src/framework/core/runner.py",
+        "src/framework/core/assertions.py",
+        "src/framework/pytest_plugin.py",
+    ):
+        target = repo / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("", encoding="utf-8")
+    python = repo / ".venv/bin/python"
+    python.parent.mkdir(parents=True, exist_ok=True)
+    python.write_text("", encoding="utf-8")
+    config_dir = repo / "config"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    provider_file = config_dir / "environment.112.local.json"
+    provider_file.write_text(
+        json.dumps(
+            {
+                "auth": {
+                    "username": "qa-user",
+                    "password": "qa-password",
+                    "enterprise_account": "qa-enterprise",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    provider_file.chmod(0o600)
+    qa_dir = repo / "qa-agents"
+    qa_dir.mkdir()
+    monkeypatch.chdir(qa_dir)
+
+    paths = _inputs(
+        tmp_path,
+        network=True,
+        secrets=[
+            "FXIAOKE_112_ENTERPRISE_ACCOUNT",
+            "FXIAOKE_112_USERNAME",
+            "FXIAOKE_112_PASSWORD",
+        ],
+    )
+    precheck = json.loads(paths["precheck"].read_text())
+    precheck["payload"]["environment_class"] = "112"
+    paths["precheck"] = _write_artifact(
+        paths["precheck"],
+        _envelope("N07", "n07-precheck", precheck["payload"], ArtifactStatus.COMPLETED),
+    )
+
+    class ControlledFake(ControlledEnvironmentRunner):
+        def __init__(self) -> None:
+            self.commands: list[list[str]] = []
+
+        def run(self, command: list[str], **kwargs: object) -> ProcessResult:
+            self.commands.append(command)
+            env = kwargs.get("env") or {}
+            assert env.get("FXIAOKE_112_USERNAME") == "qa-user"
+            assert env.get("FXIAOKE_112_PASSWORD") == "qa-password"
+            assert env.get("FXIAOKE_112_ENTERPRISE_ACCOUNT") == "qa-enterprise"
+            assert env.get("QA_ENV_CLASS") == "112"
+            junit = None
+            for item in command:
+                if item.startswith("--junitxml="):
+                    junit = Path(str(kwargs["cwd"])) / item.split("=", 1)[1]
+            assert junit is not None
+            junit.parent.mkdir(parents=True, exist_ok=True)
+            junit.write_text(
+                '<testsuite tests="1" failures="0" errors="0" skipped="0"></testsuite>',
+                encoding="utf-8",
+            )
+            return ProcessResult(0, "1 passed", "", False, 15)
+
+    controlled = ControlledFake()
+    artifact = _run(tmp_path, paths, controlled)
+    assert artifact["payload"]["runner"]["environment_class"] == "112"
+    assert controlled.commands[0][3:7] == [
+        "-p", "framework.pytest_plugin", "--env=112", "-q",
+    ]
 
 
 def test_n08_business_assertion_failure_is_not_retried(tmp_path: Path) -> None:

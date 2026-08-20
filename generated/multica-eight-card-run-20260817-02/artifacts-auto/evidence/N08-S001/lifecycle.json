@@ -1,0 +1,25 @@
+{
+  "cases": [
+    {
+      "case_id": "TC-BE-001-BACKEND",
+      "environment": "112",
+      "namespace": null,
+      "phases": {
+        "cleanup": [],
+        "readiness": [],
+        "residue": [],
+        "setup": [
+          {
+            "error_type": "AssertionError",
+            "name": "setup_create_custom_dimension",
+            "operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+            "status": "failed"
+          }
+        ],
+        "test": []
+      },
+      "schema_version": "case-lifecycle-evidence/1.0"
+    }
+  ],
+  "schema_version": "shard-lifecycle-evidence/1.0"
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": "environment-target/1.0",
+  "environment_class": "112",
+  "production_isolation": false,
+  "expected": {
+    "deployment_commits": [],
+    "dependencies": [],
+    "test_accounts": [],
+    "feature_flags": [],
+    "tenant_configs": [],
+    "test_data_requirements": [],
+    "runtime": {
+      "timezone": "Asia/Shanghai",
+      "language": "zh-CN"
+    },
+    "namespace_policy": {
+      "prefix": "qa-",
+      "cleanup": {
+        "required": true
+      }
+    },
+    "required_locks": []
+  }
+}

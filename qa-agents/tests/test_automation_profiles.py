@@ -46,7 +46,12 @@ def case(layer: str, test_data: dict | None = None, **extra) -> dict:
         ],
         "preconditions": ["准备测试账号"],
         "test_data": {"request": {"method": "GET", "path": "/api/report"}},
-        "steps": ["执行场景"],
+        "steps": [
+            {
+                "name": "执行场景",
+                "request": {"api": "fs_bi_stat.describe_query.detail", "json": {}},
+            }
+        ],
         "expected": [
             {
                 "id": "EXP-01",

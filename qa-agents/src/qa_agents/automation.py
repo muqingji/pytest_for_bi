@@ -49,6 +49,222 @@ def _declared_candidate_root(policy: "AutomationPolicy", manifest: Mapping[str, 
     return None
 
 
+_JSON_SPEC_LITERALS = {"true": True, "false": False, "null": None}
+
+
+def _literal_eval_case_spec(value_node: ast.AST) -> Any:
+    """``ast.literal_eval`` with a JSON-literal safety net for evaluation.
+
+    Generation Agents sometimes mirror the input JSON verbatim, which spells
+    booleans as ``true``/``false`` instead of Python ``True``/``False``. N05
+    rejects such candidates before this helper runs (the gate must match pytest
+    runtime semantics, where ``false`` raises NameError), but keeping the swap
+    here makes the static evaluation itself never crash on the same shape.
+    """
+
+    for sub in ast.walk(value_node):
+        if isinstance(sub, ast.Name) and sub.id in _JSON_SPEC_LITERALS:
+            sub.__class__ = ast.Constant
+            sub.value = _JSON_SPEC_LITERALS[sub.id]
+    return ast.literal_eval(value_node)
+
+
+def _candidate_spec_structure_issues(content: str, path: str) -> list["ValidationIssue"]:
+    """Deterministic N05 guard: generated CASE_SPEC must be executable.
+
+    Rejects text-only skeletons (string steps/cleanup, missing oracle values) so
+    a non-executable candidate cannot reach N08: the controlled runner would only
+    fail at runtime, keeping the quality gate blocked for the wrong reason.
+
+    The gate mirrors pytest runtime semantics: the candidate file is imported by
+    pytest as plain Python, so JSON-style ``true``/``false``/``null`` (bare
+    names) are rejected even though ``ast.literal_eval`` could parse them after
+    a swap.
+    """
+
+    issues: list[ValidationIssue] = []
+    tree = ast.parse(content, filename=path)
+    case_spec: Any = None
+    for node in tree.body:
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "CASE_SPEC"
+        ):
+            json_literals = sorted({
+                sub.id for sub in ast.walk(node.value)
+                if isinstance(sub, ast.Name) and sub.id in _JSON_SPEC_LITERALS
+            })
+            if json_literals:
+                issues.append(
+                    ValidationIssue(
+                        "case_spec_json_literals_not_python",
+                        "CASE_SPEC 必须是合法 Python 字面量：布尔用 True/False、"
+                        f"空值用 None；JSON 风格 {json_literals} 在 pytest 导入时"
+                        "会抛 NameError",
+                        f"code_candidates.{path}.CASE_SPEC",
+                        "A14",
+                    )
+                )
+                return issues
+            try:
+                case_spec = _literal_eval_case_spec(node.value)
+            except (ValueError, TypeError):
+                issues.append(
+                    ValidationIssue(
+                        "case_spec_not_literal",
+                        "CASE_SPEC must be a static dict literal",
+                        f"code_candidates.{path}.CASE_SPEC",
+                        "A14",
+                    )
+                )
+                return issues
+            break
+    if not isinstance(case_spec, dict):
+        issues.append(
+            ValidationIssue(
+                "case_spec_missing",
+                "Candidate must declare a CASE_SPEC dict",
+                f"code_candidates.{path}.CASE_SPEC",
+                "A14",
+            )
+        )
+        return issues
+    # cleanup/residue 是尽力而为的拆除动作：runner 对非结构化条目会优雅跳过，
+    # 因此只对测试步骤（setup/readiness/steps）做严格结构校验。
+    resource_requirements = case_spec.get("test_data", {}).get("resource_requirements", [])
+    required_body_keys_by_api: dict[str, set[str]] = {}
+    if isinstance(resource_requirements, list):
+        for resource in resource_requirements:
+            if not isinstance(resource, Mapping):
+                continue
+            operation = str(resource.get("setup_operation", ""))
+            keys = resource.get("required_body_keys")
+            if not operation or not isinstance(keys, list) or not keys:
+                continue
+            required_body_keys_by_api.setdefault(operation, set()).update(
+                str(key) for key in keys
+            )
+    for phase in ("setup", "readiness", "steps"):
+        steps = case_spec.get(phase)
+        if not isinstance(steps, list):
+            continue
+        for index, step in enumerate(steps):
+            if not isinstance(step, Mapping):
+                issues.append(
+                    ValidationIssue(
+                        "execution_step_not_structured",
+                        f"{phase}[{index}] must be a structured step object",
+                        f"code_candidates.{path}.{phase}[{index}]",
+                        "A14",
+                    )
+                )
+                continue
+            request = step.get("request")
+            if not isinstance(request, Mapping):
+                issues.append(
+                    ValidationIssue(
+                        "execution_request_missing",
+                        f"{phase}[{index}] has no request",
+                        f"code_candidates.{path}.{phase}[{index}].request",
+                        "A14",
+                    )
+                )
+                continue
+            if not (
+                request.get("api")
+                or (request.get("method") and request.get("path"))
+                or request.get("url")
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "execution_operation_missing",
+                        f"{phase}[{index}] request has no api/method+path/url",
+                        f"code_candidates.{path}.{phase}[{index}].request",
+                        "A14",
+                    )
+                )
+            api = str(request.get("api", ""))
+            required_keys = required_body_keys_by_api.get(api)
+            if phase == "setup" and required_keys:
+                body = request.get("json")
+                if not isinstance(body, Mapping):
+                    issues.append(
+                        ValidationIssue(
+                            "setup_body_missing_contract_fields",
+                            f"setup[{index}] body for {api} must be an object"
+                            " carrying the verified contract keys",
+                            f"code_candidates.{path}.setup[{index}].request.json",
+                            "A14",
+                        )
+                    )
+                    continue
+                missing = sorted(required_keys - set(body.keys()))
+                if missing:
+                    issues.append(
+                        ValidationIssue(
+                            "setup_body_missing_contract_fields",
+                            f"setup[{index}] {api} body lacks verified contract"
+                            f" keys: {', '.join(missing)}",
+                            f"code_candidates.{path}.setup[{index}].request.json",
+                            "A14",
+                        )
+                    )
+    expected = case_spec.get("expected")
+    if isinstance(expected, list):
+        for index, item in enumerate(expected):
+            oracle = item.get("oracle") if isinstance(item, Mapping) else None
+            if not isinstance(oracle, Mapping):
+                oracle = (
+                    {key: item.get(key) for key in ("matcher", "observation_point", "expected_value", "expected_values") if key in item}
+                    if isinstance(item, Mapping) else {}
+                )
+            if not isinstance(oracle, Mapping) or not oracle.get("observation_point") or not oracle.get("matcher"):
+                issues.append(
+                    ValidationIssue(
+                        "executable_oracle_missing",
+                        f"expected[{index}] must carry an oracle with observation_point/matcher",
+                        f"code_candidates.{path}.expected[{index}].oracle",
+                        "A14",
+                    )
+                )
+    execute_seen = False
+    assert_ok = False
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+            continue
+        root = node.func.value
+        if not (isinstance(root, ast.Name) and root.id == "case_runner"):
+            continue
+        if node.func.attr == "execute":
+            execute_seen = True
+        elif node.func.attr == "assert_oracles":
+            first = node.args[0] if node.args else None
+            assert_ok = len(node.args) == 2 and not (
+                isinstance(first, ast.Name) and first.id == "CASE_SPEC"
+            )
+    if not execute_seen:
+        issues.append(
+            ValidationIssue(
+                "case_runner_execute_missing",
+                "Candidate must call case_runner.execute(CASE_SPEC)",
+                f"code_candidates.{path}",
+                "A14",
+            )
+        )
+    if not assert_ok:
+        issues.append(
+            ValidationIssue(
+                "assert_oracles_signature_invalid",
+                "assert_oracles must be called with (observations, CASE_SPEC[\"expected\"])",
+                f"code_candidates.{path}",
+                "A14",
+            )
+        )
+    return issues
+
+
 def check_automation_generation(
     generation: Mapping[str, Any], policy: AutomationPolicy
 ) -> dict[str, Any]:
@@ -243,6 +459,8 @@ def check_automation_generation(
                 ValidationIssue("candidate_syntax_error", str(error), f"code_candidates.{path}.content", "A14")
             )
             continue
+        if _generator_route(manifest) in {"A14", "A15"}:
+            issues.extend(_candidate_spec_structure_issues(content, path))
         for node in ast.walk(tree):
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 names = [alias.name.split(".")[0] for alias in node.names]

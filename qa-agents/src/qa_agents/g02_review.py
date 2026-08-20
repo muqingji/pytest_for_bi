@@ -13,6 +13,7 @@ from .card_copy import g02_review_description, g02_review_title
 from .requirement_case_renderer import normalize_ir_parent_case, render_g02_review_items
 from .contracts import artifact_hash_from_mapping, content_hash
 from .errors import ContractError, RetryableAgentError, SecurityPolicyError
+from .multica_cli import resolve_multica_binary
 from .security import SecurityPolicy
 from .storage import ArtifactStore
 
@@ -296,7 +297,7 @@ def prepare_test_case_review_request(
 
 def _default_runner(args: list[str], cwd: Path) -> Mapping[str, Any]:
     completed = subprocess.run(
-        ["multica", *args],
+        [resolve_multica_binary(), *args],
         cwd=cwd,
         check=False,
         capture_output=True,

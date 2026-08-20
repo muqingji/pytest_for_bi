@@ -1,0 +1,41 @@
+{
+  "artifact_hash": "sha256:2a77f798d33d2b798713d7e64dfcf0b630f37424945160573647293258ea4791",
+  "artifact_id": "n20-defect-dedup",
+  "assumptions": [],
+  "blocking_questions": [],
+  "created_at": "2026-08-20T07:16:46+00:00",
+  "evidence_refs": [
+    {
+      "content_hash": "sha256:fa4eb70b685a05e3c0d972b22eea2062fce18ff144884b0bcb07292424eb3c0f",
+      "location": "n09-evidence.json",
+      "source_id": "n09-evidence",
+      "source_type": "artifact"
+    }
+  ],
+  "facts": [],
+  "inferences": [],
+  "payload": {
+    "decisions": [],
+    "evidence_hash": "sha256:fa4eb70b685a05e3c0d972b22eea2062fce18ff144884b0bcb07292424eb3c0f",
+    "history_hash": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "next_node": "N11",
+    "schema_version": "n20-defect-dedup/1.0"
+  },
+  "producer": {
+    "component_id": "N20",
+    "component_version": "0.1.0",
+    "inference_config_hash": "none",
+    "model_provider": "none",
+    "model_snapshot": "deterministic",
+    "profile_version": "1.0.0",
+    "prompt_version": "none",
+    "runtime": "deterministic",
+    "tool_bundle_version": "none"
+  },
+  "reason_code": null,
+  "schema_version": "artifact-envelope/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "status": "completed",
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}
