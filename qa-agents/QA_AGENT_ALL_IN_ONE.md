@@ -8,6 +8,8 @@
 > - 可运行参考实现：`qa-agents/`
 > - 实现状态（权威）：`qa-agents/IMPLEMENTATION_STATUS.md`
 > - 运行时审计主记录：`qa-agents/runs/<run-id>/multica-run-manifest.json`
+>
+> 更新：2026-08-20（A22 确定性意图推断、已验证契约→recipe 注册、环境清单变量解析、112 真实生命周期、八卡同步自动推进与运行修复）
 
 ---
 
@@ -65,7 +67,8 @@
 │  src/qa_agents/                                                      │
 │  ├─ 确定性节点：workflow / quality_pipeline / stage_two_nodes /      │
 │  │   env_precheck / execution / failure_triage / selection / risk / │
-│  │   test_case_gate / automation / data_planning / test_data ...    │
+│  │   test_case_gate / automation / data_planning / env_inventory / │
+│  │   recipe_adapter / test_data ...                                │
 │  ├─ Agent Profile：agents/（phase_one / automation）+ profiles/*.json│
 │  ├─ 编排与适配：autopilot / workflow_center / multica / cli          │
 │  ├─ 契约与安全：contracts / validation / security / storage          │
@@ -89,18 +92,21 @@
 | `autopilot.py` | 需求级 Autopilot 生命周期、节点定义、八卡投影 | 编排层 |
 | `workflow_center.py` | 需求工作流中心：父卡/Run 状态投影与 Multica 同步 | 编排层 |
 | `multica.py` | Multica 适配：输入 Bundle、模型输出抽取、工具轨迹审计、语义校验、入库、Issue 回写 | 编排层 |
+| `multica_cli.py` | multica CLI 解析（launchd 最小 PATH 兜底） | 编排层 |
 | `quality_pipeline.py` | 服务端质量尾链：执行证据、N09-N23 确定性尾链 | N09-N23 |
 | `stage_two_nodes.py` | N25/N26/N15 内容寻址驱动与绑定校验 | N25/N26/N15 |
 | `agents/phase_one.py` | 阶段 1 Agent 的保守本地基线（A01-A12 等） | Agent 层 |
 | `agents/automation.py` | 共享生成/审查引擎 + 分层/非功能 Profile（A13-A18-*） | Agent 层 |
 | `gates.py` / `g01_review.py` / `g02_review.py` / `g03_review.py` | 人工 Gate 请求/决策/回流 | G01/G02/G03 |
 | `contracts.py` / `validation.py` / `test_case_gate.py` | Artifact Envelope、状态枚举、内容哈希、Schema 校验 | 契约层 |
-| `skill_registry.py` | Skill 注册表 + B01/D01 确定性授权路由 | Skill 层 |
+| `skill_registry.py` | Skill 注册表 + B01/D01 确定性授权路由（D01 数据构造 Skill 组合） | Skill 层 |
 | `security.py` / `storage.py` | 权限策略、Secret 脱敏、路径隔离 Artifact Store | 安全层 |
 | `source_collector.py` / `change_set.py` | N01 采集、N02 ChangeSet first-parent 基线 | INPUT-FREEZE |
 | `risk.py` / `selection.py` / `case_compiler.py` / `case_provider.py` | N24 风险策略 / N26 选择 / N25 编译 / Case Provider Adapter | 确定性节点 |
 | `env_precheck.py` / `execution.py` / `failure_triage.py` / `reporting.py` | N07 预检 / N08 受控执行 / N09 失败聚类 / N12 报告 | 执行与尾链 |
-| `data_planning.py` / `test_data.py` / `chart_builder.py` | A22 数据意图、N28 资源 DAG、BI 资源构造 | 数据构造 |
+| `data_planning.py` / `test_data.py` / `chart_builder.py` | A22 确定性意图推断（9 类资源）、N28 资源 DAG、BI 资源构造 | 数据构造 |
+| `recipe_adapter.py` | 已验证契约 → 证据门禁 recipe 候选（backlog 自适应） | A22/D01/backlog |
+| `env_inventory.py` | 112 环境清单快照变量解析（字段 id/枚举/目录），未证明 → `runtime_required` | N28/N27 |
 | `knowledge_packet_builder.py` / `test_knowledge.py` | K01 知识候选构建、知识快照 Skill | 知识层 |
 | `candidate_landing.py` / `server_automation.py` | N29 候选落盘、N05/N06 自动化检查与回流 | 自动化 |
 | `evaluation.py` / `model_runtime.py` / `human_correction.py` | 离线评估 / 结构化模型 Runtime 边界 / 人工修正恢复 | 支撑层 |
@@ -369,6 +375,9 @@ flowchart TD
 用户侧一需求一父卡，只展示 C1-C8；内部 Parent/Run/节点/人工 Gate 卡全部放在
 `QA 内部执行与审计` 项目。`scripts/sync_eight_card_progress.py` 对账后按
 `blocked > in_review > in_progress > done > backlog` 投影回八张卡，同 Projection 幂等。
+A22 计划带未决数据需求时保持 `needs_human`，由 QA Owner 在审核 Issue 确认（置 `done`）后生成
+`a22-human-confirmation`，C5 才能进入终态；未登记能力路由到 `capability_adapter_backlog`，由
+`bi-recipe-adapter` skill 产出证据门禁候选（`verification_requirements` 闭合前不可执行）。
 
 ### 3.4 回流与人工升级路径（标准问题码）
 
@@ -380,6 +389,9 @@ flowchart TD
 | 风险策略问题 | N24 |
 | 上游事实冲突 | A06 / G01 |
 | 自动修正预算耗尽 | N04 输出 `next_node=human` → 人工修正恢复（A08 v1.3.0 定向恢复） |
+| 未决数据需求 / 未登记数据能力 | A22 人工确认（`a22-human-confirmation`）/ `capability_adapter_backlog` → `bi-recipe-adapter` 证据门禁候选 |
+| N27 拒绝测试数据计划 | A22 自动回流修订（`inputs/a22-correction-*`，循环到通过或预算耗尽转人工） |
+| N08/N10 可重试失败（`failed_retryable`） | 记录卡人工审批重试（done 批准 / cancelled 拒绝 / blocked 暂缓） |
 
 ---
 
@@ -396,9 +408,9 @@ flowchart TD
 | A08 | Test Designer | 按冻结需求与策略设计 Test Intent + Test Case IR 与覆盖矩阵 | `test-design-ir/1.1` | G01 范围、N24 策略、A06 等 |
 | A09 | Oracle 与测试防范覆盖审查 | 审查 Oracle 规则、测试防范覆盖、遗漏与修正建议 | `oracle-review/1.1` | A08 IR、Oracle 规则库 |
 | A11 | Split Coverage Auditor | 审查父子 Case 拆分后的覆盖完整性、冲突与遗漏 | `split-review/1.0` | N25 编译结果 |
-| A14 | Server Automation | 生成后端 API/集成/功能自动化候选与 Manifest | `automation-generation/1.0` | N25 IR、N15 执行计划 |
-| A15 | Contract Automation | 基于冻结 OpenAPI 生成契约自动化候选 | `automation-generation/1.0` | N25 IR、N15 执行计划 |
-| A22 | Test Data Intent Agent | 从 Case 提取数据意图、业务状态与资源目标，只出计划不持凭证 | `test-data-plan/1.0` | N25 IR、N15 执行计划、测试数据策略 |
+| A14 | Server Automation | 生成后端 API/集成/功能自动化候选与 Manifest（`request.api` 取自 `api_catalog`，构造请求体逐字复用已验证契约） | `automation-generation/1.0` | N25 IR、N15 执行计划、`api_catalog`、`verified_setup_contracts`、A22 资源需求 |
+| A15 | Contract Automation | 基于冻结 OpenAPI 生成契约自动化候选（`request.api` 取自 `api_catalog`） | `automation-generation/1.0` | N25 IR、N15 执行计划、`api_catalog` |
+| A22 | Test Data Intent Agent | 从 Case 提取数据意图、业务状态与资源目标，只出计划不持凭证；确定性意图推断覆盖 9 类资源，唯一命中才给 `data_intent` | `test-data-plan/1.0` | N25 IR、N15 执行计划、测试数据策略、BI 能力目录 |
 | A18-BE | Backend Automation Reviewer | 独立审查后端候选的断言、隔离、清理与权限 | `automation-review/1.0` | A14 产物、IR、Manifest、安全规则 |
 | A18-CT | Contract Automation Reviewer | 独立审查契约候选的 Schema、操作与兼容判断 | `automation-review/1.0` | A15 产物、IR、Manifest、安全规则 |
 
@@ -415,7 +427,7 @@ flowchart TD
 | A18-FE/E2E/PERF/SEC/A11Y/COMPAT/RES/DATA | 对应专项独立审查 Profile | 复用 A18 审查引擎 |
 | K01 | Product Test Knowledge Curator | 从批准快照/只读代码/冻结 OpenAPI 提取知识候选并做冲突/新鲜度/来源校验 |
 | LEAD | QA 流程组长 | Multica Squad 组长，协调八卡进度 |
-| B01 / D01 | 聚合确定性路由身份 | 不是独立 LLM Agent：B01 路由后端/契约生成 Skill 组合，D01 路由数据构造 Skill 组合 |
+| B01 / D01 | 聚合确定性路由身份 | 不是独立 LLM Agent：B01 路由后端/契约生成 Skill 组合，D01 路由数据构造 Skill 组合（未匹配 Case 路由 `bi-recipe-adapter`） |
 
 ### 4.3 Agent 的 Skill 清单（`policies/backend-skill-registry.json` + `skills/`）
 
@@ -433,13 +445,13 @@ SkillRegistry 校验 `skill-registry/1.0`，任何未发布或未授权的 Skill
 | A14 | `pytest-api-test`、`pytest-integration-test`、`pytest-parameterization`、`pytest-oracle-assertions`、`pytest-fixture-binding`、`pytest-evidence`、`pytest-security-boundary`、`retained-test-asset-naming`、`bi-chart-detail-scene` |
 | A15 | `pytest-contract-test`、`pytest-parameterization`、`pytest-oracle-assertions`、`pytest-fixture-binding`、`pytest-evidence`、`pytest-security-boundary`、`retained-test-asset-naming`、`bi-chart-detail-scene`、`fxiaoke-112-auth-session`、`fxiaoke-personal-language-h5` |
 | A16 | `fxiaoke-personal-language-h5` |
-| A22 | `data-intent-parser`、`capability-catalog-resolver`、`bi-chart-detail-scene`、`retained-test-asset-naming` + 上表知识路由 Skill |
+| A22 | `data-intent-parser`、`capability-catalog-resolver`、`bi-chart-detail-scene`、`bi-recipe-adapter`、`retained-test-asset-naming` + 上表知识路由 Skill |
 | N07 | `fxiaoke-112-auth-session` |
 | N27 | `data-plan-security-review`、`residue-verification`、`bi-chart-detail-scene` |
 | N28 | `bi-chart-detail-scene`、`bi-chart-builder`、`bi-report-builder`、`bi-joined-table-builder`、`bi-pivot-table-builder`、`resource-dag-planner`、`namespace-isolation`、`setup-plan`、`readiness-plan`、`cleanup-plan`、`residue-verification`、`runtime-variable-binding`、`retained-test-asset-naming`、`bi-stat-schema`、`bi-aggregate-metric`、`bi-calculated-metric`、`bi-custom-dimension`、`bi-result-set-filter` |
 | K01（额外） | `knowledge-source-ingestion`、`code-knowledge-extraction`、`product-rule-structuring`、`knowledge-provenance-binding`、`knowledge-conflict-detection`、`knowledge-freshness-validation`、`kdocs-authorized-snapshot`、`lexiang-authorized-snapshot`、`fxiaoke-help-snapshot`、`bug-finder-test-knowledge`、`authorized-product-browser-session` |
 | B01（聚合） | 按 case 路由：`pytest-api-test`/`pytest-integration-test`/`pytest-contract-test` + 6 个共享 pytest Skill |
-| D01（聚合） | 11 个 `COMMON_DATA` Skill + 按资源类型路由的 BI Skill |
+| D01（聚合） | 11 个 `COMMON_DATA` Skill + 按资源类型路由的 BI Skill + 未匹配 Case 路由 `bi-recipe-adapter` |
 
 #### 按 Skill 族分类
 
@@ -448,7 +460,7 @@ SkillRegistry 校验 `skill-registry/1.0`，任何未发布或未授权的 Skill
   `pytest-fixture-binding`、`pytest-evidence`、`pytest-security-boundary`、`retained-test-asset-naming`
 - **数据构造族（planning_only）**：`data-intent-parser`、`capability-catalog-resolver`、
   `resource-dag-planner`、`namespace-isolation`、`setup-plan`、`readiness-plan`、`cleanup-plan`、
-  `residue-verification`、`runtime-variable-binding`、`data-plan-security-review`
+  `residue-verification`、`runtime-variable-binding`、`data-plan-security-review`、`bi-recipe-adapter`
 - **BI 资源族（planning_only）**：`bi-stat-schema`、`bi-aggregate-metric`、
   `bi-calculated-metric`、`bi-custom-dimension`、`bi-result-set-filter`、`bi-chart-builder`、
   `bi-report-builder`、`bi-joined-table-builder`、`bi-pivot-table-builder`、`bi-chart-detail-scene`
@@ -580,6 +592,11 @@ sync-multica-issue-card（可选，显式操作）
 - `validate-multica-candidate` 提供影子验证（不改变主链），`--expect-reject` 用于负向测试。
 - 生成 Agent 与审查 Agent 使用不同 Runtime 身份与写权限，审查 Runtime 不得读生成 Agent
   的隐藏推理。
+- A14/A15 输入 Bundle 额外携带 `api_catalog`（目标仓库 `idl/http` 的 operationId/method/path
+  目录）与 `verified_setup_contracts`（112 已验证构造请求模板）；`regeneration_round` 用于
+  刻意重跑时生成新 bundle 哈希，避免幂等恢复静默还原陈旧产物。
+- 所有 shell 出站统一经 `resolve_multica_binary()` 解析 multica CLI（launchd 最小 PATH 兜底），
+  定时器不再因找不到命令崩溃。
 
 ### 5.5 人工 Gate 协议（G01/G02/G03）
 
@@ -618,6 +635,11 @@ Test Intent → Test Case IR → Automation Manifest → Execution Plan
 N15 动作路由：`generate_new`/`update_existing` → A14/A15；`run_existing` → N07/N08；
 `manual_run` → N17；`skip` → 记录证据与批准策略（不等于 passed）。
 
+自动化候选的 Oracle 支持 `oracle` 对象与扁平条目（顶层 `matcher`/`observation_point`/
+`expected_value`）两种形态，`CaseRunner.assert_oracles` 统一归一化求值；路径断言支持
+`body.` 前缀、`$.a.b` JSONPath 风格与 `$` 根引用。非结构化 cleanup/residue 步骤记为
+`skipped`（`cleanup_step_not_structured` / `residue_step_not_structured`），不把已通过测试误判失败。
+
 ---
 
 ## 7. 确定性节点与人工 Gate 明细
@@ -631,11 +653,11 @@ N15 动作路由：`generate_new`/`update_existing` → A14/A15；`run_existing`
 | N25 | 父子 Case 编译 | G02 审批哈希 + A08 哈希绑定校验；按 `expected[].layers` 分层 |
 | N26 | 测试选择 | 资产/风险/策略；无法解析影响范围时宁可扩大；P0 冒烟不可跳过 |
 | N15 | 执行计划编译 | 五动作互斥；`run_existing` 必须引用已审核代码 commit |
-| N27 | 数据计划安全校验 | setup/cleanup 可写但强制 namespace、操作配对、资源 ID、readiness 只读、Secret 边界 |
+| N27 | 数据计划安全校验 | setup/cleanup 可写但强制 namespace、操作配对、资源 ID、readiness 只读、Secret 边界；未决需求以 `completed_with_gaps + pending_human` 输出等 A22 人工确认；recipe 全量校验通过才可执行 |
 | N05 | 自动化确定性代码检查 | 语法/lint/编译/安全扫描/哈希/命令/权限/凭证/层根目录越界拦截 |
-| N07 | 环境数据资源预检 | 环境指纹、8 类预检、资源锁；失败禁止进入正式执行 |
-| N08 | 受控自动化执行 | 无 shell、最小环境、分片并行、超时、日志脱敏；业务失败→N09，超时/基础设施→N10 |
-| N10 | 环境失败重试预算 | 按预算给继续/暂停/阻塞；无状态变化禁止原地重复预检 |
+| N07 | 环境数据资源预检 | 环境指纹、8 类预检、资源锁；失败禁止进入正式执行；接受 N27 `completed_with_gaps + pending_human` 作为有效数据验证证据 |
+| N08 | 受控自动化执行 | 无 shell、最小环境、分片并行、超时、日志脱敏；业务失败→N09，超时/基础设施→N10；从策略声明的框架 venv 启动 pytest，Secret 由 `secret_providers` 按 `secret_map` 从 0600 本地配置注入；`failed_retryable` 进入人工重试审批 |
+| N10 | 环境失败重试预算 | 按预算给继续/暂停/阻塞；无状态变化禁止原地重复预检；可重试失败由记录卡人工审批（done 批准重试 / cancelled 拒绝 / blocked 暂缓） |
 | N17 | 人工/探索测试执行 | 结构化步骤/结果/截图/日志/结论；必测人工未完成时 N11 不能给 passed |
 | N18 | 运行质量信号 | 覆盖率/性能等；只用于发现未执行区域，不能替代需求覆盖 |
 | N09 | 证据标准化与失败聚类 | 规则优先指纹聚类；规则无法归因 → `needs_human`，不设归因 Agent |
@@ -661,10 +683,11 @@ N06（修复路由，由标准问题码直接回流承担）、N14（资产快�
 | 自动化代码 | 只写独立登记测试仓库或工作流 Artifact 目录；`write_mode=artifact_only_candidate` |
 | Agent 工具 | 白名单命令（issue get / attachment download / cat / 固定 jq），禁止组合、写、上传 |
 | 凭证 | 凭证只由外部采集器以会话引用持有；Agent 不得读取/输出/写入；112 会话由 `fxiaoke-112-auth-session` 管理 |
-| Secret | `SecurityPolicy.redact_secrets` 在入 Envelope 前脱敏；`assert_no_secret_values` 在所有入口校验 |
+| Secret | `SecurityPolicy.redact_secrets` 在入 Envelope 前脱敏；`assert_no_secret_values` 在所有入口校验；受控执行 Secret 由 execution-policy 的 `secret_providers` 从 `environment.112.local.json`（0600）注入且不落 Artifact；环境清单快照禁含 Secret |
 | Oracle | Agent 运行身份禁止访问 `evaluation_oracle_registry`；评估器独立身份，产物冻结后才读 Oracle |
 | Skill | 未发布/未授权 Skill 引用 → `SecurityPolicyError`；`forbidden_skills` 全局生效 |
 | 模型 Runtime | 不可变模型快照、固定 prompt_version、禁用数据留存、禁止直连工具（语义分析 Runtime `tools=[]`） |
+| 受控 Runner | 必须从策略声明的仓库内词法路径启动框架 venv（不 resolve 符号链接）；未声明则回退驱动解释器 |
 | 审计 | 记录节点输入输出哈希、Agent Token/费用/重试、工具调用与被拒操作、审批人、资源锁占用 |
 
 ---
@@ -680,6 +703,7 @@ N06（修复路由，由标准问题码直接回流承担）、N14（资产快�
 | 内部项目 | `QA 内部执行与审计` | Parent/Run/节点/Gate 技术卡 |
 | 需求项目 | `QA 需求工作流中心` | 每需求一张父卡（`qa_item_type=workflow`） |
 | Runtime | `5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54` | 在线固定 Runtime（A02-A11 已绑定） |
+| 有效模型 Runtime | `deepseek-v4-flash` | 当前有效 Runtime；旧 Claude Runtime 认证 401 不可用，编排器不得自动回退 |
 | 已登记 Agent | A02、A03、A05、A06、A08、A09、A11、LEAD | workflow-center-config 另登记 A14/A15/A18-BE/A18-CT/A22 的 node_agent 映射 |
 
 `safety`：`artifact_only=true`、`business_repositories=read_only_external_evidence_only`、
@@ -695,6 +719,13 @@ N06（修复路由，由标准问题码直接回流承担）、N14（资产快�
   预算耗尽和人工升级协议。
 - 人工恢复协议：QAA-19 授权 → QAA-20 因契约/工具轨迹违规被拒 → QAA-21 v1.3.0 合法恢复，
   自动预算保持 2 不重置，恢复后必须重新经过 A09/N04。
+- 112 真实生命周期：`CASE-FUNC-RESULT-FILTER-DETAIL-112` / `CASE-AUTO-RESULT-FILTER-DETAIL-112`
+  在真实 112 完成隔离指标创建、结果集筛选、查看明细断言（`s307011535` 与动态指标名）、
+  finally 删除与无残留回查；后者由 A22/N28 自主生成同一生命周期，不含手写 setup/cleanup。
+- 能力目录注册 5 个 recipe（普通指标创建 + 四类指标结果集筛选）；6 个候选
+  （custom_dimension/joined_table/stat_chart/pivot/report/组合明细场景）等待 112 证据闭合。
+- 八卡同步自动推进 C5-C8：A22 人工确认 → C5 终态；N07 预检 / N08 受控执行 / C7-C8 质量尾链
+  自动运行；N08/N10 可重试失败进入人工重试审批；launchd 定时器 PATH 与 multica CLI 解析修复。
 
 ### 9.3 常用命令（`qa-agents/Makefile` / CLI）
 
@@ -710,6 +741,10 @@ make -C qa-agents run-n26-after-a11-pilot
 make -C qa-agents run-n15-after-n26-pilot
 make -C qa-agents compile-workflow-center / sync-workflow-center
 make -C qa-agents run-server-full-pilot # 环境预检 + 受控执行 + 质量尾链参考切片
+make -C qa-agents prepare-autonomous-test-data-pilot # A22/N28/N27 自主测试数据构造
+make -C qa-agents prepare-recipe-candidates          # 已验证契约 → 证据门禁 recipe 候选
+make -C qa-agents prepare-test-data --inventory <snapshot>  # 112 环境清单变量解析
+bash qa-agents/scripts/install-sync-timer.sh          # 安装八卡同步 LaunchAgent 定时器
 ```
 
 生产链必须走 `fetch-multica` → `ingest-multica`（可加 `--sync-issue-card`）→
@@ -734,7 +769,7 @@ make -C qa-agents run-server-full-pilot # 环境预检 + 受控执行 + 质量�
 
 ## 11. 分阶段建设路线与当前状态
 
-| 阶段 | 内容 | 状态（2026-08-11） |
+| 阶段 | 内容 | 状态（2026-08-20） |
 | --- | --- | --- |
 | 阶段 0 | 契约、Envelope、本地 Artifact、评估基础 | ✅ 已实现 |
 | 阶段 1 | 测试设计质量闭环（A02-A09/N04/G01/G02 人工恢复） | ✅ 真实试点闭环到 G02/N25 |
@@ -743,8 +778,10 @@ make -C qa-agents run-server-full-pilot # 环境预检 + 受控执行 + 质量�
 | 阶段 4 | 确定性质量门禁（N09-N12/N17-N23） | 🔶 本地 reference 已实现；外部发布 Adapter 未完成 |
 | 阶段 5 | 有限自治闭环 | ⏳ 未开始 |
 
-已实现的横向能力：Autopilot 生命周期与需求工作流中心、八卡投影同步、Multica 真实试点、
-A22/N28/N27 自主测试数据构造（112 真实生命周期通过）、K01 知识治理、B01/D01 Skill 路由、
+已实现的横向能力：Autopilot 生命周期与需求工作流中心、八卡投影同步（A22 人工确认、
+N07/N08/质量尾链自动推进、重试审批）、Multica 真实试点、A22/N28/N27 自主测试数据构造
+（确定性意图推断 9 类资源 + 112 真实生命周期通过）、已验证契约 → recipe 注册与 backlog
+候选（`bi-recipe-adapter`）、环境清单变量解析、K01 知识治理、B01/D01 Skill 路由、
 质量尾链全部节点参考实现、离线评估与可读报告。
 
 已知阻塞项（来自 IMPLEMENTATION_STATUS 与设计文档）：生产隔离 Runner、真实环境/人工执行
@@ -756,15 +793,16 @@ A22/N28/N27 自主测试数据构造（112 真实生命周期通过）、K01 知
 ## 12. 快速阅读索引
 
 - 顶层设计：`QA_AGENT_DESIGN.md`（架构原则 §3、流程 §4-5、Agent 清单 §6、Envelope §8、
-  测试模型 §12、自动化 §16、尾链 §18-19、权限 §22、评估 §25、路线 §27）
+  测试模型 §12、自动化 §16、尾链 §18-19、权限 §22、评估 §25、路线 §27；
+  八卡用户视图与同步说明 §5.1.1，原 `MULTICA_8_CARD_SIMPLE.md` 已并入）
 - 实现状态：`qa-agents/IMPLEMENTATION_STATUS.md`
 - 参考实现 README：`qa-agents/README.md`
 - 契约 Schema：`qa-agents/contracts/*.schema.json`（24 个）
 - 策略：`qa-agents/policies/*.json`（risk/quality/selection/execution/permission/repository/
   automation-target/backend-skill-registry/model-runtime/g01-g03/human-correction 等 19 个）
 - Agent Profile：`qa-agents/profiles/*.json`（33 个）
-- Skill 包：`qa-agents/skills/*/SKILL.md`（55 个）
+- Skill 包：`qa-agents/skills/*/SKILL.md`（56 个）
 - Multica 指令：`qa-agents/multica/agent-instructions/*.md`（版本化）
 - 工作流 DAG 参考：`qa-agents/workflows/phase-one-reference-dag.json`
 - 运行产物：`qa-agents/runs/pilot-001/`（multica-stage1..16、g01、g02、multica-inputs、multica-outputs）
-- 测试：`qa-agents/tests/`（50 个测试文件，530+ 用例通过）
+- 测试：`qa-agents/tests/`（52 个测试文件，608 个用例通过）

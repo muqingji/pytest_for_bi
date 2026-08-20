@@ -304,6 +304,58 @@ Runtime、完整自动化链路或发布门禁已经完成。
 - `qa-agents` 全量测试 `398 passed`；仓库根本地测试 `84 passed, 47 skipped`，跳过项均要求
   `--env=112` 或对应在线环境；Python 编译和 `git diff --check` 通过。
 
+### 2.8 当前进展快照（2026-08-20 数据构造闭环与八卡同步自动化）
+
+本节记录 2026-08-20 对参考实现与八卡同步的更新和修复；设计边界不变，仍按 §3-§27 执行。
+
+**测试数据构造（A22/N28/N27 + recipe 注册）**
+
+- A22 确定性意图推断已实现：`infer_resource_intents` / `infer_data_intent` 覆盖 9 类资源
+  （聚合/普通/计算/同环比指标、统计图、报表、交叉表、拼表、自定义维度）。Case 未显式声明
+  `data_intent`/`dataset` 也能命中唯一 recipe；多资源歧义保持 unresolved，不猜测。
+- 能力目录已注册 5 个 recipe：`ordinary-metric-create` 与普通/同环比/聚合/计算四类指标的
+  结果集筛选链路（`add_new_agg_rule filterLists=[]` 全量通过 N27）。未登记 Case 路由到
+  `capability_adapter_backlog`，由 `bi-recipe-adapter` skill 与 `prepare-recipe-candidates`
+  CLI 从 112 已验证契约产出候选（custom_dimension/joined_table/stat_chart/pivot_table/
+  report/组合明细场景），每个候选必须声明 `verification_requirements`，证据闭合前不可执行。
+- 环境清单变量解析：`env_inventory.enrich_plan_with_inventory` 在 N28 与 N27 之间解析字段
+  id/枚举/目录变量，无法证明的变量标记 `runtime_required`，绝不猜测；环境清单快照禁止包含
+  Secret 值。
+- 112 真实生命周期通过：`CASE-FUNC-RESULT-FILTER-DETAIL-112` 创建带结果集筛选的隔离指标、
+  回查、调用真实查看明细接口断言 `s307011535` 与动态指标名、finally 删除、独立回查无
+  namespace 残留；`CASE-AUTO-RESULT-FILTER-DETAIL-112` 由 A22/N28 自主生成同一生命周期，
+  不含手写 setup/cleanup。
+
+**自动化生成与执行（A14/A15/A18/N05/N08）**
+
+- A14/A15 输入 Bundle 新增 `api_catalog`（目标仓库 `idl/http` 的 operationId/method/path
+  目录）与 `verified_setup_contracts`（112 已验证构造请求模板）；生成候选必须使用真实
+  `request.api`、结构化步骤、逐字保留 Oracle，禁止文本骨架与 JSON 风格裸名
+  （`true`/`false`/`null`）。
+- A18-BE/A18-CT 复核指令加固：`generation.input_bundle_hash` 不再被误用作一致性校验；
+  `generation_hash`/`manifest_hash`/`candidate_hashes` 由摄入端回填；候选必须可被
+  `assert_oracles` 求值（`oracle` 对象或扁平 matcher/observation_point/expected_value）。
+- N08 受控执行：从策略声明的框架 venv 运行 pytest（launchd 最小 PATH 下不再
+  FileNotFoundError）；Secret 通过 `execution-policy.json` 的 `secret_providers`（112 /
+  integration_test_112，`environment.112.local.json`，0600）按 `secret_map` 注入，路径按仓库
+  布局解析且不落 Artifact。
+- G03 审核请求新增 `generation_cases` 明细（case_id/title/risk/priority/candidate_path/
+  expected_ids/manual_expected_ids），旧格式请求逐键兼容比对，不破坏既有冻结输入绑定。
+
+**八卡同步与运行修复**
+
+- `sync_eight_card_progress.py` 可自动推进 C5-C8：A22 `needs_human` 由人工在审核 Issue 确认
+  后生成 `a22-human-confirmation` 使 C5 终态；N07 预检、N08 受控执行、C7/C8 质量尾链在证据
+  齐备后自动运行；N08/N10 `failed_retryable` 记录卡携带失败摘要与重试预算进入 `in_review`
+  人工审批（done 批准重试 / cancelled 拒绝 / blocked 暂缓）。
+- Workflow Center：投影聚合可随实时 Issue 绑定/状态变更刷新（`refresh_projection_aggregates`），
+  单调守卫比较稳定 Artifact 派生哈希；Agent 节点 open Issue 生命周期由运行时管理，同步只写
+  终态，避免把已完成 Agent 运行回写成 `in_review`。
+- 所有 shell 出站统一经 `resolve_multica_binary()` 解析 CLI（launchd 最小 PATH 兜底）；
+  `install-sync-timer.sh` 安装前校验 multica 存在，plist 补充 PATH。框架 Runner 支持
+  JSONPath 风格路径（`$.a.b`/`$`）、扁平 Oracle 条目，并把非结构化 cleanup/residue 步骤记为
+  `skipped`（`cleanup_step_not_structured`/`residue_step_not_structured`），不再误判失败。
+
 
 ## 3. 核心架构原则
 
@@ -447,8 +499,8 @@ flowchart LR
 | C7 | 证据归一与质量决策 | N18、N09、N20、N11、N19 | 证据与缺陷归一完成，确定性质量结论及可选豁免已登记 |
 | C8 | 报告与关闭 | N12、N13、N23 | 报告发布、反馈归档及按授权执行的上线后验证均终态 |
 
-每张卡对应的 Agent/节点、职责、关键输入和关键产出如下；完整说明见
-`MULTICA_8_CARD_SIMPLE.md`。
+每张卡对应的 Agent/节点、职责、关键输入和关键产出如下；用户视角的八卡说明、状态口径与同步规则见
+§5.1.1（原独立文档 `MULTICA_8_CARD_SIMPLE.md` 已并入本节）。
 
 | 卡片 | Agent/节点 | 职责 | 关键输入 | 关键产出 |
 | --- | --- | --- | --- | --- |
@@ -491,6 +543,194 @@ flowchart LR
 无独立任务卡的节点只显示节点标识）；`当前进度` 必须列出内部节点总数及各状态数量，并标明当前节点；`产出` 展示 Artifact 名称、
 版本和哈希；`异常处理` 展示最近错误、重试次数和下一路由；`人工操作` 仅在需要人工决策时给出
 明确动作。长日志留在 Artifact/运行记录中，不复制到任务卡正文。
+
+### 5.1.1 八卡用户视图与同步说明
+
+> 本节由原独立文档 `MULTICA_8_CARD_SIMPLE.md` 并入，作为八卡展示方案的唯一说明位置；
+> 用户视角的完整链路、状态口径、卡片内容模板与同步行为都在本节定义。
+
+**一句话说明**
+
+一个需求进入 Multica 后，只展示 8 张任务卡，并按顺序自动执行。系统内部仍保留完整执行节点
+和审计记录，但不再把每个小节点都拆成一张用户可见的卡。
+
+**用户视角完整链路图**（按 C1-C8 分组；方框是确定性节点或 Agent，菱形是判断节点，双线框
+是人工 Gate，虚线是退回或重试——只更新原卡，不新建卡片）
+
+```mermaid
+flowchart TD
+    START([任务触发]) --> IN
+
+    subgraph C1["C1 需求分析与变更对齐"]
+        direction TB
+        IN[INPUT-FREEZE 输入冻结] --> ROUTE{N00 模板与深度选择}
+        ROUTE --> A02[A02 需求分析]
+        ROUTE --> A03[A03 技术方案可测性分析]
+        ROUTE --> A05[A05 后端变更分析]
+        A02 --> A06[A06 需求与变更对齐]
+        A03 --> A06
+        A05 --> A06
+    end
+
+    A06 --> G01
+    subgraph C2["C2 范围确认与测试策略"]
+        direction TB
+        G01{{G01 范围与口径人工审核}} --> N24[N24 风险与测试策略]
+    end
+
+    N24 --> A08
+    subgraph C3["C3 测试设计与审核"]
+        direction TB
+        A08[A08 测试设计] --> A09[A09 Oracle 与覆盖审查]
+        A09 --> N04{N04 Test Case IR 校验}
+        N04 -->|通过| G02{{G02 Test Case IR 人工审核}}
+    end
+
+    G02 --> N25
+    subgraph C4["C4 Case 编译与执行计划"]
+        direction TB
+        N25[N25 父子 Case 编译] --> A11[A11 拆分覆盖审查]
+        A11 -->|通过| N26{N26 测试选择}
+        N26 --> N15[N15 执行计划编译]
+    end
+
+    N15 --> A14
+    subgraph C5["C5 自动化与测试数据准备"]
+        direction TB
+        A14[A14 服务端自动化生成] --> A18BE[A18-BE 服务端复核]
+        A15[A15 契约自动化生成] --> A18CT[A18-CT 契约复核]
+        A22[A22 测试数据规划] --> N27[N27 数据计划安全校验]
+        A18BE --> N05[N05 代码检查与安全扫描]
+        A18CT --> N05
+        N27 --> N05
+        N05 --> G03{{G03 自动化代码人工审核}}
+    end
+
+    G03 --> N07
+    subgraph C6["C6 环境预检与测试执行"]
+        direction TB
+        N07[N07 环境数据资源预检] --> N08[N08 受控自动化执行]
+        N07 --> N17[N17 人工与探索测试]
+        N08 --> N10{N10 环境失败重试预算}
+    end
+
+    N10 --> N18
+    subgraph C7["C7 证据归一与质量决策"]
+        direction TB
+        N18[N18 运行质量信号采集] --> N09[N09 证据标准化与失败聚类]
+        N09 --> N20[N20 跨运行缺陷去重]
+        N20 --> N11[N11 确定性质量决策]
+        N11 -->|有豁免申请| N19[N19 质量豁免登记]
+    end
+
+    N11 --> N12
+    subgraph C8["C8 报告与关闭"]
+        direction TB
+        N12[N12 质量报告发布] --> N13[N13 报告反馈入口]
+        N13 --> N23[N23 上线后验证授权审计]
+    end
+
+    N23 --> DONE([需求完成])
+
+    G01 -.->|退回补充输入| IN
+    N04 -.->|不通过| A08
+    G02 -.->|退回| A08
+    A11 -.->|遗漏或重复| N25
+    G03 -.->|退回| N15
+    N10 -.->|允许重试| N07
+    N11 -.->|blocked 需修复| A14
+```
+
+**八张卡分别做什么**（用户视角）
+
+| 顺序 | 任务卡 | 主要内容 | 什么时候完成 |
+| --- | --- | --- | --- |
+| 1 | 需求分析与变更对齐 | 冻结输入，理解需求，对齐技术方案和代码变更，找出遗漏或冲突 | 需求、方案和变更范围已经对齐 |
+| 2 | 范围确认与测试策略 | 人工确认测试范围，确定风险等级和必测内容 | 范围已确认，测试策略已确定 |
+| 3 | 测试设计与审核 | 设计测试 Case，检查预期结果，校验并人工审核 | Case 校验通过且审核完成 |
+| 4 | Case 编译与执行计划 | 拆分父子 Case，审查覆盖，选择要执行的 Case，决定自动或人工执行 | Case 和执行方式已经确定 |
+| 5 | 自动化与测试数据准备 | 生成或更新自动化用例，规划测试数据，独立复核并完成代码检查 | 自动化、数据和检查全部就绪 |
+| 6 | 环境预检与测试执行 | 检查环境、账号和数据，运行自动化及人工测试 | 测试执行完成，重试已有结论 |
+| 7 | 证据归一与质量决策 | 汇总结果、识别重复缺陷，给出通过、警告或阻塞结论 | 质量结论已经确定 |
+| 8 | 报告与关闭 | 发布报告、记录反馈，按授权执行上线后验证 | 报告和必要的后续记录已完成 |
+
+**卡片状态怎么看**
+
+卡片状态由卡内所有内部节点聚合得出，每次对一张卡只同步一次，优先级固定为
+`in_progress > in_review > blocked > done > backlog`（用户视角即“进行中 > 待审核 > 已阻塞 >
+已完成 > 待规划”，另有 `cancelled` 已取消）。活动执行和重试优先于历史失败，因此失败任务
+重新运行时，应从“已阻塞”自动恢复为“进行中”。
+
+| 状态 | 含义 | 是否需要处理 |
+| --- | --- | --- |
+| 进行中 | 卡内至少有一个任务正在排队或执行 | 不需要，等待自动执行 |
+| 待审核 | 无运行节点且存在等待人工决策的 Gate | 需要，按卡片中的“人工操作”处理 |
+| 已阻塞 | 无活动重试且存在失败或阻塞节点 | 需要查看“异常处理”和下一步 |
+| 已完成 | 卡内任务全部完成或按策略跳过 | 不需要 |
+| 待规划 | 前面的卡还没有完成，本卡尚未开始 | 不需要，系统会自动推进 |
+| 已取消 | 卡内节点全部取消或被新版本替代 | 不需要 |
+
+任务开始排队后就应显示为“进行中”，不能仍停留在“待规划”。
+
+**和内部执行怎么同步**
+
+- 需求项目（项目名称即需求名称）只展示 8 张阶段任务卡；Parent、Run、内部节点执行和人工
+  Gate 技术卡保存在 `QA 内部执行与审计` 项目中，默认不显示为需求项目任务卡。
+- 同步脚本 `qa-agents/scripts/sync_eight_card_progress.py` 读取内部项目已完成 Run、入库
+  Artifact 后对账，再把阶段状态和详情投影回 8 张卡；每次对一张卡只同步一次，同一投影幂等。
+- A02、A03、A06 的结果齐备后，同步脚本自动生成 G01 请求、可读 Markdown 和决策模板；
+  A06 的待确认项与需求、技术方案问题合并到一次人工审核，不再单独打断流程。
+- 人工 Gate 批准后，后续链路全自动推进：G01 通过自动执行 N24；N24 就绪自动派发 A08 测试
+  设计（先按轮次对齐 Agent 指令，再创建带输入附件的内部 Issue 交给 A08 Agent 执行）；
+  A08 完成自动派发 A09 Oracle 与覆盖审查；A08+A09 齐备自动运行 N04 Test Case IR 校验。
+  N04 不通过（`next_node=A08`）时全自动回流：A08 修正 → A09 复审 → N04 重验，循环直到
+  校验通过自动打开 G02 人工审核，或修正预算耗尽转人工恢复。Agent 节点 Issue 幂等创建，
+  重复同步不会产生重复卡，修正/复审卡标题带“修正”字样、输入落在
+  `inputs/a08-correction-*` / `inputs/a09-correction-*`，不覆盖原卡。
+- G02 批准后 C4/C5 全自动推进：G02 通过自动运行 N25 父子 Case 编译，然后派发 A11 拆分覆盖
+  审查；A11 批准后自动运行 N26 测试选择与 N15 执行计划；N15/N25 就绪后自动派发 A14 服务端
+  自动化生成、A15 契约自动化生成与 A22 测试数据规划（每个 Agent 先按 `node_instruction_files`
+  对齐 v1.0.0 指令，再创建带输入附件的内部 Issue）。A14/A15 生成入库后自动派发 A18-BE / A18-CT
+  独立复核；A22 入库自动运行 N27 测试数据计划安全校验；A14/A15/A18 齐备自动运行 N05 自动化
+  确定性代码检查；N05 通过自动打开 G03 自动化代码人工审核，批准后进入 N08 受控自动化执行。
+- N27 拒绝测试数据计划时全自动回流 A22：自动派发“A22 测试数据规划修正”修订卡（输入重新冻结
+  原范围并附上被拒计划与 N27 校验错误，落在 `inputs/a22-correction-*`），A22 修订入库后 N27
+  按新哈希重验，循环直到通过或修正预算耗尽转人工；A14/A15 只在 N27 通过后才绑定测试数据计划，
+  N27 未通过时生成卡等待修订，不携带被拒数据。
+- A22 计划带未决数据需求时保持 `needs_human`，由 QA Owner 在审核 Issue 上确认（置 `done`）
+  后生成 `a22-human-confirmation`，C5 才能进入终态；未登记能力路由到
+  `capability_adapter_backlog`，由 `bi-recipe-adapter` skill 从 112 已验证契约产出证据门禁
+  候选（`verification_requirements` 闭合前不可执行），不制造人工手写链路任务。
+- 阶段卡状态以实时 Issue 状态为准，不再只看历史 Artifact：节点存在进行中的 Agent Issue 时按
+  实时状态显示（`todo/queued`→排队中、`in_progress`→运行中、`blocked`→阻塞），Issue 为终态
+  时才回落到 Artifact 推导状态；同步只对 Agent Issue 写终态（`done`/`cancelled`），open 状态
+  交给 Agent 运行时管理，避免把已完成 Agent 任务回写成 `in_review`。
+- Agent 任务完成后状态自动同步：摄入即置 `done`，对已摄入的已完成运行在后续同步轮幂等补置
+  `done`，避免中断恢复后卡片长期停留在“排队中/进行中”。
+- C5 每个子任务都可点击跳转：A14/A15/A22/A18-BE/A18-CT 由 Agent Issue 承载（输入包为附件），
+  N27/N05 由系统自动创建的记录卡承载（Artifact 为附件），G03 由人工审核卡承载；阶段卡详情页
+  的节点表格会把它们渲染成可点击的 Issue 链接。
+- 同步脚本默认“跑一次推进一次”，要做到无人值守全自动需保持它周期性运行（幂等，可重叠）：
+  常驻模式追加 `--watch --watch-interval 60`；或安装 LaunchAgent 定时器
+  `qa-agents/scripts/com.qa.sync-eight-card.plist`（每 120 秒一次，
+  `bash qa-agents/scripts/install-sync-timer.sh` 安装，安装前校验 multica CLI 存在）；或用
+  crontab 每分钟执行一次。平台侧另有 multica Autopilot（cron `*/5 * * * *`）做服务端 DAG
+  对账与首轮节点派发，它只负责幂等对账（不重复建卡），无法执行本地摄入/确定性节点/修正轮次；
+  本地同步定时器与之互补，两者不会重复创建节点 Issue。
+- 恢复既有运行时，只把重新发现的 Issue 绑定合并到当前状态，并以已发布 revision 为版本下限，
+  不允许初始化规格把已完成节点改回“待规划”。修正、退回和重试只更新原阶段卡的状态与正文，
+  禁止创建新卡或后缀卡。人工 Gate 仍以正式 Decision Artifact 为准，卡片上的“待审核”只是
+  聚合入口，不能替代审批。
+
+**用户看到的实际效果**
+
+每个新需求固定只有 8 张主任务卡。内部步骤再多，也只更新对应阶段卡的进度和说明：
+
+- 短链路和相近工作合并在同一张卡中。
+- 自动执行时，卡片状态会跟随真实运行进度变化。
+- 修正、退回和重试不会制造新卡。
+- 人工审核仍会明确显示，但不会被大量内部节点淹没。
+- 完整执行记录仍保留，出现问题时可以继续追查到具体内部节点。
 
 ### 5.2 简版内部执行流程
 
