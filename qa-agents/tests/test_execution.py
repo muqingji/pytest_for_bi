@@ -356,6 +356,12 @@ def test_n08_business_assertion_failure_is_not_retried(tmp_path: Path) -> None:
     assert artifact["status"] == "completed_with_gaps"
     assert artifact["payload"]["decision"] == "test_failures"
     assert artifact["payload"]["next_node"] == "N09"
+    assert artifact["payload"]["shards"][0]["failure_categories"] == [
+        "test_assertion_or_product"
+    ]
+    assert artifact["payload"]["failure_category_summary"] == {
+        "test_assertion_or_product": 1
+    }
 
 
 def test_n08_rejects_zero_collection_as_infrastructure_failure(tmp_path: Path) -> None:

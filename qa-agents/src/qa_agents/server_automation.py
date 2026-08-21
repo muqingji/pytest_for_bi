@@ -17,6 +17,7 @@ from .contracts import (
     EvidenceRef,
     Producer,
     artifact_hash_from_mapping,
+    content_hash,
 )
 from .errors import ContractError, InputError
 from .security import SecurityPolicy
@@ -220,6 +221,18 @@ def prepare_server_automation(
         missing = sorted(required_target - set(target))
         raise ContractError(f"Automation target is missing required fields: {missing}")
     policy = AutomationPolicy.from_file(automation_policy_path)
+    operation_catalog = None
+    if (
+        target.get("network") is True
+        and policy.value.get("require_registered_operations_for_network") is True
+    ):
+        operation_catalog = {
+            "schema_version": "http-operation-catalog/1.0",
+            "operations": [
+                {"operationId": operation_id}
+                for operation_id in sorted(policy.known_operations)
+            ],
+        }
     registry = SkillRegistry.from_file(
         skill_registry_path or automation_policy_path.with_name("backend-skill-registry.json")
     )
@@ -312,6 +325,10 @@ def prepare_server_automation(
             context,
             {"cases": generation_cases, "target": target,
              "skill_router_bindings": authorizations,
+             **(
+                 {"operation_catalog": operation_catalog}
+                 if operation_catalog is not None else {}
+             ),
              "input_bindings": {
                  "knowledge_packet_hash": (
                      str(knowledge_readiness.get("packet_hash", ""))
@@ -324,6 +341,10 @@ def prepare_server_automation(
                  "test_data_resource_plan_hash": (
                      str(data_resource_plan["artifact_hash"])
                      if data_resource_plan is not None else ""
+                 ),
+                 "operation_catalog_hash": (
+                     content_hash(operation_catalog)
+                     if operation_catalog is not None else ""
                  ),
              }}, security
         )
@@ -382,6 +403,12 @@ def prepare_server_automation(
         "generation_count": len(checks),
         "planned_generation_count": sum(len(items) for items in groups.values()),
         "rejected_cases": rejected,
+        "case_executability": [
+            dict(item)
+            for generation in generations
+            for item in generation.payload.get("case_executability", [])
+            if isinstance(item, Mapping)
+        ],
     }
     if not checks:
         n05_status = ArtifactStatus.NOT_APPLICABLE
@@ -456,6 +483,15 @@ def prepare_server_automation(
             if knowledge_readiness is not None else None
         ),
         "rejected_cases": rejected,
+        "case_executability": sorted(
+            (
+                dict(item)
+                for generation in generations
+                for item in generation.payload.get("case_executability", [])
+                if isinstance(item, Mapping)
+            ),
+            key=lambda item: str(item.get("case_id", "")),
+        ),
         "ready_for_n08": passed
         and all(item.status == ArtifactStatus.COMPLETED for item in reviews),
     }

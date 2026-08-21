@@ -1,5 +1,6 @@
 {
   "schema_version": "automation-target-policy/1.0",
+  "require_registered_operations_for_network": true,
   "targets": [
     {
       "repository_id": "pytest_for_bi",

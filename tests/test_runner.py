@@ -219,6 +219,34 @@ def test_response_finds_runtime_value_inside_nested_json_string() -> None:
     assert_response(response, {"body_contains_values": ["resource-1"]})
 
 
+def test_response_rejects_unsupported_or_empty_expectation() -> None:
+    from framework.core.assertions import assert_response
+    from framework.clients.models import ApiResponse
+
+    response = ApiResponse(status_code=200, body={"Result": {"FailureCode": 1}})
+    with pytest.raises(ValueError, match="Unsupported response expectation"):
+        assert_response(response, {"status": "success"})
+    with pytest.raises(ValueError, match="at least one assertion"):
+        assert_response(response, {})
+
+
+def test_oracle_rejects_unknown_matcher() -> None:
+    with pytest.raises(ValueError, match="Unsupported automatic Oracle matcher"):
+        CaseRunner.assert_oracles(
+            {"response": {"code": "OK"}},
+            [
+                {
+                    "id": "EXP-UNKNOWN",
+                    "oracle": {
+                        "matcher": "looks_good",
+                        "observation_point": "response.code",
+                        "expected_value": "OK",
+                    },
+                }
+            ],
+        )
+
+
 def test_oracle_normalizes_detail_error_and_reports_missing_fields() -> None:
     observations = {
         "test_response": {"Error": {"Code": "s307011535", "Message": "unsupported"}}
@@ -711,6 +739,125 @@ def test_oracle_accepts_flattened_generated_item() -> None:
          "expected_value": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细"},
     ]
     CaseRunner.assert_oracles(observations, expected)
+
+
+def test_oracle_resolves_detail_error_sub_paths_from_detail_api() -> None:
+    """Generated candidates observe the real response envelope via ``detail_api``."""
+    observations = {
+        "detail_api": {
+            "Result": {"FailureCode": 0, "FailureMessage": ""},
+            "Error": {
+                "Code": "s307011534",
+                "Key": "CUSTOM_DIMENSION_DETAIL_UNSUPPORTED",
+                "Parameters": ["account_level"],
+                "Message": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细",
+            },
+            "Value": None,
+        }
+    }
+    expected = [
+        {
+            "id": "EXP-BE-001-01",
+            "oracle": {
+                "matcher": "equals",
+                "observation_point": "detail_api.error.code",
+                "expected_value": "s307011534",
+            },
+        },
+        {
+            "id": "EXP-BE-001-02",
+            "oracle": {
+                "matcher": "equals",
+                "observation_point": "detail_api.error.message.zh_CN",
+                "expected_value": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细",
+            },
+        },
+        {
+            "id": "EXP-BE-001-03",
+            "oracle": {
+                "matcher": "equals",
+                "observation_point": "detail_api.error.message.en",
+                # 响应只携带请求 locale 对应的 Message，locale 别名回退到同一字段。
+                "expected_value": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细",
+            },
+        },
+        {
+            "id": "EXP-BE-001-04",
+            "oracle": {
+                "matcher": "equals",
+                "observation_point": "detail_api.error.parameters",
+                "expected_value": ["account_level"],
+            },
+        },
+    ]
+    CaseRunner.assert_oracles(observations, expected)
+
+
+def test_oracle_normalizes_detail_error_from_detail_api_and_test_response() -> None:
+    observations = {
+        "detail_api": {
+            "Error": {"Code": "s307011535", "Message": "unsupported"}
+        }
+    }
+    expected = [{
+        "id": "EXP-ERROR", "oracle": {
+            "observation_point": "detail_api.error", "matcher": "all_fields_equal",
+            "expected_value": {
+                "error_code": "s307011535", "message": "unsupported",
+            },
+        },
+    }]
+    CaseRunner.assert_oracles(observations, expected)
+
+
+def test_oracle_rejects_unsupported_detail_error_sub_path() -> None:
+    observations = {"detail_api": {"Error": {"Code": "s307011534"}}}
+    expected = [{
+        "id": "EXP-BAD", "oracle": {
+            "matcher": "equals",
+            "observation_point": "detail_api.error.unknown_field",
+            "expected_value": "anything",
+        },
+    }]
+    with pytest.raises(AssertionError, match="unsupported semantic observation point"):
+        CaseRunner.assert_oracles(observations, expected)
+
+
+def test_lifecycle_evidence_records_whether_step_was_asserted() -> None:
+    from framework.core.runner import CaseRunner
+    from framework.config.environment import EnvironmentConfig
+
+    case = {
+        "id": "verified-flag",
+        "environment": "112",
+        "namespace": "qa-run-verified",
+        "setup": [
+            {
+                "name": "create resource",
+                "request": {"method": "POST", "path": "/resources", "json": {"name": "resource-a"}},
+                "expect": {"status_code": 200},
+            },
+            {
+                "name": "unasserted call",
+                "request": {"method": "POST", "path": "/resources", "json": {"name": "resource-b"}},
+            },
+        ],
+        "steps": [
+            {
+                "name": "verify behavior",
+                "request": {"method": "POST", "path": "/verify", "json": {}},
+                "expect": {"status_code": 200},
+            }
+        ],
+    }
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        LifecycleHttpClient(), FakeRpcClient(), FakeDatabaseClient(),
+    )
+    context = runner.execute(case)
+    setup_steps = context["__lifecycle__"]["setup"]
+    assert setup_steps[0]["verified"] is True
+    assert setup_steps[1]["verified"] is False
 
 
 def test_get_by_path_accepts_jsonpath_prefix_and_root() -> None:

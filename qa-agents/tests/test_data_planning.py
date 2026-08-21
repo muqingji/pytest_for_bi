@@ -85,7 +85,7 @@ def test_official_sources_and_capability_catalog_are_traceable() -> None:
 
     assert source_result["available_count"] == 14
     assert source_result["unavailable_count"] == 1
-    assert catalog_result["recipe_count"] == 5
+    assert catalog_result["recipe_count"] == 6
     assert catalog_result["catalog_hash"].startswith("sha256:")
     assert snapshot_result["verified_snapshot_count"] == 2
 

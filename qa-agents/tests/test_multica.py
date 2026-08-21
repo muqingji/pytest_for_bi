@@ -2230,6 +2230,21 @@ def test_prepare_and_ingest_multica_a18_review_input(tmp_path: Path) -> None:
         setup["inputs_dir"],
         profile_id="A18-BE",
     )
+    review_inputs = review_bundle["allowed_inputs"]
+    assert set(review_inputs) == {
+        "layer",
+        "cases",
+        "generation",
+        "security_rules",
+        "review_profile",
+        "verified_setup_contracts",
+    }
+    assert review_inputs["verified_setup_contracts"] == bundle["allowed_inputs"][
+        "verified_setup_contracts"
+    ]
+    assert content_hash(review_inputs["verified_setup_contracts"]) == bundle[
+        "allowed_inputs"
+    ]["input_bindings"]["verified_setup_contracts_hash"]
     gen_payload = review_bundle["allowed_inputs"]["generation"]
     candidate_hashes = {
         str(item.get("path")): str(item.get("content_hash", ""))
@@ -2676,7 +2691,11 @@ def test_generation_input_merges_a22_resources_and_verified_contracts(
     for resource in requirements:
         assert resource["setup_operation"]
         assert resource["required_body_keys"]
+        assert resource["retention_mode"] == "retain"
     contracts = bundle["allowed_inputs"]["verified_setup_contracts"]
+    assert contracts["contracts"][
+        "fs_bi_stat.custom_dimension.create_custom_dimension"
+    ]["response_id_paths"] == ["Value.fieldId"]
     assert contracts["schema_version"] == "verified-setup-contracts/1.0"
     assert "fs_bi_stat.custom_dimension.create_custom_dimension" in contracts["contracts"]
     assert "required_body_keys" in contracts["contracts"][

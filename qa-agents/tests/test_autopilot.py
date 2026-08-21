@@ -405,6 +405,48 @@ def test_reconcile_derives_nodes_and_human_actions_from_artifacts(tmp_path: Path
     assert unchanged["revision"] == 2
 
 
+def test_reconcile_refreshes_summary_when_completed_artifact_changes(tmp_path: Path) -> None:
+    initialize_autopilot(
+        _request(tmp_path / "request.json"),
+        _config(tmp_path / "config.json"),
+        tmp_path / "registry",
+        tmp_path / "initial",
+        runner=FakeMultica(),
+    )
+    artifacts = tmp_path / "artifacts"
+
+    def write_n27(summary: str) -> None:
+        envelope = ArtifactEnvelope(
+            workflow_run_id="REQ-1-r001",
+            workflow_mode="new_requirement",
+            artifact_id="n27-test-data-plan-validation",
+            source_snapshot_id="snapshot-1",
+            producer=Producer("N27"),
+            payload={"summary": summary, "valid": True},
+            status=ArtifactStatus.COMPLETED,
+        )
+        _write(
+            artifacts / "n27-test-data-plan-validation.json",
+            envelope.to_dict(),
+        )
+
+    write_n27("old validation summary")
+    first = reconcile_autopilot(
+        tmp_path / "initial/workflow-center-spec.json",
+        [artifacts],
+        tmp_path / "first",
+    )
+    write_n27("new validation summary")
+    reconcile_autopilot(
+        Path(first["spec_path"]),
+        [artifacts],
+        tmp_path / "second",
+    )
+    spec = json.loads((tmp_path / "second/workflow-center-spec.json").read_text())
+    n27 = next(item for item in spec["nodes"] if item["node_id"] == "N27")
+    assert n27["result_summary"] == "new validation summary"
+
+
 def test_reconcile_routes_blocked_a09_to_waiting_human_when_n04_routes_human(
     tmp_path: Path,
 ) -> None:

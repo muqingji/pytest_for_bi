@@ -27,7 +27,11 @@ def backend_case() -> dict:
         "test_data": {"request": {"method": "GET", "path": "/api/report"}},
         "steps": [{
             "name": "请求报表接口",
-            "request": {"protocol": "http", "api": "report.query", "json": {}},
+            "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_base.detail_data_query",
+                "json": {},
+            },
         }],
         "expected": [
             {
@@ -323,3 +327,143 @@ def test_n05_allows_setup_body_with_verified_contract_keys() -> None:
     codes = {item["issue_code"] for item in result["issues"]}
     assert "setup_body_missing_contract_fields" not in codes
 
+
+def test_n05_rejects_unverified_setup_expectation_and_extract_path() -> None:
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        'CASE_SPEC = {"id": "CASE-001-BACKEND", "test_level": "integration", '
+        '"test_data": {}, "setup": [{"request": {"api": '
+        '"fs_bi_stat.custom_dimension.create_custom_dimension", "json": {'
+        '"topologyDescribeId": "id", "customType": "enum_group", '
+        '"dimensionName": "name", "dimensionConfig": "{}", '
+        '"describeApiName": "AccountObj", "sourceField": {}}}, '
+        '"extract": {"field_id": "$.data.fieldId"}, "expect": {"status": "success"}}], '
+        '"readiness": [], "steps": [{"request": {"api": '
+        '"fs_bi_stat.stat_base.detail_data_query", "json": {}}}], '
+        '"expected": [{"id": "EXP-1", "oracle": {"matcher": "equals", '
+        '"observation_point": "response.code", "expected_value": "OK"}}], '
+        '"cleanup": [], "residue_checks": []}\n'
+        "def test_case(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        '    case_runner.assert_oracles(observations, CASE_SPEC["expected"])\n'
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+
+    result = check_automation_generation(generation, policy)
+
+    codes = {item["issue_code"] for item in result["issues"]}
+    assert "response_expectation_unsupported" in codes
+    assert "setup_extract_contract_mismatch" in codes
+
+
+def test_n05_rejects_cleanup_for_retained_resources() -> None:
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        'CASE_SPEC = {"id": "CASE-001-BACKEND", "test_level": "integration", '
+        '"test_data": {"resource_requirements": [{"resource_key": "chart", '
+        '"resource_type": "stat_chart", "setup_operation": '
+        '"fs_bi_crm.stat_create.copy_stat_view", "resource_id_variable": '
+        '"chart_view_id", "retention_mode": "retain", '
+        '"required_body_keys": ["statViewBaseInfo"]}]}, '
+        '"setup": [{"request": {"api": "fs_bi_crm.stat_create.copy_stat_view", '
+        '"json": {"statViewBaseInfo": {"viewID": "BI_source", "isChange": 0}}}, '
+        '"extract": {"chart_view_id": "Value.viewID"}, '
+        '"expect": {"status_code": 200}}], "readiness": [], "steps": [], '
+        '"expected": [{"id": "EXP-1", "oracle": {"matcher": "equals", '
+        '"observation_point": "response.code", "expected_value": "OK"}}], '
+        '"cleanup": [{"name": "bad_cleanup", "when_variable": "chart_view_id", '
+        '"request": {"api": "fs_bi_crm.rpt_view_display.move_rpt_view", '
+        '"json": {"viewID": "{{chart_view_id}}"}}}]}\n'
+        "def test_case(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        '    case_runner.assert_oracles(observations, CASE_SPEC["expected"])\n'
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+
+    result = check_automation_generation(generation, policy)
+
+    assert result["passed"] is False
+    assert "retained_resource_cleanup_forbidden" in {
+        item["issue_code"] for item in result["issues"]
+    }
+
+
+def test_n05_rejects_unverified_result_filter_operation() -> None:
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies/automation-target-policy.json")
+    content = (
+        'CASE_SPEC = {"id": "CASE-RS", "title": "结果集筛选", "test_data": {}, '
+        '"setup": [], "readiness": [], "steps": [{"name": "detail", '
+        '"request": {"api": "fs_bi_stat.stat_base.detail_data_query", "json": {}}}], '
+        '"expected": [{"id": "EXP-1", "oracle": {"matcher": "equals", '
+        '"observation_point": "detail_api.error.code", '
+        '"expected_value": "s307011535"}}], "cleanup": []}\n'
+        "def test_case(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        '    case_runner.assert_oracles(observations, CASE_SPEC["expected"])\n'
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate[
+        "content_hash"
+    ]
+
+    result = check_automation_generation(generation, policy)
+
+    assert "execution_contract_mismatch" in {
+        item["issue_code"] for item in result["issues"]
+    }
+
+
+def test_n05_rejects_incomplete_verified_execution_body() -> None:
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies/automation-target-policy.json")
+    content = (
+        'CASE_SPEC = {"id": "CASE-RS", "title": "结果集筛选", "test_data": {}, '
+        '"setup": [], "readiness": [], "steps": [{"name": "detail", '
+        '"request": {"api": "fs_bi_stat.stat_base.data_query_da655ba1", '
+        '"json": {"id": "schema"}}}], "expected": [{"id": "EXP-1", '
+        '"oracle": {"matcher": "equals", '
+        '"observation_point": "detail_api.error.code", '
+        '"expected_value": "s307011535"}}], "cleanup": []}\n'
+        "def test_case(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        '    case_runner.assert_oracles(observations, CASE_SPEC["expected"])\n'
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate[
+        "content_hash"
+    ]
+
+    result = check_automation_generation(generation, policy)
+
+    assert "execution_body_missing_contract_fields" in {
+        item["issue_code"] for item in result["issues"]
+    }

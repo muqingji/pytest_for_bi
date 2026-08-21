@@ -1,0 +1,42 @@
+{
+  "schema_version": "stat-chart-copy-contract-evidence/1.0",
+  "verified_at": "2026-08-21T18:17:38.982515+08:00",
+  "environment": "112",
+  "enterprise_id": "91863",
+  "operation_id": "fs_bi_crm.stat_create.copy_stat_view",
+  "request_body": {
+    "statViewBaseInfo": {
+      "viewID": "BI_6a7c47e808bc2c00077317be",
+      "isChange": 0
+    }
+  },
+  "required_body_keys": [
+    "statViewBaseInfo"
+  ],
+  "response_id_path": "Value.viewID",
+  "copy_response_hash": "sha256:34405b70824904f19e89def24223b3918a139b1a053ec646b8a84ac14ce3fe96",
+  "copy_response_top_level_keys": [
+    "Result",
+    "Value"
+  ],
+  "resource_id": "BI_6a8825c2f8d3ad0007c55a0c",
+  "display_name": "qa-copy-contract-20260821-181738",
+  "category_id": "BI_6a7c47e1280b910007abf988",
+  "source_view_id": "BI_6a7c47e808bc2c00077317be",
+  "source_crm_hash": "sha256:bbc9094fea42995969cf418e6b7c20818982f9356a95e77cbc906a2d63cfdd78",
+  "source_config_hash": "sha256:bf5ad328d699a15722fe1e3c542ad336de7013cc26c127df32707a6bb59e0b62",
+  "folder_listing_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5",
+  "rename_response_hash": "sha256:665cc11bb83d4f26a448df0e937257e347a9cef21a72737e77af6c4dd0137d77",
+  "move_response_hash": null,
+  "crm_readback_hash": "sha256:b54d381a0d6da6a83ba994a31c4ab018c70565cf0ba5219c02a99628bf344900",
+  "chart_readback_hash": "sha256:dab99bdd8bd98987a9b0e3624e3a2f6cabe6cf239dd83dc2c2d54a56eac12560",
+  "final_folder_listing_hash": "sha256:a5f923a381a12375be72c98c8e5e21242e2e940c03021aa632debced475cace1",
+  "readback_operations": [
+    "fs_bi_crm.stat_edit.get_stat_view",
+    "fs_bi_stat.stat_edit.get_chart_config"
+  ],
+  "retention_mode": "retain",
+  "cleanup_performed": false,
+  "readiness": "active",
+  "reusable": true
+}

@@ -1161,6 +1161,7 @@ def reconcile_autopilot(
             node_id = str(item.get("node_id", ""))
             artifact = selected.get(node_id)
             if artifact:
+                confirmation_applied = False
                 item["state"] = _artifact_state(artifact)
                 if node_id == "G01" and artifact.get("status") == "needs_human":
                     # G01 issue.route_to records the upstream correction owner;
@@ -1177,8 +1178,9 @@ def reconcile_autopilot(
                     item["result_summary"] = _confirmation_summary(
                         confirmation, artifact
                     )
+                    confirmation_applied = True
                 item["completion"] = "1/1"
-                if item["state"] != "completed" or "result_summary" not in item:
+                if not confirmation_applied:
                     item["result_summary"] = _artifact_summary(artifact)
                 item["artifact_id"] = artifact["artifact_id"]
                 item["artifact_hash"] = artifact["artifact_hash"]

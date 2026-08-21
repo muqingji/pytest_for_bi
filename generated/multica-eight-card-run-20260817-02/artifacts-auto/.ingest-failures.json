@@ -1,0 +1,30 @@
+{
+  "A08": [
+    {
+      "bundle_hash": "sha256:d53c87ac172a99aa1cbb69cc0ef6a8e1856a46b18eed2690e0c2eb6bff3401ed",
+      "issue_id": "7f41c597-4c8c-4ea8-9c71-5cf4a6390d14",
+      "run_id": "ab8ab553-8c76-4f6f-ac2b-da76e4e4a9c0"
+    }
+  ],
+  "A09": [
+    {
+      "bundle_hash": "sha256:0ed6de9dd71431f09ac4a98a7a0b7f961a3c9d98d84ebce94d1c88031a9775e8",
+      "issue_id": "674fd845-2213-48a2-9a2a-1e703a4d2be1",
+      "run_id": "e4306fd9-48f5-4a95-b546-02b537498744"
+    }
+  ],
+  "A18-BE": [
+    {
+      "bundle_hash": "sha256:412aba81bd6d174c13cca37a1345b9c13211a55c9cdc927e56b207527c929261",
+      "issue_id": "7f747d15-8d2f-4e1b-a2a6-d83ff0cb45f0",
+      "run_id": "bb8573e5-6e9f-4628-9e54-86b6dd83a2a5"
+    }
+  ],
+  "A22": [
+    {
+      "bundle_hash": "sha256:4c227b92507f583bea3ff0c0756feccf3d6a534322c2f0769b71cd84a6522221",
+      "issue_id": "01a023b5-267f-7515-955d-048bbbdb811b",
+      "run_id": "01a023b5-2687-7829-b133-4b257705ed4f"
+    }
+  ]
+}

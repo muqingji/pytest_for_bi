@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>统计图预聚合查询接口 · 技术栈</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --ink: #1b2433;
+      --muted: #5b677a;
+      --line: #d8dee9;
+      --card: #ffffff;
+      --l1: #2563eb;
+      --l1-bg: #eff6ff;
+      --l2: #4f46e5;
+      --l2-bg: #eef2ff;
+      --l3: #0f766e;
+      --l3-bg: #f0fdfa;
+      --l4: #c2410c;
+      --l4-bg: #fff7ed;
+      --sync: #334155;
+      --sync-bg: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+    .page {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 28px 24px 40px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-end;
+      margin-bottom: 18px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 28px;
+      letter-spacing: 0.02em;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .meta {
+      text-align: right;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.7;
+      white-space: nowrap;
+    }
+    .meta code {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+    .stack { display: grid; gap: 10px; }
+    .layer {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--card);
+      box-shadow: 0 8px 24px rgba(27, 36, 51, 0.05);
+    }
+    .layer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 16px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+    .layer-head .tag {
+      font-size: 12px;
+      opacity: 0.9;
+      font-weight: 600;
+    }
+    .layer-body {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+    }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      min-height: 78px;
+    }
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .l1 .layer-head { background: var(--l1-bg); color: var(--l1); }
+    .l2 .layer-head { background: var(--l2-bg); color: var(--l2); }
+    .l3 .layer-head { background: var(--l3-bg); color: var(--l3); }
+    .l4 .layer-head { background: var(--l4-bg); color: var(--l4); }
+    .sync .layer-head { background: var(--sync-bg); color: var(--sync); }
+    .arrow {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 18px;
+      line-height: 10px;
+    }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      align-items: stretch;
+    }
+    .flow-item {
+      background: #fff;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 10px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .flow-item span {
+      display: block;
+      margin-top: 4px;
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--muted);
+    }
+    .note {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    @media print {
+      body { background: #fff; }
+      .page { max-width: none; padding: 8px; }
+      .layer { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>统计图预聚合查询接口 · 技术栈</h1>
+        <div class="sub">POST /FHH/EM1HBISTAT/fs-bi-stat/stat/data/query　·　bizName=BISTAT　·　预聚合数据源</div>
+      </div>
+      <div class="meta">
+        承载服务 <code>fs-bi-stat</code><br />
+        客户端 UA <code>FSW</code>　企业 <code>fktest7572</code>
+      </div>
+    </header>
+
+    <div class="stack">
+      <section class="layer l1">
+        <div class="layer-head"><span>L1 展示层</span><span class="tag">前端</span></div>
+        <div class="layer-body">
+          <div class="cards">
+            <div class="card">
+              <h3>纷享 Web（H5/PC）</h3>
+              <p>统计图画布、筛选、指标配置；UA=`FSW` 发起查询。</p>
+            </div>
+            <div class="card">
+              <h3>查询入参</h3>
+              <p>viewId / 维度 / 指标 / 筛选 / 缓存参数。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="arrow">▼ HTTPS　traceId = FSW-&lt;ea&gt;.&lt;uid&gt;-&lt;suffix&gt;</div>
+
+      <section class="layer l2">
+        <div class="layer-head"><span>L2 网关层</span><span class="tag">CEP</span></div>
+        <div class="layer-body">
+          <div class="cards">
+            <div class="card">
+              <h3>CEP 网关</h3>
+              <p>组件 `fs-cep-provider`：鉴权、会话、限流、路由。</p>
+            </div>
+            <div class="card">
+              <h3>路由</h3>
+              <p>bizName=BISTAT → `EM1HBISTAT` → `fs-bi-stat`。</p>
+            </div>
+            <div class="card">
+              <h3>观测</h3>
+              <p>生成 traceId/reqId，入口现场落入 `log_cep_dist`。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="arrow">▼</div>
+
+      <section class="layer l3">
+        <div class="layer-head"><span>L3 服务层</span><span class="tag">Spring Boot + Tomcat</span></div>
+        <div class="layer-body">
+          <div class="cards">
+            <div class="card">
+              <h3>应用框架</h3>
+              <p>`fs-bi-stat`：StatBaseController / EasyStat 流水线 / AOP 切面。</p>
+            </div>
+            <div class="card">
+              <h3>流控降级</h3>
+              <p>SentinelLimitAspect + TimeoutDegradationAspect（degradation-pool-N）。</p>
+            </div>
+            <div class="card">
+              <h3>SQL 观测</h3>
+              <p>p6spy 打印实际 ClickHouse SQL，`client_name=fs-bi-stat`。</p>
+            </div>
+            <div class="card">
+              <h3>组织 / 权限</h3>
+              <p>fs-organization-provider、fs-paas-auth、CrmObjLicenseService、PermissionUtil（funcId 109001）。</p>
+            </div>
+            <div class="card">
+              <h3>多语言</h3>
+              <p>I18nClient，从 DB 读取 I18nEntryDTO。</p>
+            </div>
+            <div class="card">
+              <h3>元数据</h3>
+              <p>fs-paas-metadata-rest + CH 元数据表：stat_field / udf_obj_field / bi_mt_topology_table。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="arrow">▼</div>
+
+      <section class="layer l4">
+        <div class="layer-head"><span>L4 数据层</span><span class="tag">查询时依赖</span></div>
+        <div class="layer-body">
+          <div class="cards">
+            <div class="card">
+              <h3>ClickHouse 预聚合数仓</h3>
+              <p>每租户库 `fsbidb*`。主代理 `10.17.44.220:9090`，从 `10.17.46.6:8123`。</p>
+            </div>
+            <div class="card">
+              <h3>核心表</h3>
+              <p>agg_data、dim_data、org_dept、org_employee_user、mt_data / object_data。</p>
+            </div>
+            <div class="card">
+              <h3>Redis 查询缓存</h3>
+              <p>key：`bi_stat_querycache_BI_&lt;viewId&gt;_&lt;ver&gt;_&lt;hash&gt;_binary`。</p>
+            </div>
+            <div class="card">
+              <h3>元数据库 MySQL/PG</h3>
+              <p>报表配置、i18n、权限等在线配置数据。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="layer sync">
+        <div class="layer-head"><span>后台同步 / 计算（查询前写入）</span><span class="tag">不在本次请求热路径</span></div>
+        <div class="layer-body">
+          <div class="flow">
+            <div class="flow-item">op-log<span>对象变更日志</span></div>
+            <div class="flow-item">RocketMQ<span>同步消息</span></div>
+            <div class="flow-item">paas-bi-copier<span>拷贝 / 转换</span></div>
+            <div class="flow-item">聚合框架<span>预聚合计算</span></div>
+            <div class="flow-item">ClickHouse<span>agg_data / dim_data</span></div>
+          </div>
+          <div class="cards">
+            <div class="card">
+              <h3>调度</h3>
+              <p>`fs-paas-job-schedule`：定时任务与报表计算调度。</p>
+            </div>
+            <div class="card">
+              <h3>计算字段</h3>
+              <p>`fs-paas-calculate-task`：计算字段重算，结果回写数仓。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <p class="note">来源：统计图预聚合查询接口调用链路分析 · 第 5 节技术栈 / 第 6 节架构分层。本次请求热路径是 Web → CEP → fs-bi-stat → ClickHouse/Redis；MQ 与 copier 负责把预聚合数据提前写入 CH。</p>
+  </div>
+</body>
+</html>

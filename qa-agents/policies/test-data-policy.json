@@ -42,6 +42,8 @@
     "fs_bi_stat.stat_calc_field.save_calc_field": "fs_bi_stat.stat_calc_field.delete_calc_field",
     "fs_bi_stat.custom_dimension.create_custom_dimension": "fs_bi_stat.custom_dimension.delete_custom_dimension"
     ,"fs_bi_dev.lwt_manager.save": ""
+    ,"fs_bi_crm.stat_create.copy_stat_view": ""
+    ,"fs_bi_stat.stat_edit.creat_stat_view": ""
   },
   "readiness_operations": [
     "fs_bi_crm.rpt_category.get_category_and_rpt",

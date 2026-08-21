@@ -1144,38 +1144,45 @@
     "generation": {
       "code_candidates": [
         {
-          "case_id": "TC-BE-001-BACKEND",
-          "content": "CASE_SPEC = {\n    \"id\": \"TC-BE-001-BACKEND\",\n    \"title\": \"自定义维度三类位置的专用错误与双语提示\",\n    \"test_level\": \"backend\",\n    \"preconditions\": [\n        \"真实测试接口连接错误码平台联调环境，不以 G01 配置本身代替运行时 Oracle。\",\n        \"测试租户支持创建统计图并触发查看明细。\",\n        \"自定义维度字段可分别配置在维度、数据范围和下钻字段。\"\n    ],\n    \"test_data\": {\n        \"datasets\": [\n            \"基线统计图：普通维度、普通数据范围、普通下钻字段，可成功查看明细\",\n            \"变体 A：仅维度使用自定义维度字段\",\n            \"变体 B：仅数据范围使用自定义维度字段\",\n            \"变体 C：仅下钻字段使用自定义维度字段\"\n        ],\n        \"locales\": [\"zh_CN\", \"en\"],\n        \"namespace\": \"a08_detail_drill_i18n_TC_BE_001\",\n        \"resource_requirements\": [\n            {\n                \"high_risk_write\": True,\n                \"required_body_keys\": [\"topologyDescribeId\", \"customType\", \"dimensionName\", \"dimensionConfig\", \"describeApiName\", \"sourceField\"],\n                \"resource_id_variable\": \"cd_field_id\",\n                \"resource_key\": \"cd_field\",\n                \"resource_type\": \"custom_dimension\",\n                \"setup_operation\": \"fs_bi_stat.custom_dimension.create_custom_dimension\"\n            }\n        ]\n    },\n    \"setup\": [\n        {\n            \"name\": \"setup_create_custom_dimension\",\n            \"request\": {\n                \"api\": \"fs_bi_stat.custom_dimension.create_custom_dimension\",\n                \"json\": {\n                    \"customType\": \"enum_group\",\n                    \"describeApiName\": \"AccountObj\",\n                    \"description\": \"需求：统计图查看明细限制原因提示优化；A22 命名空间构造并长期保留\",\n                    \"dimensionConfig\": '{\"groups\":[{\"values\":[{\"optionCode\":\"1\"},{\"optionCode\":\"2\"},{\"optionCode\":\"3\"},{\"optionCode\":\"other\"}]}]}',\n                    \"dimensionName\": \"a08_detail_drill_i18n_TC_BE_001-cd-field\",\n                    \"sourceField\": {\n                        \"apiName\": \"account_level\",\n                        \"describeApiName\": \"AccountObj\",\n                        \"fieldId\": \"BI_5bcebcddcab2980001ee22b3\",\n                        \"type\": \"select_one\"\n                    },\n                    \"topologyDescribeId\": \"BI_5bcebcdc3060e20001e79977\"\n                }\n            },\n            \"extract\": {\"cd_field_id\": \"$.data.fieldId\"},\n            \"expect\": {\"status\": \"success\"}\n        }\n    ],\n    \"steps\": [\n        {\"name\": \"detail_baseline_zh_CN\", \"request\": {\"api\": \"fs_bi_stat.stat_base.detail_data_query\", \"json\": {\"locale\": \"zh_CN\", \"viewConfig\": {\"dimensions\": [{\"fieldId\": \"BI_5bcebcddcab2980001ee22b3\"}], \"dataRange\": {\"filters\": []}, \"drillField\": {\"fieldId\": \"BI_f6b5bbe13117f9e4e2f96790b31115a9\"}, \"metricField\": {\"fieldId\": \"BI_a23fbc479ea07edab8c7fd5fddf90cc7\"}}, \"paging\": {\"pageNum\": 1, \"pageSize\": 20}}}, \"extract\": {\"detail_api\": \"$\"}, \"expect\": {\"status\": \"success\"}},\n        {\"name\": \"detail_baseline_en\", \"request\": {\"api\": \"fs_bi_stat.stat_base.detail_data_query\", \"json\": {\"locale\": \"en\", \"viewConfig\": {\"dimensions\": [{\"fieldId\": \"BI_5bcebcddcab2980001ee22b3\"}], \"dataRange\": {\"filters\": []}, \"drillField\": {\"fieldId\": \"BI_f6b5bbe13117f9e4e2f96790b31115a9\"}, \"metricField\": {\"fieldId\": \"BI_a23fbc479ea07edab8c7fd5fddf90cc7\"}}, \"paging\": {\"pageNum\": 1, \"pageSize\": 20}}}, \"extract\": {\"detail_api\": \"$\"}, \"expect\": {\"status\": \"success\"}},\n        {\"name\": \"detail_variant_a_zh_CN\", \"request\": {\"api\": \"fs_bi_stat.stat_base.detail_data_query\", \"json\": {\"locale\": \"zh_CN\", \"viewConfig\": {\"dimensions\": [{\"fieldId\": \"{{cd_field_id}}\"}], \"dataRange\": {\"filters\": []}, \"drillField\": {\"fieldId\": \"BI_f6b5bbe13117f9e4e2f96790b31115a9\"}, \"metricField\": {\"fieldId\": \"BI_a23fbc479ea07edab8c7fd5fddf90cc7\"}}, \"paging\": {\"pageNum\": 1, \"pageSize\": 20}}}, \"extract\": {\"detail_api\": \"$\"}, \"expect\": {\"status\": \"success\"}},\n        {\"name\": \"detail_variant_a_en\", \"request\": {\"api\": \"fs_bi_stat.stat_base.detail_data_query\", \"json\": {\"locale\": \"en\", \"viewConfig\": {\"dimensions\": [{\"fieldId\": \"{{cd_field_id}}\"}], \"dataRange\": {\"filters\": []}, \"drillField\": {\"fieldId\": \"BI_f6b5bbe13117f9e4e2f96790b31115a9\"}, \"metricField\": {\"fieldId\": \"BI_a23fbc479ea07edab8c7fd5fddf90cc7\"}}, \"paging\": {\"pageNum\": 1, \"pageSize\": 20}}}, \"extract\": {\"detail_api\": \"$\"}, \"expect\": {\"status\": \"success\"}},\n        {\"name\": \"detail_variant_b_zh_CN\", \"request\": {\"api\": \"fs_bi_stat.stat_base.detail_data_query\", \"json\": {\"locale\": \"zh_CN\", \"viewConfig\": {\"dimensions\": [{\"fieldId\": \"BI_5bcebcddcab2980001ee22b3\"}], \"dataRange\": {\"filters\": [{\"fieldId\": \"{{cd_field_id}}\"}]}, \"drillField\": {\"fieldId\": \"BI_f6b5bbe13117f9e4e2f96790b31115a9\"}, \"metricField\": {\"fieldId\": \"BI_a23fbc479ea07edab8c7fd5fddf90cc7\"}}, \"paging\": {\"pageNum\": 1, \"pageSize\": 20}}}, \"extract\": {\"detail_api\": \"$\"}, \"expect\": {\"status\": \"success\"}},\n        {\"name\": \"detail_variant_b_en\", \"request\": {\"api\": \"fs_bi_stat.stat_base.detail_data_query\", \"json\": {\"locale\": \"en\", \"viewConfig\": {\"dimensions\": [{\"fieldId\": \"BI_5bcebcddcab2980001ee22b3\"}], \"dataRange\": {\"filters\": [{\"fieldId\": \"{{cd_field_id}}\"}]}, \"drillField\": {\"fieldId\": \"BI_f6b5bbe13117f9e4e2f96790b31115a9\"}, \"metricField\": {\"fieldId\": \"BI_a23fbc479ea07edab8c7fd5fddf90cc7\"}}, \"paging\": {\"pageNum\": 1, \"pageSize\": 20}}}, \"extract\": {\"detail_api\": \"$\"}, \"expect\": {\"status\": \"success\"}},\n        {\"name\": \"detail_variant_c_zh_CN\", \"request\": {\"api\": \"fs_bi_stat.stat_base.detail_data_query\", \"json\": {\"locale\": \"zh_CN\", \"viewConfig\": {\"dimensions\": [{\"fieldId\": \"BI_5bcebcddcab2980001ee22b3\"}], \"dataRange\": {\"filters\": []}, \"drillField\": {\"fieldId\": \"{{cd_field_id}}\"}, \"metricField\": {\"fieldId\": \"BI_a23fbc479ea07edab8c7fd5fddf90cc7\"}}, \"paging\": {\"pageNum\": 1, \"pageSize\": 20}}}, \"extract\": {\"detail_api\": \"$\"}, \"expect\": {\"status\": \"success\"}},\n        {\"name\": \"detail_variant_c_en\", \"request\": {\"api\": \"fs_bi_stat.stat_base.detail_data_query\", \"json\": {\"locale\": \"en\", \"viewConfig\": {\"dimensions\": [{\"fieldId\": \"BI_5bcebcddcab2980001ee22b3\"}], \"dataRange\": {\"filters\": []}, \"drillField\": {\"fieldId\": \"{{cd_field_id}}\"}, \"metricField\": {\"fieldId\": \"BI_a23fbc479ea07edab8c7fd5fddf90cc7\"}}, \"paging\": {\"pageNum\": 1, \"pageSize\": 20}}}, \"extract\": {\"detail_api\": \"$\"}, \"expect\": {\"status\": \"success\"}}\n    ],\n    \"expected\": [\n        {\"id\": \"EXP-BE-001-01\", \"oracle\": {\"matcher\": \"equals\", \"observation_point\": \"detail_api.error.code\", \"expected_value\": \"s307011534\", \"expected_values\": None, \"source_ref\": \"RULE-I18N-CUSTOM-DIMENSION\", \"type\": \"deterministic\"}},\n        {\"id\": \"EXP-BE-001-02\", \"oracle\": {\"matcher\": \"equals\", \"observation_point\": \"detail_api.error.message.zh_CN\", \"expected_value\": \"维度或数据范围中使用了自定义维度字段，暂不支持查看明细\", \"expected_values\": None, \"source_ref\": \"RULE-I18N-CUSTOM-DIMENSION\", \"type\": \"deterministic\"}},\n        {\"id\": \"EXP-BE-001-03\", \"oracle\": {\"matcher\": \"equals\", \"observation_point\": \"detail_api.error.message.en\", \"expected_value\": \"Custom dimension fields are used in the dimension or data range. Details view is not supported.\", \"expected_values\": None, \"source_ref\": \"RULE-I18N-CUSTOM-DIMENSION\", \"type\": \"deterministic\"}}\n    ],\n    \"cleanup\": [\n        {\"name\": \"cleanup_delete_custom_dimension\", \"request\": {\"api\": \"fs_bi_stat.custom_dimension.delete_custom_dimension\", \"json\": {\"id\": \"{{cd_field_id}}\"}}, \"expect\": {\"status\": \"success\"}}\n    ]\n}\n\ndef test_TC_BE_001_BACKEND(case_runner):\n    observations = case_runner.execute(CASE_SPEC)\n    case_runner.assert_oracles(observations, CASE_SPEC[\"expected\"])\n",
-          "content_hash": "sha256:ab8cc70664893b385e31258f487290d8108abc52530233e42599b1e5db756b27",
-          "path": "generated/backend/test_TC_BE_001_BACKEND.py"
+          "case_id": "TC-BE-002-BACKEND",
+          "content": "CASE_SPEC = {\n'id':'TC-BE-002-BACKEND','title':'结果集筛选指标名称解析、全部名称参数与本地化','test_level':'backend',\n'preconditions':['真实查看明细接口可观测错误码、解码消息和业务异常参数数组。','测试租户已启用 zh_CN 与 en 动态字段名称。','普通指标、聚合指标、计算指标和同环比指标均可配置按结果集筛选。'],\n'test_data':{'namespace':'a08_detail_drill_i18n_TC_BE_002','locales':['zh_CN','en'],'resource_requirements':[{'resource_key':'aggregate_metric_resolution_set','resource_type':'aggregate_metric','setup_operation':'fs_bi_stat.agg_rule.add_new_agg_rule','resource_id_variable':'metric_field_ids','retention_mode':'retain'},{'resource_key':'calculated_metric_dynamic_name_pair','resource_type':'calculated_metric','setup_operation':'fs_bi_stat.stat_calc_field.save_calc_field','resource_id_variable':'calculated_metric_id','retention_mode':'retain'},{'resource_key':'comparison_metric_pair','resource_type':'aggregate_metric','setup_operation':'fs_bi_stat.agg_rule.add_new_agg_rule','resource_id_variable':'metric_field_id','retention_mode':'retain','high_risk_write':True},{'resource_key':'result_filter_chart_set','resource_type':'stat_chart','setup_operation':'fs_bi_crm.stat_create.copy_stat_view','resource_id_variable':'chart_view_id','retention_mode':'retain'}]},\n'setup':[{'name':'setup_metric_rs_normal','request':{'api':'fs_bi_stat.agg_rule.add_new_agg_rule','json':{'aggField':{'dbFieldName':'mc_exchange_rate','dbObjName':'object_1Lhg5__c','fieldId':'BI_a23fbc479ea07edab8c7fd5fddf90cc7','fieldName':'汇率','fieldType':'Number'},'aggFieldTime':{'dbFieldName':'create_time','dbObjName':'object_1Lhg5__c','fieldId':'BI_f6b5bbe13117f9e4e2f96790b31115a9','fieldName':'创建时间','fieldType':'Date'},'aggObject':{'dbFieldName':'mc_exchange_rate','dbObjName':'object_1Lhg5__c','fieldId':'BI_a23fbc479ea07edab8c7fd5fddf90cc7','fieldName':'汇率','fieldType':'Number'},'checkFieldAggregateType':2,'displayName':'a08_detail_drill_i18n_TC_BE_002-rs-normal','filterLists':[],'initStatus':1,'schemaId':'BI_5be1351956fc11448cdde39e','schemaObjectName':'biz_sales_order','timeZone':'Asia/Shanghai'}},'extract':{'metric_rs_normal_id':'Value.fieldId'},'expect':{'status_code':200,'json_path':{'path':'Result.FailureCode','expected_value':0}}},{'name':'setup_metric_rs_agg','request':{'api':'fs_bi_stat.agg_rule.add_new_agg_rule','json':{'aggField':{'dbFieldName':'mc_exchange_rate','dbObjName':'object_1Lhg5__c','fieldId':'BI_a23fbc479ea07edab8c7fd5fddf90cc7','fieldName':'汇率','fieldType':'Number'},'aggFieldTime':{'dbFieldName':'create_time','dbObjName':'object_1Lhg5__c','fieldId':'BI_f6b5bbe13117f9e4e2f96790b31115a9','fieldName':'创建时间','fieldType':'Date'},'aggObject':{'dbFieldName':'mc_exchange_rate','dbObjName':'object_1Lhg5__c','fieldId':'BI_a23fbc479ea07edab8c7fd5fddf90cc7','fieldName':'汇率','fieldType':'Number'},'checkFieldAggregateType':2,'displayName':'a08_detail_drill_i18n_TC_BE_002-rs-agg','filterLists':[],'initStatus':1,'schemaId':'BI_5be1351956fc11448cdde39e','schemaObjectName':'biz_sales_order','timeZone':'Asia/Shanghai'}},'extract':{'metric_rs_agg_id':'Value.fieldId','metric_field_id':'Value.fieldId'},'expect':{'status_code':200,'json_path':{'path':'Result.FailureCode','expected_value':0}}},{'name':'setup_calc_metric','request':{'api':'fs_bi_stat.stat_calc_field.save_calc_field','json':{'calcFieldId':'','fieldName':'a08_detail_drill_i18n_TC_BE_002-rs-calc','formatStr':'0.00','formula':'[{{metric_rs_agg_id}}_2]','ratioType':0}},'extract':{'calculated_metric_id':'Value.fieldID'},'expect':{'status_code':200,'json_path':{'path':'Result.FailureCode','expected_value':0}}},{'name':'setup_chart','request':{'api':'fs_bi_crm.stat_create.copy_stat_view','json':{'statViewBaseInfo':{'isChange':0,'viewID':'BI_6a7c47e808bc2c00077317be'}}},'extract':{'chart_view_id':'Value.viewID'},'expect':{'status_code':200,'json_path':{'path':'Result.FailureCode','expected_value':0}}}],\n'steps':[{'name':'set_language_zh','request':{'api':'pass_api.set_app_language','json':{'language':'zh_CN'}},'expect':{'status_code':200}},{'name':'detail_zh_fieldname_branch','request':{'api':'fs_bi_stat.stat_base.detail_data_query','json':{'viewID':'{{chart_view_id}}','metricFieldId':'{{metric_rs_normal_id}}'}},'expect':{'status_code':200,'json_path':{'path':'error.code','expected_value':'s307011535'}}},{'name':'detail_zh_calc_branch','request':{'api':'fs_bi_stat.stat_base.detail_data_query','json':{'viewID':'{{chart_view_id}}','metricFieldId':'{{calculated_metric_id}}'}},'expect':{'status_code':200,'json_path':{'path':'error.code','expected_value':'s307011535'}}},{'name':'set_language_en','request':{'api':'pass_api.set_app_language','json':{'language':'en'}},'expect':{'status_code':200}},{'name':'detail_en_calc_branch','request':{'api':'fs_bi_stat.stat_base.detail_data_query','json':{'viewID':'{{chart_view_id}}','metricFieldId':'{{calculated_metric_id}}'}},'expect':{'status_code':200,'json_path':{'path':'error.code','expected_value':'s307011535'}}},{'name':'detail_en_multi_branch','request':{'api':'fs_bi_stat.stat_base.detail_data_query','json':{'viewID':'{{chart_view_id}}','metricFieldIds':['{{metric_rs_normal_id}}','{{calculated_metric_id}}']}},'expect':{'status_code':200,'json_path':{'path':'error.code','expected_value':'s307011535'}}}],\n'expected':[{'id':'EXP-BE-002-01','oracle':{'matcher':'equals','observation_point':'detail_api.error.code','expected_value':'s307011535','source_ref':'RULE-I18N-RESULT-SET','type':'deterministic'}},{'id':'EXP-BE-002-02','oracle':{'matcher':'equals','observation_point':'detail_api.error.message.zh_CN','expected_value':'统计图数据范围中设置了「销售额」按结果集筛选，不支持查看明细','source_ref':'RULE-I18N-RESULT-SET','type':'deterministic'}},{'id':'EXP-BE-002-03','oracle':{'matcher':'equals','observation_point':'detail_api.error.message.en','expected_value':'The chart data range uses \"Revenue\" with result set filtering. Details view is not supported.','source_ref':'RULE-I18N-RESULT-SET','type':'deterministic'}},{'id':'EXP-BE-002-04','oracle':{'matcher':'equals','observation_point':'backend_exception.metric_name_parameters','expected_value':{'en':{'Filter.fieldName_branch':['销售额'],'current_locale_dynamic_display_name_branch':['Revenue'],'field_metadata_by_fieldId_branch':['Order Count']},'zh_CN':{'Filter.fieldName_branch':['销售额'],'current_locale_dynamic_display_name_branch':['毛利率'],'field_metadata_by_fieldId_branch':['订单数']}},'source_ref':'RULE-SINGLE-METRIC','type':'deterministic'}},{'id':'EXP-BE-002-05','oracle':{'matcher':'equals','observation_point':'backend_exception.metric_name_parameters','expected_value':{'en':['Revenue','Gross Margin'],'zh_CN':['销售额','毛利率']},'source_ref':'RULE-SINGLE-METRIC','type':'deterministic'}},{'id':'EXP-BE-002-06','oracle':{'matcher':'equals','observation_point':'detail_api.error.message.zh_CN','expected_value':'统计图数据范围中设置了「销售额、毛利率」按结果集筛选，不支持查看明细','source_ref':'RULE-I18N-RESULT-SET','type':'deterministic'}},{'id':'EXP-BE-002-07','oracle':{'matcher':'equals','observation_point':'detail_api.error.message.en','expected_value':'The chart data range uses \"Revenue\", \"Gross Margin\" with result set filtering. Details view is not supported.','source_ref':'RULE-I18N-RESULT-SET','type':'deterministic'}},{'id':'EXP-BE-002-08','oracle':{'matcher':'manual_confirmation','observation_point':'detail_api.empty_metric_name_response','expected_value':'preserve_actual_business_response_without_empty_metric_name_message','source_ref':'RULE-SINGLE-METRIC','type':'human_review'}}],\n'cleanup':[]\n}\n\ndef test_tc_be_002_backend(case_runner):\n    observations = case_runner.execute(CASE_SPEC)\n    case_runner.assert_oracles(observations, CASE_SPEC['expected'])\n",
+          "content_hash": "sha256:d7141a2be85a0b91f61aad532d6bd396736414f46267d80627fca5b007411023",
+          "path": "generated/backend/test_tc_be_002_backend.py"
         }
       ],
       "evaluation_oracle_accessed": false,
-      "input_bundle_hash": "sha256:d603613c2c4e4a3103c01db63e2a713735fe91da35f7ed6046d22d6f719994a8",
+      "input_bundle_hash": "sha256:8671f12c3d3126aadff30fffa61b4114c43c4ee8f209fc3f3499eb07d94583b9",
       "manifest": {
         "candidate_files": [
           {
-            "content_hash": "sha256:ab8cc70664893b385e31258f487290d8108abc52530233e42599b1e5db756b27",
-            "path": "generated/backend/test_TC_BE_001_BACKEND.py"
+            "content_hash": "sha256:d7141a2be85a0b91f61aad532d6bd396736414f46267d80627fca5b007411023",
+            "path": "generated/backend/test_tc_be_002_backend.py"
           }
         ],
         "case_mappings": [
           {
-            "candidate_path": "generated/backend/test_TC_BE_001_BACKEND.py",
-            "case_id": "TC-BE-001-BACKEND",
+            "candidate_path": "generated/backend/test_tc_be_002_backend.py",
+            "case_id": "TC-BE-002-BACKEND",
             "expected_ids": [
-              "EXP-BE-001-01",
-              "EXP-BE-001-02",
-              "EXP-BE-001-03"
+              "EXP-BE-002-01",
+              "EXP-BE-002-02",
+              "EXP-BE-002-03",
+              "EXP-BE-002-04",
+              "EXP-BE-002-05",
+              "EXP-BE-002-06",
+              "EXP-BE-002-07",
+              "EXP-BE-002-08"
             ],
-            "manual_expected_ids": []
+            "manual_expected_ids": [
+              "EXP-BE-002-08"
+            ]
           }
         ],
         "execution": {
           "command": [
             "pytest",
             "-q",
-            "generated/backend/test_TC_BE_001_BACKEND.py"
+            "generated/backend/test_tc_be_002_backend.py"
           ],
           "timeout_seconds": 600
         },
@@ -1187,9 +1194,9 @@
         "framework": "pytest",
         "generator_profile": "A14/1.0.0",
         "input_bindings": {
-          "test_data_plan_hash": "sha256:408f191fd87434b60e92cc136943fa6f6fffca8ea5735fd7df80fdcfbdd2bc25",
-          "test_data_validation_hash": "sha256:e8fdff2b11393a4c8cf2f29e60b25eeec9e03bbec506817e9d4a25c0c5c90024",
-          "verified_setup_contracts_hash": "sha256:b24a77a9021763583f9d2bc9a7c327f8c68d70380e38c00b68913605d5b672ec"
+          "test_data_plan_hash": "sha256:8335ebf97ea2b109d96b77c6f8267e6c1fd28dda464cbdb8c131de27133e7118",
+          "test_data_validation_hash": "sha256:0294c88bc65d70f3ca1842ff64c3a62f27ab0bcbae39f5bee56ecb7128c28f35",
+          "verified_setup_contracts_hash": "sha256:d0ec6857d37933edd046954e403307c7ca5191f539eb50fde9cccd61a16eb47f"
         },
         "language": "python",
         "layer": "backend",
@@ -1212,29 +1219,29 @@
       },
       "rejected_cases": [
         {
-          "case_id": "TC-BE-002-BACKEND",
+          "case_id": "TC-BE-001-BACKEND",
           "reason_code": "setup_contract_unavailable",
           "source_refs": [
-            "TC-BE-002-BACKEND"
+            "TC-BE-001-BACKEND"
           ]
         },
         {
           "case_id": "TC-BE-003-BACKEND",
-          "reason_code": "case_not_machine_executable",
+          "reason_code": "setup_contract_unavailable",
           "source_refs": [
             "TC-BE-003-BACKEND"
           ]
         },
         {
           "case_id": "TC-BE-004-BACKEND",
-          "reason_code": "case_not_machine_executable",
+          "reason_code": "setup_contract_unavailable",
           "source_refs": [
             "TC-BE-004-BACKEND"
           ]
         },
         {
           "case_id": "TC-BE-005-BACKEND",
-          "reason_code": "case_not_machine_executable",
+          "reason_code": "setup_contract_unavailable",
           "source_refs": [
             "TC-BE-005-BACKEND"
           ]
@@ -1273,9 +1280,193 @@
         "socket",
         "subprocess"
       ]
+    },
+    "verified_setup_contracts": {
+      "contracts": {
+        "fs_bi_crm.stat_create.copy_stat_view": {
+          "body_template": {
+            "statViewBaseInfo": {
+              "isChange": 0,
+              "viewID": "{{source_view_id}}"
+            }
+          },
+          "evidence": "generated/112-stat-chart-copy-contract-evidence.json; tests/test_112_stat_chart_copy_contract.py",
+          "notes": "企业 91863 明确授权在目录 BI_6a7c47e1280b910007abf988 中复制、修改并长期保留测试统计图。源图必须来自该目录，创建后必须通过 CRM、STAT 配置和目录列表三重回读。",
+          "readback_operation": "fs_bi_crm.stat_edit.get_stat_view",
+          "required_body_keys": [
+            "statViewBaseInfo"
+          ],
+          "resource_type": "stat_chart",
+          "response_id_paths": [
+            "Value.viewID"
+          ],
+          "retention_mode": "retain",
+          "secondary_readback_operation": "fs_bi_stat.stat_edit.get_chart_config",
+          "status": "verified_112",
+          "substitutions": {
+            "source_view_id": "必须来自授权目录 BI_6a7c47e1280b910007abf988，并具有成功的 CRM 与 STAT 配置回读；当前已验证源图为 BI_6a7c47e808bc2c00077317be"
+          }
+        },
+        "fs_bi_dev.lwt_manager.save": {
+          "body_template": null,
+          "derivation": {
+            "required_updates": [
+              "categoryID",
+              "viewName",
+              "description",
+              "saveType=0",
+              "queryLwtArg.id=\"\"",
+              "lwtArgs.lwtId=\"\""
+            ],
+            "source_discovery": "fs_bi_dev.lwt_manager.query_arg_detail"
+          },
+          "evidence": "generated/112-joined-table-create-evidence.json; tests/test_112_create_minimal_joined_table.py",
+          "notes": "拼表 body 必须从 112 实时来源拼表 queryArgDetail 派生（source_args），再更新 categoryID/viewName/description/saveType=0/queryLwtArg.id=\"\"/lwtArgs.lwtId=\"\"；禁止凭空构造 dataSources/relations。",
+          "readback_operation": "fs_bi_dev.lwt_manager.query_arg_detail",
+          "required_body_keys": [
+            "categoryID",
+            "viewName",
+            "description",
+            "saveType",
+            "queryLwtArg",
+            "lwtArgs",
+            "dataSources",
+            "relations"
+          ],
+          "resource_type": "joined_table",
+          "retention_mode": "retain",
+          "status": "verified_112"
+        },
+        "fs_bi_stat.agg_rule.add_new_agg_rule": {
+          "body_template": {
+            "aggField": {
+              "dbFieldName": "mc_exchange_rate",
+              "dbObjName": "object_1Lhg5__c",
+              "fieldId": "BI_a23fbc479ea07edab8c7fd5fddf90cc7",
+              "fieldName": "汇率",
+              "fieldType": "Number"
+            },
+            "aggFieldTime": {
+              "dbFieldName": "create_time",
+              "dbObjName": "object_1Lhg5__c",
+              "fieldId": "BI_f6b5bbe13117f9e4e2f96790b31115a9",
+              "fieldName": "创建时间",
+              "fieldType": "Date"
+            },
+            "aggObject": {
+              "dbFieldName": "mc_exchange_rate",
+              "dbObjName": "object_1Lhg5__c",
+              "fieldId": "BI_a23fbc479ea07edab8c7fd5fddf90cc7",
+              "fieldName": "汇率",
+              "fieldType": "Number"
+            },
+            "checkFieldAggregateType": 2,
+            "displayName": "{{namespace}}-{{metric_name}}",
+            "filterLists": [],
+            "initStatus": 1,
+            "schemaId": "BI_5be1351956fc11448cdde39e",
+            "schemaObjectName": "biz_sales_order",
+            "timeZone": "Asia/Shanghai"
+          },
+          "evidence": "generated/retained-test-assets.json; tests/test_112_create_retained_requirement_assets.py",
+          "readback_operation": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+          "required_body_keys": [
+            "schemaId",
+            "schemaObjectName",
+            "displayName",
+            "aggObject",
+            "aggField",
+            "aggFieldTime",
+            "filterLists",
+            "checkFieldAggregateType",
+            "initStatus",
+            "timeZone"
+          ],
+          "resource_type": "aggregate_metric",
+          "response_id_paths": [
+            "Value.fieldId"
+          ],
+          "retention_mode": "retain",
+          "status": "verified_112",
+          "substitutions": {
+            "metric_name": "用例语义名（如 rs-metric / mr-metric），必须含 namespace 前缀",
+            "namespace": "A22 计划 namespace 或派生"
+          }
+        },
+        "fs_bi_stat.custom_dimension.create_custom_dimension": {
+          "body_template": {
+            "customType": "enum_group",
+            "describeApiName": "AccountObj",
+            "description": "需求：统计图查看明细限制原因提示优化；A22 命名空间构造并长期保留",
+            "dimensionConfig": "{{dimension_config_json}}",
+            "dimensionName": "{{namespace}}-{{variant_name}}",
+            "sourceField": {
+              "apiName": "account_level",
+              "describeApiName": "AccountObj",
+              "fieldId": "BI_5bcebcddcab2980001ee22b3",
+              "type": "select_one"
+            },
+            "topologyDescribeId": "BI_5bcebcdc3060e20001e79977"
+          },
+          "evidence": "generated/112-custom-dimension-create-evidence.json; tests/test_112_create_retained_requirement_assets.py",
+          "readback_operation": "fs_bi_stat.custom_dimension.get_custom_dimension",
+          "required_body_keys": [
+            "topologyDescribeId",
+            "customType",
+            "dimensionName",
+            "dimensionConfig",
+            "describeApiName",
+            "sourceField"
+          ],
+          "resource_type": "custom_dimension",
+          "response_id_paths": [
+            "Value.fieldId"
+          ],
+          "retention_mode": "retain",
+          "status": "verified_112",
+          "substitutions": {
+            "dimension_config_json": "JSON 字符串，groups 的 values 必须来自 112 实时 get_ui_type 枚举（evidence 中 optionCode 为 1/2/3/other）",
+            "namespace": "A22 计划 namespace（形如 qa-a22-pilot-001-source-v1）或其派生 {namespace}/TC-<case_id>",
+            "variant_name": "用例语义名（如 baseline / variant-a），必须含 namespace 前缀"
+          }
+        },
+        "fs_bi_stat.stat_calc_field.save_calc_field": {
+          "body_template": {
+            "calcFieldId": "",
+            "fieldName": "{{namespace}}-{{calc_name}}",
+            "formatStr": "0.00",
+            "formula": "[{{base_agg_field_id}}_2]",
+            "ratioType": 0
+          },
+          "evidence": "tests/test_112_calculated_metric_lifecycle.py",
+          "readback_operation": "fs_bi_stat.stat_calc_field.query_calc_field",
+          "required_body_keys": [
+            "calcFieldId",
+            "fieldName",
+            "formula",
+            "formatStr",
+            "ratioType"
+          ],
+          "resource_type": "calculated_metric",
+          "response_id_paths": [
+            "Value.fieldID"
+          ],
+          "retention_mode": "retain",
+          "status": "verified_112",
+          "substitutions": {
+            "base_agg_field_id": "必须先 add_new_agg_rule 创建聚合指标，取其返回的 fieldId",
+            "calc_name": "计算指标语义名，必须含 namespace 前缀",
+            "namespace": "A22 计划 namespace 或派生"
+          }
+        }
+      },
+      "environment": "112",
+      "schema_version": "verified-setup-contracts/1.0",
+      "usage": "A14 setup 阶段必须逐字使用下列 body_template，只替换 {{PLACEHOLDER}} 标记；禁止自造字段或发送仅含 namespace/variant 的占位 body。",
+      "verified_from": "retained asset run 2026-08-11/08-13 (live create + readback)"
     }
   },
-  "bundle_hash": "sha256:7bfc84d9bfe47671aa4c6065cd1af251def4225d48d2f3b2949a81aa7f779d27",
+  "bundle_hash": "sha256:412aba81bd6d174c13cca37a1345b9c13211a55c9cdc927e56b207527c929261",
   "integrity": {
     "business_repository_write_allowed": false,
     "credentials_embedded": false,
@@ -1285,12 +1476,12 @@
   "output_contract": "automation-review/1.0",
   "profile_id": "A18-BE",
   "profile_version": "1.0.0",
-  "regeneration_round": "6",
+  "regeneration_round": "7",
   "schema_version": "multica-agent-input/1.0",
   "source_snapshot_id": "pilot-001-source-v1",
   "upstream_artifacts": [
     {
-      "artifact_hash": "sha256:9ba9e7f97f436f2e0cd5e596aaedaad81cd0443bd77d431f4e2c7152c0287d51",
+      "artifact_hash": "sha256:1c690517f5ffbbb42b23e0a0e4f00a622e7e992049f674525594cb9d25b2dc0e",
       "artifact_id": "a14-backend-automation-generation"
     },
     {

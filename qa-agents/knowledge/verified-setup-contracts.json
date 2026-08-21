@@ -1,12 +1,68 @@
 {
   "schema_version": "verified-setup-contracts/1.0",
   "environment": "112",
-  "verified_from": "retained asset run 2026-08-11/08-13 (live create + readback)",
-  "usage": "A14 setup 阶段必须逐字使用下列 body_template，只替换 {{PLACEHOLDER}} 标记；禁止自造字段或发送仅含 namespace/variant 的占位 body。",
+  "verified_from": "retained asset run 2026-08-11/08-13 and live 112 contract checks 2026-08-21",
+  "usage": "A14 setup 阶段必须逐字使用 contracts 中的 body_template；测试步骤必须服从 execution_contracts。只替换 {{PLACEHOLDER}} 标记，禁止自造字段或发送占位 body。",
+  "execution_contracts": {
+    "fs_bi_stat.stat_base.data_query_da655ba1": {
+      "contract_scope": "read_only_execution",
+      "status": "verified_112",
+      "evidence": "tests/test_112_result_filter_request_variants.py; tests/test_112_retained_result_filter.py; live rerun 2026-08-21 (8 passed)",
+      "scenario": "result_set_filter_detail_restriction",
+      "applies_when_contains": ["结果集筛选", "result_set_filter"],
+      "operation_constraints": {
+        "required_operation": "fs_bi_stat.stat_base.data_query_da655ba1",
+        "forbidden_substitute": "fs_bi_stat.stat_base.detail_data_query",
+        "locale_mapping": {"zh_CN": "zh-CN", "en": "en"}
+      },
+      "body_template": {
+        "id": "{{schema_id}}",
+        "isView": 0,
+        "measureFieldID": "{{field_id}}",
+        "measureFieldIDs": ["{{field_id}}"],
+        "pageNumber": 1,
+        "pageSize": 20,
+        "filterLists": [{"filters": [{
+          "displayNumber": 1,
+          "fieldId": "{{field_id}}",
+          "fieldID": "{{field_id}}",
+          "fieldName": "{{field_name}}",
+          "fieldType": "Number",
+          "operator": 1,
+          "operatorLabel": "equals",
+          "value1": "0",
+          "value2": "",
+          "aggDimType": "base_agg",
+          "filterConfig": {
+            "showAppointLevelSwitch": 0,
+            "switchStatus": 0,
+            "filterGroupType": 1,
+            "aggrType": "{{aggr_type}}",
+            "ratioType": "{{ratio_type}}"
+          }
+        }]}],
+        "timeZone": "Asia/Shanghai",
+        "lan": "{{locale}}"
+      },
+      "required_body_keys": ["id", "isView", "measureFieldID", "measureFieldIDs", "pageNumber", "pageSize", "filterLists", "timeZone", "lan"],
+      "response_observations": {
+        "error_code": "Error.Code",
+        "error_message": "Error.Message",
+        "business_failure_code": "Result.FailureCode"
+      },
+      "retained_fixtures": [
+        {"variant": "ordinary_metric", "schema_id": "BI_e672ff1046fb773b76bc2b56", "field_id": "BI_d9d45d8381de9e094fe1973acf408d92", "aggr_type": "2", "ratio_type": "0"},
+        {"variant": "aggregate_metric", "schema_id": "BI_e672ff1046fb773b76bc2b56", "field_id": "BI_6a7ad48b198ee300073fef47", "aggr_type": "2", "ratio_type": "0"},
+        {"variant": "calculated_metric", "schema_id": "BI_e672ff1046fb773b76bc2b56", "field_id": "BI_6a7ad564198ee300073fef5f", "aggr_type": "7", "ratio_type": "0"},
+        {"variant": "period_over_period_metric", "schema_id": "BI_e672ff1046fb773b76bc2b56", "field_id": "BI_d9d45d8381de9e094fe1973acf408d92", "aggr_type": "2", "ratio_type": "1"}
+      ]
+    }
+  },
   "contracts": {
     "fs_bi_stat.custom_dimension.create_custom_dimension": {
       "resource_type": "custom_dimension",
       "status": "verified_112",
+      "retention_mode": "retain",
       "evidence": "generated/112-custom-dimension-create-evidence.json; tests/test_112_create_retained_requirement_assets.py",
       "body_template": {
         "topologyDescribeId": "BI_5bcebcdc3060e20001e79977",
@@ -28,6 +84,7 @@
         "dimension_config_json": "JSON 字符串，groups 的 values 必须来自 112 实时 get_ui_type 枚举（evidence 中 optionCode 为 1/2/3/other）"
       },
       "readback_operation": "fs_bi_stat.custom_dimension.get_custom_dimension",
+      "response_id_paths": ["Value.fieldId"],
       "required_body_keys": [
         "topologyDescribeId",
         "customType",
@@ -40,6 +97,7 @@
     "fs_bi_stat.agg_rule.add_new_agg_rule": {
       "resource_type": "aggregate_metric",
       "status": "verified_112",
+      "retention_mode": "retain",
       "evidence": "generated/retained-test-assets.json; tests/test_112_create_retained_requirement_assets.py",
       "body_template": {
         "schemaId": "BI_5be1351956fc11448cdde39e",
@@ -76,6 +134,7 @@
         "metric_name": "用例语义名（如 rs-metric / mr-metric），必须含 namespace 前缀"
       },
       "readback_operation": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+      "response_id_paths": ["Value.fieldId"],
       "required_body_keys": [
         "schemaId",
         "schemaObjectName",
@@ -92,6 +151,7 @@
     "fs_bi_stat.stat_calc_field.save_calc_field": {
       "resource_type": "calculated_metric",
       "status": "verified_112",
+      "retention_mode": "retain",
       "evidence": "tests/test_112_calculated_metric_lifecycle.py",
       "body_template": {
         "calcFieldId": "",
@@ -106,6 +166,7 @@
         "base_agg_field_id": "必须先 add_new_agg_rule 创建聚合指标，取其返回的 fieldId"
       },
       "readback_operation": "fs_bi_stat.stat_calc_field.query_calc_field",
+      "response_id_paths": ["Value.fieldID"],
       "required_body_keys": [
         "calcFieldId",
         "fieldName",
@@ -114,9 +175,30 @@
         "ratioType"
       ]
     },
+    "fs_bi_crm.stat_create.copy_stat_view": {
+      "resource_type": "stat_chart",
+      "status": "verified_112",
+      "evidence": "generated/112-stat-chart-copy-contract-evidence.json; tests/test_112_stat_chart_copy_contract.py",
+      "notes": "企业 91863 明确授权在目录 BI_6a7c47e1280b910007abf988 中复制、修改并长期保留测试统计图。源图必须来自该目录，创建后必须通过 CRM、STAT 配置和目录列表三重回读。",
+      "retention_mode": "retain",
+      "body_template": {
+        "statViewBaseInfo": {
+          "viewID": "{{source_view_id}}",
+          "isChange": 0
+        }
+      },
+      "substitutions": {
+        "source_view_id": "必须来自授权目录 BI_6a7c47e1280b910007abf988，并具有成功的 CRM 与 STAT 配置回读；当前已验证源图为 BI_6a7c47e808bc2c00077317be"
+      },
+      "readback_operation": "fs_bi_crm.stat_edit.get_stat_view",
+      "secondary_readback_operation": "fs_bi_stat.stat_edit.get_chart_config",
+      "response_id_paths": ["Value.viewID"],
+      "required_body_keys": ["statViewBaseInfo"]
+    },
     "fs_bi_dev.lwt_manager.save": {
       "resource_type": "joined_table",
       "status": "verified_112",
+      "retention_mode": "retain",
       "evidence": "generated/112-joined-table-create-evidence.json; tests/test_112_create_minimal_joined_table.py",
       "notes": "拼表 body 必须从 112 实时来源拼表 queryArgDetail 派生（source_args），再更新 categoryID/viewName/description/saveType=0/queryLwtArg.id=\"\"/lwtArgs.lwtId=\"\"；禁止凭空构造 dataSources/relations。",
       "body_template": null,

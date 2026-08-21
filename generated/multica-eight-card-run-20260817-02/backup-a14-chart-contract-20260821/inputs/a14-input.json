@@ -1,0 +1,2478 @@
+{
+  "allowed_inputs": {
+    "api_catalog": {
+      "operation_count": 162,
+      "operations": [
+        {
+          "method": "POST",
+          "operationId": "bi.query_dynamic_type_info_and_options",
+          "path": "/FHH/EM1HNCRM/API/v1/object/trans_workbench/service/queryDynamicTypeInfoAndOptions"
+        },
+        {
+          "method": "POST",
+          "operationId": "bi.sub_query_optimize",
+          "path": "/FHH/EM1HNCRM/API/v1/object/trans_workbench/service/sub_query_optimize"
+        },
+        {
+          "method": "POST",
+          "operationId": "bi.query_optimize",
+          "path": "/FHH/EM1HNCRM/API/v1/object/trans_workbench/service/queryOptimize"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_dev.lwt_manager.save",
+          "path": "/FHH/EM1HBIDEV/lwt/m/save"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_dev.lwt_manager.query_arg_detail",
+          "path": "/FHH/EM1HBIDEV/lwt/m/queryArgDetail"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_dev.lwt_manager.query_lwt_arg",
+          "path": "/FHH/EM1HBIDEV/lwt/m/queryLwtArg"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_dev.lwt_manager.get_data_source_fields_detail",
+          "path": "/FHH/EM1HBIDEV/lwt/m/getDataSourceFieldsDetail"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_crm.stat_create.create_stat_view",
+          "path": "/FHH/EM1HBICRM/statCreateController/createStatView"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_crm.stat_create.copy_stat_view",
+          "path": "/FHH/EM1HBICRM/statCreateController/copyStatView"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_crm.stat_edit.get_stat_view",
+          "path": "/FHH/EM1HBICRM/statEditController/getStatView"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_crm.rpt_view_display.move_rpt_view",
+          "path": "/FHH/EM1HBICRM/rptViewDisplayController/moveRptView"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+          "path": "/FHH/EM1HBICRM/rptViewDisplayController/reNameRptView"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.custom_dimension.find_custom_dimensions",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.custom_dimension.find_all_custom_dimension_objects",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/objects"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.custom_dimension.get_custom_dimension",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/getById"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.custom_dimension.create_custom_dimension",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/create"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.custom_dimension.update_custom_dimension",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/update"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.custom_dimension.delete_custom_dimension",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/delete"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.custom_dimension.disable_custom_dimension",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/disable"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.custom_dimension.enable_custom_dimension",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/enable"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.custom_dimension.copy_custom_dimension",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schema/dimensions/copy"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.describe_query.detail",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/describes/detail"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.describe_query.list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/describes/list"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.describe_query.relations",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/describes/relations"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_currency_query.get_multi_currency_list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/multiCurrency/getMultiCurrencyList"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_currency_query.save_config",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/multiCurrency/config/save"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_currency_query.get_config",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/multiCurrency/config/get"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.schema_query.detail",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schemas/detail"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.schema_query.list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/schemas/list"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_business_view_data.query_report_data",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/business/data/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_data_diff.agg_data_diff",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggData/diff"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.batch_stop_agg_rule",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleList/batchStopAggRule"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.batch_enable_agg_rule",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleList/batchEnableAggRule"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.batch_modify_agg_time_zone",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleList/batchModifyAggTimeZone"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.query_unused_field_list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleList/unusedQuery"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.update_agg_data",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/updateAggData"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.query_all_object_describe_api_list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/allObjectDescribeApiList/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.query_agg_rule_list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleList/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.query_agg_object_list_by_schema_object_name",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggObjectListBySchemaObjectName/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.query_agg_conditions_by_agg_object",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggConditionsByAggObject/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.add_new_agg_rule",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/newAggRule/add"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.copy_detail_agg_rule",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/newAggRule/detail/copy"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.copy_list_agg_rule",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/newAggRule/list/copy"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleByFieldId/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.update_agg_rule",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRule/update"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.update_agg_rule_status",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleStatus/update"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.verify_agg_rule_limit_count",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRuleLimitCount/verify"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.delete_agg_rule",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRule/delete"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.get_status",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/aggRule/getStatus"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.agg_rule.get_permission",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/aggRule/getPermission"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.bill_board.query_bill_measure_data",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/billBoard/measureData/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.bill_board.query_bill_board_detail",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/billBoard/detail/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.biz_config.save_config",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/config/saveConfig"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.biz_config.get_config",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/config/getConfig"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.biz_config.get_user_auth",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/config/getUserAuth"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.goal_rule.query_goal_object_list_by_schema_object_name",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/goalObjectListBySchemaObjectName/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.goal_rule.query_agg_conditions_by_agg_object",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/aggConditionsByAggObject/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.goal_rule.query_level_fields_by_check_object_name",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/checkLevel/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.goal_rule.query_dept_relation",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/deptRelation/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.goal_rule.get_week_day",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/getWeekDay"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.goal_rule.query_area",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/goalRule/areaInfo/query"
+        },
+        {
+          "method": "GET",
+          "operationId": "fs_bi_stat.index.index",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat"
+        },
+        {
+          "method": "GET",
+          "operationId": "fs_bi_stat.index.ws_test",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/ws"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.license_service.query_tenant_license",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/license/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.metric_ai_visibility.update",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/metricAiVisibility/update"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.metric_lifecycle.batch_enable",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/metricLifecycle/batchEnable"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.metric_lifecycle.batch_disable",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/metricLifecycle/batchDisable"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_dim_goal_rule.query_goal_object_list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/aggObject/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_dim_goal_rule.get_udf_describe",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/getUdfDescribe"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_dim_goal_rule.query_agg_conditions_by_agg_object",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/aggConditionsByAggObject/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_dim_goal_rule.query_dim_conditions_by_agg_object",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/dimObject/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_dim_goal_rule.query_dim_fields",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/dimField/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_dim_goal_rule.query_dept_relation",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/deptRelation/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_dim_goal_rule.get_week_day",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/getWeekDay"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.multi_dim_goal_rule.query_area",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/multiDim/goalRule/areaInfo/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.rpt_query.query_report_data",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/rpt/data/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.rpt_query.query_report_data_byte_array",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/rpt/data/queryWithKryo"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.rpt_query.query_filter_ch_sql",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/rpt/filter/queryFilterChSql"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.rpt_query.get_reconciliation_sql",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/rpt/reconciliation/createSql"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.search_query_info_easy_stat.query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/searchQueryInfo/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_area.query_region_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/area/region/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_async.send_query_stat_request",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/async/sendQueryStatRequest"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_async.load_query_report_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/async/loadQueryStatResult"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_async.send_query_stat_merge_request",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/async/sendQueryStatMergeRequest"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_async.load_query_report_merge_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/async/loadQueryStatMergeResult"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_async.data_query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/async/detail/data/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_async.load_query_detail_report_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/async/detail/loadQueryStatResult"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.data_batch_query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/batchQuery"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.data_query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.get_calc_agg_sub_fields",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/calcagg/subfields"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.data_query_da655ba1",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.detail_data_query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/detailDataQuery"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.detail_simple_report_data_query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/detailSimpleReportDataQuery"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.save_query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/saveQuery"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.save_detail_config",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/saveDetailConfig"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.delete_personal_config",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/personalConfig/delete"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.get_schema_drill_fields_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schemaDrillFields/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.preview_schema_drill_fields_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/previewSchemaDrillFields/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.backstage_data_query_and_upload",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/detail/data/queryAndUpload"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.query_metadata_feature",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/queryMetadataFeature"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.query_view_restructure_feature",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/queryViewRestructureFeature"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.get_appoint_level_data_info",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/getAppointLevelDataInfo"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.query_stat_data_and_upload_by_page",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/queryAndUploadByPage"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.data_query_by_paging",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/dataQueryByPaging"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.save_user_segment",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/userSegment/save"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.query_user_segment",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/userSegment/get"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.update_user_segment",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/userSegment/update"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_base.chart_query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chart/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_calc_field.grammar_check",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/calcField/grammarCheck"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_calc_field.save_calc_field",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/calcField/save"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_calc_field.delete_calc_field",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/calcField/delete"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.get_obj_relation_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/objRelation/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.get_filters_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getFiltersResult"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.batch_get_filters_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/batchGetFiltersResult"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.get_local_filter",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getLocalFilter"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.get_chart_config",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.get_obj_relation_by_obj_name_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/objRelationByObjName/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.update_all_dim_hide_status",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/allDimHideStatus/update"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.get_all_dim_list_by_id_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/allDimListById/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.creat_stat_view",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/creatStatView"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.update_stat_view",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/updateStatView"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit.get_insight_filter_list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getInsightFilterList"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit_simple.get_all_dim_list_by_id_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/simple/getAllAgg/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit_simple.data_query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/simple/data/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_edit_simple.data_query_account_level",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/simple/query/accountlevel"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_metadata_query_test.query_test",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/query/test"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_ratio.query_ratio_filter_type",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/ratio/ratioFilterType/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_ratio.confirmation_ratio_date",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/ratio/confirmationDate/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.query_schema_list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schemaList/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.query_all_object_list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/allObjectList/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.query_object_list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/objectList/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.add_new_schema",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/newSchema/add"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.add_new_schema_sql",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/newSchema/sql"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.update_schema_status",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schemaStatus/update"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.batch_update_schema_status",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schemaStatus/batchUpdate"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.update_schema",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schema/update"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.verify_schema_limit_count",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schemaLimitCount/verify"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.delete_schema",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/schema/delete"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.get_all_schema",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/allSchema/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.query_goal_rule_type",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/goalType/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/fieldsBySchemaId/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.validate_view",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/validateView"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.query_field_detail",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/fieldDetail/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.query_field_topology",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/fieldTopology/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.get_insight_lookup_relation_field_list",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/insight/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_schema.sync_entry",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/schema/syncEntry"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_template.get_obj_relation_result",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.stat_template.view_to_template",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/template/viewToTemplate"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.sync_pre_schema.sync_pre_schemas",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/preschema/sync"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.sync_pre_schema.execute_bi_system_pg",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/bisystem/sql/execute"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.sync_pre_schema.execute_bi_pg",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/bi/pg/sql/execute"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.sync_pre_schema.brush_customer_schema_for_area",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/bi/pg/customerschemaforarea/brush"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.sync_pre_schema.brush_customer_schema74203",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/bi/pg/brushCustomerSchema74203/brush"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.sync_pre_schema.add_pre_schemas",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/stat/PreSchema/add"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.view_data_query_api.sync_chart_query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/chart/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.view_data_query_api.query",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/data/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.view_data_query_api.get_chart_config",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/chartConfig/query"
+        },
+        {
+          "method": "GET",
+          "operationId": "fs_bi_stat.view_data_query_api.clear_all_view_cache",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/clearAllViewCache"
+        },
+        {
+          "method": "GET",
+          "operationId": "fs_bi_stat.view_data_query_api.clear_view_cache_by_key",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/clearCache/{ei}/{viewId}"
+        },
+        {
+          "method": "GET",
+          "operationId": "fs_bi_stat.view_data_query_api.notice_change",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/noticeChange/{ei}/{viewId}"
+        },
+        {
+          "method": "POST",
+          "operationId": "fs_bi_stat.view_data_query_api.get_perm",
+          "path": "/FHH/EM1HBISTAT/fs-bi-stat/api/v1/stat/perm/query"
+        },
+        {
+          "method": "POST",
+          "operationId": "pass_api.set_app_language",
+          "path": "/FHH/EM1HLGN/General/SetAppLanguage"
+        }
+      ],
+      "schema_version": "http-operation-catalog/1.0",
+      "source": "idl/http"
+    },
+    "automation_target": {
+      "command_allowlist": [
+        "pytest"
+      ],
+      "forbidden_calls": [
+        "eval",
+        "exec",
+        "open",
+        "compile",
+        "__import__"
+      ],
+      "forbidden_python_imports": [
+        "ctypes",
+        "os",
+        "pathlib",
+        "shutil",
+        "socket",
+        "subprocess"
+      ],
+      "layer_profile": {
+        "agent_id": "A14",
+        "candidate_root": "generated/backend",
+        "framework": "pytest",
+        "generator_profile": "A14/1.0.0",
+        "manifest_id": "manifest-a14-backend",
+        "review_profile": "A18-BE/1.0.0"
+      },
+      "targets": [
+        {
+          "access_class": "approved_automation_repository",
+          "allowed_candidate_roots": [
+            "generated/backend",
+            "generated/frontend",
+            "generated/contract",
+            "generated/e2e",
+            "generated/non_functional"
+          ],
+          "frameworks": [
+            "pytest",
+            "playwright"
+          ],
+          "languages": [
+            "python"
+          ],
+          "repository_id": "pytest_for_bi"
+        }
+      ]
+    },
+    "cases": [
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除命名空间内创建的统计图和自定义维度。",
+          "恢复测试租户语言设置。",
+          "确认未残留共享字段或数据范围配置。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供错误码平台联调环境、测试框架及可执行命令。",
+            "需用真实接口确认下钻字段命中时仍展示 G01 批准模板。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "三个变体均拒绝查看明细并返回错误码 s307011534。",
+            "expected_value": "s307011534",
+            "expected_values": null,
+            "id": "EXP-BE-001-01",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.code",
+            "oracle": {
+              "expected_value": "s307011534",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.code",
+              "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "zh_CN 运行时消息精确为批准模板。",
+            "expected_value": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细",
+            "expected_values": null,
+            "id": "EXP-BE-001-02",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.zh_CN",
+            "oracle": {
+              "expected_value": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.message.zh_CN",
+              "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          },
+          {
+            "description": "en 运行时消息精确为批准模板。",
+            "expected_value": "Custom dimension fields are used in the dimension or data range. Details view is not supported.",
+            "expected_values": null,
+            "id": "EXP-BE-001-03",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.en",
+            "oracle": {
+              "expected_value": "Custom dimension fields are used in the dimension or data range. Details view is not supported.",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.message.en",
+              "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-CUSTOM-DIMENSION",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-BE-001-BACKEND",
+        "intent_ids": [
+          "INT-001",
+          "INT-002"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-001",
+        "preconditions": [
+          "真实测试接口连接错误码平台联调环境，不以 G01 配置本身代替运行时 Oracle。",
+          "测试租户支持创建统计图并触发查看明细。",
+          "自定义维度字段可分别配置在维度、数据范围和下钻字段。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001",
+          "REQ-002",
+          "TF-001",
+          "RULE-CUSTOM-DIMENSION",
+          "RULE-I18N-CUSTOM-DIMENSION"
+        ],
+        "steps": [
+          "在命名空间内创建基线统计图并确认查看明细请求成功。",
+          "对变体 A、B、C 分别以 zh_CN 和 en 调用真实查看明细接口。",
+          "核对三类位置沿用现有检测顺序，且未返回统一通用提示。"
+        ],
+        "test_data": {
+          "datasets": [
+            "基线统计图：普通维度、普通数据范围、普通下钻字段，可成功查看明细",
+            "变体 A：仅维度使用自定义维度字段",
+            "变体 B：仅数据范围使用自定义维度字段",
+            "变体 C：仅下钻字段使用自定义维度字段"
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_001",
+          "resource_requirements": [
+            {
+              "resource_id_variable": "baseline_chart_view_id",
+              "resource_key": "baseline_chart",
+              "resource_type": "stat_chart",
+              "setup_operation": "fs_bi_crm.stat_create.copy_stat_view"
+            },
+            {
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_id",
+              "resource_key": "ordinary_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "required_body_keys": [
+                "topologyDescribeId",
+                "customType",
+                "dimensionName",
+                "dimensionConfig",
+                "describeApiName",
+                "sourceField"
+              ],
+              "resource_id_variable": "custom_dimension_id",
+              "resource_key": "custom_dimension_fixture",
+              "resource_type": "custom_dimension",
+              "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "variant_chart_view_ids",
+              "resource_key": "variant_chart_set",
+              "resource_type": "stat_chart",
+              "setup_operation": "fs_bi_crm.stat_create.copy_stat_view"
+            }
+          ]
+        },
+        "title": "自定义维度三类位置的专用错误与双语提示"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除命名空间内四类指标和统计图配置。",
+          "恢复动态字段名称和租户语言设置。",
+          "删除结果集筛选测试数据。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供错误码平台占位符替换行为的联调证据。",
+            "未提供可执行测试框架及多指标参数序列化观测工具。"
+          ],
+          "multiple_reason_policy": "仅断言一个实际命中的合法 code-message 对，不固定业务原因优先级。"
+        },
+        "expected": [
+          {
+            "description": "所有名称可解析场景均返回 s307011535。",
+            "expected_value": "s307011535",
+            "expected_values": null,
+            "id": "EXP-BE-002-01",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.code",
+            "oracle": {
+              "expected_value": "s307011535",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.code",
+              "source_ref": "RULE-I18N-RESULT-SET",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "单指标 zh_CN 消息代入销售额（fieldName 分支）。",
+            "expected_value": "统计图数据范围中设置了「销售额」按结果集筛选，不支持查看明细",
+            "expected_values": null,
+            "id": "EXP-BE-002-02",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.zh_CN",
+            "oracle": {
+              "expected_value": "统计图数据范围中设置了「销售额」按结果集筛选，不支持查看明细",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.message.zh_CN",
+              "source_ref": "RULE-I18N-RESULT-SET",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "单指标 en 消息代入动态名称 Revenue（前两级为空的独立数据行 RS-EN-03）。",
+            "expected_value": "The chart data range uses \"Revenue\" with result set filtering. Details view is not supported.",
+            "expected_values": null,
+            "id": "EXP-BE-002-03",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.en",
+            "oracle": {
+              "expected_value": "The chart data range uses \"Revenue\" with result set filtering. Details view is not supported.",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.message.en",
+              "source_ref": "RULE-I18N-RESULT-SET",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "名称解析严格按批准顺序取得当前语言实际展示名，zh_CN 与 en 分别断言三级分支。",
+            "expected_value": {
+              "en": {
+                "Filter.fieldName_branch": [
+                  "销售额"
+                ],
+                "current_locale_dynamic_display_name_branch": [
+                  "Revenue"
+                ],
+                "field_metadata_by_fieldId_branch": [
+                  "Order Count"
+                ]
+              },
+              "zh_CN": {
+                "Filter.fieldName_branch": [
+                  "销售额"
+                ],
+                "current_locale_dynamic_display_name_branch": [
+                  "毛利率"
+                ],
+                "field_metadata_by_fieldId_branch": [
+                  "订单数"
+                ]
+              }
+            },
+            "expected_values": null,
+            "id": "EXP-BE-002-04",
+            "matcher": "equals",
+            "observation_point": "backend_exception.metric_name_parameters",
+            "oracle": {
+              "expected_value": {
+                "en": {
+                  "Filter.fieldName_branch": [
+                    "销售额"
+                  ],
+                  "current_locale_dynamic_display_name_branch": [
+                    "Revenue"
+                  ],
+                  "field_metadata_by_fieldId_branch": [
+                    "Order Count"
+                  ]
+                },
+                "zh_CN": {
+                  "Filter.fieldName_branch": [
+                    "销售额"
+                  ],
+                  "current_locale_dynamic_display_name_branch": [
+                    "毛利率"
+                  ],
+                  "field_metadata_by_fieldId_branch": [
+                    "订单数"
+                  ]
+                }
+              },
+              "matcher": "equals",
+              "observation_point": "backend_exception.metric_name_parameters",
+              "source_ref": "RULE-SINGLE-METRIC",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "多指标参数包含全部实际展示名。",
+            "expected_value": {
+              "en": [
+                "Revenue",
+                "Gross Margin"
+              ],
+              "zh_CN": [
+                "销售额",
+                "毛利率"
+              ]
+            },
+            "expected_values": null,
+            "id": "EXP-BE-002-05",
+            "matcher": "equals",
+            "observation_point": "backend_exception.metric_name_parameters",
+            "oracle": {
+              "expected_value": {
+                "en": [
+                  "Revenue",
+                  "Gross Margin"
+                ],
+                "zh_CN": [
+                  "销售额",
+                  "毛利率"
+                ]
+              },
+              "matcher": "equals",
+              "observation_point": "backend_exception.metric_name_parameters",
+              "source_ref": "RULE-SINGLE-METRIC",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "deterministic"
+          },
+          {
+            "description": "多指标 zh_CN 解码消息展示全部指标名并只使用一个模板。",
+            "expected_value": "统计图数据范围中设置了「销售额、毛利率」按结果集筛选，不支持查看明细",
+            "expected_values": null,
+            "id": "EXP-BE-002-06",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.zh_CN",
+            "oracle": {
+              "expected_value": "统计图数据范围中设置了「销售额、毛利率」按结果集筛选，不支持查看明细",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.message.zh_CN",
+              "source_ref": "RULE-I18N-RESULT-SET",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "多指标 en 解码消息展示全部名称，使用普通双引号且不含字面反斜杠。",
+            "expected_value": "The chart data range uses \"Revenue\", \"Gross Margin\" with result set filtering. Details view is not supported.",
+            "expected_values": null,
+            "id": "EXP-BE-002-07",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.en",
+            "oracle": {
+              "expected_value": "The chart data range uses \"Revenue\", \"Gross Margin\" with result set filtering. Details view is not supported.",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.message.en",
+              "source_ref": "RULE-I18N-RESULT-SET",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-RESULT-SET",
+            "type": "deterministic"
+          },
+          {
+            "description": "空指标名不生成专用消息；由于未冻结实际降级响应，执行时人工确认业务响应。",
+            "expected_value": "preserve_actual_business_response_without_empty_metric_name_message",
+            "expected_values": null,
+            "id": "EXP-BE-002-08",
+            "matcher": "manual_confirmation",
+            "observation_point": "detail_api.empty_metric_name_response",
+            "oracle": {
+              "expected_value": "preserve_actual_business_response_without_empty_metric_name_message",
+              "matcher": "manual_confirmation",
+              "observation_point": "detail_api.empty_metric_name_response",
+              "source_ref": "RULE-SINGLE-METRIC",
+              "type": "human_review"
+            },
+            "source_ref": "RULE-SINGLE-METRIC",
+            "type": "human_review"
+          }
+        ],
+        "id": "TC-BE-002-BACKEND",
+        "intent_ids": [
+          "INT-001",
+          "INT-003"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-002",
+        "preconditions": [
+          "真实查看明细接口可观测错误码、解码消息和业务异常参数数组。",
+          "测试租户已启用 zh_CN 与 en 动态字段名称。",
+          "普通指标、聚合指标、计算指标和同环比指标均可配置按结果集筛选。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-003",
+          "TF-003",
+          "TF-004",
+          "RULE-SINGLE-METRIC",
+          "RULE-I18N-RESULT-SET"
+        ],
+        "steps": [
+          "分别为四种指标类型创建按结果集筛选的统计图，zh_CN 与 en 各使用独立数据行。",
+          "按 Filter.fieldName、fieldId 字段元数据、当前语言动态显示名的顺序，为每个 locale 分别构造三级名称来源分支；英文动态名称场景使用前两级均为空的独立数据行。",
+          "分别以 zh_CN 和 en 调用真实接口并记录错误码、解码消息和参数数组。",
+          "对多指标配置核对全部实际展示名进入参数并渲染在唯一批准模板中。",
+          "对空名称夹具确认不生成空指标名专用消息，人工确认实际业务响应。"
+        ],
+        "test_data": {
+          "datasets": [
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "销售额"
+              ],
+              "fieldName": "销售额",
+              "field_metadata_name": null,
+              "id": "RS-ZH-01",
+              "locale": "zh_CN",
+              "resolution_branch": "Filter.fieldName",
+              "type": "普通指标"
+            },
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "订单数"
+              ],
+              "fieldName": null,
+              "field_metadata_name": "订单数",
+              "id": "RS-ZH-02",
+              "locale": "zh_CN",
+              "resolution_branch": "field_metadata_by_fieldId",
+              "type": "聚合指标"
+            },
+            {
+              "dynamic_display_name": "毛利率",
+              "expected_metric_name_parameters": [
+                "毛利率"
+              ],
+              "fieldName": null,
+              "field_metadata_name": null,
+              "id": "RS-ZH-03",
+              "locale": "zh_CN",
+              "resolution_branch": "current_locale_dynamic_display_name",
+              "type": "计算指标"
+            },
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "同比增长率"
+              ],
+              "fieldName": "同比增长率",
+              "field_metadata_name": null,
+              "id": "RS-ZH-04",
+              "locale": "zh_CN",
+              "resolution_branch": "Filter.fieldName",
+              "type": "同环比指标"
+            },
+            {
+              "expected_metric_name_parameters": [
+                "销售额",
+                "毛利率"
+              ],
+              "id": "RS-ZH-05",
+              "locale": "zh_CN",
+              "metric_names": {
+                "zh_CN": [
+                  "销售额",
+                  "毛利率"
+                ]
+              },
+              "type": "多指标"
+            },
+            {
+              "dynamic_display_name": "",
+              "expected_metric_name_parameters": null,
+              "fieldName": null,
+              "field_metadata_name": null,
+              "id": "RS-ZH-06",
+              "locale": "zh_CN",
+              "type": "空名称"
+            },
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "销售额"
+              ],
+              "fieldName": "销售额",
+              "field_metadata_name": null,
+              "id": "RS-EN-01",
+              "locale": "en",
+              "resolution_branch": "Filter.fieldName",
+              "type": "普通指标"
+            },
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "Order Count"
+              ],
+              "fieldName": null,
+              "field_metadata_name": "Order Count",
+              "id": "RS-EN-02",
+              "locale": "en",
+              "resolution_branch": "field_metadata_by_fieldId",
+              "type": "聚合指标"
+            },
+            {
+              "dynamic_display_name": "Revenue",
+              "expected_metric_name_parameters": [
+                "Revenue"
+              ],
+              "fieldName": null,
+              "field_metadata_name": null,
+              "id": "RS-EN-03",
+              "locale": "en",
+              "resolution_branch": "current_locale_dynamic_display_name",
+              "type": "计算指标"
+            },
+            {
+              "dynamic_display_name": null,
+              "expected_metric_name_parameters": [
+                "同比增长率"
+              ],
+              "fieldName": "同比增长率",
+              "field_metadata_name": null,
+              "id": "RS-EN-04",
+              "locale": "en",
+              "resolution_branch": "Filter.fieldName",
+              "type": "同环比指标"
+            },
+            {
+              "expected_metric_name_parameters": [
+                "Revenue",
+                "Gross Margin"
+              ],
+              "id": "RS-EN-05",
+              "locale": "en",
+              "metric_names": {
+                "en": [
+                  "Revenue",
+                  "Gross Margin"
+                ]
+              },
+              "type": "多指标"
+            },
+            {
+              "dynamic_display_name": "",
+              "expected_metric_name_parameters": null,
+              "fieldName": null,
+              "field_metadata_name": null,
+              "id": "RS-EN-06",
+              "locale": "en",
+              "type": "空名称"
+            }
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_002",
+          "resource_requirements": [
+            {
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_ids",
+              "resource_key": "aggregate_metric_resolution_set",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "required_body_keys": [
+                "calcFieldId",
+                "fieldName",
+                "formula",
+                "formatStr",
+                "ratioType"
+              ],
+              "resource_id_variable": "calculated_metric_id",
+              "resource_key": "calculated_metric_dynamic_name_pair",
+              "resource_type": "calculated_metric",
+              "setup_operation": "fs_bi_stat.stat_calc_field.save_calc_field"
+            },
+            {
+              "high_risk_write": true,
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_id",
+              "resource_key": "comparison_metric_pair",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "resource_id_variable": "chart_view_id",
+              "resource_key": "result_filter_chart_set",
+              "resource_type": "stat_chart",
+              "setup_operation": "fs_bi_crm.stat_create.copy_stat_view"
+            }
+          ]
+        },
+        "title": "结果集筛选指标名称解析、全部名称参数与本地化"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除测试指标及关系拓扑。",
+          "撤销关系转换故障注入。",
+          "核对共享对象关系未被修改。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供多关联关系转换失败的可控故障注入机制。",
+            "需真实接口回归矩阵各分支。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "4/3、3/4、3/3 每行均返回 s307011536。",
+            "expected_value": {
+              "MR-3-3": "s307011536",
+              "MR-3-4": "s307011536",
+              "MR-4-3": "s307011536"
+            },
+            "expected_values": null,
+            "id": "EXP-BE-003-01",
+            "matcher": "equals",
+            "observation_point": "detail_api.matrix_rows.error_code",
+            "oracle": {
+              "expected_value": {
+                "MR-3-3": "s307011536",
+                "MR-3-4": "s307011536",
+                "MR-4-3": "s307011536"
+              },
+              "matcher": "equals",
+              "observation_point": "detail_api.matrix_rows.error_code",
+              "source_ref": "RULE-I18N-MULTI-RELATION",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "zh_CN 消息精确匹配批准模板。",
+            "expected_value": "基于多关联关系创建的统计指标，暂不支持查看明细",
+            "expected_values": null,
+            "id": "EXP-BE-003-02",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.zh_CN",
+            "oracle": {
+              "expected_value": "基于多关联关系创建的统计指标，暂不支持查看明细",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.message.zh_CN",
+              "source_ref": "RULE-I18N-MULTI-RELATION",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "en 消息精确匹配批准模板。",
+            "expected_value": "Metrics created based on multiple relationships do not support Details view.",
+            "expected_values": null,
+            "id": "EXP-BE-003-03",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.en",
+            "oracle": {
+              "expected_value": "Metrics created based on multiple relationships do not support Details view.",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.message.en",
+              "source_ref": "RULE-I18N-MULTI-RELATION",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-MULTI-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "原本成功的关系仍成功并保留分页及结果结构。",
+            "expected_value": "successful_existing_relation_resolution_with_unchanged_paging_and_result_structure",
+            "expected_values": null,
+            "id": "EXP-BE-003-04",
+            "matcher": "equals_baseline",
+            "observation_point": "detail_api.success_response",
+            "oracle": {
+              "expected_value": "successful_existing_relation_resolution_with_unchanged_paging_and_result_structure",
+              "matcher": "equals_baseline",
+              "observation_point": "detail_api.success_response",
+              "source_ref": "RULE-MULTI-RELATION",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-MULTI-RELATION",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-BE-003-BACKEND",
+        "intent_ids": [
+          "INT-001",
+          "INT-004"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-003",
+        "preconditions": [
+          "测试环境可构造 4/3、3/4、3/3 对象与关系拓扑。",
+          "可控故障点能区分已知对象关系不支持异常与成功关系转换。",
+          "真实查看明细接口可观测最终错误码和消息。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-004",
+          "TF-005",
+          "TF-006",
+          "RULE-MULTI-RELATION",
+          "RULE-I18N-MULTI-RELATION"
+        ],
+        "steps": [
+          "逐行建立矩阵拓扑并记录关系标识。",
+          "对前三行注入已知对象关系不支持异常并以 zh_CN、en 调用接口。",
+          "对 MR-SUCCESS 调用相同接口并记录成功状态、分页和结果结构。",
+          "确认专用原因只在原关系转换失败后替换。"
+        ],
+        "test_data": {
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "matrix": [
+            {
+              "conversion_result": "known_unsupported",
+              "expected_code": "s307011536",
+              "id": "MR-4-3",
+              "object_count": 4,
+              "relation_count": 3
+            },
+            {
+              "conversion_result": "known_unsupported",
+              "expected_code": "s307011536",
+              "id": "MR-3-4",
+              "object_count": 3,
+              "relation_count": 4
+            },
+            {
+              "conversion_result": "known_unsupported",
+              "expected_code": "s307011536",
+              "id": "MR-3-3",
+              "object_count": 3,
+              "relation_count": 3
+            },
+            {
+              "conversion_result": "success",
+              "expected_status": "success",
+              "id": "MR-SUCCESS",
+              "object_count": 3,
+              "relation_count": 2
+            }
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_003",
+          "resource_requirements": [
+            {
+              "high_risk_write": true,
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_ids",
+              "resource_key": "multi_relation_metric_matrix",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            }
+          ]
+        },
+        "title": "多关联关系失败替换与原成功关系回归"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除动态关联和普通关系测试指标。",
+          "撤销元数据及关系转换故障注入。",
+          "删除命名空间内测试对象数据。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "完整 what 和 what-list 字段清单必须在执行时通过真实元数据确认。",
+            "未提供关系转换失败和元数据异常的可控故障注入机制。"
+          ],
+          "dynamic_scope_policy": "所有真实 what 和 what-list 均属于动态关联，不限定工单主题，不生成非工单主题负向 Case。"
+        },
+        "expected": [
+          {
+            "description": "所有真实 what 和 what-list 动态关联失败行返回 s307011537。",
+            "expected_value": "s307011537",
+            "expected_values": null,
+            "id": "EXP-BE-004-01",
+            "matcher": "equals",
+            "observation_point": "detail_api.dynamic_relation_rows.error_code",
+            "oracle": {
+              "expected_value": "s307011537",
+              "matcher": "equals",
+              "observation_point": "detail_api.dynamic_relation_rows.error_code",
+              "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "zh_CN 消息精确为批准模板。",
+            "expected_value": "基于动态关联关系创建的统计指标，不支持查看明细",
+            "expected_values": null,
+            "id": "EXP-BE-004-02",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.zh_CN",
+            "oracle": {
+              "expected_value": "基于动态关联关系创建的统计指标，不支持查看明细",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.message.zh_CN",
+              "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "en 消息精确为批准模板。",
+            "expected_value": "Metrics created based on dynamic relationships do not support Details view.",
+            "expected_values": null,
+            "id": "EXP-BE-004-03",
+            "matcher": "equals",
+            "observation_point": "detail_api.error.message.en",
+            "oracle": {
+              "expected_value": "Metrics created based on dynamic relationships do not support Details view.",
+              "matcher": "equals",
+              "observation_point": "detail_api.error.message.en",
+              "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-I18N-DYNAMIC-RELATION",
+            "type": "deterministic"
+          },
+          {
+            "description": "普通非 what/what-list 成功字段不被前置禁用。",
+            "expected_value": {
+              "forbidden_error_codes": [
+                "s307011534",
+                "s307011535",
+                "s307011536",
+                "s307011537"
+              ],
+              "paging": "present",
+              "result_structure": "present",
+              "status": "success"
+            },
+            "expected_values": null,
+            "id": "EXP-BE-004-04",
+            "matcher": "equals",
+            "observation_point": "detail_api.controls.CTRL-01",
+            "oracle": {
+              "expected_value": {
+                "forbidden_error_codes": [
+                  "s307011534",
+                  "s307011535",
+                  "s307011536",
+                  "s307011537"
+                ],
+                "paging": "present",
+                "result_structure": "present",
+                "status": "success"
+              },
+              "matcher": "equals",
+              "observation_point": "detail_api.controls.CTRL-01",
+              "source_ref": "TF-006",
+              "type": "deterministic"
+            },
+            "source_ref": "TF-006",
+            "type": "deterministic"
+          },
+          {
+            "description": "元数据缺失时不替换为动态关联专用错误；未冻结原错误码，人工确认完整业务响应。",
+            "expected_value": "preserve_actual_business_response",
+            "expected_values": null,
+            "id": "EXP-BE-004-05",
+            "matcher": "manual_confirmation",
+            "observation_point": "detail_api.controls.CTRL-02.full_response",
+            "oracle": {
+              "expected_value": "preserve_actual_business_response",
+              "matcher": "manual_confirmation",
+              "observation_point": "detail_api.controls.CTRL-02.full_response",
+              "source_ref": "TF-006",
+              "type": "human_review"
+            },
+            "source_ref": "TF-006",
+            "type": "human_review"
+          },
+          {
+            "description": "元数据服务异常不替换为动态关联专用错误；未冻结原错误码，人工确认完整业务响应。",
+            "expected_value": "preserve_actual_business_response",
+            "expected_values": null,
+            "id": "EXP-BE-004-06",
+            "matcher": "manual_confirmation",
+            "observation_point": "detail_api.controls.CTRL-03.full_response",
+            "oracle": {
+              "expected_value": "preserve_actual_business_response",
+              "matcher": "manual_confirmation",
+              "observation_point": "detail_api.controls.CTRL-03.full_response",
+              "source_ref": "TF-006",
+              "type": "human_review"
+            },
+            "source_ref": "TF-006",
+            "type": "human_review"
+          }
+        ],
+        "id": "TC-BE-004-BACKEND",
+        "intent_ids": [
+          "INT-001",
+          "INT-005"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-004",
+        "preconditions": [
+          "执行前通过真实元数据接口取得当前环境全部 what 和 what-list 对象及字段。",
+          "可控故障点能触发已知对象关系不支持异常、元数据异常和普通非 what/what-list 关系成功分支。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-005",
+          "TF-005",
+          "TF-006",
+          "RULE-DYNAMIC-RELATION",
+          "RULE-I18N-DYNAMIC-RELATION"
+        ],
+        "steps": [
+          "查询真实元数据并枚举全部 what 和 what-list 对象及字段，不按工单主题过滤。",
+          "使用每个确认字段创建动态关联指标并使原转换产生已知对象关系不支持异常。",
+          "分别以 zh_CN 和 en 调用真实接口。",
+          "对普通非 what/what-list 成功字段、元数据缺失和元数据服务异常控制行调用接口。",
+          "核对动态判定使用完整聚合规则、指标字段和关系元数据。"
+        ],
+        "test_data": {
+          "datasets": [
+            {
+              "expected_reason": "dynamic_relation",
+              "id": "DR-01",
+              "scope": "actual_what",
+              "topic_restriction": false
+            },
+            {
+              "expected_reason": "dynamic_relation",
+              "id": "DR-02",
+              "scope": "actual_what_list",
+              "topic_restriction": false
+            },
+            {
+              "expected_reason": "dynamic_relation",
+              "id": "DR-03",
+              "scope": "business_process_actual_what_fields",
+              "topic_restriction": false
+            },
+            {
+              "expected_reason": "dynamic_relation",
+              "id": "DR-04",
+              "scope": "business_process_task_actual_what_fields",
+              "topic_restriction": false
+            },
+            {
+              "expected_reason": "dynamic_relation",
+              "id": "DR-05",
+              "scope": "service_record_actual_what_fields",
+              "topic_restriction": false
+            },
+            {
+              "conversion_result": "success",
+              "expected_status": "success",
+              "id": "CTRL-01",
+              "scope": "ordinary_non_what_non_what_list_field"
+            },
+            {
+              "expected_behavior": "preserve_actual_business_response",
+              "id": "CTRL-02",
+              "scope": "missing_relation_metadata"
+            },
+            {
+              "expected_behavior": "preserve_actual_business_response",
+              "id": "CTRL-03",
+              "scope": "metadata_service_error"
+            }
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_004",
+          "resource_requirements": [
+            {
+              "high_risk_write": true,
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_ids",
+              "resource_key": "dynamic_relation_metric_set",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_id",
+              "resource_key": "ordinary_control_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            }
+          ]
+        },
+        "title": "所有 what 和 what-list 动态关联识别及非动态控制"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除组合场景统计图、指标和关系配置。",
+          "撤销所有故障注入。",
+          "确认组合配置未污染基线数据。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "缺少组合原因的可控集成测试数据及故障注入能力。"
+          ],
+          "reason_selection": "不固定业务优先级，只接受一个实际命中的合法 code-message 对。"
+        },
+        "expected": [
+          {
+            "description": "每次只返回一个错误提示。",
+            "expected_value": 1,
+            "expected_values": null,
+            "id": "EXP-BE-005-01",
+            "matcher": "equals",
+            "observation_point": "detail_api.error_message_count",
+            "oracle": {
+              "expected_value": 1,
+              "matcher": "equals",
+              "observation_point": "detail_api.error_message_count",
+              "source_ref": "RULE-MULTIPLE-REASONS",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          },
+          {
+            "description": "错误码是实际命中原因对应的一个合法值，不断言固定优先级。",
+            "expected_value": [
+              "s307011534",
+              "s307011535",
+              "s307011536",
+              "s307011537"
+            ],
+            "expected_values": null,
+            "id": "EXP-BE-005-02",
+            "matcher": "one_of_actually_matched",
+            "observation_point": "detail_api.error.code",
+            "oracle": {
+              "expected_value": [
+                "s307011534",
+                "s307011535",
+                "s307011536",
+                "s307011537"
+              ],
+              "matcher": "one_of_actually_matched",
+              "observation_point": "detail_api.error.code",
+              "source_ref": "RULE-MULTIPLE-REASONS",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          },
+          {
+            "description": "错误码与消息必须形成一个完整批准映射且不拼接。",
+            "expected_value": "one_actual_matched_code_message_pair",
+            "expected_values": null,
+            "id": "EXP-BE-005-03",
+            "matcher": "equals_one_complete_matched_mapping",
+            "observation_point": "detail_api.error.code_message_pair",
+            "oracle": {
+              "expected_value": "one_actual_matched_code_message_pair",
+              "matcher": "equals_one_complete_matched_mapping",
+              "observation_point": "detail_api.error.code_message_pair",
+              "source_ref": "RULE-MULTIPLE-REASONS",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-MULTIPLE-REASONS",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-BE-005-BACKEND",
+        "intent_ids": [
+          "INT-001",
+          "INT-006"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-005",
+        "preconditions": [
+          "测试环境可在一次请求中同时配置至少两个已批准受限原因。",
+          "接口可观测错误码、消息和异常数量。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "REQ-001",
+          "TF-009",
+          "RULE-MULTIPLE-REASONS"
+        ],
+        "steps": [
+          "对每个组合分别以 zh_CN 和 en 调用真实接口。",
+          "记录错误对象数量、错误码和消息。",
+          "将返回值与该请求实际命中的专用错误集合比较。",
+          "检查消息不存在多个原因模板拼接。"
+        ],
+        "test_data": {
+          "datasets": [
+            "组合 A：自定义维度与结果集筛选同时命中",
+            "组合 B：动态关联与多关联同时命中",
+            "组合 C：自定义维度、结果集筛选和关联原因同时命中"
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_005",
+          "resource_requirements": [
+            {
+              "required_body_keys": [
+                "topologyDescribeId",
+                "customType",
+                "dimensionName",
+                "dimensionConfig",
+                "describeApiName",
+                "sourceField"
+              ],
+              "resource_id_variable": "custom_dimension_id",
+              "resource_key": "custom_dimension_fixture",
+              "resource_type": "custom_dimension",
+              "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension"
+            },
+            {
+              "high_risk_write": true,
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_id",
+              "resource_key": "restricted_metric_set",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "chart_view_id",
+              "resource_key": "combo_chart_set",
+              "resource_type": "stat_chart",
+              "setup_operation": "fs_bi_crm.stat_create.copy_stat_view"
+            }
+          ]
+        },
+        "title": "多原因单提示且无固定业务优先顺序"
+      },
+      {
+        "automation_candidate": true,
+        "cleanup": [
+          "删除敏感指标和受限图表。",
+          "撤销临时账号权限。",
+          "确认权限基线数据未被修改。"
+        ],
+        "execution_policy": {
+          "allowed_modes": [
+            "automated",
+            "manual"
+          ],
+          "automation_review": "required",
+          "blocking_gaps": [
+            "未提供权限基线响应及隔离测试账号。"
+          ]
+        },
+        "expected": [
+          {
+            "description": "无权限账号保持原权限错误行为。",
+            "expected_value": "existing_permission_behavior",
+            "expected_values": null,
+            "id": "EXP-BE-006-01",
+            "matcher": "equals_baseline",
+            "observation_point": "detail_api.permission_error_response",
+            "oracle": {
+              "expected_value": "existing_permission_behavior",
+              "matcher": "equals_baseline",
+              "observation_point": "detail_api.permission_error_response",
+              "source_ref": "RULE-PERMISSION-PRIORITY",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "无权限响应不包含敏感指标名。",
+            "expected_value": "机密收入",
+            "expected_values": null,
+            "id": "EXP-BE-006-02",
+            "matcher": "not_contains",
+            "observation_point": "detail_api.permission_error_payload",
+            "oracle": {
+              "expected_value": "机密收入",
+              "matcher": "not_contains",
+              "observation_point": "detail_api.permission_error_payload",
+              "source_ref": "RULE-PERMISSION-PRIORITY",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          },
+          {
+            "description": "完整权限账号按实际命中原因返回合法专用错误。",
+            "expected_value": [
+              "s307011535",
+              "s307011537"
+            ],
+            "expected_values": null,
+            "id": "EXP-BE-006-03",
+            "matcher": "one_of",
+            "observation_point": "detail_api.authorized_error.code",
+            "oracle": {
+              "expected_value": [
+                "s307011535",
+                "s307011537"
+              ],
+              "matcher": "one_of",
+              "observation_point": "detail_api.authorized_error.code",
+              "source_ref": "RULE-PERMISSION-PRIORITY",
+              "type": "deterministic"
+            },
+            "source_ref": "RULE-PERMISSION-PRIORITY",
+            "type": "deterministic"
+          }
+        ],
+        "id": "TC-BE-006-BACKEND",
+        "intent_ids": [
+          "INT-006"
+        ],
+        "layer": "backend",
+        "parent_case_id": "TC-BE-006",
+        "preconditions": [
+          "存在无查看图表权限、无查看字段权限和完整权限三个测试账号。",
+          "受限图表包含无权限账号不可见的敏感指标名称。",
+          "变更前权限错误响应已保存为可比较基线。"
+        ],
+        "priority": "P0",
+        "risk": "critical",
+        "source_refs": [
+          "TF-006",
+          "RULE-PERMISSION-PRIORITY"
+        ],
+        "steps": [
+          "使用账号 A、B 调用同时命中业务受限原因的接口。",
+          "记录响应状态、错误码、消息和参数并与权限基线比较。",
+          "使用账号 C 调用同一配置，确认权限通过后才执行业务原因判定。"
+        ],
+        "test_data": {
+          "datasets": [
+            "敏感指标显示名：机密收入",
+            "图表同时命中结果集筛选受限原因",
+            "图表同时命中动态关联受限原因",
+            "账号 A：无图表权限",
+            "账号 B：可看图表但无敏感字段权限",
+            "账号 C：拥有完整权限"
+          ],
+          "locales": [
+            "zh_CN",
+            "en"
+          ],
+          "namespace": "a08_detail_drill_i18n_TC_BE_006",
+          "resource_requirements": [
+            {
+              "high_risk_write": true,
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_id",
+              "resource_key": "sensitive_metric",
+              "resource_type": "aggregate_metric",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "resource_id_variable": "chart_view_id",
+              "resource_key": "restricted_chart",
+              "resource_type": "stat_chart",
+              "setup_operation": "fs_bi_crm.stat_create.copy_stat_view"
+            }
+          ]
+        },
+        "title": "权限错误优先与指标名称防泄露"
+      }
+    ],
+    "execution_plan_actions": [
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-001-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-002-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-003-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-004-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-005-BACKEND",
+        "reason_code": "new_case_without_automation"
+      },
+      {
+        "action": "generate_new",
+        "automation_ref": null,
+        "case_id": "TC-BE-006-BACKEND",
+        "reason_code": "new_case_without_automation"
+      }
+    ],
+    "input_bindings": {
+      "test_data_plan_hash": "sha256:8335ebf97ea2b109d96b77c6f8267e6c1fd28dda464cbdb8c131de27133e7118",
+      "test_data_validation_hash": "sha256:0294c88bc65d70f3ca1842ff64c3a62f27ab0bcbae39f5bee56ecb7128c28f35",
+      "verified_setup_contracts_hash": "sha256:07318b5ffdf7c6b88dee6eced711b03af8cc62b797fd1773583a93df809534e1"
+    },
+    "layer": "backend",
+    "verified_setup_contracts": {
+      "contracts": {
+        "fs_bi_dev.lwt_manager.save": {
+          "body_template": null,
+          "derivation": {
+            "required_updates": [
+              "categoryID",
+              "viewName",
+              "description",
+              "saveType=0",
+              "queryLwtArg.id=\"\"",
+              "lwtArgs.lwtId=\"\""
+            ],
+            "source_discovery": "fs_bi_dev.lwt_manager.query_arg_detail"
+          },
+          "evidence": "generated/112-joined-table-create-evidence.json; tests/test_112_create_minimal_joined_table.py",
+          "notes": "拼表 body 必须从 112 实时来源拼表 queryArgDetail 派生（source_args），再更新 categoryID/viewName/description/saveType=0/queryLwtArg.id=\"\"/lwtArgs.lwtId=\"\"；禁止凭空构造 dataSources/relations。",
+          "readback_operation": "fs_bi_dev.lwt_manager.query_arg_detail",
+          "required_body_keys": [
+            "categoryID",
+            "viewName",
+            "description",
+            "saveType",
+            "queryLwtArg",
+            "lwtArgs",
+            "dataSources",
+            "relations"
+          ],
+          "resource_type": "joined_table",
+          "status": "verified_112"
+        },
+        "fs_bi_stat.agg_rule.add_new_agg_rule": {
+          "body_template": {
+            "aggField": {
+              "dbFieldName": "mc_exchange_rate",
+              "dbObjName": "object_1Lhg5__c",
+              "fieldId": "BI_a23fbc479ea07edab8c7fd5fddf90cc7",
+              "fieldName": "汇率",
+              "fieldType": "Number"
+            },
+            "aggFieldTime": {
+              "dbFieldName": "create_time",
+              "dbObjName": "object_1Lhg5__c",
+              "fieldId": "BI_f6b5bbe13117f9e4e2f96790b31115a9",
+              "fieldName": "创建时间",
+              "fieldType": "Date"
+            },
+            "aggObject": {
+              "dbFieldName": "mc_exchange_rate",
+              "dbObjName": "object_1Lhg5__c",
+              "fieldId": "BI_a23fbc479ea07edab8c7fd5fddf90cc7",
+              "fieldName": "汇率",
+              "fieldType": "Number"
+            },
+            "checkFieldAggregateType": 2,
+            "displayName": "{{namespace}}-{{metric_name}}",
+            "filterLists": [],
+            "initStatus": 1,
+            "schemaId": "BI_5be1351956fc11448cdde39e",
+            "schemaObjectName": "biz_sales_order",
+            "timeZone": "Asia/Shanghai"
+          },
+          "evidence": "generated/retained-test-assets.json; tests/test_112_create_retained_requirement_assets.py",
+          "readback_operation": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+          "required_body_keys": [
+            "schemaId",
+            "schemaObjectName",
+            "displayName",
+            "aggObject",
+            "aggField",
+            "aggFieldTime",
+            "filterLists",
+            "checkFieldAggregateType",
+            "initStatus",
+            "timeZone"
+          ],
+          "resource_type": "aggregate_metric",
+          "response_id_paths": [
+            "Value.fieldId"
+          ],
+          "status": "verified_112",
+          "substitutions": {
+            "metric_name": "用例语义名（如 rs-metric / mr-metric），必须含 namespace 前缀",
+            "namespace": "A22 计划 namespace 或派生"
+          }
+        },
+        "fs_bi_stat.custom_dimension.create_custom_dimension": {
+          "body_template": {
+            "customType": "enum_group",
+            "describeApiName": "AccountObj",
+            "description": "需求：统计图查看明细限制原因提示优化；A22 命名空间构造并长期保留",
+            "dimensionConfig": "{{dimension_config_json}}",
+            "dimensionName": "{{namespace}}-{{variant_name}}",
+            "sourceField": {
+              "apiName": "account_level",
+              "describeApiName": "AccountObj",
+              "fieldId": "BI_5bcebcddcab2980001ee22b3",
+              "type": "select_one"
+            },
+            "topologyDescribeId": "BI_5bcebcdc3060e20001e79977"
+          },
+          "evidence": "generated/112-custom-dimension-create-evidence.json; tests/test_112_create_retained_requirement_assets.py",
+          "readback_operation": "fs_bi_stat.custom_dimension.get_custom_dimension",
+          "required_body_keys": [
+            "topologyDescribeId",
+            "customType",
+            "dimensionName",
+            "dimensionConfig",
+            "describeApiName",
+            "sourceField"
+          ],
+          "resource_type": "custom_dimension",
+          "response_id_paths": [
+            "Value.fieldId"
+          ],
+          "status": "verified_112",
+          "substitutions": {
+            "dimension_config_json": "JSON 字符串，groups 的 values 必须来自 112 实时 get_ui_type 枚举（evidence 中 optionCode 为 1/2/3/other）",
+            "namespace": "A22 计划 namespace（形如 qa-a22-pilot-001-source-v1）或其派生 {namespace}/TC-<case_id>",
+            "variant_name": "用例语义名（如 baseline / variant-a），必须含 namespace 前缀"
+          }
+        },
+        "fs_bi_stat.stat_calc_field.save_calc_field": {
+          "body_template": {
+            "calcFieldId": "",
+            "fieldName": "{{namespace}}-{{calc_name}}",
+            "formatStr": "0.00",
+            "formula": "[{{base_agg_field_id}}_2]",
+            "ratioType": 0
+          },
+          "evidence": "tests/test_112_calculated_metric_lifecycle.py",
+          "readback_operation": "fs_bi_stat.stat_calc_field.query_calc_field",
+          "required_body_keys": [
+            "calcFieldId",
+            "fieldName",
+            "formula",
+            "formatStr",
+            "ratioType"
+          ],
+          "resource_type": "calculated_metric",
+          "response_id_paths": [
+            "Value.fieldID"
+          ],
+          "status": "verified_112",
+          "substitutions": {
+            "base_agg_field_id": "必须先 add_new_agg_rule 创建聚合指标，取其返回的 fieldId",
+            "calc_name": "计算指标语义名，必须含 namespace 前缀",
+            "namespace": "A22 计划 namespace 或派生"
+          }
+        }
+      },
+      "environment": "112",
+      "schema_version": "verified-setup-contracts/1.0",
+      "usage": "A14 setup 阶段必须逐字使用下列 body_template，只替换 {{PLACEHOLDER}} 标记；禁止自造字段或发送仅含 namespace/variant 的占位 body。",
+      "verified_from": "retained asset run 2026-08-11/08-13 (live create + readback)"
+    }
+  },
+  "bundle_hash": "sha256:204ffbfae69d9c00c7c1e201882d06dd56135e7714a117aee34fa6515e29e66f",
+  "integrity": {
+    "business_repository_write_allowed": false,
+    "credentials_embedded": false,
+    "evaluation_oracle_registry_included": false,
+    "external_side_effects_allowed": false
+  },
+  "output_contract": "automation-generation/1.0",
+  "profile_id": "A14",
+  "profile_version": "1.0.0",
+  "regeneration_round": "6",
+  "schema_version": "multica-agent-input/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "upstream_artifacts": [
+    {
+      "artifact_hash": "sha256:442f3f9583dc1ce3e7fda90bc66a5e11a746acbe611f92f9c21a3c63dae87f6a",
+      "artifact_id": "n25-compiled-test-cases"
+    },
+    {
+      "artifact_hash": "sha256:cd895e4b4fa8ea30ce9a3db3bb5e091a8d1de5bd7ed129751d94029b98f052ce",
+      "artifact_id": "n15-execution-plan"
+    },
+    {
+      "artifact_hash": "sha256:0294c88bc65d70f3ca1842ff64c3a62f27ab0bcbae39f5bee56ecb7128c28f35",
+      "artifact_id": "n27-test-data-plan-validation"
+    },
+    {
+      "artifact_hash": "sha256:8335ebf97ea2b109d96b77c6f8267e6c1fd28dda464cbdb8c131de27133e7118",
+      "artifact_id": "a22-test-data-plan"
+    }
+  ],
+  "workflow_mode": "new_requirement",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

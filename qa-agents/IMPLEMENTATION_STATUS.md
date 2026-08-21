@@ -1,8 +1,8 @@
 # Implementation Status
 
-更新时间：2026-08-20（A22 确定性意图推断 9 类资源、已验证契约 → recipe 注册、环境清单变量解析、
-112 真实生命周期通过；八卡同步自动推进 C5-C8 与运行修复。历史快照：独立置信运行已过
-G01/N24/A08/A09/N04 双轮修正，N04 预算耗尽升级 human）
+更新时间：2026-08-21（新增 Case 可执行性分类、A14/N05 确定性能力门禁、严格断言和 N08
+生命周期失败分类；PC-001–PC-007 完整自动化与 112 实况覆盖仍在进行。历史快照：独立置信
+运行已过 G01/N24/A08/A09/N04 双轮修正，N04 预算耗尽升级 human）
 
 | 范围 | 状态 | 说明 |
 | --- | --- | --- |
@@ -19,7 +19,8 @@ G01/N24/A08/A09/N04 双轮修正，N04 预算耗尽升级 human）
 | A08/A09/N04/G02 | 人工恢复已闭环 | QAA-21 A08 v1.3.0 入库 `multica-stage10`（13 个父 Case）；QAA-23 A09 通过入库 `multica-stage11`；N04 `correction_attempt=3`、`valid=true`、`next_node=G02`（`multica-stage12`）；G02 QAA-24 放行至 N25 |
 | QA 人工修正恢复 | 真实闭环 | QAA-19 `done/authorized`；QAA-20 因契约和工具轨迹违规被拒；QAA-21 合法恢复后重新经过 A09/N04/G02，不重置自动预算 |
 | N25/A11/N26/A12/N15 | 真实闭环 | 主链 N25（stage13）→ A11（stage14，QAA-26 已入库）→ N26（stage15，无 unresolved）→ N15（stage16，3 generate_new + 11 manual_run）全部真实跑通；A12 建议折叠规则与测试就绪；N25 按 `expected[].layers` 注解做确定性分层收窄 `stage_two_nodes.py` 实现 N25/N26/N15 内容寻址驱动与绑定校验；`multica.py` 实现 A11/A12 Profile/输入准备/语义校验；A12 已实现：N26 策略强制/跳过/影响置信度规则、A12 建议折叠（只能扩大或升级、不得缩小或降级强制 Case）；CLI 与 Makefile 新增命令 |
-| A14/A18-BE/N05/N06/G03 | 已实现后端参考切片 | Artifact-only pytest 候选、独立审查、安全检查、精确回流和人工 Gate |
+| Case 可执行性分类 | 已实现确定性门禁 | 所有输入 Case 均分类为 `machine_executable`、`capability_missing`、`manual_only` 或 `invalid_case`；不猜测缺失操作、断言、响应路径或数据证据 |
+| A14/A18-BE/N05/N06/G03 | 已实现后端参考切片 | Artifact-only pytest 候选、独立审查、安全检查、精确回流和人工 Gate；网络候选必须绑定 IDL 注册操作，setup 请求/资源 ID 提取必须匹配已验证契约，A18-BE 接收同一份契约独立复核 |
 | N29 候选落盘 | 已实现参考版 | 仅在工作流 Artifact 输出目录落地 hash 绑定候选；`mr_disposition=not_requested`；禁止业务仓写入与外部 landing root |
 | N08 受控环境 Runner | 已实现参考版 | `local_process_reference` 仍拒绝网络/Secret；注册环境类（如 `staging_112`/`112`）可走 `controlled_env_reference`，仍非生产隔离，Secret 仅按 env 名从宿主注入且不入 Artifact |
 | A19/N18/Flaky | 已实现参考版 | A19 本地保守归因；N18 读取 N08 coverage_summary；`flaky-quarantine/1.0` 计入覆盖缺口，P0/P1 或高风险隔离阻塞发布 |
@@ -40,9 +41,24 @@ G01/N24/A08/A09/N04 双轮修正，N04 预算耗尽升级 human）
 | A13/A15/A16/A17-*/A18-* 自动化链路 | 已实现本地参考 Profile | 前端 Playwright、契约、E2E 与六个非功能专项的 artifact-only 生成和独立审查 Profile；共享生成/审查引擎 + 版本化 Profile，策略按层路由候选根目录与框架白名单；N05/G03 多 Manifest 汇合 |
 | A01 歧义路由建议 Profile | 已实现 | N00 注册 5 个确定性模板，仅未知模式/触发不匹配时调用 A01 建议，N00 校验后生效；建议不能自行创建或执行流程 |
 | N07/N16 环境与数据门禁 | 已实现 | 确定性节点 + 15 项测试：N07 环境指纹、8 类检查、指纹节流、失败即 blocked 路由 N16；N16 幂等键/无状态变化拒绝/未覆盖失败项拒绝/补偿清理；CLI 与 Makefile 命令就绪 |
-| N08 自动化执行 | 已实现参考切片 | 认证 N07/A18/N05 producer/contract，绑定 generation/manifest/candidate 哈希；当前策略拒绝网络和 Secret，无 shell 分片执行，JUnit/日志/超时证据入库；本地 Runner 非生产隔离，生产 Adapter 待接入 |
+| N08 自动化执行 | 已实现参考切片 | 认证 N07/A18/N05 producer/contract，绑定 generation/manifest/candidate 哈希；响应断言和 Oracle matcher 严格白名单，生命周期失败区分 setup/readiness/assertion-or-product/cleanup/residue；本地 Runner 非生产隔离，生产 Adapter 待接入 |
 | N09-N12/N17-N23 归因与门禁 | 已实现确定性参考链并实跑 | N10 重试预算、N17 人工结果汇合、N18 信号、N09 证据/指纹聚类、N20 缺陷去重、N11 决策、N12 JSON/Markdown/HTML 报告及 N13/N19/N23 审计已实现；缺人工结果或自动化证据时严格输出 `inconclusive`，生产发布/MR/Bug 写入 Adapter 仍未接入 |
 | 服务端全链实跑 | 已到最终报告；无待执行项 | `multica-pilot-001` 历史尾链为 `inconclusive/pending`：可执行 1、实际执行 1、延期 13、pending 0。CASE-BE-002-BACKEND 的四类指标错误码和实际名称已在 112 复跑，但精确中英文文案及移除筛选后的正常响应未完整覆盖，因此结果为 blocked，不伪装为通过 |
+
+### 2026-08-21 任意 Case 自动化能力门禁更新
+
+- 新增 `case-executability/1.0` 分类契约。结构化生命周期、注册 `operationId`、有效响应断言、
+  可求值 Oracle、setup/readiness 配对和 cleanup guard 全部满足时才允许
+  `machine_executable`；能力或证据不完整时 fail-closed，不生成看似可运行的候选。
+- A14/N05 对网络候选加载真实 `idl/http` 操作目录；setup body 必须包含已验证契约要求字段，
+  资源 ID 只能从契约 `response_id_paths` 提取。A18-BE 复核输入透传并绑定同一份
+  `verified_setup_contracts`，可以独立核对生成结果。
+- Runner 拒绝空或未知 `expect`、未知自动 Oracle matcher；仅有效断言可将生命周期证据标为
+  `verified=true`。N08 shard 和汇总产物输出 setup、readiness、产品/断言、cleanup、residue
+  失败类别，便于区分环境建数问题与产品失败。
+- 当前完成的是“任意 Case 都有确定性去向”，不是“任意 Case 都必然自动执行成功”。
+  PC-001–PC-007 的全部能力 Adapter、双语/动态 Oracle、清理契约和 112 实况验证仍为
+  `in_progress`；未执行新的 112 写操作或以模拟证据替代实况结果。
 
 ### 2026-08-11 晚间更新（候选落盘 / 受控 Runner / 质量尾链增强）
 

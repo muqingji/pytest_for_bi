@@ -13,7 +13,7 @@
       "resource_type": "custom_dimension",
       "case_id": "TC-BE-001-BACKEND",
       "operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
-      "status": "constructed",
+      "status": "stale",
       "resource_id_variable": "cd_field_id",
       "namespace": "qa-a22-pilot-001-source-v1",
       "response_hash": "sha256:0b4118cacf88e28ca615117f752b65382709978646dd5dc439e8575d730dcae2",

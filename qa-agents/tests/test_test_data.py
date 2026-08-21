@@ -513,6 +513,7 @@ def test_record_constructed_test_data_registers_completed_setup_operations(
                                     "operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
                                     "status": "completed",
                                     "status_code": 200,
+                                    "verified": True,
                                     "response_hash": "sha256:abc",
                                 }
                             ],
@@ -606,3 +607,104 @@ def test_record_constructed_test_data_is_idempotent_and_degradable(
     assert first["registered"] == []
     assert second["registered"] == []
     assert json.loads(observed.read_text(encoding="utf-8"))["test_data"] == []
+
+
+def test_record_constructed_test_data_demotes_phantom_entries_to_stale(
+    tmp_path: Path,
+) -> None:
+    from qa_agents.test_data import record_constructed_test_data
+
+    plan = _plan_artifact(
+        tmp_path,
+        {
+            "namespace": "qa-pilot-001-source-v1",
+            "case_plans": [
+                {
+                    "case_id": "TC-BE-001-BACKEND",
+                    "resources": [
+                        {
+                            "resource_key": "cd_field",
+                            "resource_type": "custom_dimension",
+                            "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+                            "resource_id_variable": "cd_field_id",
+                        }
+                    ],
+                }
+            ],
+        },
+    )
+    auto_dir = tmp_path / "auto"
+    evidence = auto_dir / "evidence" / "N08-S001" / "lifecycle.json"
+    evidence.parent.mkdir(parents=True)
+    evidence.write_text(
+        json.dumps(
+            {
+                "schema_version": "shard-lifecycle-evidence/1.0",
+                "cases": [
+                    {
+                        "case_id": "TC-BE-001-BACKEND",
+                        "phases": {
+                            "setup": [
+                                {
+                                    "name": "setup_create_custom_dimension",
+                                    "operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+                                    "status": "failed",
+                                    "error_type": "AssertionError",
+                                }
+                            ],
+                            "test": [],
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    n08 = tmp_path / "n08-automation-execution.json"
+    n08.write_text(
+        json.dumps(
+            {
+                "payload": {
+                    "shards": [
+                        {
+                            "case_ids": ["TC-BE-001-BACKEND"],
+                            "lifecycle_evidence_path": "evidence/N08-S001/lifecycle.json",
+                            "lifecycle_evidence_hash": "sha256:ev",
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    observed = tmp_path / "env-observed.json"
+    observed.write_text(
+        json.dumps(
+            {
+                "schema_version": "environment-observation/1.0",
+                "environment": "112",
+                "test_data": [
+                    {
+                        "key": "cd_field",
+                        "resource_type": "custom_dimension",
+                        "case_id": "TC-BE-001-BACKEND",
+                        "operation": "fs_bi_stat.custom_dimension.create_custom_dimension",
+                        "status": "constructed",
+                    }
+                ],
+                "test_namespaces": [{"namespace": "qa-pilot-001-source-v1", "cleanup_policy": {"required": True}}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = record_constructed_test_data(plan, n08, auto_dir, observed)
+
+    assert result["registered"] == []
+    updated = json.loads(observed.read_text(encoding="utf-8"))
+    entry = next(
+        item
+        for item in updated["test_data"]
+        if item.get("key") == "cd_field"
+    )
+    assert entry["status"] == "stale"

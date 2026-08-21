@@ -1112,8 +1112,11 @@ def record_constructed_test_data(
     The A22 plan declares per-case resources with a ``setup_operation``; the N08
     execution artifact carries per-shard lifecycle evidence recording which
     operations completed (step status ``completed`` with an HTTP response). Only
-    resources whose setup operation actually completed are registered, so
-    ``env-observed.test_data`` reflects reality instead of the plan. Idempotent:
+    resources whose setup operation actually completed *and was asserted* (the
+    lifecycle step carried a non-empty ``expect``) are registered, so
+    ``env-observed.test_data`` reflects reality instead of the plan. A planned
+    resource whose current evidence no longer verifies construction is demoted
+    to ``stale`` instead of keeping a phantom ``constructed`` claim. Idempotent:
     entries with the same ``(case_id, key)`` are replaced, unrelated entries are
     preserved, and missing evidence degrades to an empty registration.
     """
@@ -1199,6 +1202,8 @@ def record_constructed_test_data(
                             continue
                         if str(step.get("status", "")) != "completed":
                             continue
+                        if step.get("verified") is not True:
+                            continue
                         operation = str(step.get("operation", "")).strip()
                         if operation:
                             completed.setdefault(case_id, set()).add(operation)
@@ -1230,6 +1235,10 @@ def record_constructed_test_data(
         for item in observed.get("test_data", [])
         if isinstance(item, Mapping)
     }
+    planned_by_key = {
+        (str(resource["case_id"]), str(resource["key"])): resource
+        for resource in planned
+    }
     test_data: list[dict[str, Any]] = []
     for resource in planned:
         case_id = resource["case_id"]
@@ -1255,6 +1264,16 @@ def record_constructed_test_data(
         by_case_key[(case_id, resource["key"])] = entry
         registered.append(entry)
     for item in by_case_key.values():
+        planned_resource = planned_by_key.get(
+            (str(item.get("case_id", "")), str(item.get("key", "")))
+        )
+        if (
+            planned_resource is not None
+            and item.get("status") == "constructed"
+            and str(planned_resource["operation"])
+            not in completed.get(str(planned_resource["case_id"]), set())
+        ):
+            item["status"] = "stale"
         test_data.append(item)
     test_data.sort(key=lambda item: (str(item.get("case_id", "")), str(item.get("key", ""))))
     observed["test_data"] = test_data

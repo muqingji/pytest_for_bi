@@ -1,0 +1,94 @@
+{
+  "actor": {
+    "id": "",
+    "role": "",
+    "type": "human"
+  },
+  "decided_at": "",
+  "decision": "",
+  "gate_id": "G01",
+  "reason": "",
+  "request_hash": "sha256:064011461721e622ee7b0ccf78f637bc2b03593b8be8d2b884f02da40e75bd3f",
+  "resolutions": [
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-001",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-002",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-003",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-004",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-005",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A02:AMB-006",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A03:BI-003",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A06:ALN-F001",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A06:ALN-F003",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A06:ALN-F006",
+      "owner": "",
+      "rationale": ""
+    },
+    {
+      "approvals": [],
+      "disposition": "",
+      "issue_id": "A06:ALN-F012",
+      "owner": "",
+      "rationale": ""
+    }
+  ],
+  "schema_version": "scope-review-decision/1.0",
+  "source_snapshot_id": "pilot-001-source-v1",
+  "workflow_run_id": "detail-drill-i18n-8card-20260817-02"
+}

@@ -1641,6 +1641,9 @@ def _resources_with_contract_keys(
             required = contract.get("required_body_keys")
             if isinstance(required, list) and required:
                 item["required_body_keys"] = [str(key) for key in required]
+            retention_mode = str(contract.get("retention_mode", ""))
+            if retention_mode:
+                item["retention_mode"] = retention_mode
         merged.append(item)
     return merged
 
@@ -1923,6 +1926,30 @@ def prepare_multica_automation_review_input(
     if not isinstance(manifest, Mapping):
         raise ContractError(f"{profile_id} cannot review a not-applicable generation")
 
+    review_allowed_inputs = {
+        "layer": layer,
+        "cases": layer_cases,
+        "generation": generation_payload,
+        "security_rules": {
+            "command_allowlist": target_policy.get("command_allowlist", []),
+            "forbidden_python_imports": target_policy.get("forbidden_python_imports", []),
+            "forbidden_calls": target_policy.get("forbidden_calls", []),
+        },
+        "review_profile": REVIEW_PROFILE_BY_AGENT[profile_id],
+    }
+    if profile_id == "A18-BE":
+        generation_allowed_inputs = generation_bundle.get("allowed_inputs")
+        verified_contracts = (
+            generation_allowed_inputs.get("verified_setup_contracts")
+            if isinstance(generation_allowed_inputs, Mapping)
+            else None
+        )
+        if not isinstance(verified_contracts, Mapping):
+            raise ContractError(
+                "A18-BE requires verified_setup_contracts from the A14 input bundle"
+            )
+        review_allowed_inputs["verified_setup_contracts"] = dict(verified_contracts)
+
     bundle = {
         "schema_version": "multica-agent-input/1.0",
         "workflow_run_id": workflow_run_id,
@@ -1931,17 +1958,7 @@ def prepare_multica_automation_review_input(
         "profile_id": profile_id,
         "profile_version": "1.0.0",
         "output_contract": "automation-review/1.0",
-        "allowed_inputs": {
-            "layer": layer,
-            "cases": layer_cases,
-            "generation": generation_payload,
-            "security_rules": {
-                "command_allowlist": target_policy.get("command_allowlist", []),
-                "forbidden_python_imports": target_policy.get("forbidden_python_imports", []),
-                "forbidden_calls": target_policy.get("forbidden_calls", []),
-            },
-            "review_profile": REVIEW_PROFILE_BY_AGENT[profile_id],
-        },
+        "allowed_inputs": review_allowed_inputs,
         "upstream_artifacts": [
             {"artifact_id": generation_artifact_id, "artifact_hash": generation["artifact_hash"]},
             {"artifact_id": "n25-compiled-test-cases", "artifact_hash": compiled["artifact_hash"]},

@@ -1,4 +1,4 @@
-# A22 112 测试数据规划
+# A22 A22 测试数据计划
 
 ## 目标
 
@@ -30,3 +30,22 @@
 
 - 产出 a22-test-data-plan Artifact 并入库
 - 每条用例数据需求完整，可进入资源规划与 N27 安全校验
+
+## 你需要处理
+
+本卡阻塞问题已路由人工处置，需要你决定下一步。
+
+待审批：`2` 项
+
+1. **未决数据需求**（`` · ）
+   - 问题：permission_test_accounts_and_baseline
+   - 建议修正：
+
+2. **未决数据需求**（`` · ）
+   - 问题：historical_unmigrated_configs_and_frozen_baselines
+   - 建议修正：
+
+操作选项：
+- 置 **done**：授权按上述建议定向修正，系统重新入库并重跑 A09/N04 校验。
+- 置 **cancelled**：终止当前流程。
+- 置 **blocked**：暂不处理，保持等待。

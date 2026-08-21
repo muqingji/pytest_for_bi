@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "case-executability/1.0",
+  "type": "object",
+  "required": ["case_id", "classification", "reason_codes", "issues"],
+  "properties": {
+    "case_id": {"type": "string"},
+    "classification": {
+      "enum": [
+        "machine_executable",
+        "capability_missing",
+        "manual_only",
+        "invalid_case"
+      ]
+    },
+    "reason_codes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["reason_code", "location", "detail"],
+        "properties": {
+          "reason_code": {"type": "string", "minLength": 1},
+          "location": {"type": "string", "minLength": 1},
+          "detail": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

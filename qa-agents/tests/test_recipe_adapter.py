@@ -53,7 +53,9 @@ def test_candidates_from_verified_contracts_declare_evidence_gaps() -> None:
     chart_codes = {
         item["code"] for item in by_id["stat_chart-create"]["verification_requirements"]
     }
-    assert {"folder_binding", "configuration_hash", "cleanup_operation_pair"} <= chart_codes
+    assert {"folder_binding", "configuration_hash"} <= chart_codes
+    assert "cleanup_operation_pair" not in chart_codes
+    assert by_id["stat_chart-create"]["resources"][0]["retention_mode"] == "retain"
 
 
 def test_candidate_without_verification_requirements_is_rejected() -> None:
@@ -117,10 +119,10 @@ def test_prepare_recipe_candidates_writes_selection_for_backlog_cases(
             "compiled_cases": [
                 {
                     "id": "CASE-BACKLOG-003",
-                    "title": "统计图查看明细",
+                    "title": "交叉表查看明细",
                     "test_level": "functional",
-                    "preconditions": ["统计图已配置结果集筛选指标"],
-                    "test_data": {"dataset": "stat_chart"},
+                    "preconditions": ["交叉表已配置结果集筛选指标"],
+                    "test_data": {"dataset": "pivot_table"},
                     "steps": [{"action": "查看明细"}],
                     "expected": [{"description": "返回明细"}],
                 }

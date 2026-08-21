@@ -977,7 +977,35 @@
           "namespace": "a08_detail_drill_i18n_TC_BE_001",
           "resource_requirements": [
             {
-              "high_risk_write": true,
+              "required_body_keys": [
+                "statViewBaseInfo"
+              ],
+              "resource_id_variable": "baseline_chart_view_id",
+              "resource_key": "baseline_chart",
+              "resource_type": "stat_chart",
+              "retention_mode": "retain",
+              "setup_operation": "fs_bi_crm.stat_create.copy_stat_view"
+            },
+            {
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_id",
+              "resource_key": "ordinary_metric",
+              "resource_type": "aggregate_metric",
+              "retention_mode": "retain",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
               "required_body_keys": [
                 "topologyDescribeId",
                 "customType",
@@ -986,10 +1014,22 @@
                 "describeApiName",
                 "sourceField"
               ],
-              "resource_id_variable": "cd_field_id",
-              "resource_key": "cd_field",
+              "resource_id_variable": "custom_dimension_id",
+              "resource_key": "custom_dimension_fixture",
               "resource_type": "custom_dimension",
+              "retention_mode": "retain",
               "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension"
+            },
+            {
+              "high_risk_write": true,
+              "required_body_keys": [
+                "statViewBaseInfo"
+              ],
+              "resource_id_variable": "variant_chart_view_ids",
+              "resource_key": "variant_chart_set",
+              "resource_type": "stat_chart",
+              "retention_mode": "retain",
+              "setup_operation": "fs_bi_crm.stat_create.copy_stat_view"
             }
           ]
         },
@@ -1398,20 +1438,6 @@
           "namespace": "a08_detail_drill_i18n_TC_BE_002",
           "resource_requirements": [
             {
-              "lifecycle_mode": "existing_read_only",
-              "resource_id_variable": "ordinary_field_id",
-              "resource_key": "ordinary_field_fixture",
-              "resource_type": "crm_field",
-              "setup_operation": "fs_bi_stat.stat_schema.get_fields_by_schema_id"
-            },
-            {
-              "lifecycle_mode": "existing_read_only",
-              "resource_id_variable": "comparison_field_id",
-              "resource_key": "comparison_field_fixture",
-              "resource_type": "crm_field",
-              "setup_operation": "fs_bi_stat.stat_schema.get_fields_by_schema_id"
-            },
-            {
               "required_body_keys": [
                 "schemaId",
                 "schemaObjectName",
@@ -1424,33 +1450,13 @@
                 "initStatus",
                 "timeZone"
               ],
-              "resource_id_variable": "rs_metric_id",
-              "resource_key": "rs_metric",
+              "resource_id_variable": "metric_field_ids",
+              "resource_key": "aggregate_metric_resolution_set",
               "resource_type": "aggregate_metric",
+              "retention_mode": "retain",
               "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
             },
             {
-              "required_body_keys": [
-                "schemaId",
-                "schemaObjectName",
-                "displayName",
-                "aggObject",
-                "aggField",
-                "aggFieldTime",
-                "filterLists",
-                "checkFieldAggregateType",
-                "initStatus",
-                "timeZone"
-              ],
-              "resource_id_variable": "agg_base_id",
-              "resource_key": "agg_base",
-              "resource_type": "aggregate_metric",
-              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
-            },
-            {
-              "depends_on": [
-                "agg_base"
-              ],
               "required_body_keys": [
                 "calcFieldId",
                 "fieldName",
@@ -1458,10 +1464,41 @@
                 "formatStr",
                 "ratioType"
               ],
-              "resource_id_variable": "calc_metric_id",
-              "resource_key": "calc_metric",
+              "resource_id_variable": "calculated_metric_id",
+              "resource_key": "calculated_metric_dynamic_name_pair",
               "resource_type": "calculated_metric",
+              "retention_mode": "retain",
               "setup_operation": "fs_bi_stat.stat_calc_field.save_calc_field"
+            },
+            {
+              "high_risk_write": true,
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_id",
+              "resource_key": "comparison_metric_pair",
+              "resource_type": "aggregate_metric",
+              "retention_mode": "retain",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "required_body_keys": [
+                "statViewBaseInfo"
+              ],
+              "resource_id_variable": "chart_view_id",
+              "resource_key": "result_filter_chart_set",
+              "resource_type": "stat_chart",
+              "retention_mode": "retain",
+              "setup_operation": "fs_bi_crm.stat_create.copy_stat_view"
             }
           ]
         },
@@ -1641,9 +1678,10 @@
                 "initStatus",
                 "timeZone"
               ],
-              "resource_id_variable": "mr_metric_id",
-              "resource_key": "mr_metric",
+              "resource_id_variable": "metric_field_ids",
+              "resource_key": "multi_relation_metric_matrix",
               "resource_type": "aggregate_metric",
+              "retention_mode": "retain",
               "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
             }
           ]
@@ -1889,9 +1927,29 @@
                 "initStatus",
                 "timeZone"
               ],
-              "resource_id_variable": "dr_metric_id",
-              "resource_key": "dr_metric",
+              "resource_id_variable": "metric_field_ids",
+              "resource_key": "dynamic_relation_metric_set",
               "resource_type": "aggregate_metric",
+              "retention_mode": "retain",
+              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "required_body_keys": [
+                "schemaId",
+                "schemaObjectName",
+                "displayName",
+                "aggObject",
+                "aggField",
+                "aggFieldTime",
+                "filterLists",
+                "checkFieldAggregateType",
+                "initStatus",
+                "timeZone"
+              ],
+              "resource_id_variable": "metric_field_id",
+              "resource_key": "ordinary_control_metric",
+              "resource_type": "aggregate_metric",
+              "retention_mode": "retain",
               "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
             }
           ]
@@ -2016,7 +2074,6 @@
           "namespace": "a08_detail_drill_i18n_TC_BE_005",
           "resource_requirements": [
             {
-              "high_risk_write": true,
               "required_body_keys": [
                 "topologyDescribeId",
                 "customType",
@@ -2025,30 +2082,13 @@
                 "describeApiName",
                 "sourceField"
               ],
-              "resource_id_variable": "cd_field_id",
-              "resource_key": "cd_field",
+              "resource_id_variable": "custom_dimension_id",
+              "resource_key": "custom_dimension_fixture",
               "resource_type": "custom_dimension",
+              "retention_mode": "retain",
               "setup_operation": "fs_bi_stat.custom_dimension.create_custom_dimension"
             },
             {
-              "required_body_keys": [
-                "schemaId",
-                "schemaObjectName",
-                "displayName",
-                "aggObject",
-                "aggField",
-                "aggFieldTime",
-                "filterLists",
-                "checkFieldAggregateType",
-                "initStatus",
-                "timeZone"
-              ],
-              "resource_id_variable": "rs_metric_id",
-              "resource_key": "rs_metric",
-              "resource_type": "aggregate_metric",
-              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
-            },
-            {
               "high_risk_write": true,
               "required_body_keys": [
                 "schemaId",
@@ -2062,29 +2102,22 @@
                 "initStatus",
                 "timeZone"
               ],
-              "resource_id_variable": "mr_metric_id",
-              "resource_key": "mr_metric",
+              "resource_id_variable": "metric_field_id",
+              "resource_key": "restricted_metric_set",
               "resource_type": "aggregate_metric",
+              "retention_mode": "retain",
               "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
             },
             {
               "high_risk_write": true,
               "required_body_keys": [
-                "schemaId",
-                "schemaObjectName",
-                "displayName",
-                "aggObject",
-                "aggField",
-                "aggFieldTime",
-                "filterLists",
-                "checkFieldAggregateType",
-                "initStatus",
-                "timeZone"
+                "statViewBaseInfo"
               ],
-              "resource_id_variable": "dr_metric_id",
-              "resource_key": "dr_metric",
-              "resource_type": "aggregate_metric",
-              "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+              "resource_id_variable": "chart_view_id",
+              "resource_key": "combo_chart_set",
+              "resource_type": "stat_chart",
+              "retention_mode": "retain",
+              "setup_operation": "fs_bi_crm.stat_create.copy_stat_view"
             }
           ]
         },
@@ -2217,10 +2250,22 @@
                 "initStatus",
                 "timeZone"
               ],
-              "resource_id_variable": "sensitive_metric_id",
+              "resource_id_variable": "metric_field_id",
               "resource_key": "sensitive_metric",
               "resource_type": "aggregate_metric",
+              "retention_mode": "retain",
               "setup_operation": "fs_bi_stat.agg_rule.add_new_agg_rule"
+            },
+            {
+              "high_risk_write": true,
+              "required_body_keys": [
+                "statViewBaseInfo"
+              ],
+              "resource_id_variable": "chart_view_id",
+              "resource_key": "restricted_chart",
+              "resource_type": "stat_chart",
+              "retention_mode": "retain",
+              "setup_operation": "fs_bi_crm.stat_create.copy_stat_view"
             }
           ]
         },
@@ -2266,13 +2311,37 @@
       }
     ],
     "input_bindings": {
-      "test_data_plan_hash": "sha256:408f191fd87434b60e92cc136943fa6f6fffca8ea5735fd7df80fdcfbdd2bc25",
-      "test_data_validation_hash": "sha256:e8fdff2b11393a4c8cf2f29e60b25eeec9e03bbec506817e9d4a25c0c5c90024",
-      "verified_setup_contracts_hash": "sha256:b24a77a9021763583f9d2bc9a7c327f8c68d70380e38c00b68913605d5b672ec"
+      "test_data_plan_hash": "sha256:8335ebf97ea2b109d96b77c6f8267e6c1fd28dda464cbdb8c131de27133e7118",
+      "test_data_validation_hash": "sha256:0294c88bc65d70f3ca1842ff64c3a62f27ab0bcbae39f5bee56ecb7128c28f35",
+      "verified_setup_contracts_hash": "sha256:60c350fddfa5a696e38e67055eb8dd872085704c30f1d14c702418127eb34804"
     },
     "layer": "backend",
     "verified_setup_contracts": {
       "contracts": {
+        "fs_bi_crm.stat_create.copy_stat_view": {
+          "body_template": {
+            "statViewBaseInfo": {
+              "isChange": 0,
+              "viewID": "{{source_view_id}}"
+            }
+          },
+          "evidence": "generated/112-stat-chart-copy-contract-evidence.json; tests/test_112_stat_chart_copy_contract.py",
+          "notes": "企业 91863 明确授权在目录 BI_6a7c47e1280b910007abf988 中复制、修改并长期保留测试统计图。源图必须来自该目录，创建后必须通过 CRM、STAT 配置和目录列表三重回读。",
+          "readback_operation": "fs_bi_crm.stat_edit.get_stat_view",
+          "required_body_keys": [
+            "statViewBaseInfo"
+          ],
+          "resource_type": "stat_chart",
+          "response_id_paths": [
+            "Value.viewID"
+          ],
+          "retention_mode": "retain",
+          "secondary_readback_operation": "fs_bi_stat.stat_edit.get_chart_config",
+          "status": "verified_112",
+          "substitutions": {
+            "source_view_id": "必须来自授权目录 BI_6a7c47e1280b910007abf988，并具有成功的 CRM 与 STAT 配置回读；当前已验证源图为 BI_6a7c47e808bc2c00077317be"
+          }
+        },
         "fs_bi_dev.lwt_manager.save": {
           "body_template": null,
           "derivation": {
@@ -2300,6 +2369,7 @@
             "relations"
           ],
           "resource_type": "joined_table",
+          "retention_mode": "retain",
           "status": "verified_112"
         },
         "fs_bi_stat.agg_rule.add_new_agg_rule": {
@@ -2348,6 +2418,10 @@
             "timeZone"
           ],
           "resource_type": "aggregate_metric",
+          "response_id_paths": [
+            "Value.fieldId"
+          ],
+          "retention_mode": "retain",
           "status": "verified_112",
           "substitutions": {
             "metric_name": "用例语义名（如 rs-metric / mr-metric），必须含 namespace 前缀",
@@ -2380,6 +2454,10 @@
             "sourceField"
           ],
           "resource_type": "custom_dimension",
+          "response_id_paths": [
+            "Value.fieldId"
+          ],
+          "retention_mode": "retain",
           "status": "verified_112",
           "substitutions": {
             "dimension_config_json": "JSON 字符串，groups 的 values 必须来自 112 实时 get_ui_type 枚举（evidence 中 optionCode 为 1/2/3/other）",
@@ -2405,6 +2483,10 @@
             "ratioType"
           ],
           "resource_type": "calculated_metric",
+          "response_id_paths": [
+            "Value.fieldID"
+          ],
+          "retention_mode": "retain",
           "status": "verified_112",
           "substitutions": {
             "base_agg_field_id": "必须先 add_new_agg_rule 创建聚合指标，取其返回的 fieldId",
@@ -2414,12 +2496,115 @@
         }
       },
       "environment": "112",
+      "execution_contracts": {
+        "fs_bi_stat.stat_base.data_query_da655ba1": {
+          "applies_when_contains": [
+            "结果集筛选",
+            "result_set_filter"
+          ],
+          "body_template": {
+            "filterLists": [
+              {
+                "filters": [
+                  {
+                    "aggDimType": "base_agg",
+                    "displayNumber": 1,
+                    "fieldID": "{{field_id}}",
+                    "fieldId": "{{field_id}}",
+                    "fieldName": "{{field_name}}",
+                    "fieldType": "Number",
+                    "filterConfig": {
+                      "aggrType": "{{aggr_type}}",
+                      "filterGroupType": 1,
+                      "ratioType": "{{ratio_type}}",
+                      "showAppointLevelSwitch": 0,
+                      "switchStatus": 0
+                    },
+                    "operator": 1,
+                    "operatorLabel": "equals",
+                    "value1": "0",
+                    "value2": ""
+                  }
+                ]
+              }
+            ],
+            "id": "{{schema_id}}",
+            "isView": 0,
+            "lan": "{{locale}}",
+            "measureFieldID": "{{field_id}}",
+            "measureFieldIDs": [
+              "{{field_id}}"
+            ],
+            "pageNumber": 1,
+            "pageSize": 20,
+            "timeZone": "Asia/Shanghai"
+          },
+          "contract_scope": "read_only_execution",
+          "evidence": "tests/test_112_result_filter_request_variants.py; tests/test_112_retained_result_filter.py; live rerun 2026-08-21 (8 passed)",
+          "operation_constraints": {
+            "forbidden_substitute": "fs_bi_stat.stat_base.detail_data_query",
+            "locale_mapping": {
+              "en": "en",
+              "zh_CN": "zh-CN"
+            },
+            "required_operation": "fs_bi_stat.stat_base.data_query_da655ba1"
+          },
+          "required_body_keys": [
+            "id",
+            "isView",
+            "measureFieldID",
+            "measureFieldIDs",
+            "pageNumber",
+            "pageSize",
+            "filterLists",
+            "timeZone",
+            "lan"
+          ],
+          "response_observations": {
+            "business_failure_code": "Result.FailureCode",
+            "error_code": "Error.Code",
+            "error_message": "Error.Message"
+          },
+          "retained_fixtures": [
+            {
+              "aggr_type": "2",
+              "field_id": "BI_d9d45d8381de9e094fe1973acf408d92",
+              "ratio_type": "0",
+              "schema_id": "BI_e672ff1046fb773b76bc2b56",
+              "variant": "ordinary_metric"
+            },
+            {
+              "aggr_type": "2",
+              "field_id": "BI_6a7ad48b198ee300073fef47",
+              "ratio_type": "0",
+              "schema_id": "BI_e672ff1046fb773b76bc2b56",
+              "variant": "aggregate_metric"
+            },
+            {
+              "aggr_type": "7",
+              "field_id": "BI_6a7ad564198ee300073fef5f",
+              "ratio_type": "0",
+              "schema_id": "BI_e672ff1046fb773b76bc2b56",
+              "variant": "calculated_metric"
+            },
+            {
+              "aggr_type": "2",
+              "field_id": "BI_d9d45d8381de9e094fe1973acf408d92",
+              "ratio_type": "1",
+              "schema_id": "BI_e672ff1046fb773b76bc2b56",
+              "variant": "period_over_period_metric"
+            }
+          ],
+          "scenario": "result_set_filter_detail_restriction",
+          "status": "verified_112"
+        }
+      },
       "schema_version": "verified-setup-contracts/1.0",
-      "usage": "A14 setup 阶段必须逐字使用下列 body_template，只替换 {{PLACEHOLDER}} 标记；禁止自造字段或发送仅含 namespace/variant 的占位 body。",
-      "verified_from": "retained asset run 2026-08-11/08-13 (live create + readback)"
+      "usage": "A14 setup 阶段必须逐字使用 contracts 中的 body_template；测试步骤必须服从 execution_contracts。只替换 {{PLACEHOLDER}} 标记，禁止自造字段或发送占位 body。",
+      "verified_from": "retained asset run 2026-08-11/08-13 and live 112 contract checks 2026-08-21"
     }
   },
-  "bundle_hash": "sha256:d603613c2c4e4a3103c01db63e2a713735fe91da35f7ed6046d22d6f719994a8",
+  "bundle_hash": "sha256:8777ee93bff8ff57bc4be4fba9f8e261d37326b843df77cf6b103b5cc9092073",
   "integrity": {
     "business_repository_write_allowed": false,
     "credentials_embedded": false,
@@ -2429,7 +2614,7 @@
   "output_contract": "automation-generation/1.0",
   "profile_id": "A14",
   "profile_version": "1.0.0",
-  "regeneration_round": "5",
+  "regeneration_round": "9",
   "schema_version": "multica-agent-input/1.0",
   "source_snapshot_id": "pilot-001-source-v1",
   "upstream_artifacts": [
@@ -2442,11 +2627,11 @@
       "artifact_id": "n15-execution-plan"
     },
     {
-      "artifact_hash": "sha256:e8fdff2b11393a4c8cf2f29e60b25eeec9e03bbec506817e9d4a25c0c5c90024",
+      "artifact_hash": "sha256:0294c88bc65d70f3ca1842ff64c3a62f27ab0bcbae39f5bee56ecb7128c28f35",
       "artifact_id": "n27-test-data-plan-validation"
     },
     {
-      "artifact_hash": "sha256:408f191fd87434b60e92cc136943fa6f6fffca8ea5735fd7df80fdcfbdd2bc25",
+      "artifact_hash": "sha256:8335ebf97ea2b109d96b77c6f8267e6c1fd28dda464cbdb8c131de27133e7118",
       "artifact_id": "a22-test-data-plan"
     }
   ],

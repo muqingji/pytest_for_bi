@@ -106,7 +106,7 @@ def compile_chart_clone_resource(
         "setup": {"request": {"api": "fs_bi_crm.stat_create.copy_stat_view",
                                "json": {"statViewBaseInfo": {"viewID": source_view_id,
                                                               "isChange": 0}}},
-                  "extract": {"chart_view_id": "viewID"}},
+                  "extract": {"chart_view_id": "Value.viewID"}},
         "post_setup": [
             {"request": {"api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
                          "json": {"viewID": "{{ chart_view_id }}", "viewName": view_name,

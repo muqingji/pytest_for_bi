@@ -11,6 +11,28 @@ from framework.clients.models import ApiResponse
 
 _PATH_PART = re.compile(r"([^.[\]]+)|\[([0-9]+)\]")
 
+SUPPORTED_RESPONSE_EXPECTATIONS = frozenset(
+    {
+        "body",
+        "body_contains_keys",
+        "body_contains_values",
+        "body_exact",
+        "body_not_contains_values",
+        "headers",
+        "json_path",
+        "schema",
+        "status_code",
+    }
+)
+
+
+def response_expectation_is_effective(expected: Any) -> bool:
+    """Return whether an expectation contains a runner-supported assertion."""
+
+    return isinstance(expected, dict) and bool(
+        set(expected) & SUPPORTED_RESPONSE_EXPECTATIONS
+    )
+
 
 def get_by_path(value: Any, path: str) -> Any:
     """Read ``a.b[0].c`` from a dict/list result.
@@ -118,6 +140,13 @@ def contains_value(value: Any, expected: Any) -> bool:
 
 def assert_response(response: ApiResponse, expected: dict[str, Any]) -> None:
     """Validate an ApiResponse with a consistent case-file contract."""
+    unknown = sorted(set(expected) - SUPPORTED_RESPONSE_EXPECTATIONS)
+    if unknown:
+        raise ValueError(
+            "Unsupported response expectation key(s): " + ", ".join(unknown)
+        )
+    if not response_expectation_is_effective(expected):
+        raise ValueError("Response expectation must contain at least one assertion")
     if "status_code" in expected and response.status_code != expected["status_code"]:
         raise AssertionError(f"status_code: expected {expected['status_code']}, got {response.status_code}")
     if "body" in expected:

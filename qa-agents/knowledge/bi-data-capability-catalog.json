@@ -46,6 +46,21 @@
         "date_field_id": "BI_9b4d74a9fd193cc9b75e51db2dc2c67f"
       },
       "evidence_refs": ["environment-112", "probe-result-filter-detail-112"]
+    },
+    "112-chart-detail-folder": {
+      "environment": "112",
+      "subject_selection": {"explicit_case_subject_required_when_present": true, "default_priority": ["客户"], "forbidden_fallbacks": ["区域测试"]},
+      "variables": {
+        "schema_id": "BI_5bcebcdc3060e20001e79977",
+        "schema_object": "biz_account",
+        "schema_display_name": "客户统计",
+        "category_id": "BI_6a7c47e1280b910007abf988",
+        "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+        "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5",
+        "source_view_id": "BI_6a7c47e808bc2c00077317be",
+        "source_config_hash": "sha256:bf5ad328d699a15722fe1e3c542ad336de7013cc26c127df32707a6bb59e0b62"
+      },
+      "evidence_refs": ["environment-112", "112-stat-chart-copy-contract-evidence", "fs-bi-crm-report-source", "fs-bi-source"]
     }
   },
   "recipes": [
@@ -367,6 +382,56 @@
         }
       ]
     }
-
+,
+    {
+      "id": "stat-chart-create",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {"data_intents": ["chart.create"], "datasets": ["stat_chart"], "all_term_groups": [["统计图", "图表", "图形", "chart", "stat view"], ["查看明细", "detail query", "details view", "detail"]]},
+      "supported_variants": ["stat_chart"],
+      "resource_goals": [{"resource_type": "stat_chart", "desired_state": {"created": true, "saved": true}}],
+      "variables": {"chart_name": "统计图查看明细验证图"},
+      "evidence_refs": ["fs-bi-crm-report-source", "fs-bi-source", "environment-112", "fxiaoke-help-chart-create"],
+      "resources": [{
+        "resource_key": "stat_chart_resource",
+        "resource_type": "stat_chart",
+        "lifecycle_mode": "create",
+        "retention_mode": "retain",
+        "resource_id_variable": "chart_view_id",
+        "display_name": "{{ chart_name }}",
+        "source_field_type": "chart_clone",
+        "asset_folder_name": "统计图查看明细限制原因提示优化",
+        "folder_binding": {
+          "folder_name": "统计图查看明细限制原因提示优化",
+          "category_id": "BI_6a7c47e1280b910007abf988",
+          "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+          "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+        },
+        "source_provenance": {
+          "source_view_id": "BI_6a7c47e808bc2c00077317be",
+          "source_config_hash": "sha256:bf5ad328d699a15722fe1e3c542ad336de7013cc26c127df32707a6bb59e0b62"
+        },
+        "configuration_hash": "sha256:bf5ad328d699a15722fe1e3c542ad336de7013cc26c127df32707a6bb59e0b62",
+        "setup": {
+          "name": "复制已验证保留统计图并绑定需求目录",
+          "request": {"protocol": "http", "api": "fs_bi_crm.stat_create.copy_stat_view", "json": {"statViewBaseInfo": {"viewID": "BI_6a7c47e808bc2c00077317be", "isChange": 0}}},
+          "extract": {"chart_view_id": "Value.viewID"}
+        },
+        "post_setup": [
+          {"request": {"protocol": "http", "api": "fs_bi_crm.rpt_view_display.rename_rpt_view", "json": {"viewID": "{{ chart_view_id }}", "viewName": "{{ chart_name }}", "description": "需求：统计图查看明细限制原因提示优化", "isCategory": 2}}},
+          {"request": {"protocol": "http", "api": "fs_bi_crm.stat_edit.get_stat_view", "json": {"id": "{{ chart_view_id }}"}}, "extract": {"chart_origin_category_id": "Value.categoryID"}},
+          {"request": {"protocol": "http", "api": "fs_bi_crm.rpt_view_display.move_rpt_view", "json": {"targetCategoryID": "BI_6a7c47e1280b910007abf988", "originCategoryID": "{{ chart_origin_category_id }}", "viewID": "{{ chart_view_id }}", "isCategory": 2}}, "condition": {"left": "{{ chart_origin_category_id }}", "operator": "not_equals", "right": "BI_6a7c47e1280b910007abf988"}}
+        ],
+        "readiness": [
+          {"request": {"protocol": "http", "api": "fs_bi_crm.stat_edit.get_stat_view", "json": {"id": "{{ chart_view_id }}"}}, "expect": {"status_code": 200}},
+          {"request": {"protocol": "http", "api": "fs_bi_stat.stat_edit.get_chart_config", "json": {"id": "{{ chart_view_id }}", "isView": 1, "type": "edit", "querySource": "UNKNOWN", "cacheTime": 0, "refresh": 1}}, "expect": {"status_code": 200}}
+        ],
+        "residue_checks": [{
+          "name": "确认克隆统计图仍可回读",
+          "request": {"protocol": "http", "api": "fs_bi_stat.stat_edit.get_chart_config", "json": {"id": "{{ chart_view_id }}", "isView": 1, "type": "edit", "querySource": "UNKNOWN", "cacheTime": 0, "refresh": 1}},
+          "expect": {"status_code": 200, "body_contains_values": ["{{ chart_view_id }}"]}
+        }]
+      }]
+    }
   ]
 }

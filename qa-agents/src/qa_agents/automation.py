@@ -5,7 +5,7 @@ from __future__ import annotations
 import ast
 from collections.abc import Mapping
 import json
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from .contracts import ValidationIssue, content_hash
@@ -14,16 +14,55 @@ from .security import SecurityPolicy
 
 
 class AutomationPolicy:
-    def __init__(self, value: Mapping[str, Any]) -> None:
+    def __init__(
+        self,
+        value: Mapping[str, Any],
+        *,
+        known_operations: set[str] | None = None,
+        verified_setup_contracts: Mapping[str, Any] | None = None,
+        verified_execution_contracts: Mapping[str, Any] | None = None,
+    ) -> None:
         self.value = dict(value)
         self.targets = {
             str(item["repository_id"]): dict(item) for item in value.get("targets", [])
         }
+        self.known_operations = known_operations or set()
+        self.verified_setup_contracts = dict(verified_setup_contracts or {})
+        self.verified_execution_contracts = dict(verified_execution_contracts or {})
 
     @classmethod
     def from_file(cls, path: Any) -> "AutomationPolicy":
-        with open(path, encoding="utf-8") as file:
-            return cls(json.load(file))
+        policy_path = Path(path)
+        with policy_path.open(encoding="utf-8") as file:
+            value = json.load(file)
+        qa_root = policy_path.resolve().parent.parent
+        known_operations: set[str] = set()
+        catalog_root = qa_root.parent / "idl" / "http"
+        if catalog_root.is_dir():
+            for document_path in sorted(catalog_root.rglob("*.openapi.json")):
+                with document_path.open(encoding="utf-8") as file:
+                    document = json.load(file)
+                for path_item in document.get("paths", {}).values():
+                    if not isinstance(path_item, Mapping):
+                        continue
+                    for definition in path_item.values():
+                        if isinstance(definition, Mapping) and definition.get("operationId"):
+                            known_operations.add(str(definition["operationId"]))
+        contracts: dict[str, Any] = {}
+        execution_contracts: dict[str, Any] = {}
+        contracts_path = qa_root / "knowledge" / "verified-setup-contracts.json"
+        if contracts_path.exists():
+            with contracts_path.open(encoding="utf-8") as file:
+                raw_contracts = json.load(file)
+            if raw_contracts.get("schema_version") == "verified-setup-contracts/1.0":
+                contracts = dict(raw_contracts.get("contracts", {}))
+                execution_contracts = dict(raw_contracts.get("execution_contracts", {}))
+        return cls(
+            value,
+            known_operations=known_operations,
+            verified_setup_contracts=contracts,
+            verified_execution_contracts=execution_contracts,
+        )
 
 
 def _safe_candidate_path(path: str, allowed_roots: list[str]) -> bool:
@@ -69,7 +108,14 @@ def _literal_eval_case_spec(value_node: ast.AST) -> Any:
     return ast.literal_eval(value_node)
 
 
-def _candidate_spec_structure_issues(content: str, path: str) -> list["ValidationIssue"]:
+def _candidate_spec_structure_issues(
+    content: str,
+    path: str,
+    *,
+    known_operations: set[str] | None = None,
+    verified_setup_contracts: Mapping[str, Any] | None = None,
+    verified_execution_contracts: Mapping[str, Any] | None = None,
+) -> list["ValidationIssue"]:
     """Deterministic N05 guard: generated CASE_SPEC must be executable.
 
     Rejects text-only skeletons (string steps/cleanup, missing oracle values) so
@@ -131,14 +177,22 @@ def _candidate_spec_structure_issues(content: str, path: str) -> list["Validatio
             )
         )
         return issues
-    # cleanup/residue 是尽力而为的拆除动作：runner 对非结构化条目会优雅跳过，
-    # 因此只对测试步骤（setup/readiness/steps）做严格结构校验。
     resource_requirements = case_spec.get("test_data", {}).get("resource_requirements", [])
     required_body_keys_by_api: dict[str, set[str]] = {}
+    retained_resource_variables: set[str] = set()
+    all_resources_retained = False
     if isinstance(resource_requirements, list):
+        typed_resources = [item for item in resource_requirements if isinstance(item, Mapping)]
+        all_resources_retained = bool(typed_resources) and all(
+            str(item.get("retention_mode", "")) == "retain" for item in typed_resources
+        )
         for resource in resource_requirements:
             if not isinstance(resource, Mapping):
                 continue
+            if str(resource.get("retention_mode", "")) == "retain":
+                variable = str(resource.get("resource_id_variable", ""))
+                if variable:
+                    retained_resource_variables.add(variable)
             operation = str(resource.get("setup_operation", ""))
             keys = resource.get("required_body_keys")
             if not operation or not isinstance(keys, list) or not keys:
@@ -146,7 +200,19 @@ def _candidate_spec_structure_issues(content: str, path: str) -> list["Validatio
             required_body_keys_by_api.setdefault(operation, set()).update(
                 str(key) for key in keys
             )
-    for phase in ("setup", "readiness", "steps"):
+    contracts = verified_setup_contracts or {}
+    execution_contracts = verified_execution_contracts or {}
+    serialized_case = json.dumps(case_spec, ensure_ascii=False)
+    applicable_execution_contracts = [
+        contract
+        for contract in execution_contracts.values()
+        if isinstance(contract, Mapping)
+        and any(
+            marker in serialized_case
+            for marker in map(str, contract.get("applies_when_contains", []))
+        )
+    ]
+    for phase in ("setup", "readiness", "steps", "cleanup", "residue_checks"):
         steps = case_spec.get(phase)
         if not isinstance(steps, list):
             continue
@@ -161,6 +227,23 @@ def _candidate_spec_structure_issues(content: str, path: str) -> list["Validatio
                     )
                 )
                 continue
+            if phase == "cleanup":
+                cleanup_text = json.dumps(step, ensure_ascii=False)
+                targets_retained = all_resources_retained or any(
+                    str(step.get("when_variable", "")) == variable
+                    or f"{{{{{variable}}}}}" in cleanup_text
+                    or f"{{{{ {variable} }}}}" in cleanup_text
+                    for variable in retained_resource_variables
+                )
+                if targets_retained:
+                    issues.append(
+                        ValidationIssue(
+                            "retained_resource_cleanup_forbidden",
+                            f"cleanup[{index}] targets a resource whose retention_mode is retain",
+                            f"code_candidates.{path}.cleanup[{index}]",
+                            "A14",
+                        )
+                    )
             request = step.get("request")
             if not isinstance(request, Mapping):
                 issues.append(
@@ -186,7 +269,34 @@ def _candidate_spec_structure_issues(content: str, path: str) -> list["Validatio
                     )
                 )
             api = str(request.get("api", ""))
+            for execution_contract in applicable_execution_contracts:
+                constraints = execution_contract.get("operation_constraints", {})
+                if (
+                    isinstance(constraints, Mapping)
+                    and api == str(constraints.get("forbidden_substitute", ""))
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            "execution_contract_mismatch",
+                            f"{api} is not the verified operation for this execution scenario",
+                            f"code_candidates.{path}.{phase}[{index}].request.api",
+                            "A14",
+                        )
+                    )
+            if known_operations is not None and api and api not in known_operations:
+                issues.append(
+                    ValidationIssue(
+                        "operation_not_registered",
+                        f"{phase}[{index}] operation {api!r} is not defined in idl/http",
+                        f"code_candidates.{path}.{phase}[{index}].request.api",
+                        "A14",
+                    )
+                )
             required_keys = required_body_keys_by_api.get(api)
+            contract = contracts.get(api)
+            execution_contract = execution_contracts.get(api)
+            if phase == "setup" and isinstance(contract, Mapping):
+                required_keys = set(map(str, contract.get("required_body_keys", [])))
             if phase == "setup" and required_keys:
                 body = request.get("json")
                 if not isinstance(body, Mapping):
@@ -199,20 +309,88 @@ def _candidate_spec_structure_issues(content: str, path: str) -> list["Validatio
                             "A14",
                         )
                     )
-                    continue
-                missing = sorted(required_keys - set(body.keys()))
+                else:
+                    missing = sorted(required_keys - set(body.keys()))
+                    if missing:
+                        issues.append(
+                            ValidationIssue(
+                                "setup_body_missing_contract_fields",
+                                f"setup[{index}] {api} body lacks verified contract"
+                                f" keys: {', '.join(missing)}",
+                                f"code_candidates.{path}.setup[{index}].request.json",
+                                "A14",
+                            )
+                        )
+            if phase == "steps" and isinstance(execution_contract, Mapping):
+                execution_required = set(
+                    map(str, execution_contract.get("required_body_keys", []))
+                )
+                body = request.get("json")
+                missing = sorted(
+                    execution_required - set(body)
+                    if isinstance(body, Mapping)
+                    else execution_required
+                )
                 if missing:
                     issues.append(
                         ValidationIssue(
-                            "setup_body_missing_contract_fields",
-                            f"setup[{index}] {api} body lacks verified contract"
-                            f" keys: {', '.join(missing)}",
-                            f"code_candidates.{path}.setup[{index}].request.json",
+                            "execution_body_missing_contract_fields",
+                            f"steps[{index}] {api} body lacks verified contract keys: "
+                            + ", ".join(missing),
+                            f"code_candidates.{path}.steps[{index}].request.json",
+                            "A14",
+                        )
+                    )
+            expect = step.get("expect")
+            if phase in {"setup", "readiness"} and not isinstance(expect, Mapping):
+                issues.append(
+                    ValidationIssue(
+                        "lifecycle_assertion_missing",
+                        f"{phase}[{index}] must assert the requested state",
+                        f"code_candidates.{path}.{phase}[{index}].expect",
+                        "A14",
+                    )
+                )
+            if isinstance(expect, Mapping):
+                from .case_executability import SUPPORTED_RESPONSE_EXPECTATIONS
+
+                unknown = sorted(set(map(str, expect)) - SUPPORTED_RESPONSE_EXPECTATIONS)
+                if not expect or unknown:
+                    issues.append(
+                        ValidationIssue(
+                            "response_expectation_unsupported",
+                            (
+                                "response expectation is empty"
+                                if not expect
+                                else "unsupported response expectation keys: "
+                                + ", ".join(unknown)
+                            ),
+                            f"code_candidates.{path}.{phase}[{index}].expect",
+                            "A14",
+                        )
+                    )
+            if phase == "setup" and isinstance(contract, Mapping):
+                allowed_paths = set(map(str, contract.get("response_id_paths", [])))
+                extract = step.get("extract")
+                actual_paths = (
+                    set(map(str, extract.values()))
+                    if isinstance(extract, Mapping)
+                    else set()
+                )
+                if allowed_paths and not actual_paths.intersection(allowed_paths):
+                    issues.append(
+                        ValidationIssue(
+                            "setup_extract_contract_mismatch",
+                            f"setup[{index}] {api} must extract its resource id from one of "
+                            f"{sorted(allowed_paths)}",
+                            f"code_candidates.{path}.setup[{index}].extract",
                             "A14",
                         )
                     )
     expected = case_spec.get("expected")
     if isinstance(expected, list):
+        from .case_executability import SUPPORTED_ORACLE_MATCHERS
+
         for index, item in enumerate(expected):
             oracle = item.get("oracle") if isinstance(item, Mapping) else None
             if not isinstance(oracle, Mapping):
@@ -226,6 +404,31 @@ def _candidate_spec_structure_issues(content: str, path: str) -> list["Validatio
                         "executable_oracle_missing",
                         f"expected[{index}] must carry an oracle with observation_point/matcher",
                         f"code_candidates.{path}.expected[{index}].oracle",
+                        "A14",
+                    )
+                )
+                continue
+            matcher = str(oracle.get("matcher", ""))
+            normalized_matcher = "equals" if matcher.startswith("equals:") else matcher
+            if normalized_matcher not in SUPPORTED_ORACLE_MATCHERS:
+                issues.append(
+                    ValidationIssue(
+                        "oracle_matcher_not_supported",
+                        f"expected[{index}] matcher {matcher!r} is not executable",
+                        f"code_candidates.{path}.expected[{index}].oracle.matcher",
+                        "A14",
+                    )
+                )
+            if (
+                normalized_matcher not in {"exists", "one_of"}
+                and "expected_value" not in oracle
+                and not matcher.startswith("equals:")
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "oracle_expected_value_missing",
+                        f"expected[{index}] matcher requires expected_value",
+                        f"code_candidates.{path}.expected[{index}].oracle.expected_value",
                         "A14",
                     )
                 )
@@ -460,7 +663,21 @@ def check_automation_generation(
             )
             continue
         if _generator_route(manifest) in {"A14", "A15"}:
-            issues.extend(_candidate_spec_structure_issues(content, path))
+            enforce_operations = bool(
+                policy.value.get("require_registered_operations_for_network", False)
+                and manifest.get("permissions", {}).get("network") is True
+            )
+            issues.extend(
+                _candidate_spec_structure_issues(
+                    content,
+                    path,
+                    known_operations=(
+                        policy.known_operations if enforce_operations else None
+                    ),
+                    verified_setup_contracts=policy.verified_setup_contracts,
+                    verified_execution_contracts=policy.verified_execution_contracts,
+                )
+            )
         for node in ast.walk(tree):
             if isinstance(node, (ast.Import, ast.ImportFrom)):
                 names = [alias.name.split(".")[0] for alias in node.names]

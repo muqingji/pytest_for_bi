@@ -7,6 +7,7 @@ import argparse
 import fcntl
 import json
 import os
+import re
 from contextlib import contextmanager
 from pathlib import Path
 import shutil
@@ -3023,6 +3024,15 @@ def ensure_n27_validation(
         if bound == a22.get("artifact_hash"):
             return None
     policy = _read(policy_path)
+    deferred_cases = [
+        {
+            "case_id": str(item.get("case_id", "")),
+            "reason_code": str(item.get("reason_code", "paused_by_plan")),
+            "route": "deferred_data_construction",
+        }
+        for item in a22_payload.get("paused_cases", [])
+        if isinstance(item, Mapping) and str(item.get("case_id", ""))
+    ]
     try:
         validation = validate_test_data_plan(a22_payload, policy)
         if a22.get("status") == ArtifactStatus.NEEDS_HUMAN.value:
@@ -3033,10 +3043,15 @@ def ensure_n27_validation(
             # 而不是把 C5 整条链路死锁在 rejected。
             n27_status = ArtifactStatus.COMPLETED_WITH_GAPS
             reason_code = "test_data_plan_pending_human"
-            validation = {**validation, "pending_human": True}
+            validation = {
+                **validation,
+                "pending_human": True,
+                "deferred_cases": deferred_cases,
+            }
         else:
             n27_status = ArtifactStatus.COMPLETED
             reason_code = None
+            validation = {**validation, "deferred_cases": deferred_cases}
     except Exception as error:
         validation = {
             "schema_version": "test-data-plan-validation/1.0",
@@ -3121,6 +3136,7 @@ def ensure_n05_aggregation(
 ) -> dict[str, Any] | None:
     """Run deterministic N05 by aggregating A14/A15 generation and A18 reviews."""
 
+    generation_branches: list[dict[str, Any]] = []
     generations: list[dict[str, Any]] = []
     reviews: dict[str, dict[str, Any]] = {}
     for generator_id, artifact_id in C5_GENERATION_ARTIFACTS.items():
@@ -3129,22 +3145,101 @@ def ensure_n05_aggregation(
             continue
         generation = _read(path)
         payload = generation.get("payload", {})
-        if not isinstance(payload, Mapping) or not isinstance(payload.get("manifest"), Mapping):
+        if not isinstance(payload, Mapping):
             continue
-        generations.append(generation)
+        generation_branches.append(generation)
         reviewer = C5_GENERATION_REVIEWER[generator_id]
         review_path = auto_dir / "artifacts" / f"{C5_REVIEW_ARTIFACTS[reviewer]}.json"
         if review_path.exists():
             review = _read(review_path)
-            # A deterministic not_applicable reviewer marker (generation branch
-            # not selected) is evidence of the skip, not a real review: it must
-            # not flip review_passed to False and stall the merge node. A review
-            # bound to an older generation (A14/A15 重生成后遗留) 同样不能作为
-            # 证据：只有复核过当前候选的结论才能算 review_passed。
             if _review_binds_generation(review, payload):
                 reviews[reviewer] = review
-    if not generations:
+        if not isinstance(payload.get("manifest"), Mapping):
+            continue
+        generations.append(generation)
+    if not generation_branches:
         return None
+    if not generations:
+        terminal_skip_statuses = {
+            ArtifactStatus.NOT_APPLICABLE.value,
+            ArtifactStatus.SKIPPED_BY_POLICY.value,
+        }
+        if any(
+            str(item.get("status", "")) not in terminal_skip_statuses
+            for item in generation_branches
+        ):
+            return None
+        target = auto_dir / "artifacts" / "n05-automation-code-check.json"
+        evidence = [*generation_branches, *reviews.values()]
+        current_hashes = {str(item.get("artifact_hash", "")) for item in evidence}
+        if target.exists():
+            existing = _read(target)
+            existing_hashes = {
+                str(item.get("content_hash", ""))
+                for item in existing.get("evidence_refs", [])
+                if isinstance(item, Mapping)
+            }
+            if (
+                existing.get("status") == ArtifactStatus.NOT_APPLICABLE.value
+                and current_hashes == existing_hashes
+            ):
+                return None
+        first = generation_branches[0]
+        rejected = sorted(
+            {
+                str(item.get("case_id"))
+                for generation in generation_branches
+                for item in generation.get("payload", {}).get("rejected_cases", [])
+                if isinstance(item, Mapping) and item.get("case_id")
+            }
+        )
+        n05 = ArtifactEnvelope(
+            workflow_run_id=str(first.get("workflow_run_id", "")),
+            workflow_mode=str(first.get("workflow_mode", "")),
+            artifact_id="n05-automation-code-check",
+            source_snapshot_id=str(first.get("source_snapshot_id", "")),
+            producer=Producer(
+                component_id="N05",
+                component_version="1.0.0",
+                runtime="deterministic-node",
+                profile_version="1.0.0",
+                model_provider="deterministic",
+                model_snapshot="none",
+                prompt_version="none",
+                tool_bundle_version="none",
+            ),
+            payload={
+                "schema_version": "automation-code-check/1.0",
+                "input_bindings": [],
+                "passed": False,
+                "fatal_security_violation": False,
+                "issues": [],
+                "repair_routes": [],
+                "generation_count": 0,
+                "planned_generation_count": 0,
+                "rejected_cases": rejected,
+            },
+            status=ArtifactStatus.NOT_APPLICABLE,
+            reason_code="no_machine_executable_automation_candidate",
+            evidence_refs=tuple(
+                EvidenceRef(
+                    source_type="artifact",
+                    source_id=str(item.get("artifact_id", "")),
+                    location=f"{item.get('artifact_id', '')}.json",
+                    content_hash=str(item.get("artifact_hash", "")),
+                )
+                for item in evidence
+            ),
+        )
+        ArtifactStore(auto_dir).write_artifact(n05)
+        return {
+            "node_id": "N05",
+            "artifact_id": n05.artifact_id,
+            "artifact_hash": n05.artifact_hash,
+            "status": n05.status.value,
+            "passed": False,
+            "fatal": False,
+        }
     policy_path = _config_path(config, "automation_target_policy", repo_root)
     if not policy_path:
         return None
@@ -3362,6 +3457,53 @@ def ensure_g03_review(
         return None
     n05 = _read(n05_path)
     n05_payload = n05.get("payload", {})
+    if n05.get("status") in {
+        ArtifactStatus.NOT_APPLICABLE.value,
+        ArtifactStatus.SKIPPED_BY_POLICY.value,
+    }:
+        envelope = ArtifactEnvelope(
+            workflow_run_id=str(n05.get("workflow_run_id", "")),
+            workflow_mode=str(n05.get("workflow_mode", "")),
+            artifact_id="g03-automation-code-review",
+            source_snapshot_id=str(n05.get("source_snapshot_id", "")),
+            producer=Producer(
+                component_id="G03-AUTO",
+                component_version="1.0.0",
+                runtime="deterministic-node",
+                profile_version="1.0.0",
+                model_provider="deterministic",
+                model_snapshot="none",
+                prompt_version="none",
+                tool_bundle_version="none",
+            ),
+            payload={
+                "schema_version": "automation-code-review/1.0",
+                "gate_id": "G03",
+                "decision": "not_applicable",
+                "reason": "no machine-executable automation candidate requires review",
+                "n05_artifact_hash": str(n05.get("artifact_hash", "")),
+            },
+            status=ArtifactStatus.NOT_APPLICABLE,
+            reason_code="automation_generation_not_applicable",
+            evidence_refs=(
+                EvidenceRef(
+                    source_type="artifact",
+                    source_id="n05-automation-code-check",
+                    location="n05-automation-code-check.json",
+                    content_hash=str(n05.get("artifact_hash", "")),
+                ),
+            ),
+        )
+        target = auto_dir / "artifacts" / "g03-automation-code-review.json"
+        if target.exists() and _read(target).get("artifact_hash") == envelope.artifact_hash:
+            return None
+        ArtifactStore(auto_dir).write_artifact(envelope)
+        return {
+            "node_id": "G03",
+            "action": "skipped_not_applicable",
+            "artifact_id": envelope.artifact_id,
+            "artifact_hash": envelope.artifact_hash,
+        }
     if not isinstance(n05_payload, Mapping) or n05_payload.get("passed") is not True:
         return None
     generation_paths: dict[str, Path] = {}
@@ -3519,9 +3661,14 @@ def ensure_a22_human_confirmation(
     """Record a human confirmation once the A22 review Issue is set to done.
 
     A22 plans with unresolved data requirements are ``needs_human`` by design.
-    The owner confirms them on Multica (Issue done); the confirmation Artifact
-    lets the C5 stage reach a terminal state automatically instead of keeping
-    the whole workflow in ``in_review`` forever.
+    The owner must review every unresolved requirement on the card and post a
+    disposition comment (``UR-xx: confirmed/skip/return/need_evidence``). Only
+    an Issue with a complete disposition comment becomes a confirmation
+    Artifact; flipping the card to ``done`` alone no longer records one.
+    ``skip`` and ``need_evidence`` are valid review outcomes that release the
+    workflow with gaps (their requirements are recorded as deferred); only
+    ``return`` keeps the gate open and routes the plan to correction. This
+    mirrors the G01/G02 review gates: a status transition is not a review.
     """
 
     a22_path = auto_dir / "artifacts" / "a22-test-data-plan.json"
@@ -3543,12 +3690,50 @@ def ensure_a22_human_confirmation(
         return None
     payload = a22.get("payload", {})
     unresolved = payload.get("unresolved_requirements", [])
+    dispositions = _parse_a22_dispositions(done_issues[0], unresolved)
+    if dispositions is None:
+        return {
+            "node_id": "A22",
+            "action": "review_pending",
+            "issue_id": str(done_issues[0].get("id", "")),
+            "issue_identifier": str(done_issues[0].get("identifier", "")),
+            "reason": (
+                "A22 审核卡已置 done，但缺少覆盖全部未决数据需求的逐项处置评论"
+                "（格式：UR-xx: confirmed/skip/return/need_evidence），未形成确认"
+            ),
+        }
+    if any(item["disposition"] == "return" for item in dispositions):
+        return {
+            "node_id": "A22",
+            "action": "review_pending",
+            "issue_id": str(done_issues[0].get("id", "")),
+            "issue_identifier": str(done_issues[0].get("identifier", "")),
+            "reason": (
+                "A22 审核存在 return 处置，测试数据计划需修正后重新确认"
+            ),
+        }
     confirmed_ids = [
-        str(item.get("requirement_id") or item.get("reason_code") or item.get("id") or "")
-        for item in unresolved
-        if isinstance(item, Mapping)
+        item["requirement_id"]
+        for item in dispositions
+        if item["disposition"] == "confirmed"
     ]
-    confirmed_ids = [value for value in confirmed_ids if value]
+    deferred_ids = [
+        item["requirement_id"]
+        for item in dispositions
+        if item["disposition"] in {"skip", "need_evidence"}
+    ]
+    all_confirmed = len(confirmed_ids) == len(dispositions)
+    decision = "confirmed" if all_confirmed else "confirmed_with_gaps"
+    confirmation_status = (
+        ArtifactStatus.COMPLETED
+        if all_confirmed
+        else ArtifactStatus.COMPLETED_WITH_GAPS
+    )
+    reason_code = (
+        "unresolved_requirements_confirmed"
+        if all_confirmed
+        else "unresolved_requirements_confirmed_with_gaps"
+    )
     identity = (
         str(a22.get("workflow_run_id", "")),
         str(a22.get("workflow_mode", "")),
@@ -3572,10 +3757,12 @@ def ensure_a22_human_confirmation(
         payload={
             "schema_version": "human-confirmation/1.0",
             "gate_id": "A22",
-            "decision": "confirmed",
+            "decision": decision,
             "plan_artifact_id": "a22-test-data-plan",
             "plan_artifact_hash": str(a22.get("artifact_hash", "")),
             "confirmed_requirement_ids": confirmed_ids,
+            "deferred_requirement_ids": deferred_ids,
+            "dispositions": dispositions,
             "actor": {
                 "type": "human",
                 "issue_identifier": str(
@@ -3583,8 +3770,8 @@ def ensure_a22_human_confirmation(
                 ),
             },
         },
-        status=ArtifactStatus.COMPLETED_WITH_GAPS,
-        reason_code="unresolved_requirements_confirmed",
+        status=confirmation_status,
+        reason_code=reason_code,
         evidence_refs=(
             EvidenceRef(
                 source_type="artifact",
@@ -3601,6 +3788,183 @@ def ensure_a22_human_confirmation(
         "artifact_hash": confirmation.artifact_hash,
         "status": confirmation.status.value,
         "confirmed": len(confirmed_ids),
+        "deferred": len(deferred_ids),
+        "dispositions": dispositions,
+    }
+
+
+_A22_DISPOSITION_ALIASES = {
+    "confirmed": "confirmed",
+    "ok": "confirmed",
+    "确认": "confirmed",
+    "认可": "confirmed",
+    "通过": "confirmed",
+    "skip": "skip",
+    "skipped": "skip",
+    "跳过": "skip",
+    "不测": "skip",
+    "return": "return",
+    "返回": "return",
+    "需补充": "return",
+    "need_evidence": "need_evidence",
+    "need_env": "need_evidence",
+    "待验证": "need_evidence",
+    "需环境验证": "need_evidence",
+    "保留": "need_evidence",
+}
+
+
+def _parse_a22_dispositions(
+    issue: Mapping[str, Any],
+    unresolved: list[Any],
+) -> list[dict[str, str]] | None:
+    """Parse per-requirement dispositions from the review Issue comments.
+
+    Every unresolved requirement must carry an explicit disposition line such
+    as ``UR-01: confirmed`` or ``UR-03: 跳过``. Returns ``None`` when the
+    comments are missing, empty, or do not cover every requirement so a bare
+    ``done`` status can never be mistaken for a human review.
+    """
+
+    required_ids = [
+        str(item.get("requirement_id") or item.get("reason_code") or item.get("id") or "")
+        for item in unresolved
+        if isinstance(item, Mapping)
+    ]
+    required_ids = [value for value in required_ids if value]
+    if not required_ids:
+        return None
+    try:
+        comments = _multica("issue", "comment", "list", str(issue.get("id", "")))
+    except Exception:
+        return None
+    if not isinstance(comments, list):
+        return None
+    dispositions: dict[str, dict[str, str]] = {}
+    for comment in comments:
+        if not isinstance(comment, Mapping):
+            continue
+        content = str(comment.get("content", "") or "")
+        if not content.strip():
+            continue
+        for requirement_id, disposition in _parse_disposition_lines(content).items():
+            if requirement_id in required_ids:
+                dispositions[requirement_id] = {
+                    "requirement_id": requirement_id,
+                    "disposition": disposition,
+                }
+    if set(dispositions) != set(required_ids):
+        return None
+    return [dispositions[requirement_id] for requirement_id in required_ids]
+
+
+def _parse_disposition_lines(content: str) -> dict[str, str]:
+    """Extract ``UR-xx: disposition`` lines from a review comment."""
+
+    parsed: dict[str, str] = {}
+    for line in content.splitlines():
+        match = re.match(
+            r"^\s*(UR-\d+)\s*[:：]?\s*([A-Za-z_\u4e00-\u9fa5]+)",
+            line,
+        )
+        if not match:
+            continue
+        requirement_id, raw = match.group(1), match.group(2).lower()
+        disposition = _A22_DISPOSITION_ALIASES.get(raw)
+        if disposition is not None:
+            parsed[requirement_id] = disposition
+    return parsed
+
+
+def _refresh_a22_waiting_card(
+    config: dict[str, Any],
+    run_id: str,
+    auto_dir: Path,
+    issues_by_node: dict[str, list[dict[str, Any]]],
+    *,
+    apply: bool,
+) -> dict[str, Any] | None:
+    """Render unresolved A22 data requirements onto the review card.
+
+    An A22 plan with ``unresolved_requirements`` is ``needs_human`` by design.
+    Before any confirmation can be recorded, the card must show every
+    unresolved requirement so the owner reviews the actual questions instead of
+    approving an invisible checklist.
+    """
+
+    a22_path = auto_dir / "artifacts" / "a22-test-data-plan.json"
+    if not a22_path.exists():
+        return None
+    a22 = _read(a22_path)
+    if a22.get("status") != ArtifactStatus.NEEDS_HUMAN.value:
+        return None
+    payload = a22.get("payload", {})
+    unresolved = payload.get("unresolved_requirements", [])
+    approval_items = [
+        _unresolved_requirement_item(item)
+        for item in unresolved
+        if isinstance(item, Mapping)
+    ]
+    if not approval_items:
+        return None
+    issues = issues_by_node.get("A22", [])
+    if not issues:
+        return None
+    issue = issues[-1]
+    if str(issue.get("status", "")).strip() in {"done", "cancelled", "blocked"}:
+        return None
+    bundle_path = auto_dir.parent / "inputs" / "a22-input.json"
+    description = node_issue_description(
+        "A22",
+        str(issue.get("label") or "A22 测试数据计划"),
+        input_name=bundle_path.name,
+        approval_issues=approval_items,
+    )
+    result = {
+        "node_id": "A22",
+        "action": "waiting_card_refreshed" if apply else "waiting_card_ready",
+        "issue_id": str(issue.get("id", "")),
+        "issue_identifier": str(issue.get("identifier", "")),
+        "approval_count": len(approval_items),
+    }
+    if not apply:
+        return result
+    description_path = bundle_path.with_name(f"{bundle_path.name}.card.md")
+    description_path.write_text(description, encoding="utf-8")
+    _multica(
+        "issue",
+        "update",
+        str(issue["id"]),
+        "--description-file",
+        description_path.name,
+        "--title",
+        str(issue.get("title", "")),
+        "--project",
+        str(config["internal_project_id"]),
+        "--status",
+        "in_review",
+        cwd=description_path.parent,
+    )
+    return result
+
+
+def _unresolved_requirement_item(item: Mapping[str, Any]) -> dict[str, str]:
+    """Project an unresolved data requirement onto the approval card block."""
+
+    requirement_id = str(
+        item.get("requirement_id") or item.get("reason_code") or item.get("id") or ""
+    )
+    requirement = str(item.get("requirement") or item.get("summary") or requirement_id)
+    case_match = re.search(r"\bTC-[A-Z0-9-]+\b", requirement)
+    return {
+        "id": requirement_id,
+        "title": "未决数据需求",
+        "human_title": "未决数据需求",
+        "summary": requirement,
+        "category": "test_data_pending_human",
+        "case_id": case_match.group(0) if case_match else "",
+        "recommendation": str(item.get("recommendation") or ""),
+        "severity": str(item.get("severity") or ""),
     }
 
 
@@ -4596,6 +4960,16 @@ def _run_sync_once(args: argparse.Namespace) -> int:
     n07_result = None
     n08_result = None
     quality_tail_result = None
+    try:
+        a22_waiting_card_result = _refresh_a22_waiting_card(
+            config,
+            run_id,
+            auto_dir,
+            issues_by_node,
+            apply=args.apply,
+        )
+    except Exception as error:
+        errors.append({"node_id": "A22", "error": f"waiting card: {error}"})
     try:
         a22_confirmation_result = ensure_a22_human_confirmation(
             run_id, auto_dir, issues_by_node

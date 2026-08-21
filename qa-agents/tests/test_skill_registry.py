@@ -24,8 +24,16 @@ def _case(layer: str, level: str = "api") -> dict:
         "id": f"CASE-{layer}-{level}", "title": "case", "layer": layer,
         "test_level": level, "automation_candidate": True,
         "preconditions": [], "test_data": ({"contract_ref": "openapi:x"} if layer == "contract" else {}),
-        "steps": ["call"],
-        "expected": [{"id": "EXP-1", "oracle": {"matcher": "equals", "expected_value": 200}}],
+        "steps": [
+            {
+                "name": "call",
+                "request": {"api": "fs_bi_stat.stat_base.detail_data_query", "json": {}},
+            }
+        ],
+        "expected": [{"id": "EXP-1", "oracle": {
+            "matcher": "equals", "observation_point": "status_code",
+            "expected_value": 200,
+        }}],
         "cleanup": [], "execution_policy": {"allowed_modes": ["automated"]},
     }
 

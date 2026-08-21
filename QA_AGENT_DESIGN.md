@@ -356,6 +356,55 @@ Runtime、完整自动化链路或发布门禁已经完成。
   JSONPath 风格路径（`$.a.b`/`$`）、扁平 Oracle 条目，并把非结构化 cleanup/residue 步骤记为
   `skipped`（`cleanup_step_not_structured`/`residue_step_not_structured`），不再误判失败。
 
+### 2.9 当前进展快照（2026-08-21 任意 Case 门禁与统计图契约实跑）
+
+本节记录项目“统计图查看明细限制原因提示优化-重跑-20260817-02”的最新实现和实跑边界。
+运行环境为 112、企业为 `91863`；授权范围为目录 `BI_6a7c47e1280b910007abf988` 内的统计图
+复制和修改，以及企业内测试数据新增、复制和修复。该项目所有新建测试资产均长期保留，禁止
+执行 cleanup/delete。
+
+**已经实现并验证**
+
+- 新增 `case-executability/1.0` 确定性分类，将 Case 分为 `machine_executable`、
+  `capability_missing`、`manual_only` 和 `invalid_case`；缺 operation、请求契约、响应观察路径或
+  可执行 Oracle 时 fail-closed，不生成看似可运行的候选。
+- `verified-setup-contracts/1.0` 同时承载 `contracts` 和 `execution_contracts`。统计图复制契约
+  `fs_bi_crm.stat_create.copy_stat_view` 已在 112 实跑：源图
+  `BI_6a7c47e808bc2c00077317be`，保留副本 `BI_6a8825c2f8d3ad0007c55a0c`，资源 ID
+  提取路径固定为 `Value.viewID`；证据为 `generated/112-stat-chart-copy-contract-evidence.json`。
+- 结果集筛选查看明细必须调用
+  `fs_bi_stat.stat_base.data_query_da655ba1`，不得替换为 `detail_data_query`。请求体 9 个必需
+  顶层字段、`zh_CN -> zh-CN` / `en -> en` locale 映射和 `Error.Code` / `Error.Message` /
+  `Result.FailureCode` 观察路径已冻结；112 只读回归为 `8 passed`。
+- A14 将 `manual_confirmation` / `human_review` Oracle 从候选源码剥离，只登记到 Manifest
+  `manual_expected_ids`；全部资源为 `retain` 时强制 `CASE_SPEC["cleanup"]=[]`。A18-BE 独立
+  核对同一份构造/执行契约、资源 ID 路径、locale 独立提取和保留策略。
+- N05 新增 `execution_contract_mismatch`、`execution_body_missing_contract_fields`、资源 ID
+  提取、有效响应断言和保留资源禁清理门禁。聚焦回归
+  `qa-agents/tests/test_automation.py` 与 `qa-agents/tests/test_multica.py` 已通过，JSON/Python
+  语法和 `git diff --check` 已通过。
+
+**当前真实重跑状态**
+
+- A14 第 9 轮 QAA-379 因长时间无新消息且使用指令白名单外工具而取消，不能进入 N08。
+- 已生成仅含 `TC-BE-002-BACKEND` 的第 10 轮定向 Bundle，保留 N25/N15 上游绑定，
+  `cleanup=[]`，Bundle 哈希为
+  `sha256:6f89e9c0a70ba8df3a7633053392849bcdb15aaa30aeca380864772d8aed4fcc`。
+- QAA-380（Run `01a02425-93a3-71e5-a907-054c1a301e1d`）已派发且当前仍为 `running`；在
+  A14 Artifact 摄入、N05、A18-BE、N29、N07 和 N08 全部完成前，不得写成“自动化已跑通”。
+
+**已暴露但尚未解决的业务/契约缺口**
+
+- 112 当前中文实响为“数据范围中设置了「收入」按结果集筛选,不支持查看明细”，与 N25
+  冻结 Oracle 的“统计图数据范围中……”和中文逗号不一致。该差异应作为真实产品失败进入
+  N08/N09，禁止改写 Oracle 求通过。
+- 当前响应没有可证明的 `Error.Parameters`，因此
+  `backend_exception.metric_name_parameters` 相关 Oracle 还没有可靠观察路径；在服务端提供
+  参数字段、日志/trace 证据或经批准重编译 Case 前，相关检查不能标为机器执行成功。
+- `copy_stat_view` 只证明复制和资源 ID 提取，尚未证明把新建指标写入副本配置。仍需冻结
+  完整 update/save 契约、运行时变量绑定和 CRM/STAT/目录三重回读，才能形成可泛化的统计图
+  `create -> configure -> readback -> execute` 生命周期。
+
 
 ## 3. 核心架构原则
 
@@ -1625,7 +1674,8 @@ A09 必须从冻结需求、方案、契约和 ChangeSet 证据中审查 Case �
 - 断言业务结果，不能只检查 HTTP 200。
 - 数据库默认只读并受表、语句和环境白名单限制。
 - 异步流程必须使用明确超时和轮询策略。
-- Case 必须可以重复运行并清理自己的数据。
+- Case 必须可以重复运行，并严格服从资源的 `retention_mode`：`delete` 资源执行已验证清理，
+  `retain` 资源长期保留且 `cleanup=[]`，不得为了统一生命周期而伪造删除或恢复动作。
 
 ### 16.3 契约和 E2E
 
@@ -1688,7 +1738,7 @@ N05、G03 或执行结果发现自动化问题后，按标准问题码直接回�
 - Feature Flag、灰度配置和租户配置正确。
 - 测试数据满足前置条件。
 - 浏览器、时区、语言和系统时间符合要求。
-- 测试命名空间可用且清理策略存在。
+- 测试命名空间可用，且每类资源都有明确的保留或清理策略。
 - 共享资源锁已经获取。
 
 资源锁示例：
@@ -1711,9 +1761,10 @@ locks:
 每个动作必须记录期望状态、执行前状态、
 执行结果、补偿清理和幂等键。没有状态变化时禁止原地重复预检。
 
-测试数据必须按敏感级别分类。默认使用合成数据；使用脱敏数据需要审批、用途限制、访问
-审计和自动过期。数据租约必须包含负责人、命名空间、TTL 和清理状态，工作流取消或超时
-也必须执行补偿清理。
+测试数据必须按敏感级别分类。默认使用合成数据；使用脱敏数据需要审批、用途限制和访问
+审计。数据租约必须包含负责人、命名空间、`retention_mode`、TTL/长期保留依据和当前状态。
+工作流取消或超时时，仅对 `delete` 资源执行已验证的补偿清理；`retain` 资源必须留存并进入
+资产登记，不得自动删除。
 
 ## 18. 执行、证据和失败归因
 
@@ -2249,7 +2300,7 @@ N27 和 N08 的唯一设计基线（B01、D01 为早期名称，分别对应 A14
 5. 存量资产可以作为构造结果，但必须实时发现并回查；新建资产不得冒充历史资产。
 6. Web/移动和 `zh-CN/en` 是执行维度，共用同一份业务配置，不重复制造四套资产。
 
-### 31.3 当前已验证实现（2026-08-12）
+### 31.3 当前已验证实现（更新至 2026-08-21）
 
 - 需求目录 `统计图查看明细限制原因提示优化`：`BI_6a7c5dea280b910007abfd5d`。
 - 完整统计图正式链路已验证为 CRM `copy -> rename/move -> CRM/Stat 双回查`；保留资产
@@ -2267,6 +2318,13 @@ N27 和 N08 的唯一设计基线（B01、D01 为早期名称，分别对应 A14
 - 112 正式统计图更新入口已定位为
   `/FHH/EM1HBICRM/statEditController/updateStatView`。更新必须同时提交轴、筛选、布局、基础信息、
   下钻和移动布局，并使用 CRM 实时 `updateTime`。只读快照探针已通过；精确位置写入尚未闭环。
+- 企业 `91863` 的授权目录 `BI_6a7c47e1280b910007abf988` 已完成统计图复制契约实跑：源图
+  `BI_6a7c47e808bc2c00077317be` 复制得到长期保留副本
+  `BI_6a8825c2f8d3ad0007c55a0c`，返回 ID 路径为 `Value.viewID`。该证据闭合“复制”，不等价于
+  新指标写入和完整配置闭合。
+- 结果集筛选查看明细的已验证执行入口为
+  `fs_bi_stat.stat_base.data_query_da655ba1`；四类长期保留 fixture、请求体必需字段、locale 映射和
+  响应观察路径已登记到 `verified-setup-contracts.json`。`detail_data_query` 不是该场景的合法替代。
 
 ### 31.4 拼表与交叉表编译约束
 
@@ -2277,13 +2335,18 @@ N27 和 N08 的唯一设计基线（B01、D01 为早期名称，分别对应 A14
 `colGroupFields`、`statFields`、筛选和合计布局；不能只修改普通报表的 `tableType`。创建、配置
 回查和数据查询均成功后才可登记为可复用资产。
 
-## 32. 数据构造待实施
+## 32. 任意 Case 全自动生成与可靠跑通：实现状态和待办
 
-以下事项均未完成。明日继续实施时必须逐项获得“实际资源 ID + 正式回查 + Case 精确配置证据”，
-不得再用计划、直接数据查询或底层指标创建代替完整图表场景。
+本节同时记录已完成基础能力与剩余工作。准出标准仍是“实际资源 ID + 正式回查 + Case 精确
+配置 + 真实入口执行证据”；计划、直接数据查询或底层指标创建均不能替代完整图表场景。
 
 ### 32.1 P0：修复通用构造能力
 
+- [x] 为所有 Case 增加确定性可执行性分类；A14/N05 使用 IDL operation 目录、已验证 setup /
+  execution contract、有效断言白名单和资源 ID 提取路径，能力不完整时 fail-closed。
+- [x] 验证 `copy_stat_view` 的 112 创建契约和 `Value.viewID` 提取路径，并保留实际副本和证据。
+- [x] 验证结果集筛选 `data_query_da655ba1` 执行契约；真实 112 回归 `8 passed`。
+- [x] 实现 retain 生命周期：A14/A18/N05 禁止生成或放行删除动作，候选 `cleanup=[]`。
 - [ ] 将统计图 `copy -> 唯一重命名 -> move -> update` 固化为幂等编译器。当前已确认先 move 会因
   副本沿用源名称而冲突；可见名称还需满足产品长度限制，实例唯一性优先放隐藏 namespace，不能
   用随机后缀污染最终业务名称。
@@ -2291,7 +2354,12 @@ N27 和 N08 的唯一设计基线（B01、D01 为早期名称，分别对应 A14
   `UpdateStatViewArg`，校验实时 `updateTime`，写入后执行 CRM/Stat 双回查。
 - [ ] 将统计图 update/save-as、拼表和交叉表能力登记进 capability catalog、Skill contract、
   N27 门禁和 retained registry；补充失败补偿与不可见重名残留的审计规则。
-- [ ] 所有 Agent Issue 卡统一展示：目标、背景、职责、范围、输入材料、产出、验收、需审核内容。
+- [ ] 补齐错误参数的可靠观察契约。当前真实响应没有可验证的 `Error.Parameters`，不得从 Case
+  输入或预期值反向伪造 `backend_exception.metric_name_parameters`。
+- [ ] 完成 QAA-380 A14 摄入并依次通过 N05、A18-BE、N29、N07、N08；任何一步失败都保留
+  原始证据并按责任节点回流。
+- [ ] 收敛 Agent 工具轨迹：允许的平台固定只读前置命令应进入明确白名单；`grep`/`sed`、写文件、
+  组合 shell 等仍必须拒绝，避免生成结果正确但审计不可接受。
 
 ### 32.2 PC-001：自定义维度三种位置
 

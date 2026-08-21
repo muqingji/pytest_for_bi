@@ -19,7 +19,11 @@ from framework.clients.rpc import RpcClient
 from framework.api.catalog import HttpApiCatalog
 from framework.api.http_api import HttpApiInvoker
 from framework.config.environment import EnvironmentConfig
-from framework.core.assertions import assert_response, get_by_path
+from framework.core.assertions import (
+    assert_response,
+    get_by_path,
+    response_expectation_is_effective,
+)
 
 try:
     import allure
@@ -28,6 +32,22 @@ except ImportError:  # Allows core unit tests without the reporting dependency.
 
 
 _TEMPLATE = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
+
+_DETAIL_ERROR_FIELD_MAP = {
+    "error_code": ("Code", "code", "errorCode"),
+    "key": ("Key", "key", "messageKey"),
+    "parameters": ("Parameters", "parameters", "params"),
+    "message": ("Message", "message"),
+}
+
+_DETAIL_ERROR_FIELD_ALIASES = {
+    "code": "error_code",
+    "error_code": "error_code",
+    "key": "key",
+    "parameters": "parameters",
+    "params": "parameters",
+    "message": "message",
+}
 
 _BI_OBJECT_LABELS = {
     "chartConfig": "图表配置",
@@ -248,12 +268,20 @@ class CaseRunner:
                     self._lifecycle_evidence(name, step, response, "completed")
                 )
             except BaseException as error:
+                failure_category = {
+                    "setup": "test_data_setup",
+                    "readiness": "test_data_readiness",
+                    "test": "test_assertion_or_product",
+                    "cleanup": "test_data_cleanup",
+                    "residue": "test_data_residue",
+                }.get(phase, "runner")
                 context["__lifecycle__"][phase].append(
                     {
                         "name": name,
                         "operation": self._operation_ref(step),
                         "status": "failed",
                         "error_type": type(error).__name__,
+                        "failure_category": failure_category,
                     }
                 )
                 raise
@@ -292,6 +320,7 @@ class CaseRunner:
             "operation": operation,
             "status": status,
             "status_code": response.status_code,
+            "verified": response_expectation_is_effective(step.get("expect")),
             "response_hash": "sha256:"
             + hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
         }
@@ -316,8 +345,26 @@ class CaseRunner:
                 }
             matcher = str(oracle.get("matcher", "equals"))
             path = str(oracle.get("observation_point", "response"))
-            actual = CaseRunner._oracle_observation(observations, path)
             value = oracle.get("expected_value")
+            if matcher.startswith("equals:"):
+                encoded = matcher.split(":", 1)[1]
+                try:
+                    value = json.loads(encoded)
+                except json.JSONDecodeError:
+                    value = encoded
+                matcher = "equals"
+            supported = {
+                "all_fields_equal",
+                "contains",
+                "equals",
+                "exists",
+                "not_contains",
+                "one_of",
+                "regex",
+            }
+            if matcher not in supported:
+                raise ValueError(f"Unsupported automatic Oracle matcher: {matcher}")
+            actual = CaseRunner._oracle_observation(observations, path)
             if matcher == "all_fields_equal":
                 if not isinstance(value, dict) or not isinstance(actual, dict):
                     raise AssertionError(
@@ -352,25 +399,65 @@ class CaseRunner:
 
     @staticmethod
     def _oracle_observation(observations: dict[str, Any], path: str) -> Any:
-        """Resolve registered semantic observation points without inventing values."""
-        if path != "detail_api.error":
-            return get_by_path(observations, path)
-        response = observations.get("test_response")
-        error = response.get("Error") if isinstance(response, dict) else None
+        """Resolve registered semantic observation points without inventing values.
+
+        Generated Candidates observe the detail API through ``detail_api``
+        (per-step extract) or ``test_response`` (last test step). The API error
+        envelope spells the error object as ``Error`` with ``Code``/``Key``/
+        ``Parameters``/``Message``; the approved test design references the
+        same values as ``detail_api.error.code`` / ``.key`` / ``.parameters`` /
+        ``.message`` (and ``.message.zh_CN`` / ``.message.en`` locale aliases),
+        so both spellings resolve to the same normalized fields.
+        """
+
+        if path in observations:
+            return observations[path]
+        if path.startswith("detail_api.error"):
+            error = CaseRunner._detail_error_object(observations)
+            if path == "detail_api.error":
+                normalized: dict[str, Any] = {}
+                for target, candidates in _DETAIL_ERROR_FIELD_MAP.items():
+                    source = next(
+                        (name for name in candidates if name in error), None
+                    )
+                    if source is not None:
+                        normalized[target] = error[source]
+                return normalized
+            field = path[len("detail_api.error."):]
+            if field in {"message.zh_CN", "message.en"}:
+                # 中英文断言由请求 locale 决定，响应只携带当前语言的 Message。
+                field = "message"
+            field = _DETAIL_ERROR_FIELD_ALIASES.get(field, field)
+            candidates = _DETAIL_ERROR_FIELD_MAP.get(field)
+            if candidates is None:
+                raise AssertionError(
+                    f"unsupported semantic observation point: {path}"
+                )
+            source = next((name for name in candidates if name in error), None)
+            if source is None:
+                raise AssertionError(
+                    f"{path}: error field {field!r} is missing"
+                )
+            return error[source]
+        return get_by_path(observations, path)
+
+    @staticmethod
+    def _detail_error_object(observations: dict[str, Any]) -> dict[str, Any]:
+        """Locate the detail API error object from semantic observations."""
+
+        response = observations.get("detail_api")
+        if not isinstance(response, dict) or (
+            "Error" not in response and "error" not in response
+        ):
+            response = observations.get("test_response")
+        if not isinstance(response, dict):
+            raise AssertionError("detail_api.error: response is missing")
+        error = response.get("Error")
+        if not isinstance(error, dict):
+            error = response.get("error")
         if not isinstance(error, dict):
             raise AssertionError("detail_api.error: response.Error is missing")
-        field_map = {
-            "error_code": ("Code", "code", "errorCode"),
-            "key": ("Key", "key", "messageKey"),
-            "parameters": ("Parameters", "parameters", "params"),
-            "message": ("Message", "message"),
-        }
-        normalized: dict[str, Any] = {}
-        for target, candidates in field_map.items():
-            source = next((name for name in candidates if name in error), None)
-            if source is not None:
-                normalized[target] = error[source]
-        return normalized
+        return error
 
     def _run_step(self, step: dict[str, Any], context: dict[str, Any]) -> ApiResponse:
         request = step.get("request", {})

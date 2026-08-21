@@ -74,6 +74,7 @@ def load_verified_contracts(contracts_dir: Path) -> list[dict[str, Any]]:
                     "substitutions": spec.get("substitutions", {}),
                     "readback_operation": str(spec.get("readback_operation", "")),
                     "delete_operation": str(spec.get("delete_operation", "")),
+                    "retention_mode": str(spec.get("retention_mode", "")),
                     "derivation": spec.get("derivation"),
                     "evidence": str(spec.get("evidence", "")),
                 }
@@ -92,7 +93,8 @@ def load_verified_contracts(contracts_dir: Path) -> list[dict[str, Any]]:
                 "body_template": None,
                 "substitutions": data.get("case_derived", []),
                 "readback_operation": str(data.get("readback_operation_id", "")),
-                "delete_operation": str(data.get("delete_operation", "") or ""),
+                    "delete_operation": str(data.get("delete_operation", "") or ""),
+                    "retention_mode": str(data.get("retention_mode", "")),
                 "derivation": data.get("derivation"),
                 "evidence": str(data.get("verification_evidence", "")),
             }
@@ -148,7 +150,8 @@ def verification_requirements(
         )
     operation_id = str(contract.get("operation_id", ""))
     registered_cleanup = str(registered_pairs.get(operation_id, "")) if operation_id else ""
-    if not str(contract.get("delete_operation", "")) and not registered_cleanup:
+    retained = str(contract.get("retention_mode", "")) == "retain"
+    if not retained and not str(contract.get("delete_operation", "")) and not registered_cleanup:
         requirements.append(
             {
                 "code": "cleanup_operation_pair",
@@ -192,6 +195,7 @@ def build_candidate(
                 "resource_key": f"{asset_type}_resource",
                 "resource_type": asset_type,
                 "lifecycle_mode": "create",
+                "retention_mode": str(contract.get("retention_mode", "delete")) or "delete",
                 "resource_id_variable": _ID_VARIABLES.get(asset_type, f"{asset_type}_id"),
                 "depends_on": [],
                 "setup": {

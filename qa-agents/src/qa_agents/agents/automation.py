@@ -14,6 +14,7 @@ import re
 from typing import Any
 
 from .base import AgentOutput, BaseAgent
+from ..case_executability import classify_case_executability
 from ..contracts import ArtifactStatus, content_hash
 
 
@@ -356,10 +357,25 @@ class DomainAutomationAgent(BaseAgent):
         candidates: list[dict[str, Any]] = []
         mappings: list[dict[str, Any]] = []
         rejected: list[dict[str, str]] = []
+        executability: list[dict[str, Any]] = []
         used_skills: list[str] = []
+        operation_catalog = inputs.get("operation_catalog")
+        known_operations = (
+            {
+                str(item.get("operationId", ""))
+                for item in operation_catalog.get("operations", [])
+                if isinstance(item, Mapping) and str(item.get("operationId", ""))
+            }
+            if isinstance(operation_catalog, Mapping)
+            else None
+        )
 
         for case in cases:
             case_id = str(case.get("id", ""))
+            readiness = classify_case_executability(
+                case, known_operations=known_operations
+            )
+            executability.append(readiness)
             authorization = authorizations.get(case_id) if isinstance(authorizations, Mapping) else None
             if authorizations and not isinstance(authorization, Mapping):
                 rejected.append({"case_id": case_id, "reason_code": "skill_authorization_missing"})
@@ -376,20 +392,32 @@ class DomainAutomationAgent(BaseAgent):
                 str(item.get("id", "")) for item in case.get("expected", [])
                 if item.get("oracle", {}).get("matcher") == "manual_confirmation"
             ]
-            if (
-                case.get("layer") != self.profile.layer
-                or not case.get("automation_candidate")
-                or "automated" not in allowed_modes
-                or not expected_ids
-            ):
+            if case.get("layer") != self.profile.layer:
                 rejected.append(
                     {"case_id": case_id, "reason_code": "case_not_machine_executable"}
                 )
+                continue
+            if readiness["classification"] != "machine_executable":
+                reason_code = (
+                    "case_not_machine_executable"
+                    if readiness["classification"] == "manual_only"
+                    else str(readiness["reason_codes"][0])
+                )
+                rejected.append({"case_id": case_id, "reason_code": reason_code})
                 continue
 
             spec_extra, domain_reason = self.profile.spec_builder(case)
             if domain_reason is not None:
                 rejected.append({"case_id": case_id, "reason_code": domain_reason})
+                readiness["classification"] = "capability_missing"
+                readiness["reason_codes"] = [domain_reason]
+                readiness["issues"] = [
+                    {
+                        "reason_code": domain_reason,
+                        "location": "test_data",
+                        "detail": "domain automation profile requirements are incomplete",
+                    }
+                ]
                 continue
 
             case_spec = {
@@ -443,6 +471,7 @@ class DomainAutomationAgent(BaseAgent):
                     "manifest": None,
                     "code_candidates": [],
                     "rejected_cases": rejected,
+                    "case_executability": executability,
                 },
                 status=ArtifactStatus.NOT_APPLICABLE,
                 reason_code=self.profile.not_applicable_reason,
@@ -491,6 +520,7 @@ class DomainAutomationAgent(BaseAgent):
                 "manifest": manifest,
                 "code_candidates": candidates,
                 "rejected_cases": rejected,
+                "case_executability": executability,
                 **({"skill_router_bindings": dict(authorizations)} if authorizations else {}),
             }
         )

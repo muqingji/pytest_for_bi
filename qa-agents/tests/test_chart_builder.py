@@ -65,6 +65,7 @@ def test_compile_chart_clone_uses_verified_crm_lifecycle():
         source_config_hash=canonical_hash({"viewId": "BI_live_source", "measureCount": 1}),
     )
     assert value["setup"]["request"]["api"] == "fs_bi_crm.stat_create.copy_stat_view"
+    assert value["setup"]["extract"] == {"chart_view_id": "Value.viewID"}
     assert [step["request"]["api"] for step in value["post_setup"]] == [
         "fs_bi_crm.rpt_view_display.rename_rpt_view",
         "fs_bi_crm.stat_edit.get_stat_view",

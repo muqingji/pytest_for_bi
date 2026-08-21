@@ -106,5 +106,5 @@
   "test_data_policy": "qa-agents/policies/test-data-policy.json",
   "capability_catalog": "qa-agents/knowledge/bi-data-capability-catalog.json",
   "knowledge_sources": "qa-agents/knowledge/bi-knowledge-sources.json",
-  "agent_rerun_budget": 6
+  "agent_rerun_budget": 12
 }

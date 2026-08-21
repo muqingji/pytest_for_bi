@@ -4841,6 +4841,65 @@ def test_ensure_n27_validation_accepts_needs_human_plan_as_gaps(
     assert n27["payload"]["pending_human"] is True
 
 
+def test_ensure_n27_validation_carries_paused_cases_as_deferred(
+    tmp_path: Path,
+) -> None:
+    """Paused Cases must reach N27 as deferred_cases so N08 never executes
+    them and the run still completes with gaps instead of stalling."""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    _write_artifact(
+        setup["artifact_dir"],
+        "a22-test-data-plan",
+        {
+            "schema_version": "test-data-plan/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "input_bundle_hash": "sha256:bundle",
+            "status": "needs_human",
+            "environment": "112",
+            "namespace": "qa-a22-pending-human",
+            "planning_mode": "case_explicit",
+            "case_plans": [
+                {
+                    "case_id": "TC-CON-002-CONTRACT",
+                    "requires_data_construction": True,
+                    "source_refs": ["TC-CON-002-CONTRACT"],
+                    "resources": [],
+                }
+            ],
+            "paused_cases": [
+                {
+                    "case_id": "TC-CON-002-CONTRACT",
+                    "reason_code": "historical_fixture_seed_unverified",
+                }
+            ],
+            "unresolved_requirements": [
+                {
+                    "requirement_id": "UR-04",
+                    "reason_code": "historical_fixture_seed_unverified",
+                }
+            ],
+        },
+        ArtifactStatus.NEEDS_HUMAN,
+    )
+    result = ensure_n27_validation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert result is not None
+    assert result["status"] == "completed_with_gaps"
+    n27 = json.loads(
+        (setup["artifact_dir"] / "artifacts" / "n27-test-data-plan-validation.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert n27["payload"]["deferred_cases"] == [
+        {
+            "case_id": "TC-CON-002-CONTRACT",
+            "reason_code": "historical_fixture_seed_unverified",
+            "route": "deferred_data_construction",
+        }
+    ]
+
+
 def test_ensure_n27_validation_still_rejects_invalid_needs_human_plan(
     tmp_path: Path,
 ) -> None:
@@ -5071,6 +5130,74 @@ def test_ensure_n05_aggregation_ignores_not_applicable_reviewer_marker(
     assert result["status"] == "completed"
 
 
+def test_n05_and_g03_replace_stale_results_when_all_generations_not_applicable(
+    tmp_path: Path,
+) -> None:
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    for artifact_id, case_id in (
+        ("a14-backend-automation-generation", "TC-BE-001-BACKEND"),
+        ("a15-contract-automation-generation", "TC-CON-001-CONTRACT"),
+    ):
+        _write_artifact(
+            setup["artifact_dir"],
+            artifact_id,
+            {
+                "schema_version": "automation-generation/1.0",
+                "status": "not_applicable",
+                "manifest": None,
+                "code_candidates": [],
+                "rejected_cases": [
+                    {
+                        "case_id": case_id,
+                        "reason_code": "setup_contract_unavailable",
+                        "source_refs": [case_id],
+                    }
+                ],
+            },
+            ArtifactStatus.NOT_APPLICABLE,
+        )
+    _write_artifact(
+        setup["artifact_dir"],
+        "n05-automation-code-check",
+        {"schema_version": "automation-code-check/1.0", "passed": True},
+        ArtifactStatus.COMPLETED,
+    )
+    _write_artifact(
+        setup["artifact_dir"],
+        "g03-automation-code-review",
+        {"schema_version": "automation-code-review/1.0", "decision": "approved"},
+        ArtifactStatus.COMPLETED,
+    )
+
+    n05_result = ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
+    assert n05_result is not None
+    assert n05_result["status"] == "not_applicable"
+    n05 = json.loads(
+        (
+            setup["artifact_dir"] / "artifacts" / "n05-automation-code-check.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert n05["payload"]["rejected_cases"] == [
+        "TC-BE-001-BACKEND",
+        "TC-CON-001-CONTRACT",
+    ]
+    assert len(n05["evidence_refs"]) == 2
+
+    g03_result = ensure_g03_review(
+        config, setup["artifact_dir"], tmp_path / "g03-auto", QA_AGENTS_ROOT, apply=False
+    )
+    assert g03_result is not None
+    assert g03_result["action"] == "skipped_not_applicable"
+    g03 = json.loads(
+        (
+            setup["artifact_dir"] / "artifacts" / "g03-automation-code-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert g03["status"] == "not_applicable"
+    assert g03["payload"]["n05_artifact_hash"] == n05["artifact_hash"]
+
+
 def _c5_terminal_artifacts(artifact_dir: Path) -> None:
     """Minimal accepted Artifact set that makes _c5_terminal() True."""
     for artifact_id in (
@@ -5216,3 +5343,191 @@ def test_sync_run_lock_reports_holder(tmp_path: Path) -> None:
             assert "pid=" in str(error)
         else:
             raise AssertionError("second lock acquisition must fail")
+
+
+def _a22_needs_human_plan(auto_dir: Path) -> dict:
+    plan_payload = {
+        "schema_version": "test-data-plan/1.0",
+        "namespace": "qa-pilot-001-source-v1",
+        "case_plans": [],
+        "unresolved_requirements": [
+            {
+                "requirement_id": "UR-01",
+                "reason_code": "chart_create_op_unverified",
+                "requirement": "stat_chart 创建接口及参数未验证，图表 setup_operation 需人工确认",
+            },
+            {
+                "requirement_id": "UR-02",
+                "reason_code": "fault_injection_capability_unconfirmed",
+                "requirement": "TC-BE-005 元数据服务异常、超时等故障注入无已验证机制",
+            },
+        ],
+    }
+    _write_artifact(
+        auto_dir, "a22-test-data-plan", plan_payload, ArtifactStatus.NEEDS_HUMAN
+    )
+    return plan_payload
+
+
+def test_parse_a22_dispositions_requires_full_coverage(monkeypatch) -> None:
+    issue = {"id": "issue-a22"}
+    unresolved = [
+        {"requirement_id": "UR-01"},
+        {"requirement_id": "UR-02"},
+    ]
+
+    monkeypatch.setattr(
+        _sync_module,
+        "_multica",
+        lambda *args, **kwargs: [
+            {"content": "UR-01: confirmed\nUR-02: 跳过"},
+        ],
+    )
+    result = _sync_module._parse_a22_dispositions(issue, unresolved)
+    assert result == [
+        {"requirement_id": "UR-01", "disposition": "confirmed"},
+        {"requirement_id": "UR-02", "disposition": "skip"},
+    ]
+
+    monkeypatch.setattr(
+        _sync_module,
+        "_multica",
+        lambda *args, **kwargs: [
+            {"content": "UR-01: confirmed"},
+        ],
+    )
+    assert _sync_module._parse_a22_dispositions(issue, unresolved) is None
+
+    monkeypatch.setattr(
+        _sync_module,
+        "_multica",
+        lambda *args, **kwargs: [],
+    )
+    assert _sync_module._parse_a22_dispositions(issue, unresolved) is None
+
+
+def test_a22_confirmation_requires_disposition_comment(
+    tmp_path: Path, monkeypatch
+) -> None:
+    auto_dir = tmp_path / "auto"
+    _a22_needs_human_plan(auto_dir)
+    issues_by_node = {
+        "A22": [{"id": "issue-a22", "identifier": "QAA-338", "status": "done"}]
+    }
+
+    monkeypatch.setattr(
+        _sync_module,
+        "_multica",
+        lambda *args, **kwargs: [],
+    )
+    result = _sync_module.ensure_a22_human_confirmation(
+        "run-1", auto_dir, issues_by_node
+    )
+    assert result is not None
+    assert result["action"] == "review_pending"
+    assert not (auto_dir / "artifacts" / "a22-human-confirmation.json").exists()
+
+    monkeypatch.setattr(
+        _sync_module,
+        "_multica",
+        lambda *args, **kwargs: [
+            {"content": "UR-01: confirmed\nUR-02: 跳过（无故障注入机制）"},
+        ],
+    )
+    result = _sync_module.ensure_a22_human_confirmation(
+        "run-1", auto_dir, issues_by_node
+    )
+    assert result is not None
+    assert result.get("action") != "review_pending"
+    assert result["confirmed"] == 1
+    assert result["deferred"] == 1
+    confirmation = json.loads(
+        (auto_dir / "artifacts" / "a22-human-confirmation.json").read_text()
+    )
+    assert confirmation["payload"]["dispositions"] == [
+        {"requirement_id": "UR-01", "disposition": "confirmed"},
+        {"requirement_id": "UR-02", "disposition": "skip"},
+    ]
+    assert confirmation["payload"]["confirmed_requirement_ids"] == ["UR-01"]
+    assert confirmation["payload"]["deferred_requirement_ids"] == ["UR-02"]
+    assert confirmation["payload"]["decision"] == "confirmed_with_gaps"
+    assert confirmation["status"] == "completed_with_gaps"
+
+
+def test_a22_confirmation_releases_need_evidence_but_blocks_return(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """need_evidence/skip release the gate with gaps; return keeps it open."""
+    auto_dir = tmp_path / "auto"
+    _a22_needs_human_plan(auto_dir)
+    issues_by_node = {
+        "A22": [{"id": "issue-a22", "identifier": "QAA-338", "status": "done"}]
+    }
+
+    monkeypatch.setattr(
+        _sync_module,
+        "_multica",
+        lambda *args, **kwargs: [
+            {"content": "UR-01: confirmed\nUR-02: need_evidence"},
+        ],
+    )
+    result = _sync_module.ensure_a22_human_confirmation(
+        "run-1", auto_dir, issues_by_node
+    )
+    assert result is not None
+    assert result.get("action") != "review_pending"
+    assert result["confirmed"] == 1
+    assert result["deferred"] == 1
+    confirmation = json.loads(
+        (auto_dir / "artifacts" / "a22-human-confirmation.json").read_text()
+    )
+    assert confirmation["payload"]["deferred_requirement_ids"] == ["UR-02"]
+    assert confirmation["payload"]["decision"] == "confirmed_with_gaps"
+
+    auto_dir2 = tmp_path / "auto2"
+    _a22_needs_human_plan(auto_dir2)
+    monkeypatch.setattr(
+        _sync_module,
+        "_multica",
+        lambda *args, **kwargs: [
+            {"content": "UR-01: confirmed\nUR-02: return（计划需修正）"},
+        ],
+    )
+    result = _sync_module.ensure_a22_human_confirmation(
+        "run-1", auto_dir2, issues_by_node
+    )
+    assert result is not None
+    assert result["action"] == "review_pending"
+    assert "return" in result["reason"]
+    assert not (auto_dir2 / "artifacts" / "a22-human-confirmation.json").exists()
+
+
+def test_refresh_a22_waiting_card_renders_ur_and_sets_in_review(
+    tmp_path: Path, monkeypatch
+) -> None:
+    auto_dir = tmp_path / "auto"
+    _a22_needs_human_plan(auto_dir)
+    (tmp_path / "inputs").mkdir(parents=True)
+    (tmp_path / "inputs" / "a22-input.json").write_text("{}", encoding="utf-8")
+    issues_by_node = {
+        "A22": [{"id": "issue-a22", "identifier": "QAA-338", "status": "todo"}]
+    }
+    config = {"internal_project_id": "proj-1"}
+    calls = []
+    monkeypatch.setattr(
+        _sync_module,
+        "_multica",
+        lambda *args, **kwargs: calls.append(list(args)) or {},
+    )
+
+    result = _sync_module._refresh_a22_waiting_card(
+        config, "run-1", auto_dir, issues_by_node, apply=True
+    )
+    assert result is not None
+    assert result["approval_count"] == 2
+    update_call = next(call for call in calls if call[:2] == ["issue", "update"])
+    assert "--status" in update_call and "in_review" in update_call
+    card = (tmp_path / "inputs" / "a22-input.json.card.md").read_text()
+    assert "UR-01" in card
+    assert "未决数据需求" in card
+    assert "stat_chart 创建接口及参数未验证" in card

@@ -201,8 +201,14 @@ def test_binds_validated_n28_lifecycle_into_server_candidate(tmp_path: Path) -> 
             "resources": [{
                 "resource_key": "metric", "resource_type": "aggregate_metric",
                 "resource_id_variable": "metric_id",
-                "setup": {"request": {"api": "create", "json": {"name": "{{ namespace }}"}}},
-                "readiness": [{"request": {"api": "query"}}],
+                "setup": {
+                    "request": {"api": "create", "json": {"name": "{{ namespace }}"}},
+                    "extract": {"metric_id": "Value.id"},
+                    "expect": {"status_code": 200},
+                },
+                "readiness": [
+                    {"request": {"api": "query"}, "expect": {"status_code": 200}}
+                ],
                 "cleanup": {"request": {"api": "delete", "json": {"id": "{{ metric_id }}"}}},
                 "residue_checks": [{"request": {"api": "query"},
                                     "expect_absent": {"json_path": "Value.id", "value": "{{ metric_id }}"}}],

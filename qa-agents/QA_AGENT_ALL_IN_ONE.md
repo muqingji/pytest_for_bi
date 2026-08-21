@@ -9,7 +9,7 @@
 > - 实现状态（权威）：`qa-agents/IMPLEMENTATION_STATUS.md`
 > - 运行时审计主记录：`qa-agents/runs/<run-id>/multica-run-manifest.json`
 >
-> 更新：2026-08-20（A22 确定性意图推断、已验证契约→recipe 注册、环境清单变量解析、112 真实生命周期、八卡同步自动推进与运行修复）
+> 更新：2026-08-21（任意 Case 可执行性门禁、统计图复制与结果集筛选执行契约、retain 生命周期、项目定向重跑）
 
 ---
 
@@ -593,8 +593,11 @@ sync-multica-issue-card（可选，显式操作）
 - 生成 Agent 与审查 Agent 使用不同 Runtime 身份与写权限，审查 Runtime 不得读生成 Agent
   的隐藏推理。
 - A14/A15 输入 Bundle 额外携带 `api_catalog`（目标仓库 `idl/http` 的 operationId/method/path
-  目录）与 `verified_setup_contracts`（112 已验证构造请求模板）；`regeneration_round` 用于
-  刻意重跑时生成新 bundle 哈希，避免幂等恢复静默还原陈旧产物。
+  目录）与 `verified_setup_contracts`（112 已验证构造和执行请求模板）；`contracts` 约束 setup，
+  `execution_contracts` 约束测试步骤，资源 ID 只能从 `response_id_paths` 提取。
+  `regeneration_round` 用于刻意重跑时生成新 bundle 哈希，避免幂等恢复静默还原陈旧产物。
+- A14 候选源码只包含 runner 支持的自动 Oracle；`manual_confirmation` / `human_review` 只进入
+  Manifest `manual_expected_ids`。所有资源为 `retain` 时必须输出 `cleanup=[]`。
 - 所有 shell 出站统一经 `resolve_multica_binary()` 解析 multica CLI（launchd 最小 PATH 兜底），
   定时器不再因找不到命令崩溃。
 
@@ -654,7 +657,7 @@ N15 动作路由：`generate_new`/`update_existing` → A14/A15；`run_existing`
 | N26 | 测试选择 | 资产/风险/策略；无法解析影响范围时宁可扩大；P0 冒烟不可跳过 |
 | N15 | 执行计划编译 | 五动作互斥；`run_existing` 必须引用已审核代码 commit |
 | N27 | 数据计划安全校验 | setup/cleanup 可写但强制 namespace、操作配对、资源 ID、readiness 只读、Secret 边界；未决需求以 `completed_with_gaps + pending_human` 输出等 A22 人工确认；recipe 全量校验通过才可执行 |
-| N05 | 自动化确定性代码检查 | 语法/lint/编译/安全扫描/哈希/命令/权限/凭证/层根目录越界拦截 |
+| N05 | 自动化确定性代码检查 | 语法/lint/编译/安全扫描/哈希/命令/权限/凭证/层根目录；校验 setup/execution 契约必需字段、注册 operation、资源 ID 提取、可执行 Oracle、有效响应断言和 retain 禁清理；错误操作触发 `execution_contract_mismatch`，缺字段触发 `execution_body_missing_contract_fields` |
 | N07 | 环境数据资源预检 | 环境指纹、8 类预检、资源锁；失败禁止进入正式执行；接受 N27 `completed_with_gaps + pending_human` 作为有效数据验证证据 |
 | N08 | 受控自动化执行 | 无 shell、最小环境、分片并行、超时、日志脱敏；业务失败→N09，超时/基础设施→N10；从策略声明的框架 venv 启动 pytest，Secret 由 `secret_providers` 按 `secret_map` 从 0600 本地配置注入；`failed_retryable` 进入人工重试审批 |
 | N10 | 环境失败重试预算 | 按预算给继续/暂停/阻塞；无状态变化禁止原地重复预检；可重试失败由记录卡人工审批（done 批准重试 / cancelled 拒绝 / blocked 暂缓） |
@@ -719,15 +722,46 @@ N06（修复路由，由标准问题码直接回流承担）、N14（资产快�
   预算耗尽和人工升级协议。
 - 人工恢复协议：QAA-19 授权 → QAA-20 因契约/工具轨迹违规被拒 → QAA-21 v1.3.0 合法恢复，
   自动预算保持 2 不重置，恢复后必须重新经过 A09/N04。
-- 112 真实生命周期：`CASE-FUNC-RESULT-FILTER-DETAIL-112` / `CASE-AUTO-RESULT-FILTER-DETAIL-112`
-  在真实 112 完成隔离指标创建、结果集筛选、查看明细断言（`s307011535` 与动态指标名）、
-  finally 删除与无残留回查；后者由 A22/N28 自主生成同一生命周期，不含手写 setup/cleanup。
+- 历史 112 生命周期：`CASE-FUNC-RESULT-FILTER-DETAIL-112` /
+  `CASE-AUTO-RESULT-FILTER-DETAIL-112` 曾按当时策略完成隔离指标创建、查看明细断言和删除回查。
+  当前项目采用新的显式授权：企业 `91863` 内测试数据长期保留，禁止 cleanup/delete；历史删除
+  证据不能作为当前 retain 策略的执行模板。
 - 能力目录注册 5 个 recipe（普通指标创建 + 四类指标结果集筛选）；6 个候选
   （custom_dimension/joined_table/stat_chart/pivot/report/组合明细场景）等待 112 证据闭合。
 - 八卡同步自动推进 C5-C8：A22 人工确认 → C5 终态；N07 预检 / N08 受控执行 / C7-C8 质量尾链
   自动运行；N08/N10 可重试失败进入人工重试审批；launchd 定时器 PATH 与 multica CLI 解析修复。
 
-### 9.3 常用命令（`qa-agents/Makefile` / CLI）
+### 9.3 2026-08-21 当前项目实施与重跑状态
+
+项目：`统计图查看明细限制原因提示优化-重跑-20260817-02`。
+
+- 授权边界：112、企业 `91863`、目录 `BI_6a7c47e1280b910007abf988`；目录内统计图允许复制
+  和修改，企业内允许新增/复制/修复测试数据，所有新增资源长期保留。
+- 统计图复制契约已实跑：源图 `BI_6a7c47e808bc2c00077317be`，保留副本
+  `BI_6a8825c2f8d3ad0007c55a0c`，响应 ID 路径 `Value.viewID`；证据文件为
+  `generated/112-stat-chart-copy-contract-evidence.json`。
+- 结果集筛选只读执行契约已实跑：必须使用
+  `fs_bi_stat.stat_base.data_query_da655ba1`，locale 和请求体字段已冻结；在线测试 `8 passed`。
+  真实中文响应与 N25 冻结 Oracle 不一致，应在 N08 形成产品失败，不能改 Oracle。
+- A14/A18-BE/N05 已补充人工 Oracle 隔离、execution contract、locale 独立观察、资源 ID 路径、
+  retain 禁清理和两个执行契约错误码；聚焦回归通过。
+- 第 9 轮 QAA-379 因超时和工具轨迹不合规被取消。第 10 轮缩小为单 Case
+  `TC-BE-002-BACKEND`，Bundle 哈希
+  `sha256:6f89e9c0a70ba8df3a7633053392849bcdb15aaa30aeca380864772d8aed4fcc`，已派发 QAA-380，
+  当前仍为 `running`，尚未通过 A14 摄入、N05、A18-BE 和 N08。
+
+当前必须继续完成：
+
+1. 摄入 QAA-380，并对候选运行 N05；失败按问题码回流 A14，不手工放宽门禁。
+2. N05 通过后以同一 generation hash 和 verified contracts 派发 A18-BE。
+3. A18-BE 与 N05 均通过后执行 N29、N07、N08，核对 lifecycle evidence 的 setup、资源 ID 和
+   `cleanup=[]`；不得调用删除接口。
+4. 冻结统计图 update/save 与三重回读契约，把创建的指标真正写入复制图配置。
+5. 为 `backend_exception.metric_name_parameters` 提供真实响应、日志或 trace 观察路径；当前接口
+   没有可验证 Parameters，缺口闭合前不能宣称该 Oracle 自动化成功。
+6. 将单 Case 定向重派、Bundle 裁剪和工具轨迹合规检查产品化，避免依赖人工构造修正目录。
+
+### 9.4 常用命令（`qa-agents/Makefile` / CLI）
 
 ```bash
 make -C qa-agents test                 # 全量单元/契约测试
@@ -769,11 +803,11 @@ bash qa-agents/scripts/install-sync-timer.sh          # 安装八卡同步 Launc
 
 ## 11. 分阶段建设路线与当前状态
 
-| 阶段 | 内容 | 状态（2026-08-20） |
+| 阶段 | 内容 | 状态（2026-08-21） |
 | --- | --- | --- |
 | 阶段 0 | 契约、Envelope、本地 Artifact、评估基础 | ✅ 已实现 |
 | 阶段 1 | 测试设计质量闭环（A02-A09/N04/G01/G02 人工恢复） | ✅ 真实试点闭环到 G02/N25 |
-| 阶段 2 | 测试选择与代码生成（N25/A11/N26/N15、A14/A15/A18/N05/G03） | ✅ 阶段二真实链到 N15；自动化参考切片就绪 |
+| 阶段 2 | 测试选择与代码生成（N25/A11/N26/N15、A14/A15/A18/N05/G03） | 🔶 真实链到 N15；A14/A18/N05 参考实现和新门禁就绪，当前项目单 Case 重跑尚未验收 |
 | 阶段 3 | 环境自主执行（N07/N08/N17/N10/N16） | 🔶 参考切片已实现；生产隔离 Runner 未完成 |
 | 阶段 4 | 确定性质量门禁（N09-N12/N17-N23） | 🔶 本地 reference 已实现；外部发布 Adapter 未完成 |
 | 阶段 5 | 有限自治闭环 | ⏳ 未开始 |
@@ -784,9 +818,9 @@ N07/N08/质量尾链自动推进、重试审批）、Multica 真实试点、A22/
 候选（`bi-recipe-adapter`）、环境清单变量解析、K01 知识治理、B01/D01 Skill 路由、
 质量尾链全部节点参考实现、离线评估与可读报告。
 
-已知阻塞项（来自 IMPLEMENTATION_STATUS 与设计文档）：生产隔离 Runner、真实环境/人工执行
-证据、外部发布 Adapter、A11 真实审核的后续驱动、完整离线评估的语义差距收敛、生产模型网关
-与 Prompt 发布/灰度/回滚。
+已知阻塞项（来自 IMPLEMENTATION_STATUS 与设计文档）：统计图 update/save 完整契约、
+`backend_exception.metric_name_parameters` 真实观察路径、QAA-380 后续 A14/N05/A18/N08 验收、
+生产隔离 Runner、外部发布 Adapter、完整离线评估语义差距、生产模型网关与 Prompt 发布/灰度/回滚。
 
 ---
 

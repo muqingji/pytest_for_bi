@@ -81,6 +81,28 @@ class LocalProcessRunner:
             )
 
 
+def _lifecycle_failure_categories(
+    evidence: list[Mapping[str, Any]],
+) -> list[str]:
+    """Return deterministic failure categories recorded by CaseRunner."""
+
+    categories: set[str] = set()
+    for case in evidence:
+        phases = case.get("phases")
+        if not isinstance(phases, Mapping):
+            continue
+        for steps in phases.values():
+            if not isinstance(steps, list):
+                continue
+            for step in steps:
+                if not isinstance(step, Mapping) or step.get("status") != "failed":
+                    continue
+                category = str(step.get("failure_category", "")).strip()
+                if category:
+                    categories.add(category)
+    return sorted(categories)
+
+
 class ControlledEnvironmentRunner(LocalProcessRunner):
     """Non-production controlled runner for registered staging/112 environments.
 
@@ -608,6 +630,9 @@ def run_n08_automation(
                 mappings_by_path.get(path, [])
             ):
                 outcome = "infrastructure_error"
+            failure_categories = _lifecycle_failure_categories(lifecycle_evidence)
+            if outcome == "failed" and not failure_categories:
+                failure_categories = ["test_assertion_or_product"]
             return {
                 "shard_id": f"N08-S{index:03d}",
                 "candidate_path": path,
@@ -618,6 +643,7 @@ def run_n08_automation(
                 "timed_out": result.timed_out,
                 "duration_ms": result.duration_ms,
                 "outcome": outcome,
+                "failure_categories": failure_categories,
                 "stdout": stdout,
                 "stderr": stderr,
                 "stdout_truncated": stdout_truncated,
@@ -673,6 +699,18 @@ def run_n08_automation(
     counts = {name: sum(item["outcome"] == name for item in shards) for name in (
         "passed", "failed", "timed_out", "infrastructure_error"
     )}
+    failure_category_summary = {
+        category: sum(
+            category in item.get("failure_categories", []) for item in shards
+        )
+        for category in sorted(
+            {
+                category
+                for item in shards
+                for category in item.get("failure_categories", [])
+            }
+        )
+    }
     if counts["timed_out"] or counts["infrastructure_error"]:
         decision, next_node = "retryable_infrastructure_failure", "N10"
         status, reason = ArtifactStatus.FAILED_RETRYABLE, "automation_infrastructure_failure"
@@ -709,6 +747,7 @@ def run_n08_automation(
         },
         "shards": shards,
         "summary": {"total": len(shards), **counts},
+        "failure_category_summary": failure_category_summary,
         "decision": decision,
         "next_node": next_node,
     }
