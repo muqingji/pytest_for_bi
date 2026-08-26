@@ -737,12 +737,38 @@ def _artifact_output(output_dir: Path, artifact_id: str) -> Path:
     return output_dir / "artifacts" / f"{artifact_id}.json"
 
 
+def _local_codex_default_model() -> tuple[str, str]:
+    """Read the model/provider from the local Codex CLI config.
+
+    Agents with an empty ``--model`` inherit the runtime default, which is the
+    model pinned in ``~/.codex/config.toml``. The sync must record the same
+    model that actually executed the task, not a stale hardcoded fallback.
+    """
+
+    config_path = Path.home() / ".codex" / "config.toml"
+    if not config_path.is_file():
+        return "", ""
+    try:
+        try:
+            import tomllib
+        except ModuleNotFoundError:
+            return "", ""
+        with config_path.open("rb") as fh:
+            config = tomllib.load(fh)
+    except (OSError, ValueError):
+        return "", ""
+    provider = str(config.get("model_provider", "")).strip()
+    model = str(config.get("model", "")).strip()
+    return provider, model
+
+
 def _run_model_metadata(run: dict[str, Any]) -> tuple[str, str]:
     """Read the actual model/provider from a completed Multica run.
 
     Multica records one usage entry per model call; the last entry is the one
-    that produced the final output. Falls back to the configured default
-    runtime when usage is unavailable.
+    that produced the final output. Falls back to the local Codex CLI default
+    model (``~/.codex/config.toml``) when usage metadata is unavailable, so
+    the recorded model always matches the runtime that actually ran the task.
     """
 
     usage = run.get("usage")
@@ -754,6 +780,9 @@ def _run_model_metadata(run: dict[str, Any]) -> tuple[str, str]:
             model = str(entry.get("model", "")).strip()
             if provider and model:
                 return provider, model
+    provider, model = _local_codex_default_model()
+    if provider and model:
+        return provider, model
     return "deepseek", "deepseek-v4-flash"
 
 
@@ -3814,6 +3843,28 @@ _A22_DISPOSITION_ALIASES = {
 }
 
 
+
+def _unresolved_requirement_id(item: Mapping[str, Any], index: int) -> str:
+    """Resolve the review identifier for an unresolved data requirement.
+
+    A22 plans should carry ``requirement_id`` (``UR-01``), but older or
+    agent-regenerated plans sometimes only include ``requirement`` / ``reason``
+    / ``case_id`` with no id-like field. Falling back to a stable 1-based
+    ``UR-NN`` index keeps the review gate usable instead of permanently
+    returning an empty id list that can never match a disposition comment.
+    """
+
+    raw = str(
+        item.get("requirement_id")
+        or item.get("reason_code")
+        or item.get("id")
+        or ""
+    ).strip()
+    if raw:
+        return raw
+    return f"UR-{index + 1:02d}"
+
+
 def _parse_a22_dispositions(
     issue: Mapping[str, Any],
     unresolved: list[Any],
@@ -3827,8 +3878,8 @@ def _parse_a22_dispositions(
     """
 
     required_ids = [
-        str(item.get("requirement_id") or item.get("reason_code") or item.get("id") or "")
-        for item in unresolved
+        _unresolved_requirement_id(item, index)
+        for index, item in enumerate(unresolved)
         if isinstance(item, Mapping)
     ]
     required_ids = [value for value in required_ids if value]
@@ -3901,8 +3952,8 @@ def _refresh_a22_waiting_card(
     payload = a22.get("payload", {})
     unresolved = payload.get("unresolved_requirements", [])
     approval_items = [
-        _unresolved_requirement_item(item)
-        for item in unresolved
+        _unresolved_requirement_item(item, index)
+        for index, item in enumerate(unresolved)
         if isinstance(item, Mapping)
     ]
     if not approval_items:
@@ -3948,12 +3999,13 @@ def _refresh_a22_waiting_card(
     return result
 
 
-def _unresolved_requirement_item(item: Mapping[str, Any]) -> dict[str, str]:
+def _unresolved_requirement_item(
+    item: Mapping[str, Any],
+    index: int = 0,
+) -> dict[str, str]:
     """Project an unresolved data requirement onto the approval card block."""
 
-    requirement_id = str(
-        item.get("requirement_id") or item.get("reason_code") or item.get("id") or ""
-    )
+    requirement_id = _unresolved_requirement_id(item, index)
     requirement = str(item.get("requirement") or item.get("summary") or requirement_id)
     case_match = re.search(r"\bTC-[A-Z0-9-]+\b", requirement)
     return {

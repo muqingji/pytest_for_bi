@@ -24,6 +24,12 @@ def _load(path: Path) -> dict:
 
 
 def test_case_drives_autonomous_metric_lifecycle_in_112(environment, case_runner) -> None:
+    """Case → N28 plan → setup/readiness/test on 112, retain created assets.
+
+    Pilot policy keeps cleanup disabled (default_retention_mode=retain). The
+    lifecycle proof is therefore create + readiness + executable assertion, not
+    delete-and-residue.
+    """
     if environment.name != "112":
         pytest.skip("real autonomous data lifecycle runs only with --env=112")
     case = next(
@@ -42,15 +48,19 @@ def test_case_drives_autonomous_metric_lifecycle_in_112(environment, case_runner
     )
     validation = validate_test_data_plan(plan, policy)
     assert validation["write_authorized"] is True
+    assert plan["cleanup_actions"] == []
+    assert plan["case_plans"][0]["retention_mode"] == "retain"
 
     executable_case = bind_plan_to_case(case, plan)
+    assert executable_case["cleanup"] == []
+    assert executable_case["residue_checks"] == []
     context = case_runner.execute(executable_case)
 
     assert context["__lifecycle__"]["setup"][0]["status"] == "completed"
     assert context["__lifecycle__"]["readiness"][0]["status"] == "completed"
     assert context["__lifecycle__"]["test"][0]["status"] == "completed"
-    assert context["__lifecycle__"]["cleanup"][0]["status"] == "completed"
-    assert context["__lifecycle__"]["residue"][0]["status"] == "completed"
+    assert context["__lifecycle__"]["cleanup"] == []
+    assert context["__lifecycle__"]["residue"] == []
     assert "s307011535" in str(context["test_response"])
     assert context["metric_name"] in str(context["test_response"])
 
@@ -59,13 +69,15 @@ def test_case_drives_autonomous_metric_lifecycle_in_112(environment, case_runner
         body={"schemaId": context["schema_id"]},
     )
     assert remaining.status_code == 200
-    assert context["metric_field_id"] not in str(remaining.body)
-    assert context["metric_name"] not in str(remaining.body)
+    # retained asset must still be present after the run
+    assert context["metric_field_id"] in str(remaining.body)
+    assert context["metric_name"] in str(remaining.body)
 
 
 def test_case_drives_autonomous_calculated_metric_lifecycle_in_112(
     environment, case_runner
 ) -> None:
+    """Calculated-metric Case creates dependency graph and retains assets on 112."""
     if environment.name != "112":
         pytest.skip("real autonomous calculated lifecycle runs only with --env=112")
     case = next(
@@ -81,11 +93,15 @@ def test_case_drives_autonomous_calculated_metric_lifecycle_in_112(
     )
     validation = validate_test_data_plan(plan, policy)
     assert validation["write_authorized"] is True
-    assert [item["resource_key"] for item in plan["cleanup_actions"]] == [
-        "calculated_metric", "aggregate_base"
+    assert plan["cleanup_actions"] == []
+    assert [item["resource_key"] for item in plan["retained_assets"]] == [
+        "aggregate_base",
+        "calculated_metric",
     ]
 
     executable_case = bind_plan_to_case(case, plan)
+    assert executable_case["cleanup"] == []
+    assert executable_case["residue_checks"] == []
     context = case_runner.execute(executable_case)
     case_runner.assert_oracles(context, executable_case["expected"])
 
@@ -93,10 +109,10 @@ def test_case_drives_autonomous_calculated_metric_lifecycle_in_112(
     assert [item["operation"] for item in context["__lifecycle__"]["readiness"]] == [
         "fs_bi_stat.stat_base.get_calc_agg_sub_fields"
     ]
-    assert len(context["__lifecycle__"]["cleanup"]) == 2
-    assert len(context["__lifecycle__"]["residue"]) == 2
+    assert context["__lifecycle__"]["cleanup"] == []
+    assert context["__lifecycle__"]["residue"] == []
     assert all(
         item["status"] == "completed"
-        for phase in ("setup", "readiness", "test", "cleanup", "residue")
+        for phase in ("setup", "readiness", "test")
         for item in context["__lifecycle__"][phase]
     )

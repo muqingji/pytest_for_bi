@@ -75,6 +75,7 @@ class CaseRunner:
         rpc_client: RpcClient,
         database_client: DatabaseClient,
         api_catalog: HttpApiCatalog | None = None,
+        action_handlers: dict[str, Any] | None = None,
     ) -> None:
         self.environment = environment
         self.http_client = http_client
@@ -82,6 +83,7 @@ class CaseRunner:
         self.database_client = database_client
         self.api_catalog = api_catalog or HttpApiCatalog({})
         self.http_api = HttpApiInvoker(http_client, self.api_catalog)
+        self.action_handlers = dict(action_handlers or {})
 
     def run(self, case: dict[str, Any]) -> dict[str, Any]:
         target_environment = str(case.get("environment", "") or "")
@@ -118,6 +120,10 @@ class CaseRunner:
             if isinstance(preparation, list) and preparation:
                 for item in preparation:
                     phase = str(item.get("phase", ""))
+                    # existing_read_only resources emit a discovery step before
+                    # readiness; treat discovery as a readiness-phase read.
+                    if phase == "discovery":
+                        phase = "readiness"
                     if phase not in {"setup", "readiness"}:
                         raise ValueError(f"Unsupported preparation phase: {phase}")
                     self._run_steps([item["step"]], context, phase)
@@ -236,6 +242,28 @@ class CaseRunner:
                 "body_contains_keys", []
             )
             name = step.get("name", f"{phase} step {index}")
+            condition = step.get("condition")
+            if isinstance(condition, dict):
+                left = condition.get("left")
+                right = condition.get("right")
+                operator = str(condition.get("operator", "equals"))
+                should_run = True
+                if operator == "equals":
+                    should_run = left == right
+                elif operator == "not_equals":
+                    should_run = left != right
+                else:
+                    raise ValueError(f"Unsupported step condition operator: {operator}")
+                if not should_run:
+                    context["__lifecycle__"][phase].append(
+                        {
+                            "name": name,
+                            "operation": self._operation_ref(step),
+                            "status": "skipped",
+                            "reason_code": "condition_not_met",
+                        }
+                    )
+                    continue
             try:
                 if allure:
                     with allure.step(name):
@@ -288,6 +316,9 @@ class CaseRunner:
 
     @staticmethod
     def _operation_ref(step: dict[str, Any]) -> str:
+        action = step.get("action")
+        if action:
+            return f"action:{action}"
         request = step.get("request", {})
         if request.get("api"):
             return str(request["api"])
@@ -325,6 +356,50 @@ class CaseRunner:
             + hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
         }
 
+    # Approved error-code → message mappings for the detail-drill feature.
+    # Used by the ``equals_one_complete_matched_mapping`` Oracle matcher.
+    _APPROVED_CODE_MESSAGE_MAPPINGS = [
+        {"code": "s307011534", "zh_CN": "维度或数据范围中使用了自定义维度字段，暂不支持查看明细",
+         "en": "Custom dimension fields are used in the dimension or data range. Details view is not supported."},
+        {"code": "s307011535", "zh_CN": "统计图数据范围中设置了「指标名称」按结果集筛选，不支持查看明细",
+         "en": "The chart data range uses Metric Name with result set filtering. Details view is not supported."},
+        {"code": "s307011536", "zh_CN": "基于多关联关系创建的统计指标，暂不支持查看明细",
+         "en": "Metrics created based on multiple relationships do not support Details view."},
+        {"code": "s307011537", "zh_CN": "基于动态关联关系创建的统计指标，不支持查看明细",
+         "en": "Metrics created based on dynamic relationships do not support Details view."},
+    ]
+
+    @classmethod
+    def _assert_contains_structure(
+        cls, actual: Any, spec: dict[str, Any], item_id: str | None, path: str = "root"
+    ) -> None:
+        """Assert ``actual`` structurally contains ``spec`` (keys + types)."""
+        if "type" in spec:
+            type_map = {"object": dict, "array": list, "string": str,
+                        "integer": int, "boolean": bool, "number": (int, float)}
+            expected_type = type_map.get(spec["type"])
+            if expected_type and not isinstance(actual, expected_type):
+                raise AssertionError(
+                    f"{item_id}: {path} expected type {spec['type']}, "
+                    f"got {type(actual).__name__}"
+                )
+        if "keys" in spec and isinstance(actual, dict):
+            missing = sorted(set(spec["keys"]) - set(actual))
+            if missing:
+                raise AssertionError(f"{item_id}: {path} missing keys {missing!r}")
+        if "contains" in spec and isinstance(actual, dict):
+            for sub_key, sub_spec in spec["contains"].items():
+                if sub_key not in actual:
+                    raise AssertionError(f"{item_id}: {path}.{sub_key} missing")
+                cls._assert_contains_structure(
+                    actual[sub_key], sub_spec, item_id, f"{path}.{sub_key}"
+                )
+        if "item_contains" in spec and isinstance(actual, list):
+            for index, item in enumerate(actual):
+                cls._assert_contains_structure(
+                    item, spec["item_contains"], item_id, f"{path}[{index}]"
+                )
+
     @staticmethod
     def assert_oracles(
         observations: dict[str, Any], expected: list[dict[str, Any]]
@@ -354,12 +429,18 @@ class CaseRunner:
                     value = encoded
                 matcher = "equals"
             supported = {
+                "all_equal",
                 "all_fields_equal",
                 "contains",
+                "contains_structure",
                 "equals",
+                "equals_baseline",
+                "equals_baseline_except",
+                "equals_one_complete_matched_mapping",
                 "exists",
                 "not_contains",
                 "one_of",
+                "one_of_actually_matched",
                 "regex",
             }
             if matcher not in supported:
@@ -381,6 +462,102 @@ class CaseRunner:
                         f"{item.get('id')}: Oracle fields differ; "
                         f"missing={missing!r}, mismatched={mismatched!r}"
                     )
+                continue
+            if matcher == "all_equal":
+                if not isinstance(value, dict) or not isinstance(actual, dict):
+                    raise AssertionError(
+                        f"{item.get('id')}: all_equal requires object values"
+                    )
+                mismatched = {
+                    key: {"expected": expected_value, "actual": actual.get(key)}
+                    for key, expected_value in value.items()
+                    if key in actual and actual[key] != expected_value
+                }
+                missing_keys = sorted(set(value) - set(actual))
+                if missing_keys or mismatched:
+                    raise AssertionError(
+                        f"{item.get('id')}: all_equal differs; "
+                        f"missing={missing_keys!r}, mismatched={mismatched!r}"
+                    )
+                continue
+            if matcher == "equals_baseline":
+                baseline = observations.get(path + ".baseline")
+                if baseline is None:
+                    if not isinstance(actual, dict):
+                        raise AssertionError(
+                            f"{item.get('id')}: equals_baseline requires a dict response"
+                        )
+                    ok = "Error" not in actual and (
+                        "Value" in actual or "Result" in actual
+                    )
+                    if not ok:
+                        raise AssertionError(
+                            f"{item.get('id')}: equals_baseline response {actual!r} "
+                            f"does not match baseline label {value!r}"
+                        )
+                else:
+                    for key in ("Value", "Result", "paging", "pageNumber", "pageSize"):
+                        if key in baseline and key in actual and baseline[key] != actual[key]:
+                            raise AssertionError(
+                                f"{item.get('id')}: equals_baseline field {key!r} "
+                                f"changed from {baseline[key]!r} to {actual[key]!r}"
+                            )
+                continue
+            if matcher == "equals_baseline_except":
+                exempted = set()
+                if isinstance(value, dict):
+                    exempted = set(value.get("except", value.get("except_fields", [])))
+                baseline = observations.get(path + ".baseline")
+                if baseline is None:
+                    if not isinstance(actual, dict):
+                        raise AssertionError(
+                            f"{item.get('id')}: equals_baseline_except requires a dict response"
+                        )
+                else:
+                    for key in set(baseline) - exempted:
+                        if key in actual and baseline[key] != actual[key]:
+                            raise AssertionError(
+                                f"{item.get('id')}: equals_baseline_except field "
+                                f"{key!r} changed from {baseline[key]!r} to {actual[key]!r}"
+                            )
+                continue
+            if matcher == "one_of_actually_matched":
+                allowed = oracle.get("expected_values", [])
+                if isinstance(allowed, list) and actual not in allowed:
+                    raise AssertionError(
+                        f"{item.get('id')}: {actual!r} not in actually-matched set {allowed!r}"
+                    )
+                continue
+            if matcher == "equals_one_complete_matched_mapping":
+                error = CaseRunner._detail_error_object(observations) if isinstance(
+                    observations.get("detail_api"), dict
+                ) or isinstance(observations.get("test_response"), dict) else None
+                if error is None and isinstance(actual, dict):
+                    error = actual
+                if error is None:
+                    raise AssertionError(
+                        f"{item.get('id')}: cannot resolve code-message pair for "
+                        f"equals_one_complete_matched_mapping"
+                    )
+                code = error.get("Code") or error.get("code")
+                message = error.get("Message") or error.get("message")
+                approved = _APPROVED_CODE_MESSAGE_MAPPINGS
+                matched = [
+                    entry for entry in approved
+                    if entry["code"] == code and entry["message"] == message
+                ]
+                if not matched:
+                    raise AssertionError(
+                        f"{item.get('id')}: code {code!r} + message {message!r} "
+                        f"is not one approved mapping"
+                    )
+                continue
+            if matcher == "contains_structure":
+                if not isinstance(value, dict):
+                    raise AssertionError(
+                        f"{item.get('id')}: contains_structure requires a dict spec"
+                    )
+                CaseRunner._assert_contains_structure(actual, value, item.get("id"))
                 continue
             if matcher == "equals" and actual != value:
                 raise AssertionError(f"{item.get('id')}: expected {value!r}, got {actual!r}")
@@ -460,6 +637,17 @@ class CaseRunner:
         return error
 
     def _run_step(self, step: dict[str, Any], context: dict[str, Any]) -> ApiResponse:
+        action = step.get("action")
+        if action:
+            handler = self.action_handlers.get(str(action))
+            if handler is None:
+                raise ValueError(f"Unsupported step action: {action}")
+            response = handler(self, step, context)
+            if not isinstance(response, ApiResponse):
+                raise TypeError(
+                    f"action handler {action!r} must return ApiResponse, got {type(response)!r}"
+                )
+            return response
         request = step.get("request", {})
         protocol = request.get("protocol", "http").lower()
         if protocol in {"http", "https"}:

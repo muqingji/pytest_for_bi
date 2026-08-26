@@ -708,3 +708,40 @@ def test_record_constructed_test_data_demotes_phantom_entries_to_stale(
         if item.get("key") == "cd_field"
     )
     assert entry["status"] == "stale"
+
+def test_bind_plan_injects_chart_config_differentiation_action() -> None:
+    """Cloned charts must bind case-owned dimension/measure/filter after rename/move."""
+    from qa_agents.data_planning import compile_resource_plan
+
+    catalog = json.loads((ROOT / "knowledge/bi-data-capability-catalog.json").read_text())
+    intent = {
+        "schema_version": "test-data-intent/1.0",
+        "case_intents": [
+            {
+                "case_id": "CASE-CHART-DIFF",
+                "requirement_name": "自定义维度三类位置的专用错误与双语提示",
+                "required_scene": "chart_detail",
+                "requires_data_construction": True,
+                "recipe_id": "custom-dimension-chart-detail",
+            }
+        ],
+        "paused_cases": [],
+        "unresolved_requirements": [],
+    }
+    plan = compile_resource_plan(
+        intent, catalog, environment="112", namespace="qa-chart-diff-001"
+    )
+    case = {"id": "CASE-CHART-DIFF", "title": "自定义维度三类位置的专用错误与双语提示"}
+    bound = bind_plan_to_case(case, plan)
+    actions = [step.get("action") for step in bound.get("setup", [])]
+    assert "bind_stat_chart_config" in actions
+    bind_step = next(
+        step for step in bound["setup"] if step.get("action") == "bind_stat_chart_config"
+    )
+    inputs = bind_step["inputs"]
+    assert inputs["chart_view_id"] == "{{ chart_view_id }}"
+    assert inputs["schema_id"] == "{{ schema_id }}"
+    assert inputs["dimension_field_id"] == "{{ custom_dimension_id }}"
+    assert inputs["filter_field_id"] == "{{ metric_field_id }}"
+    assert inputs["measure_field_id"] == "{{ metric_field_id }}"
+

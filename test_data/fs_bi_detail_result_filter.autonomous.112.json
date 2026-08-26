@@ -7,14 +7,22 @@
       "title": "结果集筛选指标查看明细返回指标名称",
       "environment": "112",
       "priority": "P0",
-      "tags": ["smoke", "integration"],
+      "tags": [
+        "smoke",
+        "integration"
+      ],
       "test_level": "functional",
       "contract_ref": "fs-bi@c6b785344c6973b6d6fc5bb108c45b3971f36c64:fs-bi-stat/src/main/java/com/facishare/bi/stat/controller/StatBaseController.java#dataQuery",
-      "preconditions": ["指标在数据范围中启用结果集筛选"],
+      "preconditions": [
+        "指标在数据范围中启用结果集筛选"
+      ],
       "test_data": {
         "dataset": "result_set_metric_types",
         "data_intent": "metric.result_set_filter.detail_unsupported",
-        "variants": ["聚合指标"]
+        "variants": [
+          "聚合指标"
+        ],
+        "required_scene": "metric_lifecycle"
       },
       "steps": [
         {
@@ -26,7 +34,9 @@
               "id": "{{ schema_id }}",
               "isView": 0,
               "measureFieldID": "{{ metric_field_id }}",
-              "measureFieldIDs": ["{{ metric_field_id }}"],
+              "measureFieldIDs": [
+                "{{ metric_field_id }}"
+              ],
               "pageNumber": 1,
               "pageSize": 20,
               "filterLists": [
@@ -60,7 +70,9 @@
           },
           "expect": {
             "status_code": 200,
-            "body_contains_keys": ["s307011535"]
+            "body_contains_keys": [
+              "s307011535"
+            ]
           }
         }
       ],

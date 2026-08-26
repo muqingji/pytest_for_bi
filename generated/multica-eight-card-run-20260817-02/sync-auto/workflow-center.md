@@ -30,7 +30,7 @@
 ## 工作流概览
 
 - 总状态：**阻塞**
-- 完成进度：`30/36`（83%）
+- 完成进度：`33/36`（92%）
 - 当前运行：`detail-drill-i18n-8card-20260817-02`
 - 流程版本：`server-requirement/1.1-eight-stage-cards`
 - 来源快照：`pilot-001-source-v1`
@@ -44,19 +44,16 @@
 
 ## 需要你处理
 
-### 112 测试数据规划处理（None）
+### 自动化确定性代码检查处理（None）
 
-- 待处理：`2` 项
-- 当前 Gate：`A22`
-- 摘要：needs_human
+- 待处理：`1` 项
+- 当前 Gate：`N05`
+- 摘要：Artifact n05-automation-code-check accepted
 
-#### 审批项（2）
+#### 审批项（1）
 
-1. **test_data_pending_human**（`a22-test-data-plan-1`）
-   - 问题：permission_test_accounts_and_baseline
-
-2. **test_data_pending_human**（`a22-test-data-plan-2`）
-   - 问题：historical_unmigrated_configs_and_frozen_baselines
+1. **审批确认**（`n05-automation-code-check-approval`）
+   - 问题：Artifact n05-automation-code-check accepted
 
 ## 节点进度
 
@@ -68,7 +65,7 @@
 | 3 | [QAA-315](mention://issue/2feedb7e-9e1c-42d3-a063-9263f7b3ddaa) 技术方案与可测性分析 | 已完成 | 1/1 | 发现待确认项，已并入 G01 汇总审批 |
 | 3 | [QAA-316](mention://issue/9a0898f3-b7b4-4300-a4cd-8901f1506242) 服务端变更分析 | 已完成 | 1/1 | completed_with_gaps |
 | 4 | [QAA-317](mention://issue/b5cdbef4-0bc5-4794-b2fe-f625473bdb38) 需求与变更对齐 | 已完成 | 1/1 | 发现待确认项，已并入 G01 汇总审批 |
-| 5 | [QAA-318](mention://issue/ea27f34c-7a8a-41f3-8a66-33f6af0d983a) 范围与口径人工审核 | 等待人工 | 1/1 | not_required |
+| 5 | [QAA-318](mention://issue/ea27f34c-7a8a-41f3-8a66-33f6af0d983a) 范围与口径人工审核 | 已完成 | 1/1 | not_required |
 | 6 | [QAA-332](mention://issue/2be62435-5491-4e16-9b89-21ba308ad4d3) 风险与测试策略 | 已完成 | 1/1 | Artifact n24-test-strategy accepted |
 | 7 | [QAA-326](mention://issue/7f41c597-4c8c-4ea8-9c71-5cf4a6390d14) 测试设计 | 已完成 | 1/1 | completed_with_gaps |
 | 8 | [QAA-327](mention://issue/674fd845-2213-48a2-9a2a-1e703a4d2be1) Oracle 与覆盖审查 | 已完成 | 1/1 | completed_with_gaps |
@@ -78,10 +75,10 @@
 | 12 | [QAA-330](mention://issue/046cda0d-8ad9-435e-93fc-41b9682e007a) 拆分覆盖审查 | 已完成 | 1/1 | completed |
 | 13 | [QAA-335](mention://issue/1ba8d6e5-f1d2-415a-be9d-7bc478c0e4c2) 测试选择 | 已完成 | 1/1 | Artifact n26-test-selection accepted |
 | 14 | [QAA-334](mention://issue/d19009da-5ba3-481c-9053-1ddeb586566b) 执行计划编译 | 已完成 | 1/1 | Artifact n15-execution-plan accepted |
-| 15 | [QAA-379](mention://issue/01a02418-1ece-7e3c-9fd0-33e8bd49b6ba) 服务端自动化生成 | 排队中 | 1/1 | completed_with_gaps |
+| 15 | [QAA-380](mention://issue/01a02425-939d-7b22-8123-3b33231f4f30) 服务端自动化生成 | 已完成 | 1/1 | completed_with_gaps |
 | 15 | [QAA-337](mention://issue/fceb05d9-2005-492d-a02c-178fc78a88b5) 契约自动化生成 | 已跳过 | 1/1 | not_applicable |
-| 15 | [QAA-374](mention://issue/01a023b5-267f-7515-955d-048bbbdb811b) 112 测试数据规划 | 等待人工 | 1/1 | needs_human |
-| 16 | [QAA-378](mention://issue/01a02415-3f46-7639-8107-f07da9a540bc) 服务端自动化独立复核 | 阻塞 | 1/1 | 发现 9 个阻塞问题需人工定向修正（A18BE-01、A18BE-02、A18BE-03、A18BE-04 等 9 项） |
+| 15 | [QAA-374](mention://issue/01a023b5-267f-7515-955d-048bbbdb811b) 112 测试数据规划 | 已完成 | 1/1 | 人工已确认未决数据需求，节点进入完成态 |
+| 16 | [QAA-382](mention://issue/01a03309-33ef-7de1-a168-30b8f0fe6cde) 服务端自动化独立复核 | 阻塞 | 1/1 | 发现 7 个阻塞问题需人工定向修正（R-A18-001、R-A18-002、R-A18-003、R-A18-004 等 7 项） |
 | 16 | 契约自动化独立复核 | 已跳过 | 1/1 | not_applicable |
 | 16 | [QAA-340](mention://issue/2d2b6678-2b7c-4364-92c3-8a35d64906f6) 测试数据计划安全校验 | 已完成 | 1/1 | Artifact n27-test-data-plan-validation accepted |
 | 17 | [QAA-344](mention://issue/bfc83d05-c77c-4d90-9b9f-b178a9937d2e) 自动化确定性代码检查 | 等待人工 | 1/1 | Artifact n05-automation-code-check accepted |
@@ -103,6 +100,6 @@
 
 - Workflow ID：`REQ-DETAIL-DRILL-I18N-RERUN-20260817-02`
 - Parent Issue：`QAA-304`
-- Projection：`sha256:20283792bc94c813da51f8728950ba7fdddf1d323998a00a53a526bb55b2e68e`
+- Projection：`sha256:b7e226a5104c7287a3768a362e116f080d619337570213d471068c9d9a175174`
 
 节点任务和重跑记录保留在内部执行项目；本卡只展示需求级总体状态、进度和人工事项。

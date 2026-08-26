@@ -85,7 +85,7 @@ def test_official_sources_and_capability_catalog_are_traceable() -> None:
 
     assert source_result["available_count"] == 14
     assert source_result["unavailable_count"] == 1
-    assert catalog_result["recipe_count"] == 6
+    assert catalog_result["recipe_count"] == 17
     assert catalog_result["catalog_hash"].startswith("sha256:")
     assert snapshot_result["verified_snapshot_count"] == 2
 
@@ -119,8 +119,8 @@ def test_case_semantics_compile_to_executable_resource_lifecycle() -> None:
     )
     bound = bind_plan_to_case(_semantic_case(["聚合指标"]), plan)
     assert bound["setup"]
-    assert bound["readiness"] == []
-    assert [item["phase"] for item in bound["preparation"]] == ["setup"]
+    assert bound["readiness"]
+    assert [item["phase"] for item in bound["preparation"]] == ["setup", "readiness"]
     assert bound["cleanup"] == []
     assert bound["residue_checks"] == []
     assert bound["retention_mode"] == "retain"
@@ -128,7 +128,10 @@ def test_case_semantics_compile_to_executable_resource_lifecycle() -> None:
     assert plan["lifecycle_schema_version"] == "test-data-lifecycle-plan/1.0"
     assert plan["ready_for_execution"] is True
     assert bound["variables"]["schema_id"] == "BI_e672ff1046fb773b76bc2b56"
-    assert bound["variables"]["metric_name"] == "销售金额结果集筛选聚合指标"
+    # namespace-prefixed display names avoid 聚合规则名称重复 on retain runs
+    assert bound["variables"]["metric_name"] == (
+        "qa-autonomous-data-001-销售金额结果集筛选聚合指标"
+    )
 
 
 def test_unsupported_case_variants_are_adapter_backlog_not_fake_completion() -> None:

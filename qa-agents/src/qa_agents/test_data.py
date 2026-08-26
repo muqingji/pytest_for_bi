@@ -706,6 +706,34 @@ def validate_test_data_plan(
     }
 
 
+
+def _case_chart_bind_inputs(resources: list[Mapping[str, Any]]) -> dict[str, str]:
+    """Pick case-owned dimension/metric variables for chart config differentiation."""
+    dimension_var = ""
+    measure_var = ""
+    filter_var = ""
+    aggregate_vars: list[str] = []
+    for resource in resources:
+        if not isinstance(resource, Mapping):
+            continue
+        rtype = str(resource.get("resource_type") or "")
+        id_var = str(resource.get("resource_id_variable") or "")
+        if rtype == "custom_dimension" and id_var and not dimension_var:
+            dimension_var = id_var
+        if rtype == "aggregate_metric" and id_var:
+            aggregate_vars.append(id_var)
+    if aggregate_vars:
+        # Measure retarget requires agg metrics on a replaceable source shell.
+        measure_var = aggregate_vars[0]
+        # Prefer a second metric for filters so 指标/筛选 are not identical when possible.
+        filter_var = aggregate_vars[1] if len(aggregate_vars) > 1 else aggregate_vars[0]
+    return {
+        "dimension_field_id_var": dimension_var,
+        "measure_field_id_var": measure_var,
+        "filter_field_id_var": filter_var,
+    }
+
+
 def bind_plan_to_case(
     case: Mapping[str, Any], plan: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -744,6 +772,53 @@ def bind_plan_to_case(
         setup.append(setup_step)
         readiness.extend(resource_readiness)
         preparation.append({"phase": "setup", "step": setup_step})
+        # Chart clone recipes carry rename/origin-readback/conditional-move as
+        # post_setup. Materialize them into the executable setup stream so the
+        # CaseRunner actually lands the asset in the requirement folder with a
+        # human-visible name.
+        namespace = str(plan.get("namespace", ""))
+        display_name = str(resource.get("display_name") or resource.get("resource_key") or "asset")
+        visible_name = f"{namespace}-{display_name}" if namespace else display_name
+        for index, raw_post in enumerate(resource.get("post_setup") or [], start=1):
+            if not isinstance(raw_post, Mapping):
+                continue
+            post_step = deepcopy(raw_post)
+            request = post_step.get("request")
+            if isinstance(request, Mapping):
+                api = str(request.get("api", ""))
+                body = request.get("json")
+                if api == "fs_bi_crm.rpt_view_display.rename_rpt_view" and isinstance(body, dict):
+                    body["viewName"] = visible_name
+                    request = {**request, "json": body}
+                    post_step["request"] = request
+            post_step.setdefault(
+                "name",
+                f"{display_name} post_setup {index}",
+            )
+            setup.append(post_step)
+            preparation.append({"phase": "setup", "step": post_step})
+        # After clone rename/move, bind case-owned dimension/measure/filter so
+        # charts are not identical copies of the source view.
+        if str(resource.get("resource_type") or "") == "stat_chart":
+            bind_vars = _case_chart_bind_inputs(list(case_plan.get("resources") or []))
+            dim_var = bind_vars.get("dimension_field_id_var") or ""
+            measure_var = bind_vars.get("measure_field_id_var") or ""
+            filter_var = bind_vars.get("filter_field_id_var") or ""
+            chart_id_var = str(resource.get("resource_id_variable") or "chart_view_id")
+            if dim_var or measure_var or filter_var:
+                bind_step = {
+                    "name": f"{display_name} bind differentiated chart config",
+                    "action": "bind_stat_chart_config",
+                    "inputs": {
+                        "chart_view_id": f"{{{{ {chart_id_var} }}}}",
+                        "schema_id": "{{ schema_id }}",
+                        "dimension_field_id": f"{{{{ {dim_var} }}}}" if dim_var else "",
+                        "measure_field_id": f"{{{{ {measure_var} }}}}" if measure_var else "",
+                        "filter_field_id": f"{{{{ {filter_var} }}}}" if filter_var else "",
+                    },
+                }
+                setup.append(bind_step)
+                preparation.append({"phase": "setup", "step": bind_step})
         preparation.extend(
             {"phase": "readiness", "step": readiness_step}
             for readiness_step in resource_readiness
@@ -766,7 +841,13 @@ def bind_plan_to_case(
                 "resource_key": resource["resource_key"],
                 "resource_type": resource["resource_type"],
                 "resource_id_variable": resource["resource_id_variable"],
-                "display_name": resource.get("display_name"),
+                "display_name": (
+                    f"{plan.get('namespace')}-{resource.get('display_name')}"
+                    if resource.get("resource_type") == "stat_chart"
+                    and plan.get("namespace")
+                    and resource.get("display_name")
+                    else resource.get("display_name")
+                ),
                 "source_field_type": resource.get("source_field_type"),
             }
             for resource in case_plan.get("resources", [])

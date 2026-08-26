@@ -14,12 +14,18 @@ EXECUTABILITY_CLASSES = {
 }
 
 SUPPORTED_ORACLE_MATCHERS = {
+    "all_equal",
     "all_fields_equal",
     "contains",
+    "contains_structure",
     "equals",
+    "equals_baseline",
+    "equals_baseline_except",
+    "equals_one_complete_matched_mapping",
     "exists",
     "not_contains",
     "one_of",
+    "one_of_actually_matched",
     "regex",
 }
 
@@ -237,7 +243,7 @@ def classify_case_executability(
                     "deterministic Oracle requires an observation point",
                 )
             )
-        if matcher not in {"exists", "one_of"} and "expected_value" not in oracle:
+        if matcher not in {"exists", "one_of", "one_of_actually_matched"} and "expected_value" not in oracle:
             encoded_equals = str(oracle.get("matcher", "")).startswith("equals:")
             if not encoded_equals:
                 invalid.append(
@@ -247,7 +253,7 @@ def classify_case_executability(
                         "matcher requires expected_value",
                     )
                 )
-        if matcher == "one_of" and not isinstance(oracle.get("expected_values"), list):
+        if matcher in ("one_of", "one_of_actually_matched") and not isinstance(oracle.get("expected_values"), list):
             invalid.append(
                 _reason(
                     "oracle_expected_values_missing",

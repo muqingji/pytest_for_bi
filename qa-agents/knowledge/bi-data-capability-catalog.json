@@ -5,8 +5,14 @@
       "environment": "112",
       "subject_selection": {
         "explicit_case_subject_required_when_present": true,
-        "default_priority": ["客户", "销售订单", "销售记录"],
-        "forbidden_fallbacks": ["区域测试"]
+        "default_priority": [
+          "客户",
+          "销售订单",
+          "销售记录"
+        ],
+        "forbidden_fallbacks": [
+          "区域测试"
+        ]
       },
       "candidates": [
         {
@@ -31,7 +37,10 @@
           "status": 1
         }
       ],
-      "evidence_refs": ["environment-112", "fs-bi-source"]
+      "evidence_refs": [
+        "environment-112",
+        "fs-bi-source"
+      ]
     },
     "112-region-test-schema": {
       "environment": "112",
@@ -45,11 +54,22 @@
         "date_db_field": "field_3913t__c",
         "date_field_id": "BI_9b4d74a9fd193cc9b75e51db2dc2c67f"
       },
-      "evidence_refs": ["environment-112", "probe-result-filter-detail-112"]
+      "evidence_refs": [
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ]
     },
     "112-chart-detail-folder": {
       "environment": "112",
-      "subject_selection": {"explicit_case_subject_required_when_present": true, "default_priority": ["客户"], "forbidden_fallbacks": ["区域测试"]},
+      "subject_selection": {
+        "explicit_case_subject_required_when_present": true,
+        "default_priority": [
+          "客户"
+        ],
+        "forbidden_fallbacks": [
+          "区域测试"
+        ]
+      },
       "variables": {
         "schema_id": "BI_5bcebcdc3060e20001e79977",
         "schema_object": "biz_account",
@@ -57,10 +77,25 @@
         "category_id": "BI_6a7c47e1280b910007abf988",
         "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
         "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5",
-        "source_view_id": "BI_6a7c47e808bc2c00077317be",
-        "source_config_hash": "sha256:bf5ad328d699a15722fe1e3c542ad336de7013cc26c127df32707a6bb59e0b62"
+        "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+        "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+        "schema_join_field": "",
+        "amount_db_field": "transfer_count",
+        "amount_field_id": "BI_5bcebcddcab2980001ee22d3",
+        "amount_field_name": "转手次数",
+        "date_db_field": "create_time",
+        "date_field_id": "BI_5bcebcddcab2980001ee22d7",
+        "date_field_name": "创建时间",
+        "date_field_type": "DateTime",
+        "account_level_field_id": "BI_5bcebcddcab2980001ee22b3",
+        "account_level_api_name": "account_level"
       },
-      "evidence_refs": ["environment-112", "112-stat-chart-copy-contract-evidence", "fs-bi-crm-report-source", "fs-bi-source"]
+      "evidence_refs": [
+        "environment-112",
+        "112-stat-chart-copy-contract-evidence",
+        "fs-bi-crm-report-source",
+        "fs-bi-source"
+      ]
     }
   },
   "recipes": [
@@ -68,47 +103,156 @@
       "id": "ordinary-metric-result-set-filter",
       "version": "1.0.0",
       "environment_profile": "112-region-test-schema",
-      "match": {"datasets": ["ordinary_result_filter_metric"], "data_intents": ["metric.ordinary_result_set_filter.detail_unsupported"]},
-      "supported_variants": ["ordinary", "ordinary_metric"],
-      "resource_goals": [{"resource_type": "approved_schema_field", "desired_state": {"read_only": true}}],
-      "variables": {"metric_name": "Revenue"},
-      "evidence_refs": ["fs-bi-contract-c6b7853", "fs-bi-source", "environment-112", "probe-result-filter-detail-112"],
-      "resources": [{
-        "resource_key": "ordinary_field_fixture", "resource_type": "approved_schema_field",
-        "resource_id_variable": "amount_field_id", "depends_on": [], "lifecycle_mode": "existing_read_only",
-        "readiness": [{"name": "确认批准普通指标字段存在", "request": {"protocol": "http", "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id", "json": {"schemaId": "{{ schema_id }}"}}, "expect": {"status_code": 200, "body_contains_values": ["{{ amount_field_id }}"]}}],
-        "residue_checks": []
-      }]
+      "match": {
+        "datasets": [
+          "ordinary_result_filter_metric"
+        ],
+        "data_intents": [
+          "metric.ordinary_result_set_filter.detail_unsupported"
+        ]
+      },
+      "supported_variants": [
+        "ordinary",
+        "ordinary_metric"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "approved_schema_field",
+          "desired_state": {
+            "read_only": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "Revenue"
+      },
+      "evidence_refs": [
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "ordinary_field_fixture",
+          "resource_type": "approved_schema_field",
+          "resource_id_variable": "amount_field_id",
+          "depends_on": [],
+          "lifecycle_mode": "existing_read_only",
+          "readiness": [
+            {
+              "name": "确认批准普通指标字段存在",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ amount_field_id }}"
+                ]
+              }
+            }
+          ],
+          "residue_checks": []
+        }
+      ]
     },
     {
       "id": "comparison-metric-result-set-filter",
       "version": "1.0.0",
       "environment_profile": "112-region-test-schema",
-      "match": {"datasets": ["comparison_result_filter_metric"], "data_intents": ["metric.comparison_result_set_filter.detail_unsupported"]},
-      "supported_variants": ["comparison", "comparison_metric"],
-      "resource_goals": [{"resource_type": "approved_schema_field", "desired_state": {"ratio_type": "1", "read_only": true}}],
-      "variables": {"metric_name": "Revenue YoY"},
-      "evidence_refs": ["fs-bi-contract-c6b7853", "fs-bi-source", "environment-112", "probe-result-filter-detail-112"],
-      "resources": [{
-        "resource_key": "comparison_field_fixture", "resource_type": "approved_schema_field",
-        "resource_id_variable": "amount_field_id", "depends_on": [], "lifecycle_mode": "existing_read_only",
-        "readiness": [{"name": "确认批准同环比基础字段存在", "request": {"protocol": "http", "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id", "json": {"schemaId": "{{ schema_id }}"}}, "expect": {"status_code": 200, "body_contains_values": ["{{ amount_field_id }}"]}}],
-        "residue_checks": []
-      }]
+      "match": {
+        "datasets": [
+          "comparison_result_filter_metric"
+        ],
+        "data_intents": [
+          "metric.comparison_result_set_filter.detail_unsupported"
+        ]
+      },
+      "supported_variants": [
+        "comparison",
+        "comparison_metric"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "approved_schema_field",
+          "desired_state": {
+            "ratio_type": "1",
+            "read_only": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "Revenue YoY"
+      },
+      "evidence_refs": [
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "comparison_field_fixture",
+          "resource_type": "approved_schema_field",
+          "resource_id_variable": "amount_field_id",
+          "depends_on": [],
+          "lifecycle_mode": "existing_read_only",
+          "readiness": [
+            {
+              "name": "确认批准同环比基础字段存在",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ amount_field_id }}"
+                ]
+              }
+            }
+          ],
+          "residue_checks": []
+        }
+      ]
     },
     {
       "id": "aggregate-metric-result-set-filter",
       "version": "1.0.0",
       "environment_profile": "112-region-test-schema",
       "match": {
-        "datasets": ["result_filter_metric", "result_set_metric_types"],
-        "data_intents": ["metric.result_set_filter.detail_unsupported"],
+        "datasets": [
+          "result_filter_metric",
+          "result_set_metric_types"
+        ],
+        "data_intents": [
+          "metric.result_set_filter.detail_unsupported"
+        ],
         "all_term_groups": [
-          ["结果集筛选", "结果集数据范围", "result set filter"],
-          ["查看明细", "detail query", "details view"]
+          [
+            "结果集筛选",
+            "结果集数据范围",
+            "result set filter"
+          ],
+          [
+            "查看明细",
+            "detail query",
+            "details view"
+          ]
         ]
       },
-      "supported_variants": ["聚合指标", "aggregate_metric"],
+      "supported_variants": [
+        "聚合指标",
+        "aggregate_metric"
+      ],
       "resource_goals": [
         {
           "resource_type": "aggregate_metric",
@@ -119,7 +263,8 @@
         }
       ],
       "variables": {
-        "metric_name": "销售金额结果集筛选聚合指标"
+        "metric_name": "{{ namespace }}-销售金额结果集筛选聚合指标",
+        "numeric_filter_value": "0"
       },
       "evidence_refs": [
         "fxiaoke-help-bi",
@@ -147,7 +292,7 @@
               "json": {
                 "schemaId": "{{ schema_id }}",
                 "schemaObjectName": "{{ schema_object }}",
-                "displayName": "销售金额结果集筛选聚合指标",
+                "displayName": "{{ metric_name }}",
                 "aggObject": {
                   "refObjName": "{{ schema_object }}",
                   "refObjShowName": "{{ schema_display_name }}",
@@ -200,13 +345,35 @@
                 "timeZone": "Asia/Shanghai"
               }
             },
-            "extract": {"metric_field_id": "Value.fieldId"},
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
             "expect": {
               "status_code": 200,
-              "json_path": {"Result.FailureCode": 0}
+              "json_path": {
+                "Result.FailureCode": 0
+              }
             }
           },
-          "readiness": [],
+          "readiness": [
+            {
+              "name": "回查结果集筛选聚合指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
           "cleanup": {
             "name": "删除本次运行创建的隔离指标",
             "request": {
@@ -220,7 +387,9 @@
             },
             "expect": {
               "status_code": 200,
-                "json_path": {"Result.FailureCode": 0}
+              "json_path": {
+                "Result.FailureCode": 0
+              }
             }
           },
           "residue_checks": [
@@ -234,7 +403,10 @@
                   "fieldId": "{{ metric_field_id }}"
                 }
               },
-              "expect_absent": {"json_path": "Value.fieldId", "value": "{{ metric_field_id }}"}
+              "expect_absent": {
+                "json_path": "Value.fieldId",
+                "value": "{{ metric_field_id }}"
+              }
             }
           ]
         }
@@ -245,17 +417,34 @@
       "version": "1.0.0",
       "environment_profile": "112-region-test-schema",
       "match": {
-        "datasets": ["calculated_result_filter_metric"],
-        "data_intents": ["metric.calculated_result_set_filter.detail_unsupported"]
+        "datasets": [
+          "calculated_result_filter_metric"
+        ],
+        "data_intents": [
+          "metric.calculated_result_set_filter.detail_unsupported"
+        ]
       },
-      "supported_variants": ["计算指标", "calculated_metric"],
+      "supported_variants": [
+        "计算指标",
+        "calculated_metric"
+      ],
       "resource_goals": [
-        {"resource_type": "aggregate_metric", "desired_state": {"formula_base": true}},
-        {"resource_type": "calculated_metric", "desired_state": {"result_set_filter_enabled": true}}
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "formula_base": true
+          }
+        },
+        {
+          "resource_type": "calculated_metric",
+          "desired_state": {
+            "result_set_filter_enabled": true
+          }
+        }
       ],
       "variables": {
-        "metric_name": "销售利润率计算指标",
-        "aggregate_metric_name": "销售金额计算基准聚合指标"
+        "metric_name": "{{ namespace }}-销售利润率计算指标",
+        "aggregate_metric_name": "{{ namespace }}-销售金额计算基准聚合指标"
       },
       "evidence_refs": [
         "fs-bi-contract-c6b7853",
@@ -275,28 +464,86 @@
           "depends_on": [],
           "setup": {
             "name": "创建计算指标依赖的隔离聚合指标",
-            "request": {"protocol": "http", "api": "fs_bi_stat.agg_rule.add_new_agg_rule", "json": {
-              "schemaId": "{{ schema_id }}", "schemaObjectName": "{{ schema_object }}",
-              "displayName": "销售金额计算基准聚合指标",
-              "aggObject": {"refObjName": "{{ schema_object }}", "refObjShowName": "{{ schema_display_name }}", "refJoinField": "{{ schema_join_field }}"},
-              "aggField": {"dbFieldName": "{{ amount_db_field }}", "fieldName": "金额", "fieldType": "Number", "dbObjName": "{{ schema_object }}", "fieldId": "{{ amount_field_id }}"},
-              "aggFieldTime": {"dbFieldName": "{{ date_db_field }}", "fieldName": "日期", "fieldType": "Date", "dbObjName": "{{ schema_object }}", "fieldId": "{{ date_field_id }}"},
-              "filterLists": [], "checkFieldAggregateType": 2, "initStatus": 1, "timeZone": "Asia/Shanghai"
-            }},
-            "extract": {"aggregate_metric_id": "Value.fieldId"},
-            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ aggregate_metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "金额",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "日期",
+                  "fieldType": "Date",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "aggregate_metric_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
           },
           "readiness": [],
           "cleanup": {
             "name": "删除计算指标依赖的隔离聚合指标",
-            "request": {"protocol": "http", "api": "fs_bi_stat.agg_rule.delete_agg_rule", "json": {"schemaId": "{{ schema_id }}", "fieldId": "{{ aggregate_metric_id }}", "fieldName": "{{ aggregate_metric_name }}"}},
-            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ aggregate_metric_id }}",
+                "fieldName": "{{ aggregate_metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
           },
-          "residue_checks": [{
-            "name": "确认聚合依赖无残留",
-            "request": {"protocol": "http", "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id", "json": {"schemaId": "{{ schema_id }}"}},
-            "expect": {"status_code": 200, "body_not_contains_values": ["{{ aggregate_metric_id }}", "{{ aggregate_metric_name }}"]}
-          }]
+          "residue_checks": [
+            {
+              "name": "确认聚合依赖无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_schema.get_fields_by_schema_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ aggregate_metric_id }}",
+                  "{{ aggregate_metric_name }}"
+                ]
+              }
+            }
+          ]
         },
         {
           "resource_key": "calculated_metric",
@@ -306,30 +553,90 @@
           "source_field_type": "Number",
           "semantic_basis": "销售金额数值指标计算结果",
           "resource_id_variable": "calculated_metric_id",
-          "depends_on": ["aggregate_base"],
+          "depends_on": [
+            "aggregate_base"
+          ],
           "setup": {
             "name": "创建隔离计算指标",
-            "request": {"protocol": "http", "api": "fs_bi_stat.stat_calc_field.save_calc_field", "json": {
-              "calcFieldId": "", "fieldName": "销售利润率计算指标", "formula": "[{{ aggregate_metric_id }}_2]", "formatStr": "0.00", "ratioType": 0
-            }},
-            "extract": {"calculated_metric_id": "Value.fieldID"},
-            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.stat_calc_field.save_calc_field",
+              "json": {
+                "calcFieldId": "",
+                "fieldName": "{{ metric_name }}",
+                "formula": "[{{ aggregate_metric_id }}_2]",
+                "formatStr": "0.00",
+                "ratioType": 0
+              }
+            },
+            "extract": {
+              "calculated_metric_id": "Value.fieldID"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
           },
-          "readiness": [{
-            "name": "通过计算指标子字段接口回查资源已创建",
-            "request": {"protocol": "http", "api": "fs_bi_stat.stat_base.get_calc_agg_sub_fields", "json": {"viewId": "", "measureFieldId": "{{ calculated_metric_id }}"}},
-            "expect": {"status_code": 200, "body_contains_values": ["{{ calculated_metric_id }}"]}
-          }],
+          "readiness": [
+            {
+              "name": "通过计算指标子字段接口回查资源已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_base.get_calc_agg_sub_fields",
+                "json": {
+                  "viewId": "",
+                  "measureFieldId": "{{ calculated_metric_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ calculated_metric_id }}"
+                ]
+              }
+            }
+          ],
           "cleanup": {
             "name": "删除隔离计算指标",
-            "request": {"protocol": "http", "api": "fs_bi_stat.stat_calc_field.delete_calc_field", "json": {"viewId": "", "calcFieldId": ["{{ calculated_metric_id }}"]}},
-            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.stat_calc_field.delete_calc_field",
+              "json": {
+                "viewId": "",
+                "calcFieldId": [
+                  "{{ calculated_metric_id }}"
+                ]
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
           },
-          "residue_checks": [{
-            "name": "确认计算指标无残留",
-            "request": {"protocol": "http", "api": "fs_bi_stat.stat_base.get_calc_agg_sub_fields", "json": {"viewId": "", "measureFieldId": "{{ calculated_metric_id }}"}},
-            "expect": {"status_code": 200, "body_not_contains_values": ["{{ calculated_metric_id }}", "{{ metric_name }}"]}
-          }]
+          "residue_checks": [
+            {
+              "name": "确认计算指标无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_base.get_calc_agg_sub_fields",
+                "json": {
+                  "viewId": "",
+                  "measureFieldId": "{{ calculated_metric_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ calculated_metric_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -338,14 +645,45 @@
       "version": "1.0.0",
       "environment_profile": "112-region-test-schema",
       "match": {
-        "datasets": ["ordinary_metric"],
-        "data_intents": ["metric.ordinary.create"],
-        "all_term_groups": [["普通指标", "普通度量", "一般指标", "ordinary metric", "plain metric"]]
+        "datasets": [
+          "ordinary_metric"
+        ],
+        "data_intents": [
+          "metric.ordinary.create"
+        ],
+        "all_term_groups": [
+          [
+            "普通指标",
+            "普通度量",
+            "一般指标",
+            "ordinary metric",
+            "plain metric"
+          ]
+        ]
       },
-      "supported_variants": ["ordinary", "ordinary_metric"],
-      "resource_goals": [{"resource_type": "aggregate_metric", "desired_state": {"created": true}}],
-      "variables": {"metric_name": "普通指标自动构造"},
-      "evidence_refs": ["fxiaoke-help-bi", "fxiaoke-help-chart-create", "fs-bi-contract-c6b7853", "fs-bi-source", "environment-112", "probe-result-filter-detail-112"],
+      "supported_variants": [
+        "ordinary",
+        "ordinary_metric"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "普通指标自动构造"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
       "resources": [
         {
           "resource_key": "ordinary_metric",
@@ -358,80 +696,4438 @@
           "depends_on": [],
           "setup": {
             "name": "创建普通隔离指标",
-            "request": {"protocol": "http", "api": "fs_bi_stat.agg_rule.add_new_agg_rule", "json": {
-              "schemaId": "{{ schema_id }}", "schemaObjectName": "{{ schema_object }}", "displayName": "{{ namespace }}-普通指标自动构造",
-              "aggObject": {"refObjName": "{{ schema_object }}", "refObjShowName": "{{ schema_display_name }}", "refJoinField": "{{ schema_join_field }}"},
-              "aggField": {"dbFieldName": "{{ amount_db_field }}", "fieldName": "金额", "fieldType": "Number", "dbObjName": "{{ schema_object }}", "fieldId": "{{ amount_field_id }}"},
-              "aggFieldTime": {"dbFieldName": "{{ date_db_field }}", "fieldName": "日期", "fieldType": "Date", "dbObjName": "{{ schema_object }}", "fieldId": "{{ date_field_id }}"},
-              "filterLists": [], "checkFieldAggregateType": 2, "initStatus": 1, "timeZone": "Asia/Shanghai"
-            }},
-            "extract": {"metric_field_id": "Value.fieldId"},
-            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ namespace }}-普通指标自动构造",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "金额",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "日期",
+                  "fieldType": "Date",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
           },
           "readiness": [],
           "cleanup": {
             "name": "删除本次运行创建的普通指标",
-            "request": {"protocol": "http", "api": "fs_bi_stat.agg_rule.delete_agg_rule", "json": {"schemaId": "{{ schema_id }}", "fieldId": "{{ metric_field_id }}", "fieldName": "{{ metric_name }}"}},
-            "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}}
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
           },
-          "residue_checks": [{
-            "name": "确认本次创建的普通指标已无残留",
-            "request": {"protocol": "http", "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id", "json": {"schemaId": "{{ schema_id }}", "fieldId": "{{ metric_field_id }}"}},
-            "expect_absent": {"json_path": "Value.fieldId", "value": "{{ metric_field_id }}"}
-          }]
+          "residue_checks": [
+            {
+              "name": "确认本次创建的普通指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect_absent": {
+                "json_path": "Value.fieldId",
+                "value": "{{ metric_field_id }}"
+              }
+            }
+          ]
         }
       ]
-    }
-,
+    },
     {
       "id": "stat-chart-create",
       "version": "1.0.0",
       "environment_profile": "112-chart-detail-folder",
-      "match": {"data_intents": ["chart.create"], "datasets": ["stat_chart"], "all_term_groups": [["统计图", "图表", "图形", "chart", "stat view"], ["查看明细", "detail query", "details view", "detail"]]},
-      "supported_variants": ["stat_chart"],
-      "resource_goals": [{"resource_type": "stat_chart", "desired_state": {"created": true, "saved": true}}],
-      "variables": {"chart_name": "统计图查看明细验证图"},
-      "evidence_refs": ["fs-bi-crm-report-source", "fs-bi-source", "environment-112", "fxiaoke-help-chart-create"],
-      "resources": [{
-        "resource_key": "stat_chart_resource",
-        "resource_type": "stat_chart",
-        "lifecycle_mode": "create",
-        "retention_mode": "retain",
-        "resource_id_variable": "chart_view_id",
-        "display_name": "{{ chart_name }}",
-        "source_field_type": "chart_clone",
-        "asset_folder_name": "统计图查看明细限制原因提示优化",
-        "folder_binding": {
-          "folder_name": "统计图查看明细限制原因提示优化",
-          "category_id": "BI_6a7c47e1280b910007abf988",
-          "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
-          "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
-        },
-        "source_provenance": {
-          "source_view_id": "BI_6a7c47e808bc2c00077317be",
-          "source_config_hash": "sha256:bf5ad328d699a15722fe1e3c542ad336de7013cc26c127df32707a6bb59e0b62"
-        },
-        "configuration_hash": "sha256:bf5ad328d699a15722fe1e3c542ad336de7013cc26c127df32707a6bb59e0b62",
-        "setup": {
-          "name": "复制已验证保留统计图并绑定需求目录",
-          "request": {"protocol": "http", "api": "fs_bi_crm.stat_create.copy_stat_view", "json": {"statViewBaseInfo": {"viewID": "BI_6a7c47e808bc2c00077317be", "isChange": 0}}},
-          "extract": {"chart_view_id": "Value.viewID"}
-        },
-        "post_setup": [
-          {"request": {"protocol": "http", "api": "fs_bi_crm.rpt_view_display.rename_rpt_view", "json": {"viewID": "{{ chart_view_id }}", "viewName": "{{ chart_name }}", "description": "需求：统计图查看明细限制原因提示优化", "isCategory": 2}}},
-          {"request": {"protocol": "http", "api": "fs_bi_crm.stat_edit.get_stat_view", "json": {"id": "{{ chart_view_id }}"}}, "extract": {"chart_origin_category_id": "Value.categoryID"}},
-          {"request": {"protocol": "http", "api": "fs_bi_crm.rpt_view_display.move_rpt_view", "json": {"targetCategoryID": "BI_6a7c47e1280b910007abf988", "originCategoryID": "{{ chart_origin_category_id }}", "viewID": "{{ chart_view_id }}", "isCategory": 2}}, "condition": {"left": "{{ chart_origin_category_id }}", "operator": "not_equals", "right": "BI_6a7c47e1280b910007abf988"}}
+      "match": {
+        "data_intents": [
+          "chart.create"
         ],
-        "readiness": [
-          {"request": {"protocol": "http", "api": "fs_bi_crm.stat_edit.get_stat_view", "json": {"id": "{{ chart_view_id }}"}}, "expect": {"status_code": 200}},
-          {"request": {"protocol": "http", "api": "fs_bi_stat.stat_edit.get_chart_config", "json": {"id": "{{ chart_view_id }}", "isView": 1, "type": "edit", "querySource": "UNKNOWN", "cacheTime": 0, "refresh": 1}}, "expect": {"status_code": 200}}
+        "datasets": [
+          "stat_chart"
         ],
-        "residue_checks": [{
-          "name": "确认克隆统计图仍可回读",
-          "request": {"protocol": "http", "api": "fs_bi_stat.stat_edit.get_chart_config", "json": {"id": "{{ chart_view_id }}", "isView": 1, "type": "edit", "querySource": "UNKNOWN", "cacheTime": 0, "refresh": 1}},
-          "expect": {"status_code": 200, "body_contains_values": ["{{ chart_view_id }}"]}
-        }]
-      }]
+        "all_term_groups": [
+          [
+            "统计图",
+            "图表",
+            "图形",
+            "chart",
+            "stat view"
+          ],
+          [
+            "查看明细",
+            "detail query",
+            "details view",
+            "detail"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "stat_chart"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true,
+            "saved": true
+          }
+        }
+      ],
+      "variables": {
+        "chart_name": "统计图查看明细验证图"
+      },
+      "evidence_refs": [
+        "fs-bi-crm-report-source",
+        "fs-bi-source",
+        "environment-112",
+        "fxiaoke-help-chart-create"
+      ],
+      "resources": [
+        {
+          "resource_key": "stat_chart_resource",
+          "resource_type": "stat_chart",
+          "lifecycle_mode": "create",
+          "retention_mode": "retain",
+          "resource_id_variable": "chart_view_id",
+          "display_name": "{{ chart_name }}",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "setup": {
+            "name": "复制已验证保留统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "{{ chart_name }}",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "custom-dimension-chart-detail",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "自定义维度",
+            "custom dimension"
+          ],
+          [
+            "三类位置"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "变体 A：仅维度使用自定义维度字段",
+        "变体 B：仅数据范围使用自定义维度字段",
+        "变体 C：仅下钻字段使用自定义维度字段",
+        "基线统计图：普通维度、普通数据范围、普通下钻字段，可成功查看明细"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "custom_dimension",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-基线聚合指标"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "baseline_metric",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "基线聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建基线聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "{{ amount_field_name }}",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "{{ date_field_name }}",
+                  "fieldType": "{{ date_field_type }}",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查基线聚合指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除基线聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认基线聚合指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ metric_field_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "custom_dimension_fixture",
+          "resource_type": "custom_dimension",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "客户等级枚举分组自定义维度",
+          "source_field_type": "select_one",
+          "semantic_basis": "客户等级枚举字段",
+          "resource_id_variable": "custom_dimension_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建客户等级枚举分组自定义维度",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.create_custom_dimension",
+              "json": {
+                "topologyDescribeId": "{{ schema_id }}",
+                "customType": "enum_group",
+                "dimensionName": "{{ namespace }}-客户等级枚举分组自定义维度",
+                "description": "需求：统计图查看明细限制原因提示优化；A22 命名空间构造并长期保留",
+                "dimensionConfig": "{\"groups\": [{\"isNotGrouped\": false, \"values\": [\"1\", \"2\"]}, {\"isNotGrouped\": true, \"values\": [\"3\", \"other\"]}]}",
+                "describeApiName": "AccountObj",
+                "sourceField": {
+                  "fieldId": "{{ account_level_field_id }}",
+                  "apiName": "{{ account_level_api_name }}",
+                  "type": "select_one",
+                  "describeApiName": "AccountObj"
+                }
+              }
+            },
+            "enum_option_bindings": [
+              {
+                "field_id": "{{ account_level_field_id }}",
+                "field_api_name": "{{ account_level_api_name }}",
+                "option_query_operation": "fs_bi_udf_report.view_edit.get_ui_type",
+                "option_response_hash": "sha256:89bbe008e4a48b49e7cdf22bbee31982f463e234e7db4d311244411f9e816c9d",
+                "response_json_path": "$.Value.ui.data[*].optionCode",
+                "queried_option_codes": [
+                  "1",
+                  "2",
+                  "3",
+                  "other"
+                ],
+                "selected_option_codes": [
+                  "1",
+                  "2"
+                ]
+              }
+            ],
+            "extract": {
+              "custom_dimension_id": "Value.dimensionId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查客户等级枚举分组自定义维度已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.custom_dimension.get_custom_dimension",
+                "json": {
+                  "fieldId": "{{ custom_dimension_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除客户等级枚举分组自定义维度",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.delete_custom_dimension",
+              "json": {
+                "fieldId": "{{ custom_dimension_id }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认客户等级枚举分组自定义维度已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.custom_dimension.get_custom_dimension",
+                "json": {
+                  "fieldId": "{{ custom_dimension_id }}"
+                }
+              },
+              "expect_absent": {
+                "json_path": "Value.dimensionId",
+                "value": "{{ custom_dimension_id }}"
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "variant_chart_set",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "自定义维度查看明细验证统计图",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "resource_id_variable": "chart_view_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution",
+            "requirement_folder"
+          ],
+          "setup": {
+            "name": "复制统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "自定义维度查看明细验证统计图",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图自定义维度查看明细验证统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "result-set-filter-name-resolution",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "结果集筛选",
+            "result set filter"
+          ],
+          [
+            "名称解析",
+            "全部名称参数"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "同环比指标",
+        "多指标",
+        "普通指标",
+        "空名称",
+        "聚合指标",
+        "计算指标"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "calculated_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-结果集筛选聚合指标"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "aggregate_metric_resolution_set",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "结果集筛选聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "base_agg_field_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建结果集筛选聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "{{ amount_field_name }}",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "{{ date_field_name }}",
+                  "fieldType": "{{ date_field_type }}",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "base_agg_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查结果集筛选聚合指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ base_agg_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除结果集筛选聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ base_agg_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认结果集筛选聚合指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ base_agg_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ base_agg_field_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "calculated_metric_dynamic_name_pair",
+          "resource_type": "calculated_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "结果集筛选计算指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售金额数值指标计算结果",
+          "resource_id_variable": "calculated_metric_id",
+          "depends_on": [
+            "aggregate_metric_resolution_set"
+          ],
+          "scene_roles": [
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建结果集筛选计算指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.stat_calc_field.save_calc_field",
+              "json": {
+                "calcFieldId": "",
+                "fieldName": "{{ namespace }}-结果集筛选计算指标",
+                "formula": "[{{ base_agg_field_id }}_2]",
+                "formatStr": "0.00",
+                "ratioType": 0
+              }
+            },
+            "extract": {
+              "calculated_metric_id": "Value.fieldID"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查结果集筛选计算指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_base.get_calc_agg_sub_fields",
+                "json": {
+                  "viewId": "",
+                  "measureFieldId": "{{ calculated_metric_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ calculated_metric_id }}"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除结果集筛选计算指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.stat_calc_field.delete_calc_field",
+              "json": {
+                "viewId": "",
+                "calcFieldId": [
+                  "{{ calculated_metric_id }}"
+                ]
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认结果集筛选计算指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_base.get_calc_agg_sub_fields",
+                "json": {
+                  "viewId": "",
+                  "measureFieldId": "{{ calculated_metric_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ calculated_metric_id }}",
+                  "结果集筛选计算指标"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "result_filter_chart_set",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "结果集筛选名称解析验证统计图",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "resource_id_variable": "chart_view_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution",
+            "requirement_folder"
+          ],
+          "setup": {
+            "name": "复制统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "结果集筛选名称解析验证统计图",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图结果集筛选名称解析验证统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "multi-relation-metric-chart-detail",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "多关联",
+            "关联关系"
+          ],
+          [
+            "失败替换",
+            "原成功关系回归"
+          ]
+        ]
+      },
+      "supported_variants": [],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-多关联汇率聚合指标"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "multi_relation_metric_matrix",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "多关联汇率聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建多关联汇率聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "{{ amount_field_name }}",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "{{ date_field_name }}",
+                  "fieldType": "{{ date_field_type }}",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查多关联汇率聚合指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除多关联汇率聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认多关联汇率聚合指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ metric_field_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "multi_relation_chart_set",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "多关联查看明细验证统计图",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "resource_id_variable": "chart_view_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution",
+            "requirement_folder"
+          ],
+          "setup": {
+            "name": "复制统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "多关联查看明细验证统计图",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图多关联查看明细验证统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dynamic-relation-metric-chart-detail",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "动态关联"
+          ],
+          [
+            "what-list",
+            "非动态控制"
+          ]
+        ]
+      },
+      "supported_variants": [],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-动态关联聚合指标"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "dynamic_relation_metric_set",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "动态关联聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建动态关联聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "{{ amount_field_name }}",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "{{ date_field_name }}",
+                  "fieldType": "{{ date_field_type }}",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查动态关联聚合指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除动态关联聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认动态关联聚合指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ metric_field_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "dynamic_relation_chart_set",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "动态关联查看明细验证统计图",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "resource_id_variable": "chart_view_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution",
+            "requirement_folder"
+          ],
+          "setup": {
+            "name": "复制统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "动态关联查看明细验证统计图",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图动态关联查看明细验证统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "combo-restriction-chart-detail",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "多原因单提示",
+            "无固定业务优先顺序"
+          ],
+          [
+            "自定义维度",
+            "结果集筛选"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "组合 A：自定义维度与结果集筛选同时命中",
+        "组合 B：动态关联与多关联同时命中",
+        "组合 C：自定义维度、结果集筛选和关联原因同时命中"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "custom_dimension",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-组合原因结果集筛选聚合指标"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "combo_custom_dimension",
+          "resource_type": "custom_dimension",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "组合原因自定义维度",
+          "source_field_type": "select_one",
+          "semantic_basis": "客户等级枚举字段",
+          "resource_id_variable": "custom_dimension_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建组合原因自定义维度",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.create_custom_dimension",
+              "json": {
+                "topologyDescribeId": "{{ schema_id }}",
+                "customType": "enum_group",
+                "dimensionName": "{{ namespace }}-组合原因自定义维度",
+                "description": "需求：统计图查看明细限制原因提示优化；A22 命名空间构造并长期保留",
+                "dimensionConfig": "{\"groups\": [{\"isNotGrouped\": false, \"values\": [\"1\", \"2\"]}, {\"isNotGrouped\": true, \"values\": [\"3\", \"other\"]}]}",
+                "describeApiName": "AccountObj",
+                "sourceField": {
+                  "fieldId": "{{ account_level_field_id }}",
+                  "apiName": "{{ account_level_api_name }}",
+                  "type": "select_one",
+                  "describeApiName": "AccountObj"
+                }
+              }
+            },
+            "enum_option_bindings": [
+              {
+                "field_id": "{{ account_level_field_id }}",
+                "field_api_name": "{{ account_level_api_name }}",
+                "option_query_operation": "fs_bi_udf_report.view_edit.get_ui_type",
+                "option_response_hash": "sha256:89bbe008e4a48b49e7cdf22bbee31982f463e234e7db4d311244411f9e816c9d",
+                "response_json_path": "$.Value.ui.data[*].optionCode",
+                "queried_option_codes": [
+                  "1",
+                  "2",
+                  "3",
+                  "other"
+                ],
+                "selected_option_codes": [
+                  "1",
+                  "2"
+                ]
+              }
+            ],
+            "extract": {
+              "custom_dimension_id": "Value.dimensionId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查组合原因自定义维度已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.custom_dimension.get_custom_dimension",
+                "json": {
+                  "fieldId": "{{ custom_dimension_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除组合原因自定义维度",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.delete_custom_dimension",
+              "json": {
+                "fieldId": "{{ custom_dimension_id }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认组合原因自定义维度已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.custom_dimension.get_custom_dimension",
+                "json": {
+                  "fieldId": "{{ custom_dimension_id }}"
+                }
+              },
+              "expect_absent": {
+                "json_path": "Value.dimensionId",
+                "value": "{{ custom_dimension_id }}"
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "combo_restricted_metric",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "组合原因结果集筛选聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建组合原因结果集筛选聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "{{ amount_field_name }}",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "{{ date_field_name }}",
+                  "fieldType": "{{ date_field_type }}",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查组合原因结果集筛选聚合指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除组合原因结果集筛选聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认组合原因结果集筛选聚合指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ metric_field_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "combo_chart_set",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "组合原因查看明细验证统计图",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "resource_id_variable": "chart_view_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution",
+            "requirement_folder"
+          ],
+          "setup": {
+            "name": "复制统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "组合原因查看明细验证统计图",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图组合原因查看明细验证统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "permission-priority-chart-detail",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "权限错误优先",
+            "指标名称防泄露"
+          ],
+          [
+            "敏感指标",
+            "图表"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "图表同时命中动态关联受限原因",
+        "图表同时命中结果集筛选受限原因",
+        "敏感指标显示名：机密收入",
+        "账号 A：无图表权限",
+        "账号 B：可看图表但无敏感字段权限",
+        "账号 C：拥有完整权限"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-机密收入敏感指标"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "sensitive_metric",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "机密收入敏感指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建机密收入敏感指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "{{ amount_field_name }}",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "{{ date_field_name }}",
+                  "fieldType": "{{ date_field_type }}",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查机密收入敏感指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除机密收入敏感指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认机密收入敏感指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ metric_field_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "restricted_chart",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "权限查看明细验证统计图",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "resource_id_variable": "chart_view_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution",
+            "requirement_folder"
+          ],
+          "setup": {
+            "name": "复制统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "权限查看明细验证统计图",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图权限查看明细验证统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "four-error-codes-contract",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "四类专用错误码",
+            "双语模板"
+          ],
+          [
+            "查看明细",
+            "统计图"
+          ]
+        ]
+      },
+      "supported_variants": [],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "custom_dimension",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-契约验证聚合指标"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "contract_metric_set",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "契约验证聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建契约验证聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "{{ amount_field_name }}",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "{{ date_field_name }}",
+                  "fieldType": "{{ date_field_type }}",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查契约验证聚合指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除契约验证聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认契约验证聚合指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ metric_field_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "contract_custom_dimension",
+          "resource_type": "custom_dimension",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "契约验证自定义维度",
+          "source_field_type": "select_one",
+          "semantic_basis": "客户等级枚举字段",
+          "resource_id_variable": "custom_dimension_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建契约验证自定义维度",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.create_custom_dimension",
+              "json": {
+                "topologyDescribeId": "{{ schema_id }}",
+                "customType": "enum_group",
+                "dimensionName": "{{ namespace }}-契约验证自定义维度",
+                "description": "需求：统计图查看明细限制原因提示优化；A22 命名空间构造并长期保留",
+                "dimensionConfig": "{\"groups\": [{\"isNotGrouped\": false, \"values\": [\"1\", \"2\"]}, {\"isNotGrouped\": true, \"values\": [\"3\", \"other\"]}]}",
+                "describeApiName": "AccountObj",
+                "sourceField": {
+                  "fieldId": "{{ account_level_field_id }}",
+                  "apiName": "{{ account_level_api_name }}",
+                  "type": "select_one",
+                  "describeApiName": "AccountObj"
+                }
+              }
+            },
+            "enum_option_bindings": [
+              {
+                "field_id": "{{ account_level_field_id }}",
+                "field_api_name": "{{ account_level_api_name }}",
+                "option_query_operation": "fs_bi_udf_report.view_edit.get_ui_type",
+                "option_response_hash": "sha256:89bbe008e4a48b49e7cdf22bbee31982f463e234e7db4d311244411f9e816c9d",
+                "response_json_path": "$.Value.ui.data[*].optionCode",
+                "queried_option_codes": [
+                  "1",
+                  "2",
+                  "3",
+                  "other"
+                ],
+                "selected_option_codes": [
+                  "1",
+                  "2"
+                ]
+              }
+            ],
+            "extract": {
+              "custom_dimension_id": "Value.dimensionId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查契约验证自定义维度已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.custom_dimension.get_custom_dimension",
+                "json": {
+                  "fieldId": "{{ custom_dimension_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除契约验证自定义维度",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.delete_custom_dimension",
+              "json": {
+                "fieldId": "{{ custom_dimension_id }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认契约验证自定义维度已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.custom_dimension.get_custom_dimension",
+                "json": {
+                  "fieldId": "{{ custom_dimension_id }}"
+                }
+              },
+              "expect_absent": {
+                "json_path": "Value.dimensionId",
+                "value": "{{ custom_dimension_id }}"
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "contract_chart_set",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "契约错误码验证统计图",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "resource_id_variable": "chart_view_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution",
+            "requirement_folder"
+          ],
+          "setup": {
+            "name": "复制统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "契约错误码验证统计图",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图契约错误码验证统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "historical-config-compatibility",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "历史配置实时新逻辑",
+            "非目标错误兼容性"
+          ],
+          [
+            "查看明细",
+            "拼表"
+          ]
+        ]
+      },
+      "supported_variants": [],
+      "resource_goals": [],
+      "variables": {},
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "historical_chart_set",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "existing_read_only",
+          "display_name": "历史区域统计图",
+          "resource_id_variable": "historical_chart_view_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension",
+            "requirement_folder",
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution"
+          ],
+          "discovery": {
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.stat_edit.get_chart_config",
+              "json": {
+                "id": "BI_68b948eb669f380001f66b87",
+                "isView": 1,
+                "type": "edit",
+                "querySource": "UNKNOWN",
+                "cacheTime": 0,
+                "refresh": 1
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "existing_asset_evidence": {
+            "live_readback_status": "succeeded",
+            "configuration_hash": "sha256:0cf783de3d61488b7ebcd3580fb621379ea8d18be6497da8780cdb37a4339abb",
+            "historical_required": true,
+            "evidence_level": "historical_candidate_verified_by_id_timestamp_and_live_readback",
+            "observed_created_at": "2025-09-04T08:08:11Z",
+            "requirement_baseline_at": "2026-08-07T19:42:44+08:00"
+          },
+          "readiness": [
+            {
+              "name": "回查历史区域统计图可读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "BI_68b948eb669f380001f66b87",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认历史区域统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "BI_68b948eb669f380001f66b87",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "historical_joined_table_set",
+          "resource_type": "joined_table",
+          "retention_mode": "retain",
+          "lifecycle_mode": "existing_read_only",
+          "display_name": "历史金额拼表",
+          "resource_id_variable": "historical_table_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution"
+          ],
+          "discovery": {
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_dev.lwt_manager.query_arg_detail",
+              "json": {
+                "id": "BI_lwt_1786535602737",
+                "updateViewTime": 0
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "existing_asset_evidence": {
+            "live_readback_status": "succeeded",
+            "configuration_hash": "sha256:0b4d3b1e1f5aaa25024bac0766534394f00e1d9cf6c34162182c66a7e974b17a",
+            "historical_required": true,
+            "evidence_level": "historical_candidate_verified_by_id_timestamp_and_live_readback",
+            "observed_created_at": "2026-01-19T02:18:51.662Z",
+            "requirement_baseline_at": "2026-08-07T19:42:44+08:00"
+          },
+          "readiness": [
+            {
+              "name": "回查历史金额拼表可读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_dev.lwt_manager.query_arg_detail",
+                "json": {
+                  "id": "BI_lwt_1786535602737",
+                  "updateViewTime": 0
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认历史金额拼表仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_dev.lwt_manager.query_arg_detail",
+                "json": {
+                  "id": "BI_lwt_1786535602737",
+                  "updateViewTime": 0
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "web-chart-restriction-e2e",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "四类受限原因端到端",
+            "web 统计图四类"
+          ],
+          [
+            "查看明细"
+          ]
+        ]
+      },
+      "supported_variants": [],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "custom_dimension",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-端到端结果集筛选聚合指标"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "e2e_restricted_metric",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "端到端结果集筛选聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建端到端结果集筛选聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "{{ amount_field_name }}",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "{{ date_field_name }}",
+                  "fieldType": "{{ date_field_type }}",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查端到端结果集筛选聚合指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除端到端结果集筛选聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认端到端结果集筛选聚合指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ metric_field_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "e2e_custom_dimension",
+          "resource_type": "custom_dimension",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "端到端自定义维度",
+          "source_field_type": "select_one",
+          "semantic_basis": "客户等级枚举字段",
+          "resource_id_variable": "custom_dimension_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建端到端自定义维度",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.create_custom_dimension",
+              "json": {
+                "topologyDescribeId": "{{ schema_id }}",
+                "customType": "enum_group",
+                "dimensionName": "{{ namespace }}-端到端自定义维度",
+                "description": "需求：统计图查看明细限制原因提示优化；A22 命名空间构造并长期保留",
+                "dimensionConfig": "{\"groups\": [{\"isNotGrouped\": false, \"values\": [\"1\", \"2\"]}, {\"isNotGrouped\": true, \"values\": [\"3\", \"other\"]}]}",
+                "describeApiName": "AccountObj",
+                "sourceField": {
+                  "fieldId": "{{ account_level_field_id }}",
+                  "apiName": "{{ account_level_api_name }}",
+                  "type": "select_one",
+                  "describeApiName": "AccountObj"
+                }
+              }
+            },
+            "enum_option_bindings": [
+              {
+                "field_id": "{{ account_level_field_id }}",
+                "field_api_name": "{{ account_level_api_name }}",
+                "option_query_operation": "fs_bi_udf_report.view_edit.get_ui_type",
+                "option_response_hash": "sha256:89bbe008e4a48b49e7cdf22bbee31982f463e234e7db4d311244411f9e816c9d",
+                "response_json_path": "$.Value.ui.data[*].optionCode",
+                "queried_option_codes": [
+                  "1",
+                  "2",
+                  "3",
+                  "other"
+                ],
+                "selected_option_codes": [
+                  "1",
+                  "2"
+                ]
+              }
+            ],
+            "extract": {
+              "custom_dimension_id": "Value.dimensionId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查端到端自定义维度已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.custom_dimension.get_custom_dimension",
+                "json": {
+                  "fieldId": "{{ custom_dimension_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除端到端自定义维度",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.delete_custom_dimension",
+              "json": {
+                "fieldId": "{{ custom_dimension_id }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认端到端自定义维度已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.custom_dimension.get_custom_dimension",
+                "json": {
+                  "fieldId": "{{ custom_dimension_id }}"
+                }
+              },
+              "expect_absent": {
+                "json_path": "Value.dimensionId",
+                "value": "{{ custom_dimension_id }}"
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "e2e_chart_set",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "端到端四类受限验证统计图",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "resource_id_variable": "chart_view_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution",
+            "requirement_folder"
+          ],
+          "setup": {
+            "name": "复制统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "端到端四类受限验证统计图",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图端到端四类受限验证统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "web-chart-joined-table-e2e",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "拼表与统计图四类提示一致性"
+          ],
+          [
+            "查看明细"
+          ]
+        ]
+      },
+      "supported_variants": [
+        "成对配置 A：自定义维度",
+        "成对配置 B：结果集筛选指标 销售额 或 Revenue",
+        "成对配置 C：多关联指标",
+        "成对配置 D：动态关联指标"
+      ],
+      "resource_goals": [
+        {
+          "resource_type": "aggregate_metric",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "custom_dimension",
+          "desired_state": {
+            "created": true
+          }
+        },
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-成对配置结果集筛选聚合指标"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "e2e_pair_metric",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "成对配置结果集筛选聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建成对配置结果集筛选聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "{{ amount_field_name }}",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "{{ date_field_name }}",
+                  "fieldType": "{{ date_field_type }}",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查成对配置结果集筛选聚合指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除成对配置结果集筛选聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认成对配置结果集筛选聚合指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ metric_field_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "e2e_pair_custom_dimension",
+          "resource_type": "custom_dimension",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "成对配置自定义维度",
+          "source_field_type": "select_one",
+          "semantic_basis": "客户等级枚举字段",
+          "resource_id_variable": "custom_dimension_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建成对配置自定义维度",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.create_custom_dimension",
+              "json": {
+                "topologyDescribeId": "{{ schema_id }}",
+                "customType": "enum_group",
+                "dimensionName": "{{ namespace }}-成对配置自定义维度",
+                "description": "需求：统计图查看明细限制原因提示优化；A22 命名空间构造并长期保留",
+                "dimensionConfig": "{\"groups\": [{\"isNotGrouped\": false, \"values\": [\"1\", \"2\"]}, {\"isNotGrouped\": true, \"values\": [\"3\", \"other\"]}]}",
+                "describeApiName": "AccountObj",
+                "sourceField": {
+                  "fieldId": "{{ account_level_field_id }}",
+                  "apiName": "{{ account_level_api_name }}",
+                  "type": "select_one",
+                  "describeApiName": "AccountObj"
+                }
+              }
+            },
+            "enum_option_bindings": [
+              {
+                "field_id": "{{ account_level_field_id }}",
+                "field_api_name": "{{ account_level_api_name }}",
+                "option_query_operation": "fs_bi_udf_report.view_edit.get_ui_type",
+                "option_response_hash": "sha256:89bbe008e4a48b49e7cdf22bbee31982f463e234e7db4d311244411f9e816c9d",
+                "response_json_path": "$.Value.ui.data[*].optionCode",
+                "queried_option_codes": [
+                  "1",
+                  "2",
+                  "3",
+                  "other"
+                ],
+                "selected_option_codes": [
+                  "1",
+                  "2"
+                ]
+              }
+            ],
+            "extract": {
+              "custom_dimension_id": "Value.dimensionId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查成对配置自定义维度已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.custom_dimension.get_custom_dimension",
+                "json": {
+                  "fieldId": "{{ custom_dimension_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除成对配置自定义维度",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.custom_dimension.delete_custom_dimension",
+              "json": {
+                "fieldId": "{{ custom_dimension_id }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认成对配置自定义维度已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.custom_dimension.get_custom_dimension",
+                "json": {
+                  "fieldId": "{{ custom_dimension_id }}"
+                }
+              },
+              "expect_absent": {
+                "json_path": "Value.dimensionId",
+                "value": "{{ custom_dimension_id }}"
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "e2e_pair_chart_set",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "成对配置拼表统计图",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "resource_id_variable": "chart_view_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution",
+            "requirement_folder"
+          ],
+          "setup": {
+            "name": "复制统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "成对配置拼表统计图",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图成对配置拼表统计图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "e2e_pair_joined_table_set",
+          "resource_type": "joined_table",
+          "retention_mode": "retain",
+          "lifecycle_mode": "existing_read_only",
+          "display_name": "成对配置拼表",
+          "resource_id_variable": "joined_table_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution"
+          ],
+          "discovery": {
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_dev.lwt_manager.query_arg_detail",
+              "json": {
+                "id": "BI_lwt_1786535602737",
+                "updateViewTime": 0
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "existing_asset_evidence": {
+            "live_readback_status": "succeeded",
+            "configuration_hash": "sha256:0b4d3b1e1f5aaa25024bac0766534394f00e1d9cf6c34162182c66a7e974b17a"
+          },
+          "readiness": [
+            {
+              "name": "回查成对配置拼表可读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_dev.lwt_manager.query_arg_detail",
+                "json": {
+                  "id": "BI_lwt_1786535602737",
+                  "updateViewTime": 0
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认成对配置拼表仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_dev.lwt_manager.query_arg_detail",
+                "json": {
+                  "id": "BI_lwt_1786535602737",
+                  "updateViewTime": 0
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "web-mobile-chart-joined-table-e2e",
+      "version": "1.0.0",
+      "environment_profile": "112-chart-detail-folder",
+      "match": {
+        "data_intents": [],
+        "datasets": [],
+        "composite_term_groups": [
+          [
+            "移动端统计图及拼表运行时路由"
+          ],
+          [
+            "统计图",
+            "拼表"
+          ]
+        ]
+      },
+      "supported_variants": [],
+      "resource_goals": [
+        {
+          "resource_type": "stat_chart",
+          "desired_state": {
+            "created": true
+          }
+        }
+      ],
+      "variables": {
+        "metric_name": "{{ namespace }}-移动端一致性验证聚合指标"
+      },
+      "evidence_refs": [
+        "fxiaoke-help-bi",
+        "fxiaoke-help-chart-create",
+        "fs-bi-contract-c6b7853",
+        "fs-bi-source",
+        "environment-112",
+        "probe-result-filter-detail-112"
+      ],
+      "resources": [
+        {
+          "resource_key": "e2e_shared_metric",
+          "resource_type": "aggregate_metric",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "移动端一致性验证聚合指标",
+          "source_field_type": "Number",
+          "semantic_basis": "销售订单金额数值字段",
+          "resource_id_variable": "metric_field_id",
+          "depends_on": [],
+          "scene_roles": [
+            "source_field",
+            "metric_or_dimension"
+          ],
+          "setup": {
+            "name": "创建移动端一致性验证聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "schemaObjectName": "{{ schema_object }}",
+                "displayName": "{{ metric_name }}",
+                "aggObject": {
+                  "refObjName": "{{ schema_object }}",
+                  "refObjShowName": "{{ schema_display_name }}",
+                  "refJoinField": "{{ schema_join_field }}"
+                },
+                "aggField": {
+                  "dbFieldName": "{{ amount_db_field }}",
+                  "fieldName": "{{ amount_field_name }}",
+                  "fieldType": "Number",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ amount_field_id }}"
+                },
+                "aggFieldTime": {
+                  "dbFieldName": "{{ date_db_field }}",
+                  "fieldName": "{{ date_field_name }}",
+                  "fieldType": "{{ date_field_type }}",
+                  "dbObjName": "{{ schema_object }}",
+                  "fieldId": "{{ date_field_id }}"
+                },
+                "filterLists": [],
+                "checkFieldAggregateType": 2,
+                "initStatus": 1,
+                "timeZone": "Asia/Shanghai"
+              }
+            },
+            "extract": {
+              "metric_field_id": "Value.fieldId"
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "readiness": [
+            {
+              "name": "回查移动端一致性验证聚合指标已创建",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "cleanup": {
+            "name": "删除移动端一致性验证聚合指标",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_stat.agg_rule.delete_agg_rule",
+              "json": {
+                "schemaId": "{{ schema_id }}",
+                "fieldId": "{{ metric_field_id }}",
+                "fieldName": "{{ metric_name }}"
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "json_path": {
+                "Result.FailureCode": 0
+              }
+            }
+          },
+          "residue_checks": [
+            {
+              "name": "确认移动端一致性验证聚合指标已无残留",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.agg_rule.query_agg_rule_by_field_id",
+                "json": {
+                  "schemaId": "{{ schema_id }}",
+                  "fieldId": "{{ metric_field_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_not_contains_values": [
+                  "{{ metric_field_id }}",
+                  "{{ metric_name }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "e2e_shared_chart_set",
+          "resource_type": "stat_chart",
+          "retention_mode": "retain",
+          "lifecycle_mode": "create",
+          "display_name": "移动端统计图一致性验证图",
+          "source_field_type": "chart_clone",
+          "asset_folder_name": "统计图查看明细限制原因提示优化",
+          "folder_binding": {
+            "folder_name": "统计图查看明细限制原因提示优化",
+            "category_id": "BI_6a7c47e1280b910007abf988",
+            "folder_query_operation": "fs_bi_crm.rpt_category.get_category_and_rpt",
+            "folder_response_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5"
+          },
+          "source_provenance": {
+            "source_view_id": "BI_6a87c6677d22e800077e4f2b",
+            "source_config_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e"
+          },
+          "configuration_hash": "sha256:c0cfcc78276e06e95869f9d08ab9cea45b1c9454dbcbe58c6908f32a45cafd6e",
+          "resource_id_variable": "chart_view_id",
+          "depends_on": [
+            "e2e_shared_metric"
+          ],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution",
+            "requirement_folder"
+          ],
+          "setup": {
+            "name": "复制统计图并绑定需求目录",
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_crm.stat_create.copy_stat_view",
+              "json": {
+                "statViewBaseInfo": {
+                  "viewID": "BI_6a87c6677d22e800077e4f2b",
+                  "isChange": 0
+                }
+              }
+            },
+            "extract": {
+              "chart_view_id": "Value.viewID"
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "post_setup": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {
+                  "viewID": "{{ chart_view_id }}",
+                  "viewName": "移动端统计图一致性验证图",
+                  "description": "需求：统计图查看明细限制原因提示优化",
+                  "isCategory": 2
+                }
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "extract": {
+                "chart_origin_category_id": "Value.categoryID"
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.rpt_view_display.move_rpt_view",
+                "json": {
+                  "targetCategoryID": "BI_6a7c47e1280b910007abf988",
+                  "originCategoryID": "{{ chart_origin_category_id }}",
+                  "viewID": "{{ chart_view_id }}",
+                  "isCategory": 2
+                }
+              },
+              "condition": {
+                "left": "{{ chart_origin_category_id }}",
+                "operator": "not_equals",
+                "right": "BI_6a7c47e1280b910007abf988"
+              }
+            }
+          ],
+          "readiness": [
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_crm.stat_edit.get_stat_view",
+                "json": {
+                  "id": "{{ chart_view_id }}"
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            },
+            {
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认克隆统计图移动端统计图一致性验证图仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_stat.stat_edit.get_chart_config",
+                "json": {
+                  "id": "{{ chart_view_id }}",
+                  "isView": 1,
+                  "type": "edit",
+                  "querySource": "UNKNOWN",
+                  "cacheTime": 0,
+                  "refresh": 1
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_values": [
+                  "{{ chart_view_id }}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "resource_key": "e2e_shared_joined_table_set",
+          "resource_type": "joined_table",
+          "retention_mode": "retain",
+          "lifecycle_mode": "existing_read_only",
+          "display_name": "移动端拼表一致性验证",
+          "resource_id_variable": "joined_table_id",
+          "depends_on": [],
+          "scene_roles": [
+            "chart_or_pivot",
+            "view_readiness",
+            "detail_entry_execution"
+          ],
+          "discovery": {
+            "request": {
+              "protocol": "http",
+              "api": "fs_bi_dev.lwt_manager.query_arg_detail",
+              "json": {
+                "id": "BI_lwt_1786535602737",
+                "updateViewTime": 0
+              }
+            },
+            "expect": {
+              "status_code": 200,
+              "body_contains_keys": [
+                "Value"
+              ]
+            }
+          },
+          "existing_asset_evidence": {
+            "live_readback_status": "succeeded",
+            "configuration_hash": "sha256:0b4d3b1e1f5aaa25024bac0766534394f00e1d9cf6c34162182c66a7e974b17a"
+          },
+          "readiness": [
+            {
+              "name": "回查移动端拼表一致性验证可读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_dev.lwt_manager.query_arg_detail",
+                "json": {
+                  "id": "BI_lwt_1786535602737",
+                  "updateViewTime": 0
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ],
+          "residue_checks": [
+            {
+              "name": "确认移动端拼表一致性验证仍可回读",
+              "request": {
+                "protocol": "http",
+                "api": "fs_bi_dev.lwt_manager.query_arg_detail",
+                "json": {
+                  "id": "BI_lwt_1786535602737",
+                  "updateViewTime": 0
+                }
+              },
+              "expect": {
+                "status_code": 200,
+                "body_contains_keys": [
+                  "Value"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

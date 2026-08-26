@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BI 平台架构流程图（完整版）</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg:#0b1220; --text:#e8eefc; --muted:#9db0d0; --line:#24324d;
+    --accent:#74c0fc; --ok:#8ce99a; --warn:#ffd43b; --pink:#f783ac; --violet:#b197fc;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:radial-gradient(1200px 600px at 10% -10%,#1a2744 0%,var(--bg) 55%);
+    color:var(--text); line-height:1.65;
+  }
+  header{padding:28px 32px 12px;border-bottom:1px solid var(--line)}
+  h1{margin:0 0 8px;font-size:28px}
+  .sub{color:var(--muted);font-size:14px;max-width:1200px}
+  .wrap{padding:20px 24px 48px;max-width:1480px;margin:0 auto}
+  .card{
+    background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+    border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:22px;overflow-x:auto
+  }
+  .card h2{margin:0 0 10px;font-size:20px;color:#cfe0ff}
+  .card h3{margin:16px 0 8px;font-size:15px;color:var(--accent)}
+  .card h4{margin:12px 0 6px;font-size:13px;color:#ffd8a8}
+  .explain{
+    background:rgba(15,23,42,.75);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;margin:0 0 16px;color:var(--muted);font-size:14px
+  }
+  .explain p{margin:0 0 8px}
+  .explain ul{margin:6px 0 8px 1.2em;padding:0}
+  .explain li{margin:3px 0}
+  table{width:100%;border-collapse:collapse;margin:8px 0 10px;font-size:12.5px}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left;vertical-align:top}
+  th{color:#dbe7ff;background:rgba(255,255,255,.04);white-space:nowrap}
+  code{color:#9ec1ff}
+  .story{
+    margin-top:10px;padding:10px 12px;border-left:3px solid var(--ok);
+    background:rgba(140,233,154,.06);color:#d8f5dd;border-radius:0 8px 8px 0
+  }
+  .warnbox{
+    margin-top:10px;padding:10px 12px;border-left:3px solid var(--warn);
+    background:rgba(255,212,59,.07);color:#fff3bf;border-radius:0 8px 8px 0
+  }
+  .mermaid{display:flex;justify-content:center}
+  .tag{
+    display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;
+    border:1px solid var(--line);margin-right:6px;color:#cfe0ff
+  }
+  .tag.core{border-color:#74c0fc;color:#a5d8ff}
+  .tag.async{border-color:#ffd43b;color:#ffe8a1}
+  .tag.mid{border-color:#b197fc;color:#d0bfff}
+  .tag.fe{border-color:#63e6be;color:#c3fae8}
+  .grid2{display:grid;grid-template-columns:1fr;gap:14px}
+  @media(min-width:1200px){.grid2{grid-template-columns:1fr 1fr}}
+  footer{padding:0 32px 28px;color:var(--muted);font-size:12px}
+  a{color:#9ec1ff}
+</style>
+</head>
+<body>
+<header>
+  <h1>BI 平台架构流程图（完整版）</h1>
+  <div class="sub">
+    本版重点重做 <b>图 A</b>：先给「一眼能懂」的主链路，再按 L1–L7 给出<strong>尽量完整的服务 / 中间件清单</strong>（来自服务注册表 + fs-bi 多模块 + 六仓架构分析）。  
+    说明：清单按「职责分层」归类；生产上可能多实例/合并部署（如 <code>fs-bi-compose</code>），名称以注册与仓库为准。
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ===================== 图 A ===================== -->
+<div class="card" id="fig-a">
+  <h2>图 A · BI 平台分层架构（主图，完整版）</h2>
+
+  <div class="explain">
+    <h3 style="margin-top:0;color:var(--accent);font-size:14px">这张图在讲什么</h3>
+    <p>BI 平台 = <b>端上体验</b> + <b>接入网关</b> + <b>查询应用服务群</b> + <b>数据生产/计算</b> + <b>存储与中间件</b> + <b>中台依赖</b>。  
+    上一版问题：把少量代表服务塞进一张拥挤流程图，既不直观，也漏了大量真实服务。本版拆成：</p>
+    <ul>
+      <li><b>A1 主链路简图</b>：只保留主路径，先建立全局心智模型</li>
+      <li><b>A2 分层全景图</b>：按层展示“层职责 + 主要组件族”</li>
+      <li><b>A3 完整清单表</b>：L1–L7 尽量列全服务/中间件（含老链路与异步计算族）</li>
+    </ul>
+    <div class="warnbox">
+      <b>重要区分：</b>
+      1）业务 PostgreSQL（CRM 事务库）≠ BI PostgreSQL（图配置/元数据/规则）；  
+      2）查询侧应用（stat/report…）≠ 大数据侧生产（copier/warehouse/DWS）；  
+      3）新统计图主路径（xkcharts + fs-bi-stat + CH 预聚合）与老报表/老实时计算族并存。
+    </div>
+  </div>
+
+  <!-- A1 -->
+  <h3>A1. 一眼看懂：端到端主链路（先看这个）</h3>
+  <div class="explain">
+    <p><span class="tag fe">端上</span><span class="tag core">查询侧</span><span class="tag async">大数据侧</span><span class="tag mid">存储/总线</span></p>
+    <p>用户打开图 → 网关 → 查询服务按权限查 CH 预聚合 → 渲染。  
+    同时后台：业务库变更 → 同步进 CH → MQ 驱动 DWS 预聚合 → 视图就绪后查询才“新”。</p>
+  </div>
+  <div class="mermaid">
+flowchart LR
+  classDef fe fill:#0b3d3a,stroke:#63e6be,color:#e6fcf5
+  classDef qs fill:#102a43,stroke:#74c0fc,color:#e7f5ff
+  classDef ds fill:#3d2c08,stroke:#ffd43b,color:#fff9db
+  classDef st fill:#2b2140,stroke:#b197fc,color:#f3f0ff
+
+  U[用户] --> FE[端上<br/>宿主页 + bi-xkcharts]
+  FE --> GW[CEP/FCP 网关]
+  GW --> QS[查询应用平台<br/>crm-report / stat / udf / dev / goal...]
+  QS --> CH[(ClickHouse<br/>预聚合+明细)]
+  QS --> PG[(BI PG<br/>配置元数据)]
+  QS --> RD[(Redis<br/>查询缓存)]
+
+  CRM[业务系统/CRM] --> BPG[(业务 PostgreSQL)]
+  BPG --> SYNC[同步<br/>copier / ODS Transfer]
+  SYNC --> CH
+  SYNC --> MQ[[RocketMQ]]
+  MQ --> DWS[warehouse DWS<br/>聚合/拓扑/视图刷新]
+  DWS --> CH
+  QS -.规则启停/latestCalTime.-> DWS
+
+  class FE,U fe
+  class GW,QS qs
+  class CRM,BPG,SYNC,DWS ds
+  class CH,PG,RD,MQ st
+  </div>
+
+  <!-- A2 -->
+  <h3>A2. 分层全景（按层看“这层干什么”）</h3>
+  <div class="explain">
+    <p>下面这张图强调<strong>层</strong>，不把上百个名字全塞进节点。完整名字见 A3 清单。</p>
+  </div>
+  <div class="mermaid">
+flowchart TB
+  classDef L1 fill:#0b3d3a,stroke:#63e6be,color:#e6fcf5
+  classDef L2 fill:#1e3a5f,stroke:#74c0fc,color:#e7f5ff
+  classDef L3 fill:#16324f,stroke:#4cc9f0,color:#eaf2ff
+  classDef L4 fill:#1b4332,stroke:#8ce99a,color:#ebffef
+  classDef L5 fill:#3d2c08,stroke:#ffd43b,color:#fff9db
+  classDef L6 fill:#2b2140,stroke:#b197fc,color:#f3f0ff
+  classDef L7 fill:#3b1f2b,stroke:#f783ac,color:#ffe9f1
+
+  L1["L1 端上体验层<br/>宿主应用 / 页面壳 / bi-xkcharts / ECharts / Agent入口"]
+  L2["L2 接入与流量层<br/>CEP·FCP 网关 / 鉴权会话 / 路由bizName / trace·限流·Sentinel"]
+  L3["L3 查询应用服务层（BI应用）<br/>门户报表·统计图·UDF·宽表·目标·元数据·任务·导出·SQL引擎..."]
+  L4["L4 数据生产与计算层（大数据）<br/>同步copier/ODS · warehouse · DWS聚合 · 自定义统计计算族 · 目标清洗 · 重算"]
+  L5["L5 存储层<br/>ClickHouse分析库 · 业务PG · BI配置PG · Redis · Mongo · 本地缓存"]
+  L6["L6 消息/配置/运行支撑层<br/>RocketMQ · CMS/灰度 · Dubbo/ZK · Quartz/Sundial · 日志指标Grafana"]
+  L7["L7 中台与业务依赖层<br/>CRM/对象/op-log · 组织人员 · 数据权限底座 · 推送邮件文件 · License/UC"]
+
+  L1 --> L2 --> L3
+  L3 --> L5
+  L4 --> L5
+  L7 --> L4
+  L7 --> L3
+  L6 --- L3
+  L6 --- L4
+  L3 -.控制/就绪契约.-> L4
+
+  class L1 L1
+  class L2 L2
+  class L3 L3
+  class L4 L4
+  class L5 L5
+  class L6 L6
+  class L7 L7
+  </div>
+
+  <!-- A3 full inventory -->
+  <h3>A3. 完整清单：每一层的服务 / 中间件 / 组件</h3>
+  <div class="explain">
+    <p>下面按层尽量列全。标记：</p>
+    <p>
+      <span class="tag core">主路径高频</span>
+      <span class="tag async">异步/后台</span>
+      <span class="tag mid">中间件/基础设施</span>
+      <span class="tag fe">端上</span>
+    </p>
+  </div>
+
+  <h4>L1 端上体验层</h4>
+  <table>
+    <tr><th>名称</th><th>类型</th><th>作用</th><th>备注</th></tr>
+    <tr><td><span class="tag fe">多端宿主</span> Web主站 / App / 小程序 / 企微H5 / PC客户端</td><td>宿主应用</td><td>页面容器、登录会话、全局筛选、导航壳</td><td>驾驶舱壳异常常先看宿主/大前端</td></tr>
+    <tr><td><span class="tag fe core">bi-xkcharts</span></td><td>前端组件库 UMD</td><td>统计图渲染、下钻/明细/联动、请求封装</td><td>全局 <code>BIXkcharts</code>，CDN 发布</td></tr>
+    <tr><td><span class="tag fe">ECharts / 表格/地图组件</span></td><td>渲染引擎</td><td>具体图型绘制</td><td>xkcharts adapter 翻译 option</td></tr>
+    <tr><td>报表页 / 驾驶舱页 / 宽表 UI / 目标页</td><td>产品页面</td><td>多图编排与业务入口</td><td>不一定都在 xkcharts 仓</td></tr>
+    <tr><td>FHHApi / Fx / FS / $t / seajs 插件</td><td>宿主全局能力</td><td>统一 API、i18n、动态加载</td><td>端上运行依赖</td></tr>
+    <tr><td>ShareAgent / 分析 Agent 入口</td><td>智能体验</td><td>NL 生成图表、洞察等</td><td>仍依赖查询侧资产与权限</td></tr>
+  </table>
+
+  <h4>L2 接入与流量层</h4>
+  <table>
+    <tr><th>名称</th><th>类型</th><th>作用</th><th>备注</th></tr>
+    <tr><td><span class="tag core mid">CEP / FCP 网关</span></td><td>接入网关</td><td>鉴权、路由、traceId/reqId、限流、观测</td><td>入口现场常见 log_cep_dist</td></tr>
+    <tr><td>bizName 路由</td><td>路由标识</td><td>把请求分到不同 BI 服务</td><td>见下表 bizName</td></tr>
+    <tr><td><span class="tag mid">Sentinel</span></td><td>流控降级</td><td>保护查询服务</td><td>stat 等链路可见</td></tr>
+    <tr><td>灰度 / gray-release</td><td>流量与功能开关</td><td>合并查询、缓存策略、新老链路等</td><td>配置中心协同</td></tr>
+  </table>
+
+  <p style="color:var(--muted);font-size:13px;margin:6px 0"><b>常见 BI bizName（网关视角）</b></p>
+  <table>
+    <tr><th>bizName</th><th>大致对应</th><th>bizName</th><th>大致对应</th></tr>
+    <tr><td><code>BISTAT</code></td><td>fs-bi-stat 统计图</td><td><code>BICRM</code></td><td>crm-report 门户/老报表</td></tr>
+    <tr><td><code>BIUDF</code> 相关</td><td>udf-report</td><td><code>BIDEV</code></td><td>dev-platform 宽表</td></tr>
+    <tr><td><code>BIGOAL</code></td><td>目标</td><td><code>BITASK</code></td><td>任务/简报调度类</td></tr>
+    <tr><td><code>BISCH</code></td><td>调度/刷新类</td><td><code>BIUITYPE</code></td><td>uitype 服务</td></tr>
+  </table>
+
+  <h4>L3 查询应用服务层（BI 应用，尽量列全）</h4>
+  <table>
+    <tr><th>服务/模块</th><th>作用</th><th>标记</th></tr>
+    <tr><td><code>fs-bi-stat</code></td><td>统计图配置/数据/明细/异步查询/AI可见；预聚合主查询路径</td><td><span class="tag core">主路径</span></td></tr>
+    <tr><td><code>fs-bi-crm-report-web</code></td><td>报表/仪表盘/视图门户；订阅、导出、分享；编排下游</td><td><span class="tag core">主路径</span></td></tr>
+    <tr><td><code>fs-bi-udf-report</code></td><td>新报表/UDF/交叉表/重 SQL 查询（灰度新报表）</td><td><span class="tag core">主路径</span></td></tr>
+    <tr><td><code>fs-bi-dev-platform</code>（dev-web）</td><td>大宽表 LWT 建模与查询</td><td><span class="tag core">主路径</span></td></tr>
+    <tr><td><code>fs-bi-goal-web</code></td><td>BI 目标产品服务</td><td><span class="tag core">主路径</span></td></tr>
+    <tr><td><code>fs-bi-metadata</code></td><td>指标/维度/拓扑等元数据服务</td><td><span class="tag core">主路径</span></td></tr>
+    <tr><td><code>fs-bi-metadata-ant</code></td><td>元数据自动化运维（对象转换、表差异、i18n 生成等）</td><td><span class="tag async">后台</span></td></tr>
+    <tr><td><code>fs-bi-task</code></td><td>订阅/定时任务（Sundial/Quartz）、部分 i18n 管理</td><td><span class="tag async">异步</span></td></tr>
+    <tr><td><code>fs-bi-export</code></td><td>BI 导出异步服务</td><td><span class="tag async">异步</span></td></tr>
+    <tr><td><code>fs-bi-scheduler</code></td><td>首页等定时刷新</td><td><span class="tag async">异步</span></td></tr>
+    <tr><td><code>fs-bi-sqlgenerator</code></td><td>SQL 生成</td><td><span class="tag core">能力</span></td></tr>
+    <tr><td><code>fs-bi-sqlengine</code></td><td>SQL 执行引擎（可被多服务 HTTP 调用）</td><td><span class="tag core">能力</span></td></tr>
+    <tr><td><code>fs-bi-uitype</code></td><td>BI UIType 服务</td><td>产品支撑</td></tr>
+    <tr><td><code>fs-bi-cloud</code> / <code>fs-bi-compose</code></td><td>BI 综合服务 / 多模块合并部署工程</td><td>部署形态</td></tr>
+    <tr><td><code>fs-bi-transfer</code> / <code>fs-bi-stat-transfer</code></td><td>元数据/统计迁移传输</td><td><span class="tag async">后台</span></td></tr>
+    <tr><td><code>fs-bi-devops</code></td><td>运维：DB/缓存/健康检查等</td><td><span class="tag async">运维</span></td></tr>
+    <tr><td><code>fs-bi-org</code></td><td>BI 组织架构相关</td><td>支撑</td></tr>
+    <tr><td><code>fs-bi-industry-interface</code></td><td>工商查询等行业接口</td><td>扩展能力</td></tr>
+    <tr><td><code>fs-bi-privilege</code> / <code>permission-context</code> / <code>organization-context</code></td><td>权限与组织上下文（fs-bi 仓内模块）</td><td><span class="tag core">能力</span></td></tr>
+    <tr><td><code>fs-bi-cache</code> / <code>fs-bi-mq</code> / <code>fs-bi-i18n</code> / <code>fs-bi-license</code> / <code>fs-bi-client</code> / <code>fs-bi-api/common/util</code></td><td>缓存封装、MQ封装、国际化、许可证、RPC客户端、公共契约</td><td>共享模块</td></tr>
+  </table>
+
+  <h4>L4 数据生产与计算层（大数据 / 同步计算族）</h4>
+  <table>
+    <tr><th>服务/能力</th><th>作用</th><th>标记</th></tr>
+    <tr><td><code>paas-bi-copier</code></td><td>PaaS→BI 主同步（业务数据入分析侧）</td><td><span class="tag core async">同步主路径</span></td></tr>
+    <tr><td><code>fs-bi-warehouse</code>（warehouse-dws）</td><td>ODS 同步作业 + DWS 聚合/拓扑/视图刷新 + 运维比对</td><td><span class="tag core async">数仓主路径</span></td></tr>
+    <tr><td>ODS Transfer（DBTransfer*）</td><td>PG→CH 贴源/增量同步、分区写入</td><td>仓内能力</td></tr>
+    <tr><td>DWS Compute / Topology / StatView</td><td>事件驱动预聚合、级联、视图就绪</td><td>仓内能力</td></tr>
+    <tr><td><code>crm-bi-custom-statistic</code></td><td>自定义统计图服务（老）</td><td><span class="tag async">老/并存</span></td></tr>
+    <tr><td><code>crm-bi-custom-statistic-online</code></td><td>老自定义统计图实时计算灰度</td><td><span class="tag async">老/并存</span></td></tr>
+    <tr><td><code>fs-bi-custom-statistic-offline</code></td><td>自定义统计图离线计算灰度</td><td><span class="tag async">老/并存</span></td></tr>
+    <tr><td><code>fs-bi-custom-statistic-online-calculate</code></td><td>老自定义统计图批量实时计算</td><td><span class="tag async">老/并存</span></td></tr>
+    <tr><td><code>fs-bi-custom-statistic-dim-online</code></td><td>自定义统计图 dim 实时计算</td><td><span class="tag async">老/并存</span></td></tr>
+    <tr><td><code>fs-bi-custom-statistic-paas2bi-transfer</code></td><td>目标 <code>goal_value_obj</code> 清洗</td><td><span class="tag async">目标</span></td></tr>
+    <tr><td><code>fs-bi-feed2pg-online</code></td><td>feed 销售记录同步到 BI PG</td><td><span class="tag async">同步</span></td></tr>
+    <tr><td><code>fs-paas-job-schedule</code> + <code>fs-paas-calculate-task</code></td><td>计算字段重算调度与执行</td><td><span class="tag async">PaaS协作</span></td></tr>
+    <tr><td>Compare/Repair/TTL 运维接口</td><td>PG↔CH 比对、修分区、TTL</td><td>仓内运维</td></tr>
+  </table>
+
+  <h4>L5 存储层</h4>
+  <table>
+    <tr><th>名称</th><th>作用</th><th>典型内容</th></tr>
+    <tr><td><span class="tag mid core">ClickHouse</span>（租户库 fsbidb* 等）</td><td>分析数据面</td><td>object/mt 明细、agg_data、dim_data、组织维、宽表/视图</td></tr>
+    <tr><td><span class="tag mid">业务 PostgreSQL</span></td><td>业务真相源</td><td>CRM/对象业务表（同步源头）</td></tr>
+    <tr><td><span class="tag mid">BI PostgreSQL</span></td><td>配置/元数据/规则</td><td>图配置、stat_view、规则、部分业务库表</td></tr>
+    <tr><td><span class="tag mid core">Redis</span></td><td>查询缓存/锁</td><td><code>bi_stat_querycache_*_binary</code> 等，默认约 600s</td></tr>
+    <tr><td><span class="tag mid">MongoDB</span></td><td>部分配置</td><td>如 bi-stat 的 stat_field 等</td></tr>
+    <tr><td>Caffeine / EHCache</td><td>进程内本地缓存</td><td>warehouse/查询侧局部加速</td></tr>
+    <tr><td>文件存储 / 大文件服务</td><td>导出与附件</td><td>如导出文件打包协同</td></tr>
+  </table>
+
+  <h4>L6 消息 / 配置 / 运行支撑层</h4>
+  <table>
+    <tr><th>名称</th><th>作用</th></tr>
+    <tr><td><span class="tag mid core">RocketMQ</span></td><td>计算事件、规则启停、同步相关、异步查询任务等</td></tr>
+    <tr><td><span class="tag mid">CMS / 配置中心 / Apollo 类</span></td><td>缓存时长、host、开关、MQ 消费配置等</td></tr>
+    <tr><td><span class="tag mid">Dubbo + ZooKeeper</span></td><td>服务发现与 RPC（组织、权限、模块间）</td></tr>
+    <tr><td>Quartz / Sundial</td><td>定时调度（订阅、仓内任务、刷新）</td></tr>
+    <tr><td>Tomcat / Spring Boot 运行时</td><td>查询侧多 WAR / 仓侧 Boot 进程承载</td></tr>
+    <tr><td>日志 / 指标 / Grafana / Actuator</td><td>观测与排障</td></tr>
+    <tr><td>Kryo / 二进制序列化</td><td>stat 查询结果压缩缓存</td></tr>
+  </table>
+
+  <h4>L7 中台与业务依赖层</h4>
+  <table>
+    <tr><th>名称</th><th>作用</th></tr>
+    <tr><td>CRM / PaaS 对象服务</td><td>业务对象读写，产生分析所需业务事实</td></tr>
+    <tr><td><code>paas-op-log</code></td><td>业务变更日志，驱动同步链路</td></tr>
+    <tr><td>组织服务（Employee/Department 等）</td><td>人员部门维度、主属部门范围</td></tr>
+    <tr><td><code>data-auth-service-bi</code> / 平台权限 API</td><td>BI 专用或通用数据权限底座</td></tr>
+    <tr><td>企信推送 / 邮件服务</td><td>订阅通知</td></tr>
+    <tr><td>文件服务 / stone 等</td><td>导出文件</td></tr>
+    <tr><td>License / UC 企业版本</td><td>功能许可与企业信息</td></tr>
+    <tr><td>I18N 平台</td><td>多语言</td></tr>
+  </table>
+
+  <div class="story">
+    <b>为什么仍可能“感觉少东西”？</b><br/>
+    1）前端除 xkcharts 外还有主站仓库、驾驶舱壳、Agent 前端等，不都在 BI 六仓内；<br/>
+    2）同一能力可能有“新服务名 + 老服务名 + compose 合并部署”多种形态；<br/>
+    3）基础设施（具体 CH 集群、MQ topic 全表、K8s 拓扑）属环境配置，源码仓通常不完整。<br/>
+    本清单覆盖的是<strong>架构认知所需的服务与中间件全集主干部</strong>；若你点名某个环境实例名，可以再往下补部署视图。
+  </div>
+</div>
+
+<!-- ===================== 图 B ===================== -->
+<div class="card" id="fig-b">
+  <h2>图 B · 控制面 / 数据面 / 体验面（能力切面）</h2>
+  <div class="explain">
+    <h3 style="margin-top:0;color:var(--accent);font-size:14px">这张图在讲什么</h3>
+    <p>不按进程名，而按“谁指挥、谁造数、谁呈现”看平台。查询应用平台在中间粘合三面。</p>
+    <table>
+      <tr><th>面</th><th>是什么</th><th>核心内容</th><th>起什么作用</th></tr>
+      <tr><td>控制面</td><td>配置与策略</td><td>图/报表配置、拓扑槽位规则、权限 License、灰度订阅导出计划</td><td>决定怎么算、谁能看、何时分发</td></tr>
+      <tr><td>数据面</td><td>数据生产</td><td>业务PG → 同步ODS → DWS/老计算族 → CH预聚合</td><td>把业务变更变成可查分析态</td></tr>
+      <tr><td>体验面</td><td>用户出口</td><td>多端宿主、xkcharts、订阅推送、导出、Agent</td><td>把结果交给人</td></tr>
+      <tr><td>查询应用平台</td><td>编排器</td><td>stat/crm-report/udf/dev/goal/metadata/task/export/sql*</td><td>读控制面+数据面，输出体验面</td></tr>
+    </table>
+    <div class="story">控制面下命令，数据面备货，查询平台取货并过安检，体验面端给用户。</div>
+  </div>
+  <div class="mermaid">
+flowchart LR
+  classDef c fill:#1e3a5f,stroke:#74c0fc,color:#fff
+  classDef d fill:#1b4332,stroke:#8ce99a,color:#fff
+  classDef x fill:#3d2c08,stroke:#ffd43b,color:#fff
+
+  subgraph CTRL[控制面]
+    M1[图/报表/仪表盘配置]
+    M2[指标维度拓扑槽位规则]
+    M3[权限组织License]
+    M4[灰度订阅导出计划]
+  end
+  subgraph DATA[数据面]
+    N1[业务PG] --> N2[同步ODS/copier]
+    N2 --> N3[DWS/计算族]
+    N3 --> N4[CH预聚合]
+  end
+  subgraph EXP[体验面]
+    O1[多端宿主] --> O2[xkcharts]
+    O2 --> O3[订阅/导出/Agent]
+  end
+  CTRL --> Q[查询应用平台]
+  N4 --> Q --> EXP
+  M2 -.-> N3
+  class M1,M2,M3,M4 c
+  class N1,N2,N3,N4 d
+  class O1,O2,O3 x
+  </div>
+</div>
+
+<div class="card">
+  <h2>和上一版比，补了什么</h2>
+  <div class="explain">
+    <ul>
+      <li>补全查询侧：goal、uitype、cloud/compose、export、scheduler、transfer、devops、sqlengine 独立、privilege 模块族</li>
+      <li>补全大数据侧：自定义统计 online/offline/dim 计算族、目标清洗、feed2pg、计算字段重算</li>
+      <li>补全接入：bizName 表、Sentinel、灰度</li>
+      <li>补全存储/支撑：业务PG vs BI PG、Mongo、本地缓存、ZK、Quartz、Tomcat/Boot、Kryo</li>
+      <li>补全中台：op-log、data-auth-service-bi、推送邮件文件、License/UC/I18N</li>
+      <li>表达方式：先简图建立直觉，再用分层全景，最后用完整清单表，避免“一个大图塞不下又像缺东西”</li>
+    </ul>
+  </div>
+</div>
+
+</div>
+
+<footer>
+  BI 平台架构流程图完整版 · 依据服务注册表 + fs-bi 模块 + 六仓架构分析 · 2026-08-25<br/>
+  建议同时打开《整体系统架构流程图》看读/写时序；本页看分层与组件全集。
+</footer>
+<script>
+  mermaid.initialize({
+    startOnLoad:true,
+    theme:'dark',
+    flowchart:{curve:'basis', htmlLabels:true, nodeSpacing:28, rankSpacing:40},
+    securityLevel:'loose'
+  });
+</script>
+</body>
+</html>

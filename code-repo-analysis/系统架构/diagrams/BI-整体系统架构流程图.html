@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BI 整体系统架构流程图</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0a101a;
+    --panel: #121a2b;
+    --text: #e8eefc;
+    --muted: #9db0d0;
+    --line: #24324d;
+    --card: rgba(255,255,255,.03);
+    --accent: #74c0fc;
+    --ok: #8ce99a;
+    --warn: #ffd43b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(1000px 500px at 80% -20%, #1b3a4b 0%, var(--bg) 50%);
+    color: var(--text);
+    line-height: 1.65;
+  }
+  header { padding: 28px 32px 12px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0 0 8px; font-size: 28px; }
+  .sub { color: var(--muted); font-size: 14px; max-width: 1100px; }
+  .wrap { padding: 20px 24px 40px; max-width: 1400px; margin: 0 auto; }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 18px 14px;
+    margin-bottom: 22px;
+    overflow-x: auto;
+  }
+  .card h2 { margin: 0 0 10px; font-size: 18px; color: #cfe0ff; }
+  .explain {
+    background: rgba(15, 23, 42, .72);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .explain h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .explain p { margin: 0 0 8px; }
+  .explain ul { margin: 6px 0 8px 1.2em; padding: 0; }
+  .explain li { margin: 4px 0; }
+  .explain .story {
+    margin-top: 8px;
+    padding: 10px 12px;
+    border-left: 3px solid var(--ok);
+    background: rgba(140, 233, 154, .06);
+    color: #d8f5dd;
+    border-radius: 0 8px 8px 0;
+  }
+  .explain table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 4px;
+    font-size: 13px;
+  }
+  .explain th, .explain td {
+    border: 1px solid var(--line);
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .explain th { color: #dbe7ff; background: rgba(255,255,255,.03); }
+  .explain code { color: #9ec1ff; }
+  .mermaid { display: flex; justify-content: center; }
+  .grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 1400px) { .grid-2 { grid-template-columns: 1fr 1fr; } }
+  footer { padding: 0 32px 28px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>BI 整体系统架构流程图</h1>
+  <div class="sub">
+    视角：<b>端上 · 查询侧 · 大数据侧</b>协同的整系统。  
+    每张图上方都有「节点是什么 / 起什么作用」讲解；先读讲解，再看图。
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- 图1 -->
+  <div class="card">
+    <h2>图 1 · 整体系统全景流程（主图）</h2>
+    <div class="explain">
+      <h3>这张图在讲什么</h3>
+      <p>BI 不是只有数仓。完整系统分三侧协同：端上负责看与点，查询侧负责权/配/查/导，大数据侧负责数据进得来、算得完。</p>
+      <table>
+        <tr><th>区块</th><th>是什么</th><th>起什么作用</th></tr>
+        <tr><td>① 端上</td><td>宿主页 + <code>bi-xkcharts</code> 图表组件库</td><td>渲染图表、下钻/明细/联动；发 HTTP 查数</td></tr>
+        <tr><td>② 接入</td><td>CEP/FCP 网关</td><td>鉴权、路由到 BI 服务、生成 trace、限流</td></tr>
+        <tr><td>③ 查询侧</td><td>crm-report / fs-bi-stat / udf / dev / metadata / task / sql*</td><td>门户编排、统计图查询、权限注入、SQL、订阅导出</td></tr>
+        <tr><td>④ 大数据侧</td><td>同步 + warehouse ODS/DWS</td><td>业务数据入仓、预聚合、视图就绪</td></tr>
+        <tr><td>⑤ 存储与总线</td><td>CH / PG / Redis / MQ</td><td>分析数据、配置、缓存、异步事件</td></tr>
+      </table>
+      <div class="story">读法：用户从端上进入 → 网关进查询侧 → 查询侧读 CH/PG/Redis；同时大数据侧持续把业务数据生产成可查的分析态，并经 MQ/HTTP 与查询侧咬合。</div>
+    </div>
+    <div class="mermaid">
+flowchart TB
+  classDef fe fill:#102a43,stroke:#62b6ff,color:#e7f5ff,stroke-width:1px
+  classDef qs fill:#1b4332,stroke:#8ce99a,color:#ebffef
+  classDef ds fill:#3d2c1e,stroke:#ffd43b,color:#fff6db
+  classDef st fill:#2b2b3c,stroke:#b197fc,color:#f6f1ff
+
+  subgraph FE["① 端上 Client"]
+    U["用户 / 管理员 / Agent"]
+    H["宿主页面<br/>主站·App·企微·客户端·自定义页"]
+    XK["bi-xkcharts<br/>配置请求·数据请求·渲染·下钻/明细/联动"]
+    U --> H --> XK
+  end
+
+  subgraph GW["② 接入"]
+    CEP["CEP / FCP<br/>鉴权 · biz 路由 · traceId · 限流"]
+  end
+
+  subgraph QS["③ 查询侧 Query"]
+    CRM["fs-bi-crm-report<br/>报表/仪表盘/订阅/导出门户"]
+    STAT["fs-bi-stat<br/>统计图主查询"]
+    UDF["fs-bi-udf-report<br/>UDF/交叉表"]
+    DEV["fs-bi-dev-platform<br/>宽表 LWT"]
+    META["fs-bi-metadata"]
+    TASK["fs-bi-task 调度"]
+    SQL["sqlgenerator / sqlengine"]
+    PRIV["privilege / org / license"]
+    CRM --> STAT & UDF & DEV
+    STAT --> META & SQL & PRIV
+    UDF --> SQL & PRIV
+    DEV --> SQL
+    TASK --> CRM
+  end
+
+  subgraph DS["④ 大数据侧 Data"]
+    SRC["CRM/业务 PG + op-log"]
+    COP["同步<br/>copier / ODS Transfer"]
+    WH["fs-bi-warehouse"]
+    ODS["ODS 入仓"]
+    DWD["DWD 明细"]
+    DWS["DWS 聚合·拓扑·视图刷新"]
+    SRC --> COP --> ODS --> DWD --> DWS
+    WH --> ODS & DWS
+  end
+
+  subgraph ST["⑤ 存储与总线"]
+    CH["ClickHouse<br/>明细 + 预聚合"]
+    PG["PostgreSQL<br/>配置/元数据/规则"]
+    RD["Redis 缓存"]
+    MQ["RocketMQ"]
+  end
+
+  XK -->|EM1HBISTAT / BICRM / BIUDF| CEP
+  CEP --> CRM & STAT & UDF & DEV
+  STAT & UDF & CRM --> CH & PG & RD
+  META --> PG
+  ODS & DWS --> CH
+  COP --> MQ --> DWS
+  STAT -->|MQ 规则启停| MQ
+  STAT <-->|HTTP latestCalTime / 比对| WH
+  PRIV --> PG
+
+  class U,H,XK fe
+  class CEP,CRM,STAT,UDF,DEV,META,TASK,SQL,PRIV qs
+  class SRC,COP,WH,ODS,DWD,DWS ds
+  class CH,PG,RD,MQ st
+    </div>
+  </div>
+
+  <!-- 图2 -->
+  <div class="card">
+    <h2>图 2 · 读路径：统计图出图流程</h2>
+    <div class="explain">
+      <h3>这张图在讲什么</h3>
+      <p>用户打开一张统计图时，请求如何从端上走到数据返回并渲染。这是<strong>读路径</strong>，默认读预聚合结果，不实时扫业务库。</p>
+      <table>
+        <tr><th>节点</th><th>是什么</th><th>起什么作用</th></tr>
+        <tr><td>用户 / 宿主页</td><td>业务页面或驾驶舱壳</td><td>提供入口、全局筛选、容器</td></tr>
+        <tr><td>bi-xkcharts</td><td>统计图前端组件库</td><td>拉配置/数据，翻译成 ECharts 并交互</td></tr>
+        <tr><td>CEP/FCP</td><td>网关</td><td>鉴权路由、trace、把请求打到 BISTAT</td></tr>
+        <tr><td>fs-bi-stat</td><td>统计图查询服务</td><td>权限注入、SQL 生成执行、编排缓存</td></tr>
+        <tr><td>metadata/权限/组织</td><td>配置与权限上下文</td><td>决定“能看什么、怎么算”</td></tr>
+        <tr><td>Redis</td><td>查询结果缓存</td><td>相同条件短时间命中，降低 CH 压力（默认约 10 分钟）</td></tr>
+        <tr><td>ClickHouse</td><td>分析库</td><td>提供预聚合/明细查询结果</td></tr>
+        <tr><td>warehouse</td><td>数仓服务</td><td>可选返回 latestCalTime（数据更新到点）</td></tr>
+      </table>
+      <div class="story">一句话：端上只负责画；fs-bi-stat 负责按权限查好数；数从 CH 预聚合来，Redis 负责短缓存加速。</div>
+    </div>
+    <div class="mermaid">
+sequenceDiagram
+  autonumber
+  actor User as 用户
+  participant Host as 宿主页
+  participant XK as bi-xkcharts
+  participant CEP as CEP/FCP
+  participant STAT as fs-bi-stat
+  participant META as metadata/权限/组织
+  participant RD as Redis
+  participant CH as ClickHouse
+  participant WH as warehouse
+
+  User->>Host: 打开统计图/驾驶舱
+  Host->>XK: new BIXkcharts(id, scene, filters)
+  XK->>CEP: chartConfig / data 或 chart/query
+  CEP->>STAT: 路由 BISTAT + traceId
+  STAT->>RD: 查查询缓存
+  alt 缓存命中
+    RD-->>STAT: 结果
+  else 未命中
+    STAT->>META: 配置 + 权限范围 + 组织上下文
+    STAT->>STAT: EasyStat 流水线<br/>权限注入/采样/分页/SQL
+    STAT->>CH: 预聚合查询
+    CH-->>STAT: 结果集
+    STAT->>RD: 回写缓存
+  end
+  STAT->>WH: 可选 getLatestCalTime
+  WH-->>STAT: 数据更新时间
+  STAT-->>XK: 配置+数据(+更新时间)
+  XK->>XK: adapter → ECharts 渲染
+  XK-->>User: 图表/下钻/明细交互
+    </div>
+  </div>
+
+  <!-- 图3 写路径 - 重点讲解 -->
+  <div class="card">
+    <h2>图 3 · 写路径：数据生产到可查</h2>
+    <div class="explain">
+      <h3>这张图在讲什么</h3>
+      <p>业务数据如何变成统计图可查的分析数据。这是<strong>写路径/数据生产路径</strong>，不是用户点开报表的读路径。</p>
+      <p><strong>总流程：</strong>业务先写业务库 → 同步搬进 ClickHouse → MQ 通知可算 → DWS 预聚合 → StatView 标记就绪 → fs-bi-stat 才能稳定查到新数。</p>
+
+      <h3>图中每个节点是什么、起什么作用</h3>
+      <table>
+        <tr><th>节点</th><th>是什么</th><th>起什么作用</th></tr>
+        <tr>
+          <td><b>业务 PostgreSQL</b></td>
+          <td>CRM/PaaS 等业务系统的事务库（订单、客户、商机等真实业务数据所在库）</td>
+          <td><b>真相源</b>。业务增删改先落这里。BI 一般不直接拿它做大规模分析扫表，而是作为同步源头。</td>
+        </tr>
+        <tr>
+          <td><b>copier / ODS Transfer</b></td>
+          <td>数据同步组件（如 <code>paas-bi-copier</code>、warehouse 的 ODS Transfer/<code>DBTransferService</code>）</td>
+          <td><b>搬运工</b>。从业务 PG 抽增量/存量，映射转换后写入 ClickHouse ODS/明细；成功后常发计算事件。</td>
+        </tr>
+        <tr>
+          <td><b>ClickHouse</b></td>
+          <td>BI 分析型数据库（列存，适合聚合分析）</td>
+          <td><b>分析仓库</b>。存同步明细 + DWS 预聚合结果（如 agg_data/dim_data），供查询侧读取。</td>
+        </tr>
+        <tr>
+          <td><b>RocketMQ</b></td>
+          <td>消息队列</td>
+          <td><b>传话筒/任务单</b>。把“同步完成”和“开始聚合”解耦；削峰、异步、可重试，避免同步线程被重计算拖死。</td>
+        </tr>
+        <tr>
+          <td><b>warehouse DWS</b></td>
+          <td><code>fs-bi-warehouse</code> 的汇总计算层（事件驱动）</td>
+          <td><b>预加工车间</b>。消费计算事件，按规则做聚合/拓扑级联，把汇总写回 ClickHouse，让统计图查询变快。</td>
+        </tr>
+        <tr>
+          <td><b>StatView 刷新</b></td>
+          <td>统计视图就绪/刷新环节（视图变更事件消费与预计算校验）</td>
+          <td><b>完工灯</b>。标记某张统计图依赖的数据已算完可查；支撑“数据更新于 xx 时间”等就绪信息。</td>
+        </tr>
+        <tr>
+          <td><b>fs-bi-stat</b></td>
+          <td>查询侧统计图服务（应用层，不是数仓）</td>
+          <td><b>点菜口/传菜口</b>。不负责生产数据；在数据就绪后读取 CH 预聚合结果，结合权限/配置返回给前端出图。</td>
+        </tr>
+      </table>
+
+      <h3>容易混淆</h3>
+      <ul>
+        <li><b>业务 PostgreSQL ≠ BI 配置 PostgreSQL</b>：前者是订单/客户等业务源；后者存图配置、元数据、规则（控制面）。</li>
+        <li><b>ODS vs DWS</b>：ODS 偏明细入仓；DWS 偏汇总预聚合。</li>
+        <li><b>fs-bi-stat 不生产数据</b>：它出现在写路径末端，表示“生产完成后由谁把数变成可出图”。</li>
+      </ul>
+      <div class="story">
+        人话故事：业务员改订单（业务 PG）→ 搬运工抄进分析仓（copier/ODS → CH）→ 贴任务单（MQ）→
+        车间预汇总（DWS）→ 点亮完工灯（StatView）→ 传菜口按菜单出菜（fs-bi-stat → 前端）。
+      </div>
+    </div>
+    <div class="mermaid">
+sequenceDiagram
+  autonumber
+  participant Biz as 业务系统/CRM
+  participant PG as 业务 PostgreSQL
+  participant Sync as copier/ODS Transfer
+  participant CH as ClickHouse
+  participant MQ as RocketMQ
+  participant DWS as warehouse DWS
+  participant SV as StatView 刷新
+  participant STAT as fs-bi-stat
+  participant XK as 端上
+
+  Biz->>PG: 对象新增/变更
+  PG->>Sync: 增量同步任务/事件
+  Sync->>CH: 写 ODS/明细分区
+  Sync->>MQ: CalculateEvent
+  MQ->>DWS: DWSComputeConsumer
+  DWS->>CH: 写 agg/dim/宽表
+  DWS->>DWS: Topology 级联下游
+  DWS->>SV: StatViewEvent
+  SV->>CH: 视图/预计算就绪
+  Note over STAT,XK: 此后读路径可命中新数据
+  STAT->>CH: 查询预聚合
+  STAT-->>XK: 返回最新结果
+    </div>
+  </div>
+
+  <!-- 图4 -->
+  <div class="card">
+    <h2>图 4 · 门户报表编排流程（查询侧横向）</h2>
+    <div class="explain">
+      <h3>这张图在讲什么</h3>
+      <p>用户打开报表/仪表盘时，查询侧如何“总包调度”多个下游能力，而不是只打一个 stat 接口。</p>
+      <table>
+        <tr><th>节点</th><th>是什么</th><th>起什么作用</th></tr>
+        <tr><td>端上宿主/报表页</td><td>报表、仪表盘页面</td><td>展示多图/多组件，发起门户请求</td></tr>
+        <tr><td>CEP/FCP</td><td>网关</td><td>把请求路由到 crm-report</td></tr>
+        <tr><td>fs-bi-crm-report</td><td>BI 门户/报表服务</td><td>Dashboard/Report/View 编排、分享、订阅、导出入口</td></tr>
+        <tr><td>fs-bi-stat</td><td>统计图服务</td><td>提供图数据</td></tr>
+        <tr><td>udf-report</td><td>UDF/交叉表服务</td><td>处理较重 SQL/定制报表查询</td></tr>
+        <tr><td>dev-platform</td><td>宽表平台</td><td>大宽表 LWT 查询/建模相关</td></tr>
+        <tr><td>task</td><td>调度服务</td><td>订阅定时触发</td></tr>
+        <tr><td>sqlengine</td><td>SQL 执行引擎</td><td>统一执行 PG/分析 SQL</td></tr>
+        <tr><td>CH/PG/Redis</td><td>存储</td><td>数据、配置、缓存</td></tr>
+        <tr><td>推送/导出</td><td>异步分发</td><td>企信/邮件订阅与文件导出</td></tr>
+      </table>
+      <div class="story">crm-report 像总台：自己管门户产品面，具体算图/交叉表/宽表再分给 stat、udf、dev；订阅导出走 task/异步链路。</div>
+    </div>
+    <div class="mermaid">
+flowchart LR
+  classDef a fill:#102a43,stroke:#62b6ff,color:#fff
+  classDef b fill:#1b4332,stroke:#8ce99a,color:#fff
+  classDef c fill:#3d2c1e,stroke:#ffd43b,color:#fff
+
+  FE["端上宿主/报表页"] --> GW["CEP/FCP"]
+  GW --> CRM["fs-bi-crm-report<br/>Dashboard/Report/View"]
+  CRM --> STAT["fs-bi-stat<br/>图数据"]
+  CRM --> UDF["udf-report<br/>UDF/交叉表"]
+  CRM --> DEV["dev-platform<br/>宽表"]
+  CRM --> TASK["task<br/>订阅调度"]
+  STAT --> CH["CH/PG/Redis"]
+  UDF --> CH
+  DEV --> SQL["sqlengine"] --> CH
+  TASK --> PUSH["企信/邮件推送"]
+  TASK --> EXP["导出快照"]
+  CRM --> EXP
+
+  class FE,GW a
+  class CRM,STAT,UDF,DEV,TASK,SQL b
+  class CH,PUSH,EXP c
+    </div>
+  </div>
+
+  <!-- 图5 -->
+  <div class="card">
+    <h2>图 5 · 配置变更如何驱动数仓计算</h2>
+    <div class="explain">
+      <h3>这张图在讲什么</h3>
+      <p>管理员在 BI 里启停统计图/聚合规则后，如何影响到数仓是否继续算。体现<strong>控制面在查询侧，数据面在大数据侧</strong>。</p>
+      <table>
+        <tr><th>节点</th><th>是什么</th><th>起什么作用</th></tr>
+        <tr><td>管理员操作</td><td>启停图/规则</td><td>发起控制面变更</td></tr>
+        <tr><td>fs-bi 更新 PG 规则</td><td>查询侧改配置库状态</td><td>记录“还要不要算这张图”</td></tr>
+        <tr><td>MQ 通知 warehouse</td><td>规则/离线等事件消息</td><td>把控制决策传给数仓</td></tr>
+        <tr><td>DWS 停/起算</td><td>数仓计算开关</td><td>省资源或恢复预聚合</td></tr>
+        <tr><td>CH 结果变化</td><td>分析库数据状态变化</td><td>后续查询读到新状态</td></tr>
+        <tr><td>端上/查询侧</td><td>读路径消费者</td><td>用户最终感知启用/停用效果</td></tr>
+      </table>
+      <div class="story">fs-bi 不自己停 CH 计算线程，而是改规则 + 发 MQ；warehouse 收到后才真正停算/起算。</div>
+    </div>
+    <div class="mermaid">
+flowchart LR
+  A["管理员启停统计图/聚合规则"] --> B["fs-bi 更新 PG 规则状态"]
+  B --> C["MQ 通知 warehouse"]
+  C --> D["DWS 停止或恢复计算"]
+  D --> E["CH 计算资源与结果变化"]
+  E --> F["端上/查询侧读到新状态"]
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  BI 整体系统流程图 · 每图上方含节点讲解 · 浏览器打开即可查看（需联网加载 mermaid CDN）
+</footer>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    flowchart: { curve: 'basis', htmlLabels: true, nodeSpacing: 28, rankSpacing: 36 },
+    sequence: { mirrorActors: false, messageMargin: 30, actorMargin: 28 },
+    securityLevel: 'loose'
+  });
+</script>
+</body>
+</html>

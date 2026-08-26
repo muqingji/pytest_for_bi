@@ -310,11 +310,41 @@ def required_scene_for_case(case: Mapping[str, Any]) -> str:
     return "chart_detail" if any(term in text for term in CHART_DETAIL_TERMS) else ""
 
 
+def _is_composite_case(test_data: Mapping[str, Any], case: Mapping[str, Any]) -> bool:
+    """A Case is composite when it carries a datasets/matrix payload or infers
+    multiple resource types that no single-resource recipe should bind.
+
+    A Case that explicitly declares a singular ``dataset`` targets one recipe
+    even when its variants mention multiple resource types.
+    """
+    if any(key in test_data for key in ("datasets", "matrix")):
+        return True
+    if str(test_data.get("dataset", "")):
+        return False
+    return len(infer_resource_intents(case)) > 1
+
+
 def _matches_recipe(case: Mapping[str, Any], recipe: Mapping[str, Any]) -> bool:
     match = recipe.get("match", {})
     if not isinstance(match, Mapping):
         raise ContractError(f"recipe {recipe.get('id')} match must be an object")
     test_data = case.get("test_data", {})
+    if not isinstance(test_data, Mapping):
+        test_data = {}
+
+    # Composite Cases (datasets/matrix or multiple inferred resource types)
+    # only match recipes that declare composite_term_groups.  This prevents a
+    # single-resource recipe from fuzzy-binding a multi-resource Case.
+    if _is_composite_case(test_data, case):
+        composite_groups = match.get("composite_term_groups", [])
+        if not composite_groups:
+            return False
+        text = _case_text(case)
+        return all(
+            isinstance(group, list) and any(str(term).lower() in text for term in group)
+            for group in composite_groups
+        )
+
     explicit_intent = ""
     if isinstance(test_data, Mapping):
         explicit_intent = str(test_data.get("data_intent", ""))
@@ -327,12 +357,6 @@ def _matches_recipe(case: Mapping[str, Any], recipe: Mapping[str, Any]) -> bool:
     datasets = {str(item) for item in match.get("datasets", [])}
     if dataset:
         return dataset in datasets
-    # Composite matrices need a dedicated recipe. A keyword hit must not bind
-    # a multi-resource Case to a single-resource lifecycle.
-    if isinstance(test_data, Mapping) and any(
-        key in test_data for key in ("datasets", "matrix")
-    ):
-        return False
     groups = match.get("all_term_groups", [])
     if not groups:
         return False
@@ -531,6 +555,19 @@ def _resolve_variables(variables: Mapping[str, Any], namespace: str) -> dict[str
     return resolved
 
 
+
+def _bind_chart_folder(resource: dict[str, Any], requirement_name: str) -> dict[str, Any]:
+    """Set chart asset_folder_name and folder_binding.folder_name to the
+    Case requirement_name so N27 folder-equals-requirement validation passes."""
+    if resource.get("resource_type") == "stat_chart" and requirement_name:
+        resource["asset_folder_name"] = requirement_name
+        folder = resource.get("folder_binding")
+        if isinstance(folder, dict):
+            folder["folder_name"] = requirement_name
+            resource["folder_binding"] = folder
+    return resource
+
+
 def compile_resource_plan(
     intent: Mapping[str, Any],
     catalog: Mapping[str, Any],
@@ -580,12 +617,31 @@ def compile_resource_plan(
         variables = deepcopy(dict(profile.get("variables", {})))
         variables.update(deepcopy(dict(recipe.get("variables", {}))))
         variables = _resolve_variables(variables, namespace)
+        resources = [
+            _bind_chart_folder(
+                {
+                    **resource,
+                    "retention_mode": str(resource.get("retention_mode") or "retain"),
+                    "ownership_namespace": namespace,
+                },
+                str(item.get("requirement_name") or item.get("title") or item.get("case_id", "")),
+            )
+            for resource in _topological_resources(
+                list(recipe.get("resources", [])), recipe_id
+            )
+        ]
+        retention_modes = {
+            str(resource.get("retention_mode") or "retain") for resource in resources
+        }
+        # Case-level retention is delete only when every resource opts into delete;
+        # mixed or empty graphs stay retain so N27/policy defaults remain safe.
+        case_retention = "delete" if retention_modes == {"delete"} else "retain"
         case_plans.append(
             {
                 "case_id": str(item.get("case_id", "")),
                 "requirement_name": str(item.get("requirement_name") or item.get("title") or item.get("case_id", "")),
                 "required_scene": str(item.get("required_scene", "")),
-                "retention_mode": "retain",
+                "retention_mode": case_retention,
                 "requires_data_construction": True,
                 "planning_mode": "autonomous",
                 "recipe_refs": [
@@ -593,16 +649,7 @@ def compile_resource_plan(
                 ],
                 "evidence_refs": list(recipe.get("evidence_refs", [])),
                 "variables": variables,
-                "resources": [
-                    {
-                        **resource,
-                        "retention_mode": "retain",
-                        "ownership_namespace": namespace,
-                    }
-                    for resource in _topological_resources(
-                        list(recipe.get("resources", [])), recipe_id
-                    )
-                ],
+                "resources": resources,
             }
         )
     setup_actions = [

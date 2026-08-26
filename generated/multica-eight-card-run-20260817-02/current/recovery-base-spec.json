@@ -1,49 +1,25 @@
 {
   "actions": [
     {
-      "action_id": "A22-detail-drill-i18n-8card-20260817-02",
+      "action_id": "N05-detail-drill-i18n-8card-20260817-02",
       "approval_items": [
         {
-          "case_id": "TC-BE-006-BACKEND",
-          "category": "test_data_pending_human",
-          "confirm_action": "",
-          "expected_id": "",
-          "human_title": "",
-          "id": "a22-test-data-plan-1",
-          "issue_code": "",
-          "plain_summary": "",
-          "recommendation": "",
+          "id": "n05-automation-code-check-approval",
           "requirement_ids": [],
           "severity": "",
           "source_refs": [],
-          "summary": "permission_test_accounts_and_baseline",
-          "title": "未决数据需求"
-        },
-        {
-          "case_id": "TC-CON-002-CONTRACT",
-          "category": "test_data_pending_human",
-          "confirm_action": "",
-          "expected_id": "",
-          "human_title": "",
-          "id": "a22-test-data-plan-2",
-          "issue_code": "",
-          "plain_summary": "",
-          "recommendation": "",
-          "requirement_ids": [],
-          "severity": "",
-          "source_refs": [],
-          "summary": "historical_unmigrated_configs_and_frozen_baselines",
-          "title": "未决数据需求"
+          "summary": "Artifact n05-automation-code-check accepted",
+          "title": "审批确认"
         }
       ],
-      "gate_id": "A22",
+      "gate_id": "N05",
       "issue_id": null,
       "issue_identifier": null,
-      "item_count": 2,
+      "item_count": 1,
       "owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
       "status": "open",
-      "summary": "needs_human",
-      "title": "112 测试数据规划处理"
+      "summary": "Artifact n05-automation-code-check accepted",
+      "title": "自动化确定性代码检查处理"
     }
   ],
   "autopilot": {
@@ -498,7 +474,7 @@
       "state": "completed"
     },
     {
-      "artifact_hash": "sha256:1c690517f5ffbbb42b23e0a0e4f00a622e7e992049f674525594cb9d25b2dc0e",
+      "artifact_hash": "sha256:ec2095532011898bf18d670f3baf753a53d569267ec6087fbc45998ad81be526",
       "artifact_id": "a14-backend-automation-generation",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a14-backend-automation-generation.json",
       "completion": "1/1",
@@ -571,23 +547,23 @@
       "execution_id": "A22-detail-drill-i18n-8card-20260817-02",
       "label": "112 测试数据规划",
       "node_id": "A22",
-      "result_summary": "needs_human",
+      "result_summary": "人工已确认未决数据需求，节点进入完成态",
       "stage": 15,
       "stage_card_id": "C5",
       "stage_card_title": "自动化与测试数据准备",
       "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
       "stage_issue_identifier": "QAA-310",
-      "state": "waiting_human"
+      "state": "completed"
     },
     {
-      "artifact_hash": "sha256:aca531fa5dc5b3862bca447d0a46e435b8f425caefda86a904d3ec7aa2200691",
+      "artifact_hash": "sha256:8d8d7a495623abe3156ec27780428d4dfecc44c56611de0f29ab4e319a50d20e",
       "artifact_id": "a18-be-backend-automation-review",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a18-be-backend-automation-review.json",
       "completion": "1/1",
       "execution_id": "A18-BE-detail-drill-i18n-8card-20260817-02",
       "label": "服务端自动化独立复核",
       "node_id": "A18-BE",
-      "result_summary": "发现 9 个阻塞问题需人工定向修正（A18BE-01、A18BE-02、A18BE-03、A18BE-04 等 9 项）",
+      "result_summary": "发现 7 个阻塞问题需人工定向修正（R-A18-001、R-A18-002、R-A18-003、R-A18-004 等 7 项）",
       "stage": 16,
       "stage_card_id": "C5",
       "stage_card_title": "自动化与测试数据准备",
@@ -638,7 +614,7 @@
           "title": "审批确认"
         }
       ],
-      "artifact_hash": "sha256:5c1e64145d1b6800f1ceefaa011d771130d8bd10ccce207b4f3bd8948ef362f0",
+      "artifact_hash": "sha256:c10d59294da82729d1a3d847d8a6498a0d5f47c1638887373ce0a533df361e1b",
       "artifact_id": "n05-automation-code-check",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n05-automation-code-check.json",
       "completion": "1/1",
@@ -651,7 +627,7 @@
       "stage_card_title": "自动化与测试数据准备",
       "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
       "stage_issue_identifier": "QAA-310",
-      "state": "blocked"
+      "state": "waiting_human"
     },
     {
       "approval_items": [
@@ -877,7 +853,7 @@
     "identifier": "QAA-304"
   },
   "requirement_id": "REQ-DETAIL-DRILL-I18N-RERUN-20260817-02",
-  "revision": 125,
+  "revision": 137,
   "run_history": [],
   "run_issue": {
     "id": "277d9c07-16bc-4462-8f83-ff8434a84b9e",

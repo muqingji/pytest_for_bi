@@ -1,51 +1,27 @@
 {
-  "action_count": 2,
+  "action_count": 1,
   "action_required": true,
   "actions": [
     {
-      "action_id": "A22-detail-drill-i18n-8card-20260817-02",
+      "action_id": "N05-detail-drill-i18n-8card-20260817-02",
       "approval_items": [
         {
-          "case_id": "TC-BE-006-BACKEND",
-          "category": "test_data_pending_human",
-          "confirm_action": "",
-          "expected_id": "",
-          "human_title": "",
-          "id": "a22-test-data-plan-1",
-          "issue_code": "",
-          "plain_summary": "",
-          "recommendation": "",
+          "id": "n05-automation-code-check-approval",
           "requirement_ids": [],
           "severity": "",
           "source_refs": [],
-          "summary": "permission_test_accounts_and_baseline",
-          "title": "未决数据需求"
-        },
-        {
-          "case_id": "TC-CON-002-CONTRACT",
-          "category": "test_data_pending_human",
-          "confirm_action": "",
-          "expected_id": "",
-          "human_title": "",
-          "id": "a22-test-data-plan-2",
-          "issue_code": "",
-          "plain_summary": "",
-          "recommendation": "",
-          "requirement_ids": [],
-          "severity": "",
-          "source_refs": [],
-          "summary": "historical_unmigrated_configs_and_frozen_baselines",
-          "title": "未决数据需求"
+          "summary": "Artifact n05-automation-code-check accepted",
+          "title": "审批确认"
         }
       ],
-      "gate_id": "A22",
+      "gate_id": "N05",
       "issue_id": null,
       "issue_identifier": null,
-      "item_count": 2,
+      "item_count": 1,
       "owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
       "status": "open",
-      "summary": "needs_human",
-      "title": "112 测试数据规划处理"
+      "summary": "Artifact n05-automation-code-check accepted",
+      "title": "自动化确定性代码检查处理"
     }
   ],
   "autopilot": {
@@ -56,140 +32,16 @@
   "autopilot_runs": [],
   "current_nodes": [
     {
-      "approval_items": [
-        {
-          "case_id": "",
-          "category": "待确认测试范围",
-          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
-          "expected_id": "",
-          "human_title": "",
-          "id": "A06:ALN-F002",
-          "issue_code": "conflict",
-          "plain_summary": "实现与需求/技术方案冲突：动态关联实现位于对象关系转换器，并在常规关系查询全部失败后依据what或WhatList 动态关联字段类型直接替换错误；技术方案要求由持有完整聚合规则和关系元数据的上层解析候选原因，且禁止仅据这些信号推断。",
-          "recommendation": "",
-          "requirement_ids": [
-            "REQ-005"
-          ],
-          "severity": "high",
-          "source_refs": [],
-          "summary": "实现与需求/技术方案冲突：动态关联实现位于对象关系转换器，并在常规关系查询全部失败后依据what或WhatList 动态关联字段类型直接替换错误；技术方案要求由持有完整聚合规则和关系元数据的上层解析候选原因，且禁止仅据这些信号推断。",
-          "title": "待确认测试范围"
-        },
-        {
-          "case_id": "",
-          "category": "待确认测试范围",
-          "confirm_action": "请确认是接受当前实现口径、补齐实现证据，还是调整需求/技术方案；确认后会回流 A06 重新对齐。",
-          "expected_id": "",
-          "human_title": "",
-          "id": "A06:ALN-F011",
-          "issue_code": "out_of_scope_change",
-          "plain_summary": "存在超出需求范围的变更：自定义维度实现除冻结需求明确的维度和数据范围外，还覆盖钻取维度；技术分析也指出该范围超出当前文案定义，需要产品确认后才能认定为批准范围。",
-          "recommendation": "",
-          "requirement_ids": [
-            "REQ-002"
-          ],
-          "severity": "medium",
-          "source_refs": [],
-          "summary": "存在超出需求范围的变更：自定义维度实现除冻结需求明确的维度和数据范围外，还覆盖钻取维度；技术分析也指出该范围超出当前文案定义，需要产品确认后才能认定为批准范围。",
-          "title": "待确认测试范围"
-        },
-        {
-          "case_id": "",
-          "category": "待确认测试范围",
-          "confirm_action": "",
-          "expected_id": "",
-          "human_title": "",
-          "id": "A06:FOLLOWUP-A06-ALN-F010",
-          "issue_code": "",
-          "plain_summary": "需要补充可执行测试证据：结果集筛选动态指标名、自定义维度、what/whatlist、多关联关系，以及统计图/拼表/Web/移动端/中英文的一致性。请确认这些都纳入本次测试范围。",
-          "recommendation": "",
-          "requirement_ids": [],
-          "severity": "",
-          "source_refs": [],
-          "summary": "需要补充可执行测试证据：结果集筛选动态指标名、自定义维度、what/whatlist、多关联关系，以及统计图/拼表/Web/移动端/中英文的一致性。请确认这些都纳入本次测试范围。",
-          "title": "待确认测试范围"
-        }
-      ],
-      "artifact_hash": "sha256:d213f47e16e35ad615cce72d203ffb10efc914dbce31a1b626854f75c9a9ac39",
-      "artifact_id": "g01-scope-review",
-      "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/g01-scope-review.json",
-      "completion": "1/1",
-      "execution_id": "G01-detail-drill-i18n-8card-20260817-02",
-      "issue_id": "ea27f34c-7a8a-41f3-8a66-33f6af0d983a",
-      "issue_identifier": "QAA-318",
-      "label": "范围与口径人工审核",
-      "node_id": "G01",
-      "result_summary": "not_required",
-      "stage": 5,
-      "stage_card_id": "C2",
-      "stage_card_title": "范围确认与测试策略",
-      "stage_issue_id": "bd0191c9-bc0a-48af-873f-4b2d1da22ef7",
-      "stage_issue_identifier": "QAA-307",
-      "state": "waiting_human"
-    },
-    {
-      "approval_items": [
-        {
-          "case_id": "TC-BE-006-BACKEND",
-          "category": "test_data_pending_human",
-          "confirm_action": "",
-          "expected_id": "",
-          "human_title": "",
-          "id": "a22-test-data-plan-1",
-          "issue_code": "",
-          "plain_summary": "",
-          "recommendation": "",
-          "requirement_ids": [],
-          "severity": "",
-          "source_refs": [],
-          "summary": "permission_test_accounts_and_baseline",
-          "title": "未决数据需求"
-        },
-        {
-          "case_id": "TC-CON-002-CONTRACT",
-          "category": "test_data_pending_human",
-          "confirm_action": "",
-          "expected_id": "",
-          "human_title": "",
-          "id": "a22-test-data-plan-2",
-          "issue_code": "",
-          "plain_summary": "",
-          "recommendation": "",
-          "requirement_ids": [],
-          "severity": "",
-          "source_refs": [],
-          "summary": "historical_unmigrated_configs_and_frozen_baselines",
-          "title": "未决数据需求"
-        }
-      ],
-      "artifact_hash": "sha256:8335ebf97ea2b109d96b77c6f8267e6c1fd28dda464cbdb8c131de27133e7118",
-      "artifact_id": "a22-test-data-plan",
-      "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a22-test-data-plan.json",
-      "completion": "1/1",
-      "execution_id": "A22-detail-drill-i18n-8card-20260817-02",
-      "issue_id": "01a023b5-267f-7515-955d-048bbbdb811b",
-      "issue_identifier": "QAA-374",
-      "label": "112 测试数据规划",
-      "node_id": "A22",
-      "result_summary": "needs_human",
-      "stage": 15,
-      "stage_card_id": "C5",
-      "stage_card_title": "自动化与测试数据准备",
-      "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
-      "stage_issue_identifier": "QAA-310",
-      "state": "waiting_human"
-    },
-    {
-      "artifact_hash": "sha256:aca531fa5dc5b3862bca447d0a46e435b8f425caefda86a904d3ec7aa2200691",
+      "artifact_hash": "sha256:8d8d7a495623abe3156ec27780428d4dfecc44c56611de0f29ab4e319a50d20e",
       "artifact_id": "a18-be-backend-automation-review",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a18-be-backend-automation-review.json",
       "completion": "1/1",
       "execution_id": "A18-BE-detail-drill-i18n-8card-20260817-02",
-      "issue_id": "01a02415-3f46-7639-8107-f07da9a540bc",
-      "issue_identifier": "QAA-378",
+      "issue_id": "01a03309-33ef-7de1-a168-30b8f0fe6cde",
+      "issue_identifier": "QAA-382",
       "label": "服务端自动化独立复核",
       "node_id": "A18-BE",
-      "result_summary": "发现 9 个阻塞问题需人工定向修正（A18BE-01、A18BE-02、A18BE-03、A18BE-04 等 9 项）",
+      "result_summary": "发现 7 个阻塞问题需人工定向修正（R-A18-001、R-A18-002、R-A18-003、R-A18-004 等 7 项）",
       "stage": 16,
       "stage_card_id": "C5",
       "stage_card_title": "自动化与测试数据准备",
@@ -208,7 +60,7 @@
           "title": "审批确认"
         }
       ],
-      "artifact_hash": "sha256:5c1e64145d1b6800f1ceefaa011d771130d8bd10ccce207b4f3bd8948ef362f0",
+      "artifact_hash": "sha256:c10d59294da82729d1a3d847d8a6498a0d5f47c1638887373ce0a533df361e1b",
       "artifact_id": "n05-automation-code-check",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n05-automation-code-check.json",
       "completion": "1/1",
@@ -459,7 +311,7 @@
       "stage_card_title": "范围确认与测试策略",
       "stage_issue_id": "bd0191c9-bc0a-48af-873f-4b2d1da22ef7",
       "stage_issue_identifier": "QAA-307",
-      "state": "waiting_human"
+      "state": "completed"
     },
     {
       "artifact_hash": "sha256:d895bf00d1f5db12e9b4ad8f6db9dd5478db0c285b42b08e36429693c4e29055",
@@ -718,13 +570,13 @@
       "state": "completed"
     },
     {
-      "artifact_hash": "sha256:1c690517f5ffbbb42b23e0a0e4f00a622e7e992049f674525594cb9d25b2dc0e",
+      "artifact_hash": "sha256:ec2095532011898bf18d670f3baf753a53d569267ec6087fbc45998ad81be526",
       "artifact_id": "a14-backend-automation-generation",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a14-backend-automation-generation.json",
       "completion": "1/1",
       "execution_id": "A14-detail-drill-i18n-8card-20260817-02",
-      "issue_id": "01a02418-1ece-7e3c-9fd0-33e8bd49b6ba",
-      "issue_identifier": "QAA-379",
+      "issue_id": "01a02425-939d-7b22-8123-3b33231f4f30",
+      "issue_identifier": "QAA-380",
       "label": "服务端自动化生成",
       "node_id": "A14",
       "result_summary": "completed_with_gaps",
@@ -733,7 +585,7 @@
       "stage_card_title": "自动化与测试数据准备",
       "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
       "stage_issue_identifier": "QAA-310",
-      "state": "queued"
+      "state": "completed"
     },
     {
       "artifact_hash": "sha256:b8ebd205094bdb51043e348429c0d2e3f9aee19c2800345a48e16bea15568918",
@@ -797,25 +649,25 @@
       "issue_identifier": "QAA-374",
       "label": "112 测试数据规划",
       "node_id": "A22",
-      "result_summary": "needs_human",
+      "result_summary": "人工已确认未决数据需求，节点进入完成态",
       "stage": 15,
       "stage_card_id": "C5",
       "stage_card_title": "自动化与测试数据准备",
       "stage_issue_id": "f0ddc712-4dff-4b6f-bc27-177e0452e87d",
       "stage_issue_identifier": "QAA-310",
-      "state": "waiting_human"
+      "state": "completed"
     },
     {
-      "artifact_hash": "sha256:aca531fa5dc5b3862bca447d0a46e435b8f425caefda86a904d3ec7aa2200691",
+      "artifact_hash": "sha256:8d8d7a495623abe3156ec27780428d4dfecc44c56611de0f29ab4e319a50d20e",
       "artifact_id": "a18-be-backend-automation-review",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a18-be-backend-automation-review.json",
       "completion": "1/1",
       "execution_id": "A18-BE-detail-drill-i18n-8card-20260817-02",
-      "issue_id": "01a02415-3f46-7639-8107-f07da9a540bc",
-      "issue_identifier": "QAA-378",
+      "issue_id": "01a03309-33ef-7de1-a168-30b8f0fe6cde",
+      "issue_identifier": "QAA-382",
       "label": "服务端自动化独立复核",
       "node_id": "A18-BE",
-      "result_summary": "发现 9 个阻塞问题需人工定向修正（A18BE-01、A18BE-02、A18BE-03、A18BE-04 等 9 项）",
+      "result_summary": "发现 7 个阻塞问题需人工定向修正（R-A18-001、R-A18-002、R-A18-003、R-A18-004 等 7 项）",
       "stage": 16,
       "stage_card_id": "C5",
       "stage_card_title": "自动化与测试数据准备",
@@ -868,7 +720,7 @@
           "title": "审批确认"
         }
       ],
-      "artifact_hash": "sha256:5c1e64145d1b6800f1ceefaa011d771130d8bd10ccce207b4f3bd8948ef362f0",
+      "artifact_hash": "sha256:c10d59294da82729d1a3d847d8a6498a0d5f47c1638887373ce0a533df361e1b",
       "artifact_id": "n05-automation-code-check",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n05-automation-code-check.json",
       "completion": "1/1",
@@ -1132,49 +984,25 @@
   ],
   "open_actions": [
     {
-      "action_id": "A22-detail-drill-i18n-8card-20260817-02",
+      "action_id": "N05-detail-drill-i18n-8card-20260817-02",
       "approval_items": [
         {
-          "case_id": "TC-BE-006-BACKEND",
-          "category": "test_data_pending_human",
-          "confirm_action": "",
-          "expected_id": "",
-          "human_title": "",
-          "id": "a22-test-data-plan-1",
-          "issue_code": "",
-          "plain_summary": "",
-          "recommendation": "",
+          "id": "n05-automation-code-check-approval",
           "requirement_ids": [],
           "severity": "",
           "source_refs": [],
-          "summary": "permission_test_accounts_and_baseline",
-          "title": "未决数据需求"
-        },
-        {
-          "case_id": "TC-CON-002-CONTRACT",
-          "category": "test_data_pending_human",
-          "confirm_action": "",
-          "expected_id": "",
-          "human_title": "",
-          "id": "a22-test-data-plan-2",
-          "issue_code": "",
-          "plain_summary": "",
-          "recommendation": "",
-          "requirement_ids": [],
-          "severity": "",
-          "source_refs": [],
-          "summary": "historical_unmigrated_configs_and_frozen_baselines",
-          "title": "未决数据需求"
+          "summary": "Artifact n05-automation-code-check accepted",
+          "title": "审批确认"
         }
       ],
-      "gate_id": "A22",
+      "gate_id": "N05",
       "issue_id": null,
       "issue_identifier": null,
-      "item_count": 2,
+      "item_count": 1,
       "owner_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
       "status": "open",
-      "summary": "needs_human",
-      "title": "112 测试数据规划处理"
+      "summary": "Artifact n05-automation-code-check accepted",
+      "title": "自动化确定性代码检查处理"
     }
   ],
   "overall_status": "blocked",
@@ -1184,13 +1012,13 @@
     "identifier": "QAA-304"
   },
   "progress": {
-    "completed": 30,
-    "percent": 83,
+    "completed": 33,
+    "percent": 92,
     "total": 36
   },
-  "projection_hash": "sha256:20283792bc94c813da51f8728950ba7fdddf1d323998a00a53a526bb55b2e68e",
+  "projection_hash": "sha256:b7e226a5104c7287a3768a362e116f080d619337570213d471068c9d9a175174",
   "requirement_id": "REQ-DETAIL-DRILL-I18N-RERUN-20260817-02",
-  "revision": 125,
+  "revision": 137,
   "run_history": [],
   "run_issue": {
     "id": "277d9c07-16bc-4462-8f83-ff8434a84b9e",

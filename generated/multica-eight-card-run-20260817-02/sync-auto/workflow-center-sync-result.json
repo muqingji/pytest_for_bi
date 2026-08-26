@@ -1,17 +1,17 @@
 {
-  "action_count": 2,
+  "action_count": 1,
   "action_required": true,
-  "classified_node_count": 30,
+  "classified_node_count": 32,
   "overall_status": "blocked",
   "parent_issue_id": "8d38ef5f-b622-4167-857c-79c7393a0e0f",
   "parent_status": "blocked",
   "progress": {
-    "completed": 30,
-    "percent": 83,
+    "completed": 33,
+    "percent": 92,
     "total": 36
   },
-  "projection_hash": "sha256:20283792bc94c813da51f8728950ba7fdddf1d323998a00a53a526bb55b2e68e",
-  "result_hash": "sha256:1fe61e709c9da105244a280bc8ea5dc66e9aa4f25962f198fd1a1949970b3986",
+  "projection_hash": "sha256:b7e226a5104c7287a3768a362e116f080d619337570213d471068c9d9a175174",
+  "result_hash": "sha256:488cccd258f309dced79670345df596a5d8df8d37175c2ea219eb4553f044c0e",
   "schema_version": "workflow-center-sync-result/1.0",
   "stage_card_count": 8,
   "workflow_id": "REQ-DETAIL-DRILL-I18N-RERUN-20260817-02",

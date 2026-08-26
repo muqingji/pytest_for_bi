@@ -41,7 +41,17 @@ def case_runner(environment: EnvironmentConfig):
     rpc = RpcClient(environment.get("rpc", {}), http)
     database = DatabaseClient(environment.get("databases", {}))
     api_catalog = HttpApiCatalog.load(project_root() / "idl" / "http")
-    yield CaseRunner(environment, http, rpc, database, api_catalog)
+    action_handlers = {}
+    try:
+        from qa_agents.chart_config import chart_action_handlers
+
+        action_handlers.update(chart_action_handlers())
+    except Exception:
+        # Framework tests can run without qa-agents chart binders installed.
+        action_handlers = {}
+    yield CaseRunner(
+        environment, http, rpc, database, api_catalog, action_handlers=action_handlers
+    )
     http.close()
 
 
