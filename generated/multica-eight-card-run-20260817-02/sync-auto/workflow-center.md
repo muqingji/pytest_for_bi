@@ -78,13 +78,13 @@
 | 15 | [QAA-380](mention://issue/01a02425-939d-7b22-8123-3b33231f4f30) 服务端自动化生成 | 已完成 | 1/1 | completed_with_gaps |
 | 15 | [QAA-337](mention://issue/fceb05d9-2005-492d-a02c-178fc78a88b5) 契约自动化生成 | 已跳过 | 1/1 | not_applicable |
 | 15 | [QAA-374](mention://issue/01a023b5-267f-7515-955d-048bbbdb811b) 112 测试数据规划 | 已完成 | 1/1 | 人工已确认未决数据需求，节点进入完成态 |
-| 16 | [QAA-382](mention://issue/01a03309-33ef-7de1-a168-30b8f0fe6cde) 服务端自动化独立复核 | 阻塞 | 1/1 | 发现 7 个阻塞问题需人工定向修正（R-A18-001、R-A18-002、R-A18-003、R-A18-004 等 7 项） |
+| 16 | [QAA-383](mention://issue/01a03dda-8765-758e-bde5-6abf52a60e73) 服务端自动化独立复核 | 阻塞 | 1/1 | 发现 11 个阻塞问题需人工定向修正（A18BE-001、A18BE-002、A18BE-003、A18BE-004 等 11 项） |
 | 16 | 契约自动化独立复核 | 已跳过 | 1/1 | not_applicable |
 | 16 | [QAA-340](mention://issue/2d2b6678-2b7c-4364-92c3-8a35d64906f6) 测试数据计划安全校验 | 已完成 | 1/1 | Artifact n27-test-data-plan-validation accepted |
 | 17 | [QAA-344](mention://issue/bfc83d05-c77c-4d90-9b9f-b178a9937d2e) 自动化确定性代码检查 | 等待人工 | 1/1 | Artifact n05-automation-code-check accepted |
 | 18 | [QAA-369](mention://issue/d98febc0-36e2-4845-b9d7-e840e09a4bc9) 自动化代码人工审核 | 已跳过 | 1/1 | not_applicable |
 | 19 | [QAA-348](mention://issue/77a1ad3e-e571-4fae-9d8c-d377d92dedd4) 环境、数据与资源预检 | 已完成 | 1/1 | passed |
-| 20 | [QAA-349](mention://issue/a687539c-5719-40bd-abfd-38c37a572a6f) 受控自动化执行 | 已完成 | 1/1 | test_failures |
+| 20 | [QAA-349](mention://issue/a687539c-5719-40bd-abfd-38c37a572a6f) 受控自动化执行 | 已完成 | 1/1 | passed |
 | 20 | [QAA-355](mention://issue/b2f1a0b8-c59b-4d28-828a-01b1902b9488) 人工与探索测试执行 | 已完成 | 1/1 | Artifact n17-manual-execution accepted |
 | 21 | [QAA-351](mention://issue/0b66bfb2-7e5d-4fd3-a742-3a48a495a1c5) 环境失败重试预算 | 已完成 | 1/1 | not_required |
 | 21 | [QAA-356](mention://issue/2e8d9465-207d-420e-b572-3de9a76c0d75) 运行质量信号采集 | 已完成 | 1/1 | Artifact n18-quality-signals accepted |
@@ -100,6 +100,6 @@
 
 - Workflow ID：`REQ-DETAIL-DRILL-I18N-RERUN-20260817-02`
 - Parent Issue：`QAA-304`
-- Projection：`sha256:b7e226a5104c7287a3768a362e116f080d619337570213d471068c9d9a175174`
+- Projection：`sha256:db0bbe4f75e8954d838b713bac0a4a7d2938ac17a8ad64f7b8a8c2b639ff1cb4`
 
 节点任务和重跑记录保留在内部执行项目；本卡只展示需求级总体状态、进度和人工事项。

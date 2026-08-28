@@ -377,7 +377,12 @@ def prepare_server_automation(
             )
         store.write_artifact(review)
         reviews.append(review)
-        if generation.status == ArtifactStatus.COMPLETED:
+        # completed_with_gaps is the normal A14 terminal state when some Cases
+        # are rejected but a runnable candidate manifest still exists.
+        if generation.status in {
+            ArtifactStatus.COMPLETED,
+            ArtifactStatus.COMPLETED_WITH_GAPS,
+        } and generation.payload.get("code_candidates"):
             checks.append(check_automation_generation(generation.payload, policy))
 
     issues = [item for check in checks for item in check["issues"]]

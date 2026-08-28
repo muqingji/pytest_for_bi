@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from copy import deepcopy
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -707,11 +708,78 @@ def validate_test_data_plan(
 
 
 
-def _case_chart_bind_inputs(resources: list[Mapping[str, Any]]) -> dict[str, str]:
-    """Pick case-owned dimension/metric variables for chart config differentiation."""
+# Stable native dimension pool for cases without a custom_dimension resource.
+# Verified sticky on 112 updateStatView after fieldType coercion.
+_DEFAULT_FALLBACK_DIMENSION_FIELD_IDS = (
+    "BI_5bcebcddcab2980001ee22b3",  # 客户级别 select_one
+    "BI_5bcebcddcab2980001ee22d7",  # 创建时间 date_time
+    "BI_e68d52002e7dd8e19eb46dc0",  # 拜访频率 select_one
+    "BI_4f6ba1123c8ddf09e655610a0d40f",  # 退回/收回原因 text
+    "BI_5cac8e840492437edb7d3a13",  # 预计收回时间 date_time
+)
+
+# Native filter pool so 筛选 also rotates per case when no second metric exists.
+# Keep measure/filter split inside one chart (filters are schema fields, not metrics).
+_DEFAULT_FALLBACK_FILTER_FIELD_IDS = (
+    "BI_5bcebcddcab2980001ee22d3",  # 转手次数 number
+    "BI_5bcebcddcab2980001ee22d7",  # 创建时间 date_time
+    "BI_5bcebcddcab2980001ee22b3",  # 客户级别 select_one
+    "BI_e68d52002e7dd8e19eb46dc0",  # 拜访频率 select_one
+    "BI_5cac8e840492437edb7d3a13",  # 预计收回时间 date_time
+)
+
+
+def _rotate_pool(pool: list[str], seed: str, *, offset: int = 0) -> str:
+    if not pool:
+        return ""
+    digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()
+    index = (int(digest[:8], 16) + offset) % len(pool)
+    return pool[index]
+
+
+def _build_id_pool(
+    variables: Mapping[str, Any],
+    *,
+    pool_key: str,
+    default_ids: tuple[str, ...],
+    extra_keys: tuple[str, ...] = (),
+) -> list[str]:
+    pool: list[str] = []
+    raw_pool = variables.get(pool_key)
+    explicit_pool = isinstance(raw_pool, list) and any(str(item).strip() for item in raw_pool)
+    if explicit_pool:
+        pool.extend(str(item).strip() for item in raw_pool if str(item).strip())
+        return pool
+    for key in extra_keys:
+        value = str(variables.get(key) or "").strip()
+        if value and value not in pool:
+            pool.append(value)
+    for value in default_ids:
+        if value not in pool:
+            pool.append(value)
+    return pool
+
+
+def _case_chart_bind_inputs(
+    resources: list[Mapping[str, Any]],
+    *,
+    variables: Mapping[str, Any] | None = None,
+    case_id: str = "",
+) -> dict[str, str]:
+    """Pick dimension/measure/filter bindings so cloned charts differ per case.
+
+    Preference:
+    - dimension: case custom_dimension, else rotated native fallback dims
+    - measure: first aggregate_metric (replaceable source shell required)
+    - filter: second aggregate_metric when present, else rotated native filter
+      fields (never the measure field) so 指标/筛选 split and charts differ
+    """
+    variables = dict(variables or {})
     dimension_var = ""
     measure_var = ""
     filter_var = ""
+    dimension_id = ""
+    filter_id = ""
     aggregate_vars: list[str] = []
     for resource in resources:
         if not isinstance(resource, Mapping):
@@ -723,14 +791,39 @@ def _case_chart_bind_inputs(resources: list[Mapping[str, Any]]) -> dict[str, str
         if rtype == "aggregate_metric" and id_var:
             aggregate_vars.append(id_var)
     if aggregate_vars:
-        # Measure retarget requires agg metrics on a replaceable source shell.
         measure_var = aggregate_vars[0]
-        # Prefer a second metric for filters so 指标/筛选 are not identical when possible.
-        filter_var = aggregate_vars[1] if len(aggregate_vars) > 1 else aggregate_vars[0]
+        if len(aggregate_vars) > 1:
+            filter_var = aggregate_vars[1]
+    seed = str(case_id or variables.get("namespace") or "case")
+    if not dimension_var:
+        dim_pool = _build_id_pool(
+            variables,
+            pool_key="fallback_dimension_field_ids",
+            default_ids=_DEFAULT_FALLBACK_DIMENSION_FIELD_IDS,
+            extra_keys=("account_level_field_id", "date_field_id"),
+        )
+        dimension_id = _rotate_pool(dim_pool, seed, offset=0)
+    if not filter_var:
+        filter_pool = _build_id_pool(
+            variables,
+            pool_key="fallback_filter_field_ids",
+            default_ids=_DEFAULT_FALLBACK_FILTER_FIELD_IDS,
+            extra_keys=("amount_field_id", "date_field_id", "account_level_field_id"),
+        )
+        # Prefer a filter that is not the same native field as dimension.
+        blocked = {dimension_id} if dimension_id else set()
+        preferred = [item for item in filter_pool if item not in blocked]
+        candidates = preferred or filter_pool
+        filter_id = _rotate_pool(candidates, seed, offset=1)
+        if not filter_id:
+            amount_id = str(variables.get("amount_field_id") or "").strip()
+            filter_id = amount_id
     return {
         "dimension_field_id_var": dimension_var,
+        "dimension_field_id": dimension_id,
         "measure_field_id_var": measure_var,
         "filter_field_id_var": filter_var,
+        "filter_field_id": filter_id,
     }
 
 
@@ -800,21 +893,48 @@ def bind_plan_to_case(
         # After clone rename/move, bind case-owned dimension/measure/filter so
         # charts are not identical copies of the source view.
         if str(resource.get("resource_type") or "") == "stat_chart":
-            bind_vars = _case_chart_bind_inputs(list(case_plan.get("resources") or []))
+            bind_variables = {
+                **dict(plan.get("variables") or {}),
+                **dict(case_plan.get("variables") or {}),
+                **dict(case.get("variables") or {}),
+            }
+            bind_vars = _case_chart_bind_inputs(
+                list(case_plan.get("resources") or []),
+                variables=bind_variables,
+                case_id=case_id,
+            )
             dim_var = bind_vars.get("dimension_field_id_var") or ""
             measure_var = bind_vars.get("measure_field_id_var") or ""
             filter_var = bind_vars.get("filter_field_id_var") or ""
+            dim_literal = bind_vars.get("dimension_field_id") or ""
+            filter_literal = bind_vars.get("filter_field_id") or ""
             chart_id_var = str(resource.get("resource_id_variable") or "chart_view_id")
-            if dim_var or measure_var or filter_var:
+            if dim_var:
+                dimension_value = f"{{{{ {dim_var} }}}}"
+            else:
+                dimension_value = dim_literal
+            if measure_var:
+                measure_value = f"{{{{ {measure_var} }}}}"
+            else:
+                measure_value = ""
+            if filter_var:
+                filter_value = f"{{{{ {filter_var} }}}}"
+            elif filter_literal and filter_literal == str(
+                bind_variables.get("amount_field_id") or ""
+            ):
+                filter_value = "{{ amount_field_id }}"
+            else:
+                filter_value = filter_literal
+            if dimension_value or measure_value or filter_value:
                 bind_step = {
                     "name": f"{display_name} bind differentiated chart config",
                     "action": "bind_stat_chart_config",
                     "inputs": {
                         "chart_view_id": f"{{{{ {chart_id_var} }}}}",
                         "schema_id": "{{ schema_id }}",
-                        "dimension_field_id": f"{{{{ {dim_var} }}}}" if dim_var else "",
-                        "measure_field_id": f"{{{{ {measure_var} }}}}" if measure_var else "",
-                        "filter_field_id": f"{{{{ {filter_var} }}}}" if filter_var else "",
+                        "dimension_field_id": dimension_value,
+                        "measure_field_id": measure_value,
+                        "filter_field_id": filter_value,
                     },
                 }
                 setup.append(bind_step)

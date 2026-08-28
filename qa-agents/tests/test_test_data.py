@@ -742,6 +742,68 @@ def test_bind_plan_injects_chart_config_differentiation_action() -> None:
     assert inputs["chart_view_id"] == "{{ chart_view_id }}"
     assert inputs["schema_id"] == "{{ schema_id }}"
     assert inputs["dimension_field_id"] == "{{ custom_dimension_id }}"
-    assert inputs["filter_field_id"] == "{{ metric_field_id }}"
     assert inputs["measure_field_id"] == "{{ metric_field_id }}"
+    # single aggregate metric => filter falls back to rotated native field (or amount)
+    assert inputs["filter_field_id"]
+    assert inputs["filter_field_id"] != inputs["measure_field_id"]
 
+
+def test_case_chart_bind_inputs_splits_filter_and_fallback_dimension() -> None:
+    from qa_agents.test_data import _case_chart_bind_inputs
+
+    resources = [
+        {"resource_type": "aggregate_metric", "resource_id_variable": "metric_field_id"},
+        {"resource_type": "stat_chart", "resource_id_variable": "chart_view_id"},
+    ]
+    variables = {
+        "amount_field_id": "BI_amount",
+        "fallback_dimension_field_ids": [
+            "BI_dim_a",
+            "BI_dim_b",
+            "BI_dim_c",
+        ],
+        "fallback_filter_field_ids": [
+            "BI_filt_a",
+            "BI_filt_b",
+            "BI_filt_c",
+        ],
+    }
+    bound = _case_chart_bind_inputs(
+        resources,
+        variables=variables,
+        case_id="CASE-A",
+    )
+    assert bound["measure_field_id_var"] == "metric_field_id"
+    assert bound["filter_field_id_var"] == ""
+    assert bound["filter_field_id"] in {"BI_filt_a", "BI_filt_b", "BI_filt_c"}
+    assert bound["dimension_field_id_var"] == ""
+    assert bound["dimension_field_id"] in {"BI_dim_a", "BI_dim_b", "BI_dim_c"}
+    # dimension and filter should prefer different native fields
+    assert bound["filter_field_id"] != bound["dimension_field_id"]
+
+    other = _case_chart_bind_inputs(
+        resources,
+        variables=variables,
+        case_id="CASE-B",
+    )
+    # different cases should not always collide on the same fallback dim/filter
+    assert {bound["dimension_field_id"], other["dimension_field_id"]} <= {"BI_dim_a", "BI_dim_b", "BI_dim_c"}
+    assert {bound["filter_field_id"], other["filter_field_id"]} <= {"BI_filt_a", "BI_filt_b", "BI_filt_c"}
+
+
+def test_case_chart_bind_inputs_prefers_second_metric_for_filter() -> None:
+    from qa_agents.test_data import _case_chart_bind_inputs
+
+    bound = _case_chart_bind_inputs(
+        [
+            {"resource_type": "aggregate_metric", "resource_id_variable": "metric_a"},
+            {"resource_type": "aggregate_metric", "resource_id_variable": "metric_b"},
+            {"resource_type": "custom_dimension", "resource_id_variable": "custom_dimension_id"},
+        ],
+        variables={"amount_field_id": "BI_amount"},
+        case_id="CASE-MULTI",
+    )
+    assert bound["dimension_field_id_var"] == "custom_dimension_id"
+    assert bound["measure_field_id_var"] == "metric_a"
+    assert bound["filter_field_id_var"] == "metric_b"
+    assert bound["filter_field_id"] == ""

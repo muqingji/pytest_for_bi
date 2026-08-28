@@ -88,7 +88,21 @@
         "date_field_name": "创建时间",
         "date_field_type": "DateTime",
         "account_level_field_id": "BI_5bcebcddcab2980001ee22b3",
-        "account_level_api_name": "account_level"
+        "account_level_api_name": "account_level",
+        "fallback_dimension_field_ids": [
+          "BI_5bcebcddcab2980001ee22b3",
+          "BI_5bcebcddcab2980001ee22d7",
+          "BI_e68d52002e7dd8e19eb46dc0",
+          "BI_4f6ba1123c8ddf09e655610a0d40f",
+          "BI_5cac8e840492437edb7d3a13"
+        ],
+        "fallback_filter_field_ids": [
+          "BI_5bcebcddcab2980001ee22d3",
+          "BI_5bcebcddcab2980001ee22d7",
+          "BI_5bcebcddcab2980001ee22b3",
+          "BI_e68d52002e7dd8e19eb46dc0",
+          "BI_5cac8e840492437edb7d3a13"
+        ]
       },
       "evidence_refs": [
         "environment-112",

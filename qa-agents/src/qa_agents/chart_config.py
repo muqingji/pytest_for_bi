@@ -76,16 +76,64 @@ def _default_filter_option_ids(
     return option_ids
 
 
+_DIMENSION_FIELD_TYPE_BY_SCHEMA_TYPE = {
+    "select_one": "SingleSelectEnum",
+    "select_many": "MultiSelectEnum",
+    "date_time": "Date",
+    "date": "Date",
+    "text": "String",
+    "string": "String",
+    "quote": "String",
+    "number": "Number",
+    "auto_number": "String",
+    "email": "String",
+    "phone_number": "String",
+    "true_or_false": "String",
+    "record_type": "SingleSelectEnum",
+    "province": "String",
+    "city": "String",
+    "country": "String",
+    "district": "String",
+    "department": "String",
+    "employee": "String",
+    "formula": "String",
+    "dimension": "String",
+    "tree_path": "String",
+}
+
+
 def _normalize_dimension_field(field: Mapping[str, Any]) -> dict[str, Any]:
+    """Map schema field DTOs onto chart axis fieldTypes accepted by updateStatView.
+
+    Live 112 only accepts Date/String/SingleSelectEnum/MultiSelectEnum/Number on
+    dimensionFields. Schema types like select_one/date_time/quote must be coerced.
+    """
     axis_field = copy.deepcopy(dict(field))
     field_id = str(axis_field.get("fieldID") or axis_field.get("fieldId") or "")
     if not field_id:
         raise ContractError("dimension field DTO missing fieldId")
     axis_field["fieldID"] = field_id
     axis_field["fieldId"] = field_id
-    if str(axis_field.get("customType") or "") == "enum_group":
+    custom_type = str(axis_field.get("customType") or "")
+    schema_type = str(axis_field.get("type") or axis_field.get("fieldType") or "").lower()
+    if custom_type == "enum_group" or schema_type in {"select_one", "single_select_enum"}:
         axis_field["fieldType"] = "SingleSelectEnum"
         axis_field["subFieldType"] = "SingleSelectEnum"
+    elif schema_type in {"select_many", "multi_select_enum"}:
+        axis_field["fieldType"] = "MultiSelectEnum"
+        axis_field["subFieldType"] = "MultiSelectEnum"
+    else:
+        mapped = _DIMENSION_FIELD_TYPE_BY_SCHEMA_TYPE.get(schema_type)
+        if mapped:
+            axis_field["fieldType"] = mapped
+            if mapped.endswith("Enum"):
+                axis_field["subFieldType"] = mapped
+            elif "subFieldType" not in axis_field or axis_field.get("subFieldType") in (None, ""):
+                axis_field["subFieldType"] = ""
+        elif not axis_field.get("fieldType"):
+            # Last resort so updateStatView does not reject bare schema DTOs.
+            axis_field["fieldType"] = "String"
+            axis_field.setdefault("subFieldType", "")
     return axis_field
 
 

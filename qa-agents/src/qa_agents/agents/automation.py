@@ -640,7 +640,13 @@ class DomainAutomationReviewAgent(BaseAgent):
         mapped_case_ids = {
             str(item.get("case_id")) for item in manifest.get("case_mappings", [])
         }
-        for case_id in sorted(set(cases) - mapped_case_ids):
+        # Rejected / non-generated cases must not block approval of mapped candidates.
+        rejected_case_ids = {
+            str(item.get("case_id"))
+            for item in generation.get("rejected_cases", [])
+            if isinstance(item, Mapping) and str(item.get("case_id") or "")
+        }
+        for case_id in sorted(set(cases) - mapped_case_ids - rejected_case_ids):
             issues.append(
                 {"issue_code": "automation_case_not_mapped", "case_id": case_id, "route_to": route}
             )

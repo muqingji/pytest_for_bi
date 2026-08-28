@@ -1,6 +1,6 @@
 {
   "schema_version": "stat-chart-copy-contract-evidence/1.0",
-  "verified_at": "2026-08-21T18:17:38.982515+08:00",
+  "verified_at": "2026-08-26T18:55:31.041414+08:00",
   "environment": "112",
   "enterprise_id": "91863",
   "operation_id": "fs_bi_crm.stat_create.copy_stat_view",
@@ -14,23 +14,23 @@
     "statViewBaseInfo"
   ],
   "response_id_path": "Value.viewID",
-  "copy_response_hash": "sha256:34405b70824904f19e89def24223b3918a139b1a053ec646b8a84ac14ce3fe96",
+  "copy_response_hash": "sha256:2de8bb0f70b67cf3b76274873741d547243f29462fc658ce50fe0fca3e9ba863",
   "copy_response_top_level_keys": [
     "Result",
     "Value"
   ],
-  "resource_id": "BI_6a8825c2f8d3ad0007c55a0c",
-  "display_name": "qa-copy-contract-20260821-181738",
+  "resource_id": "BI_6a8ec62231fd1f0007ac2a2e",
+  "display_name": "qa-copy-contract-20260826-185531",
   "category_id": "BI_6a7c47e1280b910007abf988",
   "source_view_id": "BI_6a7c47e808bc2c00077317be",
   "source_crm_hash": "sha256:bbc9094fea42995969cf418e6b7c20818982f9356a95e77cbc906a2d63cfdd78",
-  "source_config_hash": "sha256:bf5ad328d699a15722fe1e3c542ad336de7013cc26c127df32707a6bb59e0b62",
-  "folder_listing_hash": "sha256:d6777e876dcbb7a2ac405b60b73d536c11b8f23cfe16f60ca222c6bd780fe7a5",
+  "source_config_hash": "sha256:d928b7988d9dbee54c55eb03e05ed10878c7b22934c18e5bc1f3dd0fb8a46be5",
+  "folder_listing_hash": "sha256:3d795d13238e6b6d40127b02dea2dbc4eb643fc026949dd6d0a63e2bc3ff8b84",
   "rename_response_hash": "sha256:665cc11bb83d4f26a448df0e937257e347a9cef21a72737e77af6c4dd0137d77",
   "move_response_hash": null,
-  "crm_readback_hash": "sha256:b54d381a0d6da6a83ba994a31c4ab018c70565cf0ba5219c02a99628bf344900",
-  "chart_readback_hash": "sha256:dab99bdd8bd98987a9b0e3624e3a2f6cabe6cf239dd83dc2c2d54a56eac12560",
-  "final_folder_listing_hash": "sha256:a5f923a381a12375be72c98c8e5e21242e2e940c03021aa632debced475cace1",
+  "crm_readback_hash": "sha256:b8fe27130ad2ebe9e1b49e3a16d7c290e248b79d42ee493a641e39fd193d2240",
+  "chart_readback_hash": "sha256:789de78f100fc38fa67b4e086c6cbe611fec8d0bd9d7262b8425185bf1ca602e",
+  "final_folder_listing_hash": "sha256:35813ffd62e81dc16cd84e6f4a78730332c9720942c88f00f9108d8898362c5a",
   "readback_operations": [
     "fs_bi_crm.stat_edit.get_stat_view",
     "fs_bi_stat.stat_edit.get_chart_config"

@@ -467,3 +467,32 @@ def test_n05_rejects_incomplete_verified_execution_body() -> None:
     assert "execution_body_missing_contract_fields" in {
         item["issue_code"] for item in result["issues"]
     }
+
+
+def test_a18_ignores_rejected_cases_for_mapping() -> None:
+    """Rejected A14 cases must not block A18 approval of mapped candidates."""
+    security = SecurityPolicy()
+    mapped = backend_case()
+    mapped["id"] = "CASE-MAPPED-BACKEND"
+    mapped["expected"][0]["id"] = "EXP-MAPPED"
+    rejected = backend_case()
+    rejected["id"] = "CASE-REJECTED-BACKEND"
+    rejected["expected"][0]["id"] = "EXP-REJECTED"
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [mapped], "target": target()}, security
+    ).payload
+    generation = {
+        **generation,
+        "rejected_cases": [
+            {"case_id": rejected["id"], "reason_code": "execution_step_not_structured"}
+        ],
+    }
+    # Keep mapping only for the generated case.
+    review = BackendAutomationReviewAgent().run(
+        context(),
+        {"cases": [mapped, rejected], "generation": generation},
+        security,
+    )
+    assert review.payload["approved"] is True
+    assert review.payload["issues"] == []

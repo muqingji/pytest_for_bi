@@ -474,7 +474,7 @@
       "state": "completed"
     },
     {
-      "artifact_hash": "sha256:ec2095532011898bf18d670f3baf753a53d569267ec6087fbc45998ad81be526",
+      "artifact_hash": "sha256:683aa04f1675680711c5f2647aed5b0728b62f8ca71b8ec2a3b01922c18c09bf",
       "artifact_id": "a14-backend-automation-generation",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a14-backend-automation-generation.json",
       "completion": "1/1",
@@ -556,14 +556,14 @@
       "state": "completed"
     },
     {
-      "artifact_hash": "sha256:8d8d7a495623abe3156ec27780428d4dfecc44c56611de0f29ab4e319a50d20e",
+      "artifact_hash": "sha256:60c0e3ff8eeb60edb4216afdfdb00c594b8b8b1a5ee94e9de2dbeb33a8c5fc20",
       "artifact_id": "a18-be-backend-automation-review",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/a18-be-backend-automation-review.json",
       "completion": "1/1",
       "execution_id": "A18-BE-detail-drill-i18n-8card-20260817-02",
       "label": "服务端自动化独立复核",
       "node_id": "A18-BE",
-      "result_summary": "发现 7 个阻塞问题需人工定向修正（R-A18-001、R-A18-002、R-A18-003、R-A18-004 等 7 项）",
+      "result_summary": "发现 11 个阻塞问题需人工定向修正（A18BE-001、A18BE-002、A18BE-003、A18BE-004 等 11 项）",
       "stage": 16,
       "stage_card_id": "C5",
       "stage_card_title": "自动化与测试数据准备",
@@ -614,7 +614,7 @@
           "title": "审批确认"
         }
       ],
-      "artifact_hash": "sha256:c10d59294da82729d1a3d847d8a6498a0d5f47c1638887373ce0a533df361e1b",
+      "artifact_hash": "sha256:4a609684e227d98185605f9188c623a47512f966bf8a6db42458c47768cdbb24",
       "artifact_id": "n05-automation-code-check",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n05-automation-code-check.json",
       "completion": "1/1",
@@ -672,14 +672,14 @@
       "state": "completed"
     },
     {
-      "artifact_hash": "sha256:26d56853762caa93b8e3991456353c2e20f62a98e2691a6bc3182ee9a2457ff3",
+      "artifact_hash": "sha256:0b3129c687c4328cf58576eb2f0a9f002afebc220f732f19da87da2e9fa4409f",
       "artifact_id": "n08-automation-execution",
       "artifact_path": "/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/artifacts-auto/artifacts/n08-automation-execution.json",
       "completion": "1/1",
       "execution_id": "N08-detail-drill-i18n-8card-20260817-02",
       "label": "受控自动化执行",
       "node_id": "N08",
-      "result_summary": "test_failures",
+      "result_summary": "passed",
       "stage": 20,
       "stage_card_id": "C6",
       "stage_card_title": "环境预检与测试执行",
@@ -853,7 +853,7 @@
     "identifier": "QAA-304"
   },
   "requirement_id": "REQ-DETAIL-DRILL-I18N-RERUN-20260817-02",
-  "revision": 137,
+  "revision": 147,
   "run_history": [],
   "run_issue": {
     "id": "277d9c07-16bc-4462-8f83-ff8434a84b9e",
