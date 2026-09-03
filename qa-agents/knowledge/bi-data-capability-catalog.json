@@ -1836,6 +1836,8 @@
     {
       "id": "multi-relation-metric-chart-detail",
       "version": "1.0.0",
+      "constructible": false,
+      "unsupported_reason": "当前配方未提供真实多关联 relation/join lineage，禁止仅凭名称构造",
       "environment_profile": "112-chart-detail-folder",
       "match": {
         "data_intents": [],
@@ -2146,6 +2148,8 @@
     {
       "id": "dynamic-relation-metric-chart-detail",
       "version": "1.0.0",
+      "constructible": false,
+      "unsupported_reason": "当前配方未提供真实 what/whatlist 动态关系结构，禁止仅凭名称构造",
       "environment_profile": "112-chart-detail-folder",
       "match": {
         "data_intents": [],
@@ -2455,6 +2459,8 @@
     {
       "id": "combo-restriction-chart-detail",
       "version": "1.0.0",
+      "constructible": false,
+      "unsupported_reason": "当前配方未证明多种限制条件同时存在，禁止仅凭名称构造",
       "environment_profile": "112-chart-detail-folder",
       "match": {
         "data_intents": [],
@@ -2889,6 +2895,8 @@
     {
       "id": "permission-priority-chart-detail",
       "version": "1.0.0",
+      "constructible": false,
+      "unsupported_reason": "当前配方未提供权限主体、owner 或 permission 证据，禁止仅凭名称构造",
       "environment_profile": "112-chart-detail-folder",
       "match": {
         "data_intents": [],
@@ -3636,10 +3644,18 @@
     {
       "id": "historical-config-compatibility",
       "version": "1.0.0",
+      "constructible": false,
+      "unsupported_reason": "历史资产必须先通过 A22 live discovery、baseline 与 bug-finder integrity 实时验证，禁止使用 catalog 静态 fixture",
       "environment_profile": "112-chart-detail-folder",
       "match": {
         "data_intents": [],
-        "datasets": [],
+        "datasets": [
+          "historical_chart_custom_dim_no_migration",
+          "historical_chart_result_set_no_migration",
+          "historical_success_detail_query",
+          "hour_minute_non_target",
+          "downstream_virtual_metric_non_target"
+        ],
         "composite_term_groups": [
           [
             "历史配置实时新逻辑",

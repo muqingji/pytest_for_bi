@@ -76,6 +76,7 @@ class LifecycleHttpClient:
             return ApiResponse(
                 status_code=200,
                 body={"Value": {"id": "resource-1", "name": kwargs["json_body"]["name"]}},
+                headers={"X-Trace-Id": "QA-lifecycle-trace"},
             )
         if path == "/resources/resource-1" and method == "GET":
             return ApiResponse(status_code=200, body={"Value": {"ready": True}})
@@ -247,6 +248,126 @@ def test_oracle_rejects_unknown_matcher() -> None:
         )
 
 
+def test_oracle_accepts_not_equals_and_membership_matchers() -> None:
+    """A08/A14 emit not_equals / not_one_of / one_of with list expected_value."""
+    observations = {"detail_api.response.error_code": "s307051519"}
+    CaseRunner.assert_oracles(
+        observations,
+        [
+            {
+                "id": "E-BE-003-05",
+                "oracle": {
+                    "matcher": "not_equals",
+                    "observation_point": "detail_api.response.error_code",
+                    "expected_value": "s307011536",
+                },
+            },
+            {
+                "id": "E-BE-007-01",
+                "oracle": {
+                    "matcher": "one_of",
+                    "observation_point": "detail_api.response.error_code",
+                    "expected_value": ["s307011534", "s307051519", "s307011536"],
+                },
+            },
+            {
+                "id": "E-BE-006-01",
+                "oracle": {
+                    "matcher": "not_one_of",
+                    "observation_point": "detail_api.response.error_code",
+                    "expected_value": ["s307011534", "s307011535", "s307011536", "s307011537"],
+                },
+            },
+        ],
+    )
+
+
+def test_oracle_not_equals_and_not_one_of_fail_on_forbidden_value() -> None:
+    observations = {"detail_api.response.error_code": "s307011536"}
+    with pytest.raises(AssertionError, match="expected not"):
+        CaseRunner.assert_oracles(
+            observations,
+            [{
+                "id": "E-BE-003-05",
+                "oracle": {
+                    "matcher": "not_equals",
+                    "observation_point": "detail_api.response.error_code",
+                    "expected_value": "s307011536",
+                },
+            }],
+        )
+    with pytest.raises(AssertionError, match="forbidden value"):
+        CaseRunner.assert_oracles(
+            observations,
+            [{
+                "id": "E-BE-006-01",
+                "oracle": {
+                    "matcher": "not_one_of",
+                    "observation_point": "detail_api.response.error_code",
+                    "expected_values": ["s307011534", "s307011536"],
+                },
+            }],
+        )
+
+
+def test_oracle_history_allows_conflicting_values_from_different_steps() -> None:
+    """Multi-scenario CASE_SPEC extracts the same observation_point per step.
+
+    assert_oracles runs once at the end; overwriting the last extract used to
+    make equals(A) and equals(B) / not_equals(A) impossible together.
+    """
+    observations = {
+        "detail_api.response.error_code": "s307051519",
+        "__oracle_history__": {
+            "detail_api.response.error_code": ["s307011534", "s307011536", "s307051519"],
+        },
+    }
+    CaseRunner.assert_oracles(
+        observations,
+        [
+            {
+                "id": "E-BE-001-01",
+                "oracle": {
+                    "matcher": "equals",
+                    "observation_point": "detail_api.response.error_code",
+                    "expected_value": "s307011534",
+                },
+            },
+            {
+                "id": "E-BE-001-06",
+                "oracle": {
+                    "matcher": "equals",
+                    "observation_point": "detail_api.response.error_code",
+                    "expected_value": "s307051519",
+                },
+            },
+            {
+                "id": "E-BE-003-05",
+                "oracle": {
+                    "matcher": "not_equals",
+                    "observation_point": "detail_api.response.error_code",
+                    "expected_value": "s307011536",
+                },
+            },
+        ],
+    )
+
+
+def test_extract_appends_oracle_history() -> None:
+    from framework.clients.models import ApiResponse
+
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        FakeHttpClient(), FakeRpcClient(), FakeDatabaseClient(),
+    )
+    context: dict = {}
+    runner._extract(ApiResponse(status_code=200, body={"Error": {"Code": "A"}}), {"detail_api.response.error_code": "Error.Code"}, context)
+    runner._extract(ApiResponse(status_code=200, body={"Error": {"Code": "B"}}), {"detail_api.response.error_code": "Error.Code"}, context)
+    assert context["detail_api.response.error_code"] == "B"
+    assert context["__oracle_history__"]["detail_api.response.error_code"] == ["A", "B"]
+
+
+
 def test_oracle_normalizes_detail_error_and_reports_missing_fields() -> None:
     observations = {
         "test_response": {"Error": {"Code": "s307011535", "Message": "unsupported"}}
@@ -291,9 +412,96 @@ def test_runner_exports_hash_only_lifecycle_evidence(tmp_path, monkeypatch) -> N
 
     assert set(evidence["phases"]) == {"setup", "readiness", "test", "cleanup", "residue"}
     assert all(evidence["phases"][phase][0]["status"] == "completed" for phase in evidence["phases"])
+    assert evidence["phases"]["setup"][0]["trace_id"] == "QA-lifecycle-trace"
     serialized = json.dumps(evidence)
     assert "response_hash" in serialized
     assert "resource-1" not in serialized
+    asset_file = tmp_path / "detail-integration.constructed-assets.json"
+    assert asset_file.exists()
+    assets = json.loads(asset_file.read_text(encoding="utf-8"))
+    assert assets["assets"][0]["resource_id"] == "resource-1"
+    assert assets["assets"][0]["display_name"] == "qa-run-detail-chart"
+    assert "resource-1" not in (tmp_path / "detail-integration.json").read_text(encoding="utf-8")
+
+
+def test_failed_setup_step_records_trace_id(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("QA_LIFECYCLE_EVIDENCE_DIR", str(tmp_path))
+
+    class QuotaHttpClient:
+        def request(self, method, path, **kwargs):
+            return ApiResponse(
+                status_code=200,
+                body={
+                    "Result": {"FailureCode": 401, "FailureMessage": "图表数量不足，暂不支持新建！"},
+                    "Value": None,
+                },
+                headers={"X-Trace-Id": "QA-failed-copy"},
+            )
+
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        QuotaHttpClient(),
+        FakeRpcClient(),
+        FakeDatabaseClient(),
+    )
+    case = {
+        "id": "PC-BE-007-BACKEND",
+        "environment": "112",
+        "setup": [
+            {
+                "name": "copy_chart",
+                "request": {"method": "POST", "path": "/copy"},
+                "extract": {"chart_view_id": "Value.viewID"},
+            }
+        ],
+        "steps": [],
+        "cleanup": [],
+    }
+    with pytest.raises(AssertionError, match="Value.viewID"):
+        runner.run(case)
+    evidence = json.loads((tmp_path / "PC-BE-007-BACKEND.json").read_text(encoding="utf-8"))
+    step = evidence["phases"]["setup"][0]
+    assert step["status"] == "failed"
+    assert step["trace_id"] == "QA-failed-copy"
+
+
+def test_copy_chart_reuses_retained_chart_when_quota_is_full(tmp_path, monkeypatch) -> None:
+    inventory = tmp_path / "constructed-test-assets.json"
+    inventory.write_text(
+        json.dumps(
+            {
+                "assets": [
+                    {
+                        "resource_type": "stat_chart",
+                        "case_id": "PC-BE-007-BACKEND",
+                        "resource_id": "BI_retained_chart",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("QA_CONSTRUCTED_ASSETS_FILE", str(inventory))
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        LifecycleHttpClient(),
+        FakeRpcClient(),
+        FakeDatabaseClient(),
+    )
+    request = {"api": "fs_bi_crm.stat_create.copy_stat_view"}
+    quota = ApiResponse(
+        status_code=200,
+        body={
+            "Result": {"FailureCode": 401, "FailureMessage": "图表数量不足，暂不支持新建！"},
+            "Value": None,
+        },
+        headers={"X-Trace-Id": "QA-quota"},
+    )
+    reused = runner._maybe_reuse_retained_chart(
+        request, quota, {"__case_name": "PC-BE-007-BACKEND"}
+    )
+    assert reused.body["Value"]["viewID"] == "BI_retained_chart"
+    assert reused.headers["X-Trace-Id"] == "QA-quota"
 
 
 def test_runner_rejects_cross_environment_case_before_setup() -> None:
@@ -868,3 +1076,186 @@ def test_get_by_path_accepts_jsonpath_prefix_and_root() -> None:
     assert get_by_path(payload, "$.rows[1].id") == 2
     assert get_by_path(payload, "$") is payload
     assert get_by_path(payload, "Error.Code") == "s307011534"
+
+
+
+def test_runner_rewrites_field_shaped_agg_object_before_create() -> None:
+    class RecordingHttpClient:
+        def __init__(self) -> None:
+            self.bodies: list[object] = []
+
+        def request(self, method, path, **kwargs):
+            self.bodies.append(kwargs.get("json_body"))
+            return ApiResponse(
+                status_code=200,
+                body={"Result": {"FailureCode": 0}, "Value": {"fieldId": "BI_new"}},
+            )
+
+    catalog = HttpApiCatalog({
+        "fs_bi_stat.agg_rule.add_new_agg_rule": HttpOperation(
+            operation_id="fs_bi_stat.agg_rule.add_new_agg_rule",
+            method="POST",
+            path="/agg/add",
+            request_body_required=True,
+        )
+    })
+    http = RecordingHttpClient()
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        http, FakeRpcClient(), FakeDatabaseClient(),
+        api_catalog=catalog,
+    )
+    context = runner.run({
+        "id": "create-metric",
+        "setup": [{
+            "name": "create_metric",
+            "request": {
+                "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+                "json": {
+                    "schemaObjectName": "biz_sales_order",
+                    "aggObject": {
+                        "dbFieldName": "mc_exchange_rate",
+                        "dbObjName": "object_1Lhg5__c",
+                        "fieldId": "BI_field",
+                        "fieldName": "汇率",
+                        "fieldType": "Number",
+                    },
+                    "aggField": {"dbObjName": "object_1Lhg5__c"},
+                },
+            },
+            "extract": {"metric_field_id": "Value.fieldId"},
+            "expect": {"status_code": 200},
+        }],
+        "steps": [],
+    })
+    assert http.bodies[0]["aggObject"] == {
+        "refObjName": "object_1Lhg5__c",
+        "refObjShowName": "object_1Lhg5__c",
+        "refJoinField": "",
+    }
+    assert context["metric_field_id"] == "BI_new"
+
+
+def test_extract_falls_back_from_field_id_to_dimension_id() -> None:
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        FakeHttpClient(), FakeRpcClient(), FakeDatabaseClient(),
+    )
+    context: dict = {}
+    runner._extract(
+        ApiResponse(status_code=200, body={"Value": {"dimensionId": "BI_dim"}}),
+        {"custom_dimension_id": "Value.fieldId"},
+        context,
+    )
+    assert context["custom_dimension_id"] == "BI_dim"
+
+
+def test_extract_empty_value_explains_invalid_agg_object() -> None:
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        FakeHttpClient(), FakeRpcClient(), FakeDatabaseClient(),
+    )
+    with pytest.raises(AssertionError, match="empty Value"):
+        runner._extract(
+            ApiResponse(
+                status_code=200,
+                body={"Result": {"FailureCode": 0}, "Value": {}},
+            ),
+            {"metric_field_id": "Value.fieldId"},
+            {},
+        )
+
+
+def test_oracle_treats_failure_code_zero_as_success() -> None:
+    CaseRunner.assert_oracles(
+        {"detail_api.response.success": 0},
+        [{
+            "id": "E-SUCCESS",
+            "oracle": {
+                "matcher": "equals",
+                "observation_point": "detail_api.response.success",
+                "expected_value": True,
+            },
+        }],
+    )
+
+
+@pytest.mark.parametrize("field", ["Parameters", "parameters", "params"])
+def test_extract_normalizes_detail_error_parameter_aliases(field: str) -> None:
+    context: dict = {}
+    CaseRunner._extract(
+        CaseRunner,
+        ApiResponse(status_code=200, body={"Error": {field: ["指标A"]}}),
+        {"error_parameters": "Error.Params"},
+        context,
+    )
+    assert context["error_parameters"] == ["指标A"]
+
+
+def test_rename_response_is_not_registered_as_constructed_chart() -> None:
+    asset = CaseRunner._constructed_asset_from_step(
+        {
+            "request": {
+                "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+                "json": {"viewName": "重命名后的图"},
+            }
+        },
+        ApiResponse(status_code=200, body={"Value": 0}),
+        {},
+    )
+    assert asset is None
+
+
+
+def test_runner_retries_duplicate_agg_rule_name() -> None:
+    class DuplicateThenCreate:
+        def __init__(self) -> None:
+            self.names: list[str] = []
+
+        def request(self, method, path, **kwargs):
+            body = kwargs.get("json_body") or {}
+            self.names.append(str(body.get("displayName")))
+            if len(self.names) == 1:
+                return ApiResponse(
+                    status_code=200,
+                    body={"Result": {"FailureCode": -2, "FailureMessage": "聚合规则名称重复"}, "Value": None},
+                )
+            return ApiResponse(
+                status_code=200,
+                body={"Result": {"FailureCode": 0}, "Value": {"fieldId": "BI_retry"}},
+            )
+
+    catalog = HttpApiCatalog({
+        "fs_bi_stat.agg_rule.add_new_agg_rule": HttpOperation(
+            operation_id="fs_bi_stat.agg_rule.add_new_agg_rule",
+            method="POST",
+            path="/agg/add",
+            request_body_required=True,
+        )
+    })
+    http = DuplicateThenCreate()
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local", "headers": {}}}),
+        http, FakeRpcClient(), FakeDatabaseClient(),
+        api_catalog=catalog,
+    )
+    context = runner.run({
+        "id": "dup-metric",
+        "setup": [{
+            "name": "create_metric",
+            "request": {
+                "api": "fs_bi_stat.agg_rule.add_new_agg_rule",
+                "json": {
+                    "displayName": "same-name",
+                    "schemaObjectName": "biz_sales_order",
+                    "aggObject": {"refObjName": "biz_sales_order", "refObjShowName": "销售订单", "refJoinField": ""},
+                },
+            },
+            "extract": {"metric_field_id": "Value.fieldId"},
+            "expect": {"status_code": 200},
+        }],
+        "steps": [],
+    })
+    assert http.names[0] == "same-name"
+    assert http.names[1].startswith("same-name-")
+    assert context["metric_field_id"] == "BI_retry"

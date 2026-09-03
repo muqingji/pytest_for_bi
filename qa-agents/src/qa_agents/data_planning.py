@@ -325,6 +325,8 @@ def _is_composite_case(test_data: Mapping[str, Any], case: Mapping[str, Any]) ->
 
 
 def _matches_recipe(case: Mapping[str, Any], recipe: Mapping[str, Any]) -> bool:
+    if recipe.get("constructible") is False:
+        return False
     match = recipe.get("match", {})
     if not isinstance(match, Mapping):
         raise ContractError(f"recipe {recipe.get('id')} match must be an object")
@@ -336,6 +338,13 @@ def _matches_recipe(case: Mapping[str, Any], recipe: Mapping[str, Any]) -> bool:
     # only match recipes that declare composite_term_groups.  This prevents a
     # single-resource recipe from fuzzy-binding a multi-resource Case.
     if _is_composite_case(test_data, case):
+        declared_datasets = test_data.get("datasets", [])
+        case_datasets = {
+            str(item) for item in declared_datasets if isinstance(item, str) and str(item)
+        } if isinstance(declared_datasets, list) else set()
+        recipe_datasets = {str(item) for item in match.get("datasets", []) if str(item)}
+        if case_datasets and recipe_datasets:
+            return case_datasets <= recipe_datasets
         composite_groups = match.get("composite_term_groups", [])
         if not composite_groups:
             return False
@@ -721,6 +730,145 @@ def compile_resource_plan(
     }
 
 
+def compile_declared_a22_plan(
+    declared_plan: Mapping[str, Any],
+    catalog: Mapping[str, Any],
+    *,
+    environment: str,
+    namespace: str,
+    compiled_cases: list[Mapping[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Expand A22 resource declarations through an exact catalog recipe match."""
+
+    recipes = [item for item in catalog.get("recipes", []) if isinstance(item, Mapping)]
+    intents: list[dict[str, Any]] = []
+    unresolved = list(declared_plan.get("unresolved_requirements", []))
+    for index, case_plan in enumerate(declared_plan.get("case_plans", [])):
+        if not isinstance(case_plan, Mapping):
+            raise ContractError(f"A22 case_plans[{index}] must be an object")
+        required = {
+            str(item.get("resource_key") or "")
+            for item in case_plan.get("resources", [])
+            if isinstance(item, Mapping) and str(item.get("resource_key") or "")
+        }
+        if not required:
+            case_id = str(case_plan.get("case_id") or "")
+            semantic_case = next(
+                (item for item in (compiled_cases or []) if str(item.get("id") or item.get("case_id") or "") == case_id),
+                None,
+            )
+            if semantic_case is not None:
+                inferred = extract_test_data_intents([semantic_case], catalog)
+                inferred_item = inferred["case_intents"][0]
+                intents.append(inferred_item)
+                unresolved.extend(inferred.get("unresolved_requirements", []))
+                continue
+            intents.append({
+                "case_id": case_id,
+                "requirement_name": str(case_plan.get("requirement_name") or case_id),
+                "required_scene": str(case_plan.get("required_scene") or ""),
+                "requires_data_construction": False,
+                "recipe_id": "",
+            })
+            continue
+        matches = []
+        for recipe in recipes:
+            available = {
+                str(item.get("resource_key") or "")
+                for item in recipe.get("resources", [])
+                if isinstance(item, Mapping)
+            }
+            if required and required <= available:
+                matches.append((len(available - required), str(recipe.get("id") or ""), recipe))
+        if not matches:
+            raise ContractError(
+                f"A22 case {case_plan.get('case_id')} has no catalog recipe covering {sorted(required)}"
+            )
+        matches.sort(key=lambda item: (item[0], item[1]))
+        if len(matches) > 1 and matches[0][:2] == matches[1][:2]:
+            raise ContractError(f"A22 case {case_plan.get('case_id')} recipe match is ambiguous")
+        recipe = matches[0][2]
+        if recipe.get("constructible") is False:
+            reason = str(recipe.get("unsupported_reason") or "semantic structure is not proven")
+            unresolved.append({
+                "case_id": str(case_plan.get("case_id") or ""),
+                "reason_code": "data_recipe_semantics_not_proven",
+                "recipe_id": str(recipe.get("id") or ""),
+                "detail": reason,
+                "route_to": "capability_catalog",
+            })
+            intents.append({
+                "case_id": str(case_plan.get("case_id") or ""),
+                "requirement_name": str(case_plan.get("requirement_name") or case_plan.get("case_id") or ""),
+                "required_scene": str(case_plan.get("required_scene") or "chart_detail"),
+                "requires_data_construction": True,
+                "recipe_id": "",
+            })
+            continue
+        intents.append({
+            "case_id": str(case_plan.get("case_id") or ""),
+            "requirement_name": str(case_plan.get("requirement_name") or case_plan.get("case_id") or ""),
+            "required_scene": str(case_plan.get("required_scene") or "chart_detail"),
+            "requires_data_construction": bool(case_plan.get("requires_data_construction", True)),
+            "recipe_id": str(recipe.get("id") or ""),
+        })
+    compiled = compile_resource_plan(
+        {
+            "schema_version": INTENT_CONTRACT,
+            "case_intents": intents,
+            "paused_cases": list(declared_plan.get("paused_cases", [])),
+            "unresolved_requirements": unresolved,
+        },
+        catalog,
+        environment=environment,
+        namespace=namespace,
+    )
+    declared_by_case_key = {
+        (str(case.get("case_id") or ""), str(resource.get("resource_key") or "")): resource
+        for case in declared_plan.get("case_plans", [])
+        if isinstance(case, Mapping)
+        for resource in case.get("resources", [])
+        if isinstance(resource, Mapping)
+    }
+    for case in compiled["case_plans"]:
+        for resource in case.get("resources", []):
+            declared = declared_by_case_key.get(
+                (str(case.get("case_id") or ""), str(resource.get("resource_key") or "")), {}
+            )
+            for key in ("validity_contract", "integrity_probes"):
+                if key in declared:
+                    resource[key] = deepcopy(declared[key])
+            if str(resource.get("resource_type") or "") == "stat_chart":
+                physical_names = {
+                    "biz_account": "customer_udef",
+                    "biz_sales_order": "customer_trade_udef",
+                    "org_employee_user": "org_employee_user_udef",
+                }
+                logical = str(case.get("variables", {}).get("schema_object") or "")
+                physical = physical_names.get(logical, logical)
+                for probe in resource.get("integrity_probes", []):
+                    argv = probe.get("argv") if isinstance(probe, dict) else None
+                    if not isinstance(argv, list) or "--sql" not in argv:
+                        continue
+                    sql_index = argv.index("--sql") + 1
+                    sql = str(argv[sql_index])
+                    if probe.get("check") in {"source_data", "warehouse_dimension"}:
+                        sql = re.sub(
+                            r"(object_describe_api_name|describe_api_name)\s*=\s*'[^']+'",
+                            lambda match: f"{match.group(1)} = '{physical}'",
+                            sql,
+                        )
+                    elif probe.get("check") == "chart_topology":
+                        sql = sql.replace(
+                            "SELECT id FROM",
+                            "SELECT id, stat_view_unique_key, latest_agg_time FROM",
+                        )
+                    elif probe.get("check") == "warehouse_aggregation":
+                        sql = sql.replace("{{ chart_view_id }}", "__CHART_WAREHOUSE_VIEW_ID__")
+                    argv[sql_index] = sql
+    return compiled
+
+
 def prepare_autonomous_test_data_plan(
     compiled_cases_path: Path,
     source_manifest_path: Path,
@@ -731,9 +879,14 @@ def prepare_autonomous_test_data_plan(
     environment: str,
     namespace: str,
     inventory_path: Path | None = None,
+    integrated_a22: bool = False,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
-    """Create hash-bound A22, N28 and N27 Artifacts from one frozen N25 output."""
+    """Create a hash-bound data plan and N27 validation from frozen N25.
+
+    ``integrated_a22`` keeps intent extraction and resource-DAG compilation
+    inside A22 and emits no N28 workflow artifact.
+    """
 
     from .test_data import validate_test_data_plan
 
@@ -824,12 +977,12 @@ def prepare_autonomous_test_data_plan(
         plan = enrich_plan_with_inventory(plan, inventory)
     plan["aggregate_agent_id"] = "D01"
     plan["skill_router_binding"] = skill_authorization
-    n28 = ArtifactEnvelope(
+    resource_plan = ArtifactEnvelope(
         workflow_run_id=identity[0],
         workflow_mode=identity[1],
-        artifact_id="n28-test-data-resource-plan",
+        artifact_id=("a22-test-data-plan" if integrated_a22 else "n28-test-data-resource-plan"),
         source_snapshot_id=identity[2],
-        producer=Producer("N28", runtime="deterministic"),
+        producer=Producer(("A22" if integrated_a22 else "N28"), runtime="deterministic"),
         payload=plan,
         status=intent_status,
         reason_code=a22.reason_code,
@@ -846,7 +999,7 @@ def prepare_autonomous_test_data_plan(
     validation = validate_test_data_plan(plan, policy)
     n27_status = (
         ArtifactStatus.COMPLETED
-        if n28.status == ArtifactStatus.COMPLETED
+        if resource_plan.status == ArtifactStatus.COMPLETED
         else ArtifactStatus.BLOCKED
     )
     n27 = ArtifactEnvelope(
@@ -857,25 +1010,26 @@ def prepare_autonomous_test_data_plan(
         producer=Producer("N27", runtime="deterministic"),
         payload={
             **validation,
-            "a22_artifact_hash": a22.artifact_hash,
-            "n28_artifact_hash": n28.artifact_hash,
+            "a22_artifact_hash": resource_plan.artifact_hash if integrated_a22 else a22.artifact_hash,
+            **({"a22_intent_artifact_hash": a22.artifact_hash} if integrated_a22 else {"n28_artifact_hash": resource_plan.artifact_hash}),
             "source_validation": source_validation,
             "catalog_validation": catalog_validation,
             "skill_router_binding": skill_authorization,
         },
         status=n27_status,
-        reason_code=n28.reason_code,
+        reason_code=resource_plan.reason_code,
         evidence_refs=(
             EvidenceRef(
                 source_type="artifact",
-                source_id=n28.artifact_id,
-                location=f"artifacts/{n28.artifact_id}.json",
-                content_hash=n28.artifact_hash,
+                source_id=resource_plan.artifact_id,
+                location=f"artifacts/{resource_plan.artifact_id}.json",
+                content_hash=resource_plan.artifact_hash,
             ),
         ),
     )
     store = ArtifactStore(output_dir)
-    for artifact in (a22, n28, n27):
+    artifacts = (a22, resource_plan, n27) if not integrated_a22 else (resource_plan, n27)
+    for artifact in artifacts:
         store.write_artifact(artifact)
     result = {
         "schema_version": "autonomous-test-data-preparation/1.0",
@@ -883,7 +1037,9 @@ def prepare_autonomous_test_data_plan(
         "environment": environment,
         "namespace": namespace,
         "a22_artifact_hash": a22.artifact_hash,
-        "n28_artifact_hash": n28.artifact_hash,
+        "test_data_plan_artifact_id": resource_plan.artifact_id,
+        "test_data_plan_artifact_hash": resource_plan.artifact_hash,
+        **({} if integrated_a22 else {"n28_artifact_hash": resource_plan.artifact_hash}),
         "n27_artifact_hash": n27.artifact_hash,
         "resolved_case_count": sum(
             1 for item in plan["case_plans"] if item.get("resources")

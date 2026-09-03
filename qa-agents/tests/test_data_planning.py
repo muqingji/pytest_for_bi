@@ -7,6 +7,7 @@ import pytest
 
 from qa_agents.contracts import ArtifactEnvelope, Producer
 from qa_agents.data_planning import (
+    compile_declared_a22_plan,
     compile_resource_plan,
     extract_test_data_intents,
     infer_data_intent,
@@ -395,3 +396,72 @@ def test_ordinary_metric_create_recipe_compiles_and_n27_validates() -> None:
         "fs_bi_stat.agg_rule.delete_agg_rule"
     )
     assert plan["ready_for_execution"] is True
+
+
+def test_declared_empty_resources_are_inferred_from_compiled_case_semantics() -> None:
+    catalog = _load(CATALOG)
+    case = _ordinary_metric_case()
+    plan = compile_declared_a22_plan(
+        {"case_plans": [{"case_id": case["id"], "resources": []}]},
+        catalog,
+        environment="112",
+        namespace="qa-declared-inference",
+        compiled_cases=[case],
+    )
+    assert plan["case_plans"][0]["recipe_refs"][0]["recipe_id"] == "ordinary-metric-create"
+    assert plan["case_plans"][0]["resources"]
+
+
+def test_unproven_relation_recipe_is_not_selected_by_semantics() -> None:
+    case = {
+        "id": "CASE-RELATION",
+        "title": "多关联失败替换后原成功关系回归",
+        "test_level": "functional",
+        "test_data": {"datasets": [{"type": "多关联"}]},
+        "steps": [{"action": "查看明细"}],
+        "expected": [{"description": "关联关系正确"}],
+    }
+    intent = extract_test_data_intents([case], _load(CATALOG))
+    assert intent["case_intents"][0]["resource_goals"] == []
+    assert intent["unresolved_requirements"][0]["reason_code"] == "data_capability_not_registered"
+
+
+def test_declared_unproven_relation_recipe_is_structurally_blocked() -> None:
+    plan = compile_declared_a22_plan(
+        {
+            "case_plans": [{
+                "case_id": "CASE-RELATION",
+                "resources": [
+                    {"resource_key": "multi_relation_metric_matrix"},
+                    {"resource_key": "multi_relation_chart_set"},
+                ],
+            }]
+        },
+        _load(CATALOG),
+        environment="112",
+        namespace="qa-relation-blocked",
+    )
+    assert plan["ready_for_execution"] is False
+    assert plan["case_plans"][0]["resources"] == []
+    assert plan["unsupported_requirements"][0]["reason_code"] == "data_recipe_semantics_not_proven"
+    assert validate_test_data_plan(plan, _load(POLICY))["valid"] is True
+
+
+def test_historical_string_dataset_matrix_requires_live_discovery() -> None:
+    case = {
+        "id": "CASE-HISTORICAL",
+        "title": "Historical compatibility",
+        "test_level": "functional",
+        "test_data": {"datasets": [
+            "historical_chart_custom_dim_no_migration",
+            "historical_chart_result_set_no_migration",
+            "historical_success_detail_query",
+            "hour_minute_non_target",
+            "downstream_virtual_metric_non_target",
+        ]},
+        "steps": [{"action": "detail"}],
+        "expected": [],
+    }
+    intent = extract_test_data_intents([case], _load(CATALOG))
+    assert intent["case_intents"][0]["resource_goals"] == []
+    assert intent["unresolved_requirements"][0]["reason_code"] == "data_capability_not_registered"

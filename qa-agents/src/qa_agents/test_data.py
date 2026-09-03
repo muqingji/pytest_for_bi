@@ -21,6 +21,12 @@ from .contracts import (
 from .errors import ContractError, InputError, SecurityPolicyError
 from .security import SecurityPolicy
 from .storage import ArtifactStore
+from .data_integrity import (
+    integrity_evidence_valid,
+    required_validity_contract,
+    validate_integrity_probe_plan,
+    validate_validity_contract,
+)
 
 
 PLAN_CONTRACT = "test-data-plan/1.0"
@@ -331,11 +337,18 @@ class TestDataPlannerAgent(BaseAgent):
                         "required_capability": "model_or_domain_template",
                     }
                 )
+            planned_resources = deepcopy(requirements)
+            for resource in planned_resources:
+                if isinstance(resource, dict) and str(resource.get("resource_type")) in _CHART_RESOURCES:
+                    resource.setdefault(
+                        "validity_contract",
+                        required_validity_contract(str(resource.get("resource_type"))),
+                    )
             case_plans.append(
                 {
                     "case_id": case_id,
                     "requires_data_construction": bool(requirements),
-                    "resources": deepcopy(requirements),
+                    "resources": planned_resources,
                 }
             )
 
@@ -460,6 +473,11 @@ def validate_test_data_plan(
         str(item) for item in policy.get("enum_option_operations", [])
     }
     allowed_types = {str(item) for item in policy.get("resource_types", [])}
+    unsupported_case_ids = {
+        str(item.get("case_id") or "")
+        for item in plan.get("unsupported_requirements", [])
+        if isinstance(item, Mapping)
+    }
     validated_resources = 0
     for case_index, case_plan in enumerate(plan.get("case_plans", [])):
         if not isinstance(case_plan, Mapping):
@@ -478,7 +496,10 @@ def validate_test_data_plan(
                 raise ContractError(
                     f"case_plans[{case_index}] autonomous resources require evidence_refs"
                 )
-        if case_plan.get("required_scene") == "chart_detail":
+        if (
+            case_plan.get("required_scene") == "chart_detail"
+            and str(case_plan.get("case_id") or "") not in unsupported_case_ids
+        ):
             roles = {
                 str(role)
                 for resource in resources
@@ -506,6 +527,20 @@ def validate_test_data_plan(
                 raise SecurityPolicyError(f"{path}.resource_type is not allowed")
             if not id_variable:
                 raise ContractError(f"{path}.resource_id_variable is required")
+            if resource_type in _CHART_RESOURCES:
+                if (
+                    str(resource.get("retention_mode", "retain")) == "retain"
+                    and resource.get("asset_folder_name")
+                    != str(case_plan.get("requirement_name", ""))
+                ):
+                    raise SecurityPolicyError(
+                        f"{path} chart folder must equal the requirement name"
+                    )
+                validate_validity_contract(
+                    resource.get("validity_contract"), resource_type=resource_type, path=path
+                )
+                if str(resource.get("lifecycle_mode", "create")) == "create":
+                    validate_integrity_probe_plan(resource.get("integrity_probes"), path=path)
             setup_operation = resource.get("setup_operation")
             if isinstance(setup_operation, str) and setup_operation.strip():
                 _validate_planning_level_resource(
@@ -543,6 +578,10 @@ def validate_test_data_plan(
                     )
                 if evidence.get("live_readback_status") != "succeeded":
                     raise SecurityPolicyError(f"{path} existing asset live readback is not proven")
+                if resource_type in _CHART_RESOURCES and not integrity_evidence_valid(
+                    evidence.get("integrity_evidence")
+                ):
+                    raise SecurityPolicyError(f"{path} existing asset integrity is not proven")
                 if re.fullmatch(
                     r"sha256:[0-9a-f]{64}", str(evidence.get("configuration_hash", ""))
                 ) is None:
@@ -848,8 +887,18 @@ def bind_plan_to_case(
     preparation: list[dict[str, Any]] = []
     cleanup: list[dict[str, Any]] = []
     residue: list[dict[str, Any]] = []
+    existing_resource_variables: dict[str, str] = {}
+    has_chart_resource = any(
+        isinstance(item, Mapping)
+        and str(item.get("resource_type") or "") in _CHART_RESOURCES
+        for item in case_plan.get("resources", [])
+    )
     for resource in case_plan.get("resources", []):
         if resource.get("lifecycle_mode") == "existing_read_only":
+            resource_id = str(resource.get("resource_id") or "").strip()
+            resource_id_variable = str(resource.get("resource_id_variable") or "").strip()
+            if resource_id and resource_id_variable:
+                existing_resource_variables[resource_id_variable] = resource_id
             discovery_step = deepcopy(resource["discovery"])
             resource_readiness = deepcopy(resource.get("readiness", []))
             readiness.append(discovery_step)
@@ -861,6 +910,10 @@ def bind_plan_to_case(
             )
             continue
         setup_step = deepcopy(resource["setup"])
+        setup_step["resource_key"] = str(resource.get("resource_key") or "")
+        setup_step["resource_type"] = str(resource.get("resource_type") or "")
+        setup_step["resource_display_name"] = str(resource.get("display_name") or "")
+        setup_step["resource_folder_name"] = str(resource.get("asset_folder_name") or "")
         resource_readiness = deepcopy(resource.get("readiness", []))
         setup.append(setup_step)
         readiness.extend(resource_readiness)
@@ -870,8 +923,20 @@ def bind_plan_to_case(
         # CaseRunner actually lands the asset in the requirement folder with a
         # human-visible name.
         namespace = str(plan.get("namespace", ""))
-        display_name = str(resource.get("display_name") or resource.get("resource_key") or "asset")
-        visible_name = f"{namespace}-{display_name}" if namespace else display_name
+        from .asset_scene_naming import scene_display_name
+
+        display_name = scene_display_name(
+            resource_type=str(resource.get("resource_type") or ""),
+            resource_key=str(resource.get("resource_key") or ""),
+            case_id=case_id,
+            title=str(case.get("title") or case_plan.get("requirement_name") or ""),
+            existing_name=str(resource.get("display_name") or ""),
+        ) or str(resource.get("display_name") or resource.get("resource_key") or "asset")
+        visible_name = (
+            f"{namespace}-{display_name}"
+            if namespace and str(resource.get("resource_type") or "") == "stat_chart"
+            else display_name
+        )
         for index, raw_post in enumerate(resource.get("post_setup") or [], start=1):
             if not isinstance(raw_post, Mapping):
                 continue
@@ -887,6 +952,10 @@ def bind_plan_to_case(
             post_step.setdefault(
                 "name",
                 f"{display_name} post_setup {index}",
+            )
+            post_step.setdefault(
+                "expect",
+                {"status_code": 200, "json_path": {"Result.FailureCode": 0}},
             )
             setup.append(post_step)
             preparation.append({"phase": "setup", "step": post_step})
@@ -936,6 +1005,7 @@ def bind_plan_to_case(
                         "measure_field_id": measure_value,
                         "filter_field_id": filter_value,
                     },
+                    "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}},
                 }
                 setup.append(bind_step)
                 preparation.append({"phase": "setup", "step": bind_step})
@@ -943,6 +1013,27 @@ def bind_plan_to_case(
             {"phase": "readiness", "step": readiness_step}
             for readiness_step in resource_readiness
         )
+        if (
+            str(resource.get("resource_type") or "") == "stat_chart"
+            and resource.get("integrity_probes")
+        ):
+            chart_id_var = str(resource.get("resource_id_variable") or "chart_view_id")
+            baseline_step = {
+                "name": f"{display_name} baseline chart query",
+                "action": "prime_stat_chart_data",
+                "inputs": {"chart_view_id": f"{{{{ {chart_id_var} }}}}"},
+                "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}},
+            }
+            readiness.append(baseline_step)
+            preparation.append({"phase": "readiness", "step": baseline_step})
+            integrity_step = {
+                "name": f"{display_name} warehouse integrity validation",
+                "action": "validate_chart_integrity",
+                "integrity_probes": deepcopy(resource["integrity_probes"]),
+                "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}},
+            }
+            readiness.append(integrity_step)
+            preparation.append({"phase": "readiness", "step": integrity_step})
         if resource.get("retention_mode") == "delete":
             cleanup_step = deepcopy(resource["cleanup"])
             cleanup_step["when_variable"] = str(resource["resource_id_variable"])
@@ -950,11 +1041,36 @@ def bind_plan_to_case(
             for residue_step in deepcopy(resource.get("residue_checks", [])):
                 residue_step["when_variable"] = str(resource["resource_id_variable"])
                 residue.append(residue_step)
+    bound_steps = deepcopy(list(case.get("steps", [])))
+    if has_chart_resource:
+        for step in bound_steps:
+            if not isinstance(step, Mapping):
+                continue
+            request = step.get("request")
+            body = request.get("json") if isinstance(request, Mapping) else None
+            if not isinstance(body, dict):
+                continue
+            chart_marker = str(body.get("id") or "").replace(" ", "")
+            if chart_marker == "{{chart_view_id}}":
+                body["isView"] = 1
     return {
         **deepcopy(dict(case)),
         "environment": str(plan["environment"]),
         "namespace": str(plan["namespace"]),
         "retention_mode": str(case_plan.get("retention_mode", "retain")),
+        "data_validity": [
+            {
+                "resource_key": str(resource.get("resource_key") or ""),
+                "resource_type": str(resource.get("resource_type") or ""),
+                "contract": deepcopy(resource.get("validity_contract")),
+                "integrity_probes": deepcopy(resource.get("integrity_probes", [])),
+                "existing_integrity_evidence": deepcopy(
+                    (resource.get("existing_asset_evidence") or {}).get("integrity_evidence")
+                ) if isinstance(resource.get("existing_asset_evidence"), Mapping) else None,
+            }
+            for resource in case_plan.get("resources", [])
+            if str(resource.get("resource_type") or "") in _CHART_RESOURCES
+        ],
         "retained_assets": [
             {
                 "requirement_name": case_plan.get("requirement_name", case_id),
@@ -977,8 +1093,10 @@ def bind_plan_to_case(
             **deepcopy(dict(case.get("variables", {}))),
             **deepcopy(dict(case_plan.get("variables", {}))),
             "namespace": str(plan["namespace"]),
+            **existing_resource_variables,
         },
         "setup": setup,
+        "steps": bound_steps,
         "readiness": readiness,
         "preparation": preparation,
         "cleanup": cleanup,
@@ -1359,6 +1477,11 @@ def record_constructed_test_data(
                 continue
             operation = str(resource.get("setup_operation", "")).strip()
             if not operation:
+                setup = resource.get("setup")
+                request = setup.get("request") if isinstance(setup, Mapping) else None
+                if isinstance(request, Mapping):
+                    operation = str(request.get("api") or "").strip()
+            if not operation:
                 continue
             planned.append(
                 {
@@ -1367,6 +1490,9 @@ def record_constructed_test_data(
                     "resource_type": str(resource.get("resource_type", "")),
                     "operation": operation,
                     "resource_id_variable": str(resource.get("resource_id_variable", "")),
+                    "display_name": str(resource.get("display_name") or ""),
+                    "folder_name": str(resource.get("asset_folder_name") or ""),
+                    "integrity_probes": deepcopy(resource.get("integrity_probes", [])),
                 }
             )
 
@@ -1452,6 +1578,9 @@ def record_constructed_test_data(
             "case_id": case_id,
             "operation": resource["operation"],
             "status": "constructed",
+            "display_name": resource["display_name"],
+            "folder_name": resource["folder_name"],
+            "integrity_probes": resource["integrity_probes"],
         }
         if resource["resource_id_variable"]:
             entry["resource_id_variable"] = resource["resource_id_variable"]
@@ -1482,9 +1611,33 @@ def record_constructed_test_data(
     env_observed_path.write_text(
         json.dumps(observed, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    from .asset_scene_naming import load_case_titles
+    from .constructed_assets import (
+        INVENTORY_FILENAME,
+        collect_evidence_assets,
+        merge_constructed_inventory,
+        write_constructed_asset_inventory,
+    )
+
+    evidence_assets = collect_evidence_assets(auto_dir)
+    titles = load_case_titles(
+        auto_dir / "artifacts" / "n25-compiled-test-cases.json",
+        auto_dir / "artifacts" / "a08-test-design-ir.json",
+        a22_plan_path,
+    )
+    inventory = merge_constructed_inventory(registered, evidence_assets, titles=titles)
+    inventory_path = auto_dir / "artifacts" / INVENTORY_FILENAME
+    write_constructed_asset_inventory(
+        inventory_path,
+        inventory,
+        namespace=namespace,
+        environment=str(observed.get("environment") or plan.get("environment") or ""),
+    )
     return {
         "registered": registered,
         "planned_resources": len(planned),
         "constructed_operations": sum(len(value) for value in completed.values()),
         "namespace": namespace,
+        "inventory_path": str(inventory_path),
+        "inventory_count": len(inventory),
     }
