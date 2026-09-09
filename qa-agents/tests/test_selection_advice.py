@@ -183,6 +183,28 @@ def test_execution_plan_defers_frontend_scope_by_policy() -> None:
     assert plan["actions"][0]["reason_code"] == "e2e_scope_deferred_by_policy"
 
 
+def test_execution_plan_skips_e2e_when_capability_not_ready() -> None:
+    case = child_case("CASE-E2E")
+    case["layer"] = "e2e"
+    plan = compile_execution_plan(
+        {
+            "schema_version": "test-selection/1.0",
+            "selected_cases": [
+                {
+                    "case_id": "CASE-E2E",
+                    "selection": "must_run",
+                    "reason_code": "policy_forced",
+                }
+            ],
+        },
+        [case],
+        skip_layers={"e2e"},
+    )
+
+    assert plan["actions"][0]["action"] == "skip"
+    assert plan["actions"][0]["reason_code"] == "e2e_capability_not_ready"
+
+
 def test_high_confidence_impact_resolves_without_advice() -> None:
     assets = {
         "automation_assets": {

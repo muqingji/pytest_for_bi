@@ -12,3 +12,15 @@ description: Name and organize retained BI test assets. Use when D01/N28 plans c
 5. Emit `requirement_name`, `asset_folder_name`, `display_name`, `source_field_id`, `source_field_type`, `semantic_basis`, `retention_mode=retain`, and the resulting resource ID into the retained asset registry.
 
 Fail closed when the requirement name or real field metadata cannot be established. This Skill plans only; the deterministic executor performs approved writes.
+
+6. Case-constructed visible names (A22/N08) must be the capability-catalog
+   `display_name` for that `resource_key`, so the 112 name and the card name
+   both match the case semantics. Examples: `自定义维度查看明细验证统计图`,
+   `结果集筛选聚合指标`, `客户等级枚举分组自定义维度`.
+   Do not use short tags (`自定义维度`, `结果集筛选`), `qa-*` prefixes,
+   English case titles, `resource_key`, or `销售订单统计_副本N` as the visible
+   name. After `copy_stat_view`, rename the chart to this `viewName`.
+   Uniqueness belongs in the hidden idempotency key; if 112 still collides,
+   append one short `HHMMSS` suffix.
+   The card renderer shows this catalog name via `constructed-asset-card-display`.
+   Implementation: `qa-agents/src/qa_agents/asset_scene_naming.py`.

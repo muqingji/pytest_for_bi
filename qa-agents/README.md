@@ -6,6 +6,13 @@
 
 ## 当前已实现
 
+- TAPD 需求分支提交参考实现：从需求链接/卡片文本提取可见需求 ID，按
+  `qa/tapd-story-<story_id>` 创建或复用唯一分支；同一需求重跑不产生新分支。提交
+  只消费已完成的 N29 landing Artifact，并复验候选哈希。当前默认本地提交，`push=true`
+  才允许显式远端推送；专用测试结论仓库仍保留 TODO。
+- TAPD Bug 准出审批门禁参考实现：按 Case、业务场景、期望行为、实际问题、Bug 解释、
+  真实测试数据名称/ID 和候选 ID 生成人类审批卡。审批通过后仍会等待 TAPD Bug Adapter；
+  驳回时必须指定 Case/Bug 与原因，并生成数据构造、Case 定义、Oracle 和受影响用例的重测计划。
 - Artifact Envelope、完整状态枚举、内容哈希和路径受限的 Artifact Store。
 - A14 仅生成服务端 API、集成和功能自动化；显式单元测试 Case 按
   `paused_existing_developer_unit_coverage` 暂停，不与研发单测重复建设。
@@ -447,6 +454,8 @@ Oracle Registry 的 ACL。
 - Multica 模型网关的生产 Provider 绑定、Prompt 发布、影子流量和模型灰度；Runtime 契约已实现。
 - 候选代码已可落到运行目录隔离工作区（N29）；创建正式 MR、生产隔离 Runner 和发布系统写入
   Adapter 仍未接通。
+- TAPD 需求分支已支持本地创建/复用和显式配置推送，但专用测试结论仓库、正式 MR Adapter、
+  TAPD Bug 写入 Adapter 和群消息通知 Adapter 仍未接入。
 - `controlled_env_reference` 可为注册非生产环境开放网络/Secret env 名，但仍不是生产隔离
   Runner；契约场景的真实请求载荷与完整 112 端到端 N08 证据仍待主链审批后补齐。
 - 生产 Oracle Registry、Secret 服务和测试资产服务。

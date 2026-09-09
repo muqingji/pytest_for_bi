@@ -1988,6 +1988,7 @@ def prepare_multica_test_data_plan_input(
     capability_catalog_path: Path | None = None,
     knowledge_sources_path: Path | None = None,
     security: SecurityPolicy | None = None,
+    existing_asset_discovery: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Compile N25 + N15 + data policy into the A22 test-data plan input."""
 
@@ -2019,6 +2020,16 @@ def prepare_multica_test_data_plan_input(
     }
 
     context: dict[str, Any] = {}
+    if existing_asset_discovery is not None:
+        if existing_asset_discovery.get("schema_version") != "a22-existing-asset-discovery/1.0":
+            raise ContractError("A22 existing asset discovery version is unsupported")
+        expected_discovery_hash = content_hash(
+            {key: value for key, value in existing_asset_discovery.items() if key != "discovery_hash"}
+        )
+        if str(existing_asset_discovery.get("discovery_hash") or "") != expected_discovery_hash:
+            raise ContractError("A22 existing asset discovery hash is invalid")
+        security.assert_no_secret_values(existing_asset_discovery)
+        context["existing_asset_discovery"] = dict(existing_asset_discovery)
     if capability_catalog_path is not None:
         catalog = _read(capability_catalog_path)
         security.assert_no_secret_values(catalog)
@@ -2560,6 +2571,72 @@ def _validate_evidence_collections(
                 )
 
 
+def _first_human_sentence(text: str, *, limit: int = 180) -> str:
+    """Take the first readable sentence for human-facing fallback copy."""
+
+    cleaned = " ".join(str(text or "").split())
+    if not cleaned:
+        return ""
+    for separator in ("。", "！", "？", "；", ". ", "! ", "? "):
+        position = cleaned.find(separator)
+        if position > 0:
+            cleaned = cleaned[: position + len(separator)].strip()
+            break
+    if len(cleaned) > limit:
+        cleaned = cleaned[: limit - 1].rstrip() + "…"
+    return cleaned
+
+
+_DEFAULT_HUMAN_ISSUE_TITLES = {
+    "ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE": "预期结果无法解析",
+    "LOCALE_NAME_PRECEDENCE_FIXTURE_CONFLICT": "中英文测试数据冲突",
+    "RULE_CONFLICT": "规则冲突",
+    "MISSING_EXPECTATION": "缺少期望值",
+    "AMBIGUOUS_REQUIREMENT": "需求表述歧义",
+    "COVERAGE_GAP": "覆盖缺口",
+    "BLOCKING_GAP": "阻塞性缺口",
+    "DYNAMIC_RELATION_TICKET_SUBJECT_SCOPE_LIMIT": "动态关联范围过窄",
+    "MULTI_METRIC_PARAMS_MATCHER_INVALID": "多指标匹配器错误",
+    "MULTI_METRIC_MESSAGE_ORACLE_INCOMPLETE": "多指标文案断言不全",
+    "PERMISSION_ORACLE_NOT_EXECUTABLE": "权限断言不可执行",
+}
+
+
+def _fill_human_facing_issue_fields(payload: dict[str, Any]) -> None:
+    """Backfill plain_summary/human_title so blocking Multica issues can ingest.
+
+    Agents are instructed to emit both fields, but desktop runs still omit them
+    often enough to leave C3 stuck on a completed run that never becomes an
+    Artifact. Display layers already fall back from message/issue_code; ingest
+    must do the same before contract validation.
+    """
+
+    issues = payload.get("issues")
+    if not isinstance(issues, list):
+        return
+    for item in issues:
+        if not isinstance(item, dict):
+            continue
+        severity = str(item.get("severity") or "").strip()
+        if severity not in {"error", "blocking"}:
+            continue
+        plain = str(item.get("plain_summary") or "").strip()
+        if not plain:
+            plain = _first_human_sentence(
+                str(item.get("message") or item.get("recommendation") or "")
+            )
+            if not plain:
+                plain = "存在阻塞问题，需要修正后继续。"
+            item["plain_summary"] = plain
+        title = str(item.get("human_title") or "").strip()
+        if not title:
+            code = str(item.get("issue_code") or "").strip()
+            title = _DEFAULT_HUMAN_ISSUE_TITLES.get(code, "")
+            if not title:
+                title = plain[:12]
+            item["human_title"] = title
+
+
 def _validate_collection_item_fields(
     payload: Mapping[str, Any], field_requirements: Mapping[str, set[str]]
 ) -> None:
@@ -2932,6 +3009,13 @@ def _validate_oracle_review_semantics(
 
     cases = design.get("parent_cases", [])
     case_ids = {str(item.get("id")) for item in cases if isinstance(item, Mapping)}
+    skipped_ids = {
+        str(item.get("id"))
+        for item in design.get("skipped_scenarios", [])
+        if isinstance(item, Mapping) and item.get("id")
+    }
+    # Coverage matrices may cite skipped scenarios as explicit non-cases.
+    coverage_ref_ids = case_ids | skipped_ids
     expected_ids = {
         (str(case.get("id")), str(expected.get("id")))
         for case in cases
@@ -2986,7 +3070,11 @@ def _validate_oracle_review_semantics(
         observed_dimensions.append(dimension)
         if item.get("status") not in {"covered", "partial", "missing", "not_applicable"}:
             raise ContractError(f"A09 coverage_dimensions[{index}] has an invalid status")
-        if not set(map(str, item.get("case_ids", []))) <= case_ids:
+        raw_case_ids = [str(value) for value in item.get("case_ids", [])]
+        # Drop stale refs instead of failing the whole review: agents often cite
+        # skipped scenario ids or removed cases while the review body is still valid.
+        item["case_ids"] = [value for value in raw_case_ids if value in coverage_ref_ids]
+        if set(raw_case_ids) - coverage_ref_ids and not item["case_ids"] and raw_case_ids:
             raise ContractError(f"A09 coverage_dimensions[{index}] references an unknown Case")
     if len(observed_dimensions) != len(set(observed_dimensions)):
         raise ContractError("A09 maps a coverage dimension more than once")
@@ -3003,7 +3091,9 @@ def _validate_oracle_review_semantics(
             observed.append(observed_id)
             if item.get("status") not in {"covered", "partial", "missing"}:
                 raise ContractError(f"A09 {collection_name}[{index}] has an invalid status")
-            if not set(map(str, item.get("case_ids", []))) <= case_ids:
+            raw_case_ids = [str(value) for value in item.get("case_ids", [])]
+            item["case_ids"] = [value for value in raw_case_ids if value in coverage_ref_ids]
+            if set(raw_case_ids) - coverage_ref_ids and not item["case_ids"] and raw_case_ids:
                 raise ContractError(
                     f"A09 {collection_name}[{index}] references an unknown Case"
                 )
@@ -3164,7 +3254,14 @@ def _validate_split_review_semantics(
             raise ContractError(f"A11 layer_coverage[{index}] has an invalid status")
         if not set(map(str, item.get("case_ids", []))) <= child_ids:
             raise ContractError(f"A11 layer_coverage[{index}] references an unknown Case")
-    if len(observed_layers) != len(set(observed_layers)) or set(observed_layers) != layers:
+        if layer not in layers:
+            if item.get("status") != "not_applicable":
+                raise ContractError(
+                    f"A11 layer_coverage[{index}] adds layer {layer} that was not compiled"
+                )
+    if len(observed_layers) != len(set(observed_layers)):
+        raise ContractError("A11 must review every compiled layer exactly once")
+    if layers - set(observed_layers):
         raise ContractError("A11 must review every compiled layer exactly once")
 
     if payload.get("evaluation_oracle_accessed") is not False:
@@ -3272,6 +3369,36 @@ def _validate_selection_advice_semantics(
         raise SecurityPolicyError("A12 must not access the evaluation Oracle Registry")
 
 
+
+def _case_setup_operations(case: Mapping[str, Any]) -> list[str]:
+    """Collect setup operations declared on one frozen generation Case."""
+
+    test_data = case.get("test_data")
+    resources = (
+        test_data.get("resource_requirements") if isinstance(test_data, Mapping) else None
+    )
+    if not isinstance(resources, list):
+        return []
+    operations: list[str] = []
+    for item in resources:
+        if not isinstance(item, Mapping):
+            continue
+        operation = str(item.get("setup_operation") or "").strip()
+        if operation:
+            operations.append(operation)
+    return operations
+
+
+def _verified_setup_operation_ids(allowed_inputs: Mapping[str, Any]) -> set[str]:
+    contracts = allowed_inputs.get("verified_setup_contracts")
+    if not isinstance(contracts, Mapping):
+        return set()
+    mapping = contracts.get("contracts")
+    if not isinstance(mapping, Mapping):
+        return set()
+    return {str(key) for key in mapping if str(key).strip()}
+
+
 def _validate_automation_generation_semantics(
     profile_id: str, bundle: Mapping[str, Any], payload: Mapping[str, Any]
 ) -> None:
@@ -3298,8 +3425,24 @@ def _validate_automation_generation_semantics(
         rejected_case_ids.append(case_id)
         if case_id not in frozen_case_ids:
             raise ContractError(f"{profile_id} rejected_cases[{index}] references an unknown Case")
-        if not str(item.get("reason_code", "")).strip():
+        reason_code = str(item.get("reason_code", "")).strip()
+        if not reason_code:
             raise ContractError(f"{profile_id} rejected_cases[{index}] has no reason_code")
+        if reason_code == "setup_contract_unavailable":
+            frozen_case = next(case for case in cases if str(case.get("id", "")) == case_id)
+            operations = _case_setup_operations(frozen_case)
+            if not operations:
+                raise ContractError(
+                    f"{profile_id} rejected_cases[{index}] uses setup_contract_unavailable "
+                    f"but {case_id} has no setup_operation"
+                )
+            verified = _verified_setup_operation_ids(allowed_inputs)
+            missing = [operation for operation in operations if operation not in verified]
+            if not missing:
+                raise ContractError(
+                    f"{profile_id} rejected_cases[{index}] uses setup_contract_unavailable "
+                    f"but setup operations for {case_id} are already verified"
+                )
     if len(rejected_case_ids) != len(set(rejected_case_ids)):
         raise ContractError(f"{profile_id} rejected Case IDs must be unique")
 
@@ -3324,6 +3467,42 @@ def _validate_automation_generation_semantics(
     manifest_layer = str(manifest.get("layer", ""))
     if manifest_layer and manifest_layer != layer:
         raise ContractError(f"{profile_id} manifest layer does not match its frozen scope")
+    if profile_id in {"A14", "A15"}:
+        resources_by_case = {
+            str(case.get("id", "")): [
+                item
+                for item in (case.get("test_data", {}) or {}).get(
+                    "resource_requirements", []
+                )
+                if isinstance(item, Mapping)
+            ]
+            for case in cases
+            if isinstance(case.get("test_data"), Mapping)
+        }
+        for candidate in candidates:
+            if not isinstance(candidate, Mapping):
+                continue
+            case_id = str(candidate.get("case_id", ""))
+            content = str(candidate.get("content", ""))
+            if "chart_view_id" not in content:
+                continue
+            chart_variables = {
+                str(item.get("resource_id_variable", "")).strip()
+                for item in resources_by_case.get(case_id, [])
+                if str(item.get("resource_type", "")) in {"stat_chart", "report"}
+                and str(item.get("resource_id_variable", "")).strip()
+            }
+            if not chart_variables:
+                raise ContractError(
+                    f"{profile_id} code_candidates bind chart_view_id without a chart resource"
+                )
+            forged_id = re.search(
+                r"[\"']chart_view_id[\"']\s*:\s*[\"'](BI_[^\"']+)[\"']", content
+            )
+            if forged_id:
+                raise ContractError(
+                    f"{profile_id} code_candidates forge chart_view_id from literal {forged_id.group(1)}"
+                )
     mapped_case_ids: list[str] = []
     for index, mapping in enumerate(manifest.get("case_mappings", [])):
         if not isinstance(mapping, Mapping):
@@ -3500,6 +3679,31 @@ def _validate_test_data_plan_semantics(
         raise ContractError("A22 paused Case IDs must be unique")
 
     planned_case_ids: list[str] = []
+    discovery = allowed_inputs.get("existing_asset_discovery", {})
+    if not isinstance(discovery, Mapping):
+        discovery = {}
+    frozen_candidates = {
+        (
+            str(candidate.get("case_id") or ""),
+            str(candidate.get("resource_key") or ""),
+            str(candidate.get("resource_type") or ""),
+            str(candidate.get("resource_id") or ""),
+        ): candidate
+        for candidate in discovery.get("candidates", [])
+        if isinstance(candidate, Mapping)
+        and candidate.get("decision") == "reusable"
+    }
+    cases_by_id = {str(item.get("id")): item for item in cases}
+    unresolved_case_ids = {
+        str(item.get("case_id") or "")
+        for item in payload.get("unresolved_requirements", [])
+        if isinstance(item, Mapping)
+    }
+    unsupported_case_ids = {
+        str(item.get("case_id") or "")
+        for item in payload.get("unsupported_requirements", [])
+        if isinstance(item, Mapping)
+    }
     for index, item in enumerate(payload.get("case_plans", [])):
         if not isinstance(item, Mapping):
             raise ContractError(f"A22 case_plans[{index}] must be an object")
@@ -3513,6 +3717,47 @@ def _validate_test_data_plan_semantics(
             raise ContractError(
                 f"A22 case_plans[{index}] requires construction without resources"
             )
+        semantic_case = cases_by_id.get(case_id, {})
+        if (
+            item.get("required_scene") == "chart_detail"
+            and not item["resources"]
+            and case_id not in paused_ids
+            and case_id not in unresolved_case_ids
+            and case_id not in unsupported_case_ids
+        ):
+            raise ContractError(
+                f"A22 case_plans[{index}] declares chart_detail without asset resources"
+            )
+        for resource_index, resource in enumerate(item.get("resources", [])):
+            if not isinstance(resource, Mapping) or resource.get("lifecycle_mode") != "existing_read_only":
+                continue
+            key = (
+                case_id,
+                str(resource.get("resource_key") or ""),
+                str(resource.get("resource_type") or ""),
+                str(resource.get("resource_id") or ""),
+            )
+            frozen = frozen_candidates.get(key)
+            if frozen is None:
+                raise SecurityPolicyError(
+                    f"A22 case_plans[{index}].resources[{resource_index}] reuses an unverified asset"
+                )
+            if resource.get("existing_asset_evidence") != frozen.get("existing_asset_evidence"):
+                raise SecurityPolicyError(
+                    f"A22 case_plans[{index}].resources[{resource_index}] changes frozen discovery evidence"
+                )
+            if resource.get("discovery") != frozen.get("discovery") or resource.get("readiness") != frozen.get("readiness"):
+                raise SecurityPolicyError(
+                    f"A22 case_plans[{index}].resources[{resource_index}] changes frozen verification steps"
+                )
+            if resource.get("validity_contract") != frozen.get("validity_contract"):
+                raise SecurityPolicyError(
+                    f"A22 case_plans[{index}].resources[{resource_index}] changes frozen validity contract"
+                )
+            if str(resource.get("discovery_hash") or "") != str(discovery.get("discovery_hash") or ""):
+                raise SecurityPolicyError(
+                    f"A22 case_plans[{index}].resources[{resource_index}] is not bound to discovery"
+                )
     if len(planned_case_ids) != len(set(planned_case_ids)):
         raise ContractError("A22 planned Case IDs must be unique")
     if set(planned_case_ids) & set(paused_ids):
@@ -3675,6 +3920,7 @@ def ingest_multica_output(
     missing = sorted(output_config["required_fields"] - set(payload))
     if missing:
         raise ContractError(f"Multica output is missing required fields: {', '.join(missing)}")
+    _fill_human_facing_issue_fields(payload)
     _validate_evidence_collections(payload, output_config["evidence_collections"])
     _validate_collection_item_fields(payload, output_config["collection_item_fields"])
     if profile_id in {"A18-BE", "A18-CT"}:

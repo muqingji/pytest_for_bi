@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import json
+import re
 from typing import Any, Iterable
 
 
@@ -24,6 +26,8 @@ SUPPORTED_ORACLE_MATCHERS = {
     "equals_one_complete_matched_mapping",
     "exists",
     "not_contains",
+    "not_equals",
+    "not_one_of",
     "one_of",
     "one_of_actually_matched",
     "regex",
@@ -42,6 +46,7 @@ SUPPORTED_RESPONSE_EXPECTATIONS = {
 }
 
 _LIFECYCLE_PHASES = ("setup", "readiness", "steps", "cleanup", "residue_checks")
+_TEMPLATE_VARIABLE = re.compile(r"{{\s*([A-Za-z_][A-Za-z0-9_.-]*)\s*}}")
 
 
 def _reason(code: str, location: str, detail: str) -> dict[str, str]:
@@ -55,6 +60,16 @@ def _matcher_name(value: Any) -> str:
     return matcher
 
 
+def _oracle_choice_values(oracle: Mapping[str, Any]) -> list[Any] | None:
+    values = oracle.get("expected_values")
+    if isinstance(values, list):
+        return values
+    value = oracle.get("expected_value")
+    if isinstance(value, list):
+        return value
+    return None
+
+
 def _step_issues(
     case: Mapping[str, Any],
     *,
@@ -63,6 +78,12 @@ def _step_issues(
     invalid: list[dict[str, str]] = []
     missing: list[dict[str, str]] = []
     extracted_variables: set[str] = set()
+    declared_variables = {
+        str(name)
+        for name in (case.get("variables") or {})
+        if isinstance(case.get("variables"), Mapping)
+    }
+    referenced_variables: dict[str, str] = {}
 
     for phase in _LIFECYCLE_PHASES:
         raw_steps = case.get(phase, [])
@@ -82,8 +103,20 @@ def _step_issues(
                     )
                 )
                 continue
+            for match in _TEMPLATE_VARIABLE.finditer(json.dumps(step, ensure_ascii=False)):
+                referenced_variables.setdefault(match.group(1), location)
             request = step.get("request")
             if not isinstance(request, Mapping):
+                if str(step.get("action") or "").strip():
+                    if phase in {"setup", "readiness"} and not step.get("expect"):
+                        missing.append(
+                            _reason(
+                                "lifecycle_assertion_missing",
+                                f"{location}.expect",
+                                f"{phase} must prove the requested state",
+                            )
+                        )
+                    continue
                 invalid.append(
                     _reason(
                         "execution_request_missing",
@@ -190,6 +223,17 @@ def _step_issues(
                     )
                 )
 
+    available_variables = declared_variables | extracted_variables
+    for variable, location in sorted(referenced_variables.items()):
+        if variable not in available_variables:
+            missing.append(
+                _reason(
+                    "template_variable_unbound",
+                    location,
+                    f"template variable {variable!r} must be declared or extracted before use",
+                )
+            )
+
     return invalid, missing
 
 
@@ -243,7 +287,7 @@ def classify_case_executability(
                     "deterministic Oracle requires an observation point",
                 )
             )
-        if matcher not in {"exists", "one_of", "one_of_actually_matched"} and "expected_value" not in oracle:
+        if matcher not in {"exists", "one_of", "not_one_of", "one_of_actually_matched"} and "expected_value" not in oracle:
             encoded_equals = str(oracle.get("matcher", "")).startswith("equals:")
             if not encoded_equals:
                 invalid.append(
@@ -253,12 +297,12 @@ def classify_case_executability(
                         "matcher requires expected_value",
                     )
                 )
-        if matcher in ("one_of", "one_of_actually_matched") and not isinstance(oracle.get("expected_values"), list):
+        if matcher in ("one_of", "not_one_of", "one_of_actually_matched") and _oracle_choice_values(oracle) is None:
             invalid.append(
                 _reason(
                     "oracle_expected_values_missing",
                     f"{location}.expected_values",
-                    "one_of requires expected_values",
+                    "membership matcher requires expected_values or a list expected_value",
                 )
             )
 

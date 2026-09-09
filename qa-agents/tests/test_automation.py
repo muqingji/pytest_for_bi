@@ -24,7 +24,15 @@ def backend_case() -> dict:
             {"type": "requirement", "id": "REQ-1", "location": "section-1"}
         ],
         "preconditions": ["使用无权限账号"],
-        "test_data": {"request": {"method": "GET", "path": "/api/report"}},
+        "test_data": {
+            "request": {"method": "GET", "path": "/api/report"},
+            "resource_requirements": [{
+                "resource_key": "chart",
+                "resource_type": "stat_chart",
+                "resource_id_variable": "chart_view_id",
+                "retention_mode": "retain",
+            }],
+        },
         "steps": [{
             "name": "请求报表接口",
             "request": {
@@ -250,6 +258,114 @@ def test_n05_rejects_json_style_literals_in_case_spec() -> None:
     codes = {item["issue_code"] for item in result["issues"]}
     assert "case_spec_json_literals_not_python" in codes
     assert result["fatal_security_violation"] is False
+
+
+
+def test_n05_accepts_constant_helper_case_spec() -> None:
+    """A14 用顶部常量/纯函数压缩 CASE_SPEC 时，N05 必须静态展开而不是误拦。
+
+    生成器为避开体积限制会写 ``NS=...`` / ``def q(...): return {...}``，再把名字
+    嵌进 CASE_SPEC。文件仍是可 import 的静态 dict；拦成 case_spec_not_literal
+    会让已生成的后端用例永远进不了 N08。
+    """
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        "NS='qa-ns'\n"
+        "API='fs_bi_stat.stat_base.detail_data_query'\n"
+        "EX={'status_code': 200}\n"
+        "def q(lan, fid='F1'):\n"
+        "    return {'id': fid, 'lan': lan}\n"
+        "CASE_SPEC = {\n"
+        "    'id': 'TC-BE-001-BACKEND',\n"
+        "    'test_level': 'integration',\n"
+        "    'test_data': {'namespace': NS + '-case'},\n"
+        "    'setup': [],\n"
+        "    'steps': [{'name': 'query', 'request': {'api': API, 'json': q('zh-CN')}, 'expect': EX}],\n"
+        "    'expected': [{'id': 'EXP-1', 'oracle': {'matcher': 'equals',\n"
+        "        'observation_point': 'detail_api.error.code', 'expected_value': 's307011534'}}],\n"
+        "    'cleanup': [],\n"
+        "}\n"
+        "def test_tc_be_001_backend(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        "    case_runner.assert_oracles(observations, CASE_SPEC['expected'])\n"
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+    result = check_automation_generation(generation, policy)
+    codes = {item["issue_code"] for item in result["issues"]}
+    assert "case_spec_not_literal" not in codes
+    assert result["passed"] is True, result["issues"]
+
+
+def test_n05_still_rejects_dynamic_case_spec_helpers() -> None:
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        "import os\n"
+        "CASE_SPEC = {'id': os.getenv('CASE'), 'steps': [], 'expected': [], 'cleanup': []}\n"
+        "def test_x(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        "    case_runner.assert_oracles(observations, CASE_SPEC['expected'])\n"
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+    result = check_automation_generation(generation, policy)
+    codes = {item["issue_code"] for item in result["issues"]}
+    assert "case_spec_not_literal" in codes
+    assert result["passed"] is False
+
+
+def test_n05_accepts_not_equals_and_not_one_of_oracles() -> None:
+    """A08 批准的 not_equals / not_one_of 必须能过 N05，否则已生成后端用例会被卡死。"""
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        "CASE_SPEC = {\n"
+        "    'id': 'TC-BE-001-BACKEND',\n"
+        "    'test_level': 'integration',\n"
+        "    'setup': [],\n"
+        "    'steps': [{'name': 'query', 'request': {'api': 'fs_bi_stat.stat_base.detail_data_query', 'json': {}}}],\n"
+        "    'expected': [\n"
+        "        {'id': 'E-BE-003-05', 'oracle': {'matcher': 'not_equals',\n"
+        "            'observation_point': 'detail_api.response.error_code', 'expected_value': 's307011536'}},\n"
+        "        {'id': 'E-BE-006-01', 'oracle': {'matcher': 'not_one_of',\n"
+        "            'observation_point': 'detail_api.response.error_code',\n"
+        "            'expected_value': ['s307011534', 's307011535']}},\n"
+        "        {'id': 'E-BE-007-01', 'oracle': {'matcher': 'one_of',\n"
+        "            'observation_point': 'detail_api.response.error_code',\n"
+        "            'expected_value': ['s307011534', 's307011535']}},\n"
+        "    ],\n"
+        "    'cleanup': [],\n"
+        "}\n"
+        "def test_tc_be_001_backend(case_runner):\n"
+        "    observations = case_runner.execute(CASE_SPEC)\n"
+        "    case_runner.assert_oracles(observations, CASE_SPEC['expected'])\n"
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+    result = check_automation_generation(generation, policy)
+    codes = {item["issue_code"] for item in result["issues"]}
+    assert "oracle_matcher_not_supported" not in codes
+    assert result["passed"] is True
 
 
 def test_n05_rejects_placeholder_setup_body_missing_contract_fields() -> None:
@@ -496,3 +612,97 @@ def test_a18_ignores_rejected_cases_for_mapping() -> None:
     )
     assert review.payload["approved"] is True
     assert review.payload["issues"] == []
+
+
+
+def test_n05_allows_bind_stat_chart_config_setup_action() -> None:
+    """Copied charts must be rebound; N05 cannot reject the bind action step."""
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        "CASE_SPEC={'id':'PC-BE-001-BACKEND','test_data':{'resource_requirements':["
+        "{'resource_type':'stat_chart','resource_id_variable':'chart_view_id',"
+        "'retention_mode':'retain'}]},'setup':["
+        "{'name':'bind_chart','action':'bind_stat_chart_config',"
+        "'inputs':{'chart_view_id':'{{chart_view_id}}',"
+        "'schema_id':'BI_5be1351956fc11448cdde39e'},"
+        "'expect':{'status_code':200}}],"
+        "'steps':[{'name':'call','request':{'api':'fs_bi_stat.stat_base.data_query_da655ba1',"
+        "'json':{'id':'{{chart_view_id}}','isView':0,'measureFieldID':'m',"
+        "'measureFieldIDs':['m'],'pageNumber':1,'pageSize':20,'filterLists':[],"
+        "'timeZone':'Asia/Shanghai','lan':'zh-CN'}},'expect':{'status_code':200}}],"
+        "'expected':[{'id':'E1','oracle':{'expected_value':'s307011534','matcher':'equals',"
+        "'observation_point':'detail_api.response.error_code','type':'deterministic'}}],"
+        "'cleanup':[]}\n"
+        "def test_pc_be_001_backend(case_runner):\n"
+        "    observations=case_runner.execute(CASE_SPEC)\n"
+        "    case_runner.assert_oracles(observations,CASE_SPEC['expected'])\n"
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+    result = check_automation_generation(generation, policy)
+    codes = {item["issue_code"] for item in result["issues"]}
+    assert "execution_request_missing" not in codes
+    assert "unsupported_step_action" not in codes
+    assert result["passed"] is True, result["issues"]
+
+
+def test_n05_rejects_chart_binding_without_chart_resource() -> None:
+    from qa_agents.contracts import content_hash
+
+    case = backend_case()
+    case["test_data"].pop("resource_requirements")
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [case], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        "CASE_SPEC={'id':'CASE-001-BACKEND','steps':[{'name':'call',"
+        "'request':{'api':'fs_bi_stat.stat_base.data_query_da655ba1',"
+        "'json':{'id':'{{chart_view_id}}'}},'expect':{'status_code':200}}],"
+        "'expected':[],'cleanup':[]}\n"
+        "def test_case(case_runner):\n"
+        "    observations=case_runner.execute(CASE_SPEC)\n"
+        "    case_runner.assert_oracles(observations,CASE_SPEC['expected'])\n"
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+    result = check_automation_generation(generation, policy)
+    assert result["passed"] is False
+    assert "chart_binding_missing" in {item["issue_code"] for item in result["issues"]}
+
+
+def test_n05_rejects_schema_id_bound_as_chart_id() -> None:
+    from qa_agents.contracts import content_hash
+
+    generation = BackendAutomationAgent().run(
+        context(), {"cases": [backend_case()], "target": target()}, SecurityPolicy()
+    ).payload
+    policy = AutomationPolicy.from_file(ROOT / "policies" / "automation-target-policy.json")
+    content = (
+        "CASE_SPEC={'id':'CASE-001-BACKEND','test_data':{'resource_requirements':["
+        "{'resource_type':'stat_chart','resource_id_variable':'chart_view_id',"
+        "'retention_mode':'retain'}]},'variables':{'chart_view_id':"
+        "'BI_e672ff1046fb773b76bc2b56'},'steps':[{'name':'call',"
+        "'request':{'api':'fs_bi_stat.stat_base.data_query_da655ba1',"
+        "'json':{'id':'{{chart_view_id}}'}},'expect':{'status_code':200}}],"
+        "'expected':[],'cleanup':[]}\n"
+        "def test_case(case_runner):\n"
+        "    observations=case_runner.execute(CASE_SPEC)\n"
+        "    case_runner.assert_oracles(observations,CASE_SPEC['expected'])\n"
+    )
+    candidate = generation["code_candidates"][0]
+    candidate["content"] = content
+    candidate["content_hash"] = content_hash(content)
+    generation["manifest"]["candidate_files"][0]["content_hash"] = candidate["content_hash"]
+    result = check_automation_generation(generation, policy)
+    assert result["passed"] is False
+    assert "chart_id_forgery" in {item["issue_code"] for item in result["issues"]}

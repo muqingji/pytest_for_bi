@@ -1836,8 +1836,7 @@
     {
       "id": "multi-relation-metric-chart-detail",
       "version": "1.0.0",
-      "constructible": false,
-      "unsupported_reason": "当前配方未提供真实多关联 relation/join lineage，禁止仅凭名称构造",
+      "constructible": true,
       "environment_profile": "112-chart-detail-folder",
       "match": {
         "data_intents": [],
@@ -1853,7 +1852,11 @@
           ]
         ]
       },
-      "supported_variants": [],
+      "supported_variants": [
+        "metric_multi_relation_failure",
+        "metric_multi_relation_existing_success",
+        "metric_ordinary_object_relation_exception_control"
+      ],
       "resource_goals": [
         {
           "resource_type": "aggregate_metric",
@@ -2148,8 +2151,7 @@
     {
       "id": "dynamic-relation-metric-chart-detail",
       "version": "1.0.0",
-      "constructible": false,
-      "unsupported_reason": "当前配方未提供真实 what/whatlist 动态关系结构，禁止仅凭名称构造",
+      "constructible": true,
       "environment_profile": "112-chart-detail-folder",
       "match": {
         "data_intents": [],
@@ -2164,7 +2166,12 @@
           ]
         ]
       },
-      "supported_variants": [],
+      "supported_variants": [
+        "metric_dynamic_business_process",
+        "metric_dynamic_business_process_task",
+        "metric_dynamic_service_record",
+        "metric_supported_what_whatlist_success"
+      ],
       "resource_goals": [
         {
           "resource_type": "aggregate_metric",

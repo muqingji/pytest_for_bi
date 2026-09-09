@@ -21,6 +21,7 @@ from .contracts import (
 )
 from .errors import ContractError, InputError
 from .failure_triage import run_a19_failure_triage
+from .quality_results import build_case_outcomes
 from .security import SecurityPolicy
 from .storage import ArtifactStore
 
@@ -35,6 +36,105 @@ FAILURE_CLASSIFICATIONS = {
     "needs_triage",
 }
 TERMINAL_TEST_RESULTS = {"passed", "failed", "blocked"}
+DEFERRED_PLAN_ACTIONS = {
+    "deferred_frontend",
+    "deferred_data_construction",
+    "deferred_by_policy",
+}
+# TODO(e2e-generator): 8-card/server 准出暂不跑 e2e。A16 生成器接入 8 卡 C5 后，
+# 从 SERVER_QUALITY_SKIPPED_LAYERS 移除 e2e，让 N15/N17/N11 重新纳入端到端。
+SERVER_QUALITY_SKIPPED_LAYERS = frozenset({"e2e"})
+QUALITY_TAIL_AFTER_N17_PATHS = (
+    "artifacts/n18-quality-signals.json",
+    "artifacts/n18-quality-signals.json.record.md",
+    "artifacts/n09-evidence.json",
+    "artifacts/n09-evidence.json.record.md",
+    "artifacts/a19-failure-triage.json",
+    "artifacts/a19-failure-triage.json.record.md",
+    "artifacts/n20-defect-dedup.json",
+    "artifacts/n20-defect-dedup.json.record.md",
+    "artifacts/n11-quality-decision.json",
+    "artifacts/n11-quality-decision.json.record.md",
+    "artifacts/n12-quality-report.json",
+    "artifacts/n12-quality-report.json.record.md",
+    "artifacts/n13-feedback-capture.json",
+    "artifacts/n13-feedback-capture.json.record.md",
+    "artifacts/n19-quality-waiver.json",
+    "artifacts/n19-quality-waiver.json.record.md",
+    "artifacts/n23-post-release-verification.json",
+    "artifacts/n23-post-release-verification.json.record.md",
+    "server-quality-report.json",
+    "server-quality-report.md",
+    "server-quality-report.html",
+    "bug-drafts.json",
+)
+
+
+
+def _case_contract_ref(case: Mapping[str, Any]) -> str:
+    raw = case.get("contract_ref")
+    if raw:
+        return str(raw).strip()
+    test_data = case.get("test_data")
+    if isinstance(test_data, Mapping):
+        return str(test_data.get("contract_ref") or "").strip()
+    return ""
+
+
+def _server_skipped_case_ids(
+    actions: Sequence[Mapping[str, Any]],
+    cases_by_id: Mapping[str, Mapping[str, Any]],
+) -> set[str]:
+    """Skip layers the server 准出 cannot run, plus unrunnable contract cases.
+
+    E2E stays in SERVER_QUALITY_SKIPPED_LAYERS until A16 exists. Contract cases
+    without a bound contract_ref cannot be generated (A15 contract_ref_missing)
+    and must not park N17. A contract case that does have a contract_ref still
+    blocks N17 when generate_new was planned and N08 never executed it.
+    """
+
+    skipped: set[str] = set()
+    for item in actions:
+        case_id = str(item.get("case_id", "")).strip()
+        if not case_id:
+            continue
+        case = cases_by_id.get(case_id, {})
+        layer = str(case.get("layer") or "").strip().lower()
+        if layer in SERVER_QUALITY_SKIPPED_LAYERS:
+            skipped.add(case_id)
+            continue
+        if layer == "contract" and not _case_contract_ref(case):
+            skipped.add(case_id)
+    return skipped
+
+
+def remove_quality_tail_after_n17(output_dir: Path) -> None:
+    """Drop C7/C8 artifacts so an unfinished N17 cannot look complete."""
+
+    root = output_dir.resolve()
+    for relative in QUALITY_TAIL_AFTER_N17_PATHS:
+        path = (root / relative).resolve()
+        if path != root and root in path.parents:
+            path.unlink(missing_ok=True)
+
+
+def _auto_executed_case_ids(executions: Sequence[Mapping[str, Any]]) -> set[str]:
+    case_ids: set[str] = set()
+    for execution in executions:
+        payload = execution.get("payload")
+        if not isinstance(payload, Mapping):
+            continue
+        shards = payload.get("shards", [])
+        if not isinstance(shards, list):
+            continue
+        for shard in shards:
+            if not isinstance(shard, Mapping):
+                continue
+            for case_id in shard.get("case_ids", []):
+                text = str(case_id).strip()
+                if text:
+                    case_ids.add(text)
+    return case_ids
 
 
 def _read_object(path: Path, label: str) -> dict[str, Any]:
@@ -196,24 +296,128 @@ def _failure_detail(value: str) -> dict[str, Any] | None:
         r"missing=(?P<missing>\[[^\]]*\]), mismatched=(?P<mismatched>\{[^\n]*\})",
         value,
     )
-    if match is None:
+    if match is not None:
+        return {
+            "failure_code": "oracle_fields_differ",
+            "oracle_id": match.group("oracle"),
+            "missing_fields": re.findall(r"['\"]([^'\"]+)['\"]", match.group("missing")),
+            "mismatched_fields": match.group("mismatched"),
+        }
+    assertion = re.search(
+        r"(?P<type>AssertionError|ContractError|[A-Za-z_]+Error):\s*(?P<message>[^\n]+)",
+        value,
+    )
+    if assertion is None:
         return None
     return {
-        "failure_code": "oracle_fields_differ",
-        "oracle_id": match.group("oracle"),
-        "missing_fields": re.findall(r"['\"]([^'\"]+)['\"]", match.group("missing")),
-        "mismatched_fields": match.group("mismatched"),
+        "failure_code": "runtime_failure",
+        "exception_type": assertion.group("type"),
+        "message": assertion.group("message").strip()[:500],
     }
 
 
+_N08_FAILURE_CATEGORY_CLASSIFICATION = {
+    "test_data_setup": "test_data",
+    "test_data_readiness": "test_data",
+    "test_assertion_or_product": "product_defect",
+    "infrastructure_error": "environment",
+    "timed_out": "environment",
+}
+
+
 def _auto_classification(shard: Mapping[str, Any]) -> str:
+    """Map one N08 shard onto a quality-cluster classification.
+
+    N08 already labels setup vs assertion failures. Ignoring that left N11
+    saying "still require triage" / waiting human after 112 actually ran.
+    """
+
     outcome = str(shard.get("outcome", ""))
     if outcome in {"timed_out", "infrastructure_error"}:
         return "environment"
+    mapped: list[str] = []
+    categories = shard.get("failure_categories")
+    if isinstance(categories, list):
+        for item in categories:
+            classification = _N08_FAILURE_CATEGORY_CLASSIFICATION.get(str(item).strip())
+            if classification:
+                mapped.append(classification)
+    if "product_defect" in mapped:
+        return "product_defect"
+    if "environment" in mapped:
+        return "environment"
+    if mapped:
+        return mapped[0]
     text = f"{shard.get('stdout', '')}\n{shard.get('stderr', '')}".lower()
     if any(token in text for token in ("syntaxerror", "importerror", "fixture '")):
         return "automation_defect"
     return "needs_triage"
+
+
+def n11_decision_summary(payload: Mapping[str, Any]) -> str:
+    """Human-readable 准出 conclusion for the N11 card."""
+
+    decision = str(payload.get("decision") or "").strip()
+    metrics = payload.get("metrics") if isinstance(payload.get("metrics"), Mapping) else {}
+    executed = metrics.get("executed", 0)
+    passed = metrics.get("passed", 0)
+    failed = metrics.get("failed", 0)
+    labels = {
+        "passed": "服务端准出通过",
+        "passed_with_warning": "服务端准出通过（有告警）",
+        "completed_with_defects": "服务端测试完成（有缺陷）",
+        "blocked": "服务端不准出",
+        "inconclusive": "服务端准出结论不完整",
+    }
+    head = labels.get(decision, decision or "服务端准出判定")
+    return f"{head}：执行 {executed}，通过 {passed}，失败 {failed}"
+
+
+def quality_tail_needs_refresh(
+    auto_dir: Path,
+    policy_path: Path,
+    n08_path: Path,
+) -> bool:
+    """True when C7/C8 must be recomputed from current N08 evidence."""
+
+    n18_path = auto_dir / "artifacts" / "n18-quality-signals.json"
+    n11_path = auto_dir / "artifacts" / "n11-quality-decision.json"
+    n09_path = auto_dir / "artifacts" / "n09-evidence.json"
+    if not n18_path.exists() or not n11_path.exists() or not n09_path.exists():
+        return True
+    n08 = _read_object(n08_path, "N08 automation execution")
+    n09 = _read_object(n09_path, "N09 evidence")
+    n11 = _read_object(n11_path, "N11 quality decision")
+    policy = _read_object(policy_path, "quality policy")
+    n11_payload = n11.get("payload") if isinstance(n11.get("payload"), Mapping) else {}
+    if str(n11_payload.get("policy_hash") or "") != content_hash(policy):
+        return True
+    if not n11_payload.get("case_outcomes"):
+        return True
+    n09_payload = n09.get("payload") if isinstance(n09.get("payload"), Mapping) else {}
+    bindings = n09_payload.get("input_bindings")
+    hashes = bindings.get("automation_execution_hashes") if isinstance(bindings, Mapping) else None
+    if not isinstance(hashes, list) or n08.get("artifact_hash") not in hashes:
+        return True
+    shards_by_case: dict[str, Mapping[str, Any]] = {}
+    n08_payload = n08.get("payload") if isinstance(n08.get("payload"), Mapping) else {}
+    for shard in n08_payload.get("shards") or []:
+        if not isinstance(shard, Mapping):
+            continue
+        for case_id in shard.get("case_ids") or []:
+            text = str(case_id).strip()
+            if text:
+                shards_by_case[text] = shard
+    for cluster in n09_payload.get("failure_clusters") or []:
+        if not isinstance(cluster, Mapping):
+            continue
+        if cluster.get("classification") != "needs_triage":
+            continue
+        for case_id in cluster.get("case_ids") or []:
+            shard = shards_by_case.get(str(case_id))
+            if shard is not None and _auto_classification(shard) != "needs_triage":
+                return True
+    return False
 
 
 def _render_report_html(report: Mapping[str, Any]) -> str:
@@ -234,6 +438,16 @@ def _render_report_html(report: Mapping[str, Any]) -> str:
         "</tr>"
         for item in report.get("failure_clusters", [])
     ) or "<tr><td colspan='4'>No failure clusters</td></tr>"
+    def _detail_text(item: Mapping[str, Any]) -> str:
+        detail = item.get("detail")
+        if isinstance(detail, Mapping):
+            return json.dumps(detail, ensure_ascii=False, sort_keys=True)
+        return str(detail or "Not parsed")
+
+    detail_rows = "".join(
+        f"<li>{escape(str(item.get('cluster_id', '')))}: {escape(_detail_text(item))}</li>"
+        for item in report.get("failure_clusters", [])
+    ) or "<li>None</li>"
     return f"""<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>QA Server Quality Report</title><style>
@@ -246,6 +460,7 @@ th{{background:#f8f9fa}}code{{background:#f1f3f4;padding:2px 4px}}
 <h2>Execution</h2><p>{metrics['executed']} executed / {metrics['planned']} planned; {metrics['passed']} passed; {metrics['failed']} failed; {metrics['pending']} pending.</p>
 <h2>Reasons</h2><ul>{reason_rows}</ul><h2>Warnings</h2><ul>{warning_rows}</ul>
 <h2>Failure Clusters</h2><table><thead><tr><th>Cluster</th><th>Classification</th><th>Cases</th><th>Summary</th></tr></thead><tbody>{failure_rows}</tbody></table>
+<h2>Failure Details</h2><ul>{detail_rows}</ul>
 </main></body></html>"""
 
 
@@ -272,10 +487,14 @@ def _render_report_markdown(report: Mapping[str, Any]) -> str:
         lines.append("- None")
     lines.extend(["", "## Failure Clusters", ""])
     for item in report.get("failure_clusters", []):
+        detail = item.get("detail")
+        if isinstance(detail, Mapping):
+            detail = json.dumps(detail, ensure_ascii=False, sort_keys=True)
         lines.append(
             f"- `{item['cluster_id']}` {item['classification']}: "
             f"{', '.join(item.get('case_ids', []))} - {item.get('summary', '')}"
         )
+        lines.append(f"  - Detail: {detail if detail else 'Not parsed'}")
     if not report.get("failure_clusters"):
         lines.append("- None")
     lines.append("")
@@ -464,19 +683,39 @@ def run_server_quality_tail(
     )
     store.write_artifact(n10)
 
-    manual_ids = {
-        str(item["case_id"])
-        for item in actions
-        if item.get("action") == "manual_run"
-        and str(item.get("case_id", "")) not in policy_deferred_case_ids
-    }
+    auto_executed_ids = _auto_executed_case_ids(executions)
+    skipped_layer_ids = _server_skipped_case_ids(actions, cases_by_id) - auto_executed_ids
+    n17_ids: set[str] = set()
+    n17_reasons: dict[str, str] = {}
+    for item in actions:
+        case_id = str(item.get("case_id", "")).strip()
+        if (
+            not case_id
+            or case_id in policy_deferred_case_ids
+            or case_id in skipped_layer_ids
+        ):
+            continue
+        action = item.get("action")
+        if action == "manual_run":
+            n17_ids.add(case_id)
+            n17_reasons[case_id] = "manual_results_pending"
+        elif action == "generate_new" and case_id not in auto_executed_ids:
+            n17_ids.add(case_id)
+            n17_reasons[case_id] = "automation_not_executed"
     provided_manual = _manual_results(
-        manual_results_path, identity, manual_ids, security
+        manual_results_path, identity, n17_ids, security
     )
     manual_tasks: list[dict[str, Any]] = []
-    for case_id in sorted(manual_ids):
+    for case_id in sorted(n17_ids):
         case = cases_by_id[case_id]
         result = provided_manual.get(case_id)
+        reason_code = n17_reasons[case_id]
+        if result:
+            summary = str(result.get("actual_result") or result.get("status") or "").strip()
+        elif reason_code == "automation_not_executed":
+            summary = "自动化未生成或未执行，不能视为已测。请人工执行该用例，或补齐自动化后重跑。"
+        else:
+            summary = "计划人工执行，尚未提交结果。"
         manual_tasks.append(
             {
                 "case_id": case_id,
@@ -487,9 +726,23 @@ def run_server_quality_tail(
                 "expected": case.get("expected", []),
                 "status": result.get("status") if result else "pending",
                 "result": result,
+                "source_action": (
+                    "generate_new"
+                    if reason_code == "automation_not_executed"
+                    else "manual_run"
+                ),
+                "reason_code": reason_code,
+                "summary": summary,
             }
         )
     pending_manual = sum(item["status"] in {"pending", "not_executed"} for item in manual_tasks)
+    n17_reason = None
+    if pending_manual:
+        n17_reason = (
+            "unexecuted_cases_pending"
+            if any(item["reason_code"] == "automation_not_executed" for item in manual_tasks)
+            else "manual_results_pending"
+        )
     n17_payload = {
         "schema_version": "n17-manual-execution/1.0",
         "execution_plan_hash": plan["artifact_hash"],
@@ -497,15 +750,20 @@ def run_server_quality_tail(
         "completed_count": sum(item["status"] in TERMINAL_TEST_RESULTS for item in manual_tasks),
         "pending_count": pending_manual,
         "tasks": manual_tasks,
-        "next_node": "N09",
+        "summary": (
+            f"{pending_manual} 条用例尚未执行，不能结束质量流程"
+            if pending_manual
+            else f"{len(manual_tasks)} 条人工任务已完成"
+        ),
+        "next_node": "N17" if pending_manual else "N09",
     }
     n17 = _artifact(
         identity,
         "N17",
         "n17-manual-execution",
         n17_payload,
-        ArtifactStatus.NEEDS_HUMAN if pending_manual else ArtifactStatus.COMPLETED,
-        "manual_results_pending" if pending_manual else None,
+        ArtifactStatus.BLOCKED if pending_manual else ArtifactStatus.COMPLETED,
+        n17_reason,
         [_binding(plan, execution_plan_path.name)],
     )
     store.write_artifact(n17)
@@ -520,6 +778,88 @@ def run_server_quality_tail(
                 "input_hash": content_hash(manual_tasks),
             },
         )
+    if pending_manual:
+        remove_quality_tail_after_n17(output_dir)
+        actionable = [
+            item
+            for item in actions
+            if item.get("action") != "skip"
+            and item.get("action") not in DEFERRED_PLAN_ACTIONS
+            and str(item.get("case_id", "")) not in policy_deferred_case_ids
+            and str(item.get("case_id", "")) not in skipped_layer_ids
+        ]
+        passed_ids = set()
+        failed_ids = set()
+        for execution in executions:
+            for shard in execution["payload"].get("shards", []):
+                if not isinstance(shard, Mapping):
+                    continue
+                shard_case_ids = [str(item) for item in shard.get("case_ids", []) if str(item)]
+                if str(shard.get("outcome", "")) == "passed":
+                    passed_ids.update(shard_case_ids)
+                else:
+                    failed_ids.update(shard_case_ids)
+        metrics = {
+            "scope_total": len(actions),
+            "planned": len(actionable),
+            "executed": len(auto_executed_ids),
+            "passed": len(passed_ids),
+            "failed": len(failed_ids),
+            "pending": pending_manual,
+            "skipped": len(
+                {
+                    str(item["case_id"])
+                    for item in actions
+                    if item.get("action") == "skip"
+                }
+                | skipped_layer_ids
+            ),
+            "deferred": len(
+                {
+                    str(item["case_id"])
+                    for item in actions
+                    if item.get("action") in DEFERRED_PLAN_ACTIONS
+                }
+                | policy_deferred_case_ids
+            ),
+            "quarantined": 0,
+        }
+        result = {
+            "schema_version": "server-quality-tail-result/1.0",
+            "workflow_run_id": identity[0],
+            "decision": "blocked",
+            "release_disposition": "pending",
+            "metrics": metrics,
+            "stopped_at": "N17",
+            "current_node": "N17",
+            "reached_nodes": ["N10", "N17"],
+            "external_adapter_dispositions": {
+                "mr": "not_requested_no_code_commit",
+                "bug": "not_applicable_cases_not_executed",
+                "release": "not_authorized_quality_not_passed",
+            },
+        }
+        result["result_hash"] = content_hash(result)
+        store.write_json("server-quality-tail-result.json", result)
+        if run_manifest_path is not None and run_manifest is not None:
+            run_manifest["server_quality"] = {
+                "status": "blocked",
+                "release_disposition": "pending",
+                "metrics": metrics,
+                "execution_environment": str(
+                    precheck["payload"].get("environment_class", "unspecified")
+                ),
+                "production_isolation": precheck["payload"].get("production_isolation") is True,
+                "n17_artifact_hash": n17.artifact_hash,
+                "result_hash": result["result_hash"],
+                "next_node": "N17",
+            }
+            run_manifest["current_node"] = "N17"
+            run_manifest["next_gate"] = "N17"
+            ArtifactStore(run_manifest_path.parent).write_json(
+                run_manifest_path.name, run_manifest
+            )
+        return result
 
     shard_count = sum(len(item["payload"].get("shards", [])) for item in executions)
     junit_tests = sum(
@@ -873,17 +1213,14 @@ def run_server_quality_tail(
     )
     store.write_artifact(n20)
 
-    deferred_actions = {
-        "deferred_frontend",
-        "deferred_data_construction",
-        "deferred_by_policy",
-    }
+    deferred_actions = DEFERRED_PLAN_ACTIONS
     actionable = [
         item
         for item in actions
         if item.get("action") != "skip"
         and item.get("action") not in deferred_actions
         and str(item.get("case_id", "")) not in policy_deferred_case_ids
+        and str(item.get("case_id", "")) not in skipped_layer_ids
     ]
     executed_ids = {
         str(item["case_id"])
@@ -904,19 +1241,25 @@ def run_server_quality_tail(
         if item.get("action") == "skip" or item.get("action") in deferred_actions
     }
     non_required_ids.update(policy_deferred_case_ids)
+    non_required_ids.update(skipped_layer_ids)
     pending_ids = {str(item["case_id"]) for item in actionable} - executed_ids
     reasons: list[str] = []
     warnings: list[str] = []
     deferred_data_clusters = [
         item for item in clusters if item["route_to"] == "deferred_data_construction"
     ]
+    product_defect_blocks = bool(policy.get("product_defect_blocks_quality_gate", True))
+    process_blocking_classifications = {"automation_defect", "test_data", "environment"}
+    if product_defect_blocks:
+        process_blocking_classifications.add("product_defect")
     blocking_clusters = [
         item
         for item in clusters
-        if item["classification"] in {
-            "product_defect", "automation_defect", "test_data", "environment"
-        }
+        if item["classification"] in process_blocking_classifications
         and item["route_to"] != "deferred_data_construction"
+    ]
+    product_defect_clusters = [
+        item for item in clusters if item["classification"] == "product_defect"
     ]
     triage_clusters = [item for item in clusters if item["classification"] in {
         "needs_triage", "requirement_ambiguity"
@@ -924,9 +1267,13 @@ def run_server_quality_tail(
     if retry_allowed:
         reasons.append("Environment retry is required before a final quality decision")
     if blocking_clusters:
-        reasons.append(f"{len(blocking_clusters)} classified failure cluster(s) block quality")
+        reasons.append(f"{len(blocking_clusters)} 个已分类失败簇阻断准出")
+    if product_defect_clusters and not product_defect_blocks:
+        reasons.append(
+            f"{len(product_defect_clusters)} 个失败用例已按产品缺陷流转，待提 bug / 修复"
+        )
     if triage_clusters:
-        reasons.append(f"{len(triage_clusters)} failure cluster(s) still require triage")
+        reasons.append(f"{len(triage_clusters)} 个失败簇仍待归类")
     if deferred_data_clusters:
         reasons.append(
             f"{len(deferred_data_clusters)} test-data cluster(s) were deferred by the active policy"
@@ -939,9 +1286,9 @@ def run_server_quality_tail(
         warnings.extend(n18_payload["gaps"])
     production_isolated = precheck["payload"].get("production_isolation") is True
     if require_production_isolation and not production_isolated:
-        reasons.append("Production-isolated environment evidence is required for release")
+        reasons.append("当前质量策略要求生产隔离环境才能准出")
         warnings.append("environment_not_production_isolated")
-    if any(item.get("action") == "skip" for item in actions):
+    if any(item.get("action") == "skip" for item in actions) or skipped_layer_ids:
         warnings.append("Execution plan contains skipped Cases")
     if non_required_ids - {
         str(item["case_id"]) for item in actions if item.get("action") == "skip"
@@ -987,6 +1334,8 @@ def run_server_quality_tail(
         or (require_production_isolation and not production_isolated)
     ):
         decision = "inconclusive"
+    elif product_defect_clusters and not product_defect_blocks:
+        decision = "completed_with_defects"
     elif warnings:
         decision = "passed_with_warning"
     else:
@@ -999,7 +1348,14 @@ def run_server_quality_tail(
         "passed": len(passed_ids),
         "failed": len(failed_ids),
         "pending": len(pending_ids),
-        "skipped": sum(item.get("action") == "skip" for item in actions),
+        "skipped": len(
+            {
+                str(item["case_id"])
+                for item in actions
+                if item.get("action") == "skip"
+            }
+            | skipped_layer_ids
+        ),
         "deferred": len(
             {
                 str(item["case_id"])
@@ -1010,6 +1366,14 @@ def run_server_quality_tail(
         ),
         "quarantined": len(quarantined_ids),
     }
+    case_outcomes = build_case_outcomes(
+        case_results=case_results,
+        cases_by_id=cases_by_id,
+        executions=executions,
+        execution_paths=list(automation_execution_paths or ()),
+        skipped_ids=sorted(skipped_layer_ids),
+        failures=failures,
+    )
     n11_payload = {
         "schema_version": "n11-quality-decision/1.0",
         "policy_version": str(policy.get("policy_version", "quality-policy-v1")),
@@ -1031,6 +1395,16 @@ def run_server_quality_tail(
             "critical_case_ids": list(critical_quarantined),
         },
         "decision": decision,
+        "summary": n11_decision_summary(
+            {
+                "decision": decision,
+                "metrics": {
+                    "executed": len(executed_ids),
+                    "passed": len(passed_ids),
+                    "failed": len(failed_ids),
+                },
+            }
+        ),
         "release_disposition": release_disposition,
         "environment": {
             "class": str(precheck["payload"].get("environment_class", "unspecified")),
@@ -1039,11 +1413,13 @@ def run_server_quality_tail(
         "reasons": reasons,
         "warnings": sorted(set(warnings)),
         "metrics": metrics,
+        "case_outcomes": case_outcomes,
         "next_node": "N12",
     }
     n11_status = {
         "passed": ArtifactStatus.COMPLETED,
         "passed_with_warning": ArtifactStatus.COMPLETED_WITH_GAPS,
+        "completed_with_defects": ArtifactStatus.COMPLETED_WITH_GAPS,
         "blocked": ArtifactStatus.BLOCKED,
         "inconclusive": ArtifactStatus.INCONCLUSIVE,
     }[decision]
@@ -1181,7 +1557,7 @@ def run_server_quality_tail(
         "quality_report_hash": n12.artifact_hash,
         "report_hash": report["report_hash"],
         "stopped_at": "N12",
-        "current_node": "N17" if metrics["pending"] else "N13",
+        "current_node": "N13",
         "reached_nodes": ["A19", "N12", "N13", "N19", "N23"],
         "external_adapter_dispositions": {
             "mr": "not_requested_no_code_commit",

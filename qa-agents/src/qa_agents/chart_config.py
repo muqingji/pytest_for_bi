@@ -9,11 +9,17 @@ Live 112 findings (2026-08-25):
   readback becomes empty measureFields
 - bare base_agg amount fields do not stick; case-owned aggregate metrics
   (aggDimType=agg) do stick after clearing fieldLocation/viewFieldId
+- bind field IDs from another object must not crash setup: exact fieldId on
+  the target schema wins, otherwise a schema-native field of compatible type
+  is used for dimension/filter; missing measure fields keep the source shell
 """
 
 from __future__ import annotations
 
 import copy
+import os
+from pathlib import Path
+import time
 from typing import Any, Callable, Mapping
 
 from framework.clients.models import ApiResponse
@@ -40,18 +46,132 @@ def _walk(value: Any):
             yield from _walk(child)
 
 
-def _find_field_dto(runner: Any, schema_id: str, field_id: str) -> dict[str, Any]:
+_FILTER_FALLBACK_TYPES = (
+    "date_time",
+    "date",
+    "number",
+    "select_one",
+    "select_many",
+    "true_or_false",
+)
+_DIMENSION_FALLBACK_TYPES = (
+    "select_one",
+    "select_many",
+    "date_time",
+    "date",
+    "text",
+    "string",
+    "quote",
+)
+_TYPE_ALIASES = {
+    "datetime": "date_time",
+    "date_time": "date_time",
+    "date": "date",
+    "singleselectenum": "select_one",
+    "multiselectenum": "select_many",
+    "string": "text",
+}
+
+
+def _field_id(item: Mapping[str, Any]) -> str:
+    return str(item.get("fieldId") or item.get("fieldID") or "").strip()
+
+
+def _schema_type(item: Mapping[str, Any]) -> str:
+    raw = str(item.get("type") or "").strip().lower()
+    if raw:
+        return _TYPE_ALIASES.get(raw, raw)
+    field_type = str(item.get("fieldType") or "").strip()
+    mapped = {
+        "Date": "date_time",
+        "DateTime": "date_time",
+        "SingleSelectEnum": "select_one",
+        "MultiSelectEnum": "select_many",
+        "Number": "number",
+        "String": "text",
+    }
+    if field_type in mapped:
+        return mapped[field_type]
+    return _TYPE_ALIASES.get(field_type.lower(), field_type.lower())
+
+
+def _is_field_dto(item: Mapping[str, Any]) -> bool:
+    if not _field_id(item):
+        return False
+    return any(
+        item.get(key)
+        for key in ("type", "fieldType", "dbFieldName", "dbObjName", "aggDimType", "fieldName")
+    )
+
+
+def _is_aggregate_field(item: Mapping[str, Any]) -> bool:
+    return str(item.get("aggDimType") or "").lower() == "agg" or str(item.get("type") or "").lower() == "agg"
+
+
+def _list_schema_fields(runner: Any, schema_id: str) -> list[dict[str, Any]]:
     response = runner.http_api.call(
         "fs_bi_stat.stat_schema.get_fields_by_schema_id",
         body={"schemaId": schema_id},
     )
+    fields: list[dict[str, Any]] = []
+    seen: set[str] = set()
     for item in _walk(response.body):
-        candidate = str(item.get("fieldId") or item.get("fieldID") or "")
-        if candidate == field_id:
-            return copy.deepcopy(dict(item))
-    raise ContractError(
-        f"field {field_id!r} not found on schema {schema_id!r} for chart config bind"
-    )
+        if not isinstance(item, Mapping) or not _is_field_dto(item):
+            continue
+        field_id = _field_id(item)
+        if field_id in seen:
+            continue
+        seen.add(field_id)
+        fields.append(copy.deepcopy(dict(item)))
+    return fields
+
+
+def _compatible_types(role: str) -> tuple[str, ...]:
+    if role == "filter":
+        return _FILTER_FALLBACK_TYPES
+    if role == "dimension":
+        return _DIMENSION_FALLBACK_TYPES
+    raise ContractError(f"unknown chart bind role {role!r}")
+
+
+def _pick_fallback_field(
+    fields: list[Mapping[str, Any]], role: str
+) -> dict[str, Any] | None:
+    allowed = _compatible_types(role)
+    ranked: list[tuple[int, str, dict[str, Any]]] = []
+    for item in fields:
+        if _is_aggregate_field(item):
+            continue
+        schema_type = _schema_type(item)
+        if schema_type not in allowed:
+            continue
+        ranked.append((allowed.index(schema_type), _field_id(item), dict(item)))
+    if not ranked:
+        return None
+    ranked.sort(key=lambda row: (row[0], row[1]))
+    return copy.deepcopy(ranked[0][2])
+
+
+def _resolve_field_dto(
+    schema_id: str,
+    field_id: str,
+    *,
+    role: str,
+    fields: list[Mapping[str, Any]],
+) -> tuple[dict[str, Any], bool]:
+    wanted = str(field_id or "").strip()
+    if not wanted:
+        raise ContractError(f"{role} field id is empty")
+    for item in fields:
+        if _field_id(item) == wanted:
+            return copy.deepcopy(dict(item)), False
+    fallback = _pick_fallback_field(list(fields), role)
+    if fallback is None:
+        raise ContractError(
+            f"field {wanted!r} not found on schema {schema_id!r} for chart config bind "
+            f"and no schema-native {role} field is available"
+        )
+    return fallback, True
 
 
 def _default_filter_option_ids(
@@ -385,6 +505,8 @@ def bind_stat_chart_config(
     dimension_field_id: str = "",
     filter_field_id: str = "",
     measure_field_id: str = "",
+    keep_source_filters: bool = False,
+    strict_binding: bool = False,
 ) -> dict[str, Any]:
     """Differentiate a cloned chart with case-owned dimension/measure/filter."""
     view_id = str(chart_view_id or "").strip()
@@ -393,9 +515,12 @@ def bind_stat_chart_config(
         raise ContractError("bind_stat_chart_config requires chart_view_id")
     if not schema:
         raise ContractError("bind_stat_chart_config requires schema_id")
-    dim_id = str(dimension_field_id or "").strip()
-    filter_id = str(filter_field_id or "").strip()
-    measure_id = str(measure_field_id or "").strip()
+    requested_dim_id = str(dimension_field_id or "").strip()
+    requested_filter_id = str(filter_field_id or "").strip()
+    requested_measure_id = str(measure_field_id or "").strip()
+    dim_id = requested_dim_id
+    filter_id = requested_filter_id
+    measure_id = requested_measure_id
     if not dim_id and not filter_id and not measure_id:
         return {
             "status": "skipped",
@@ -403,15 +528,72 @@ def bind_stat_chart_config(
             "chart_view_id": view_id,
         }
 
-    dimension_field = _find_field_dto(runner, schema, dim_id) if dim_id else None
-    filter_field = _find_field_dto(runner, schema, filter_id) if filter_id else None
-    measure_field = _find_field_dto(runner, schema, measure_id) if measure_id else None
+    schema_fields = _list_schema_fields(runner, schema)
+    fallbacks: dict[str, str] = {}
+    dimension_field = None
+    if dim_id:
+        dimension_field, used_fallback = _resolve_field_dto(
+            schema, dim_id, role="dimension", fields=schema_fields
+        )
+        if strict_binding and used_fallback:
+            raise ContractError(
+                f"strict chart binding failed: dimension {requested_dim_id!r} is not on schema {schema!r}"
+            )
+        dim_id = _field_id(dimension_field)
+        if used_fallback:
+            fallbacks["dimension_field_id"] = requested_dim_id
+    filter_field = None
+    if filter_id and not keep_source_filters:
+        filter_field, used_fallback = _resolve_field_dto(
+            schema, filter_id, role="filter", fields=schema_fields
+        )
+        if strict_binding and used_fallback:
+            raise ContractError(
+                f"strict chart binding failed: filter {requested_filter_id!r} is not on schema {schema!r}"
+            )
+        filter_id = _field_id(filter_field)
+        if used_fallback:
+            fallbacks["filter_field_id"] = requested_filter_id
+    elif filter_id and keep_source_filters:
+        filter_id = ""
+    measure_field = None
+    measure_status = "source_retained"
+    if measure_id:
+        exact_measure = next(
+            (item for item in schema_fields if _field_id(item) == measure_id),
+            None,
+        )
+        if exact_measure is not None:
+            measure_field = copy.deepcopy(exact_measure)
+            measure_status = "replaced"
+        else:
+            if strict_binding:
+                raise ContractError(
+                    f"strict chart binding failed: measure {requested_measure_id!r} is not on schema {schema!r}"
+                )
+            fallbacks["measure_field_id"] = requested_measure_id
+            measure_id = ""
+            measure_status = "skipped_field_not_on_schema"
+    if dimension_field is None and filter_field is None and measure_field is None:
+        return {
+            "status": "skipped",
+            "reason": "requested_fields_not_on_schema",
+            "chart_view_id": view_id,
+            "schema_id": schema,
+            "fallbacks": fallbacks,
+            "requested": {
+                "dimension_field_id": requested_dim_id,
+                "measure_field_id": requested_measure_id,
+                "filter_field_id": requested_filter_id,
+            },
+        }
     body = build_update_stat_view_body(
         runner,
         view_id,
         dimension_field=dimension_field,
         filter_field=filter_field,
         measure_field=measure_field,
+        keep_source_filters=keep_source_filters,
     )
     updated = runner.http_client.post(
         "/FHH/EM1HBICRM/statEditController/updateStatView",
@@ -459,7 +641,6 @@ def bind_stat_chart_config(
                 "(use 客户统计-指定层级 / replaceable measure source)."
             )
 
-    measure_status = "replaced" if measure_id else "source_retained"
     return {
         "status": "bound",
         "chart_view_id": view_id,
@@ -470,10 +651,16 @@ def bind_stat_chart_config(
         "filters": filter_rows,
         "measure_bind_status": measure_status,
         "requested": {
+            "dimension_field_id": requested_dim_id,
+            "measure_field_id": requested_measure_id,
+            "filter_field_id": requested_filter_id,
+        },
+        "resolved": {
             "dimension_field_id": dim_id,
             "measure_field_id": measure_id,
             "filter_field_id": filter_id,
         },
+        "fallbacks": fallbacks,
     }
 
 
@@ -494,10 +681,94 @@ def bind_stat_chart_config_action(
         measure_field_id=str(
             inputs.get("measure_field_id") or context.get("measure_field_id") or ""
         ),
+        strict_binding=bool(
+            inputs.get("strict_binding") or context.get("strict_binding")
+        ),
+        keep_source_filters=bool(
+            inputs.get("keep_source_filters") or context.get("keep_source_filters")
+        ),
     )
     context["chart_config_bind"] = payload
     return ApiResponse(status_code=200, body={"Result": {"FailureCode": 0}, "Value": payload})
 
 
+def prime_stat_chart_data_action(
+    runner: Any, step: Mapping[str, Any], context: dict[str, Any]
+) -> ApiResponse:
+    """Execute the user-facing chart query before warehouse readiness probes."""
+
+    inputs = step.get("inputs") if isinstance(step.get("inputs"), Mapping) else {}
+    view_id = str(inputs.get("chart_view_id") or context.get("chart_view_id") or "").strip()
+    if not view_id:
+        raise ContractError("prime_stat_chart_data requires chart_view_id")
+    response = None
+    body = {}
+    for delay in (0, 1, 2, 3, 5, 8, 10, 10):
+        if delay:
+            time.sleep(delay)
+        response = runner.http_api.call(
+            "fs_bi_stat.stat_base.data_query",
+            body={
+                "id": view_id,
+                "isView": 1,
+                "filterLists": [],
+                "timeZone": str(inputs.get("time_zone") or "Asia/Shanghai"),
+            },
+        )
+        body = response.body if isinstance(response.body, Mapping) else {}
+        result = body.get("Result") if isinstance(body.get("Result"), Mapping) else {}
+        error = body.get("Error") if isinstance(body.get("Error"), Mapping) else {}
+        retriable = (
+            result.get("FailureCode") == 403
+            and error.get("Code") == "s207050001"
+        )
+        if response.status_code == 200 and result.get("FailureCode") in (None, 0):
+            break
+        if not retriable:
+            break
+    else:
+        raise ContractError(f"chart baseline query remained unready for {view_id}: {body}")
+    if response is None or response.status_code != 200 or result.get("FailureCode") not in (None, 0):
+        raise ContractError(f"chart baseline query failed for {view_id}: {body}")
+    context["chart_baseline_query"] = {
+        "chart_view_id": view_id,
+        "status": "passed",
+    }
+    return response
+
+
+def validate_chart_integrity_action(
+    runner: Any, step: Mapping[str, Any], context: dict[str, Any]
+) -> ApiResponse:
+    """Run A22's frozen read-only warehouse probes after chart construction."""
+    from .data_integrity import run_bug_finder_integrity_probes
+
+    root = Path(os.environ.get("QA_BUG_FINDER_ROOT", "")).expanduser()
+    if not root.is_dir():
+        raise ContractError("QA_BUG_FINDER_ROOT is unavailable for chart integrity validation")
+    probes = step.get("integrity_probes")
+    if not isinstance(probes, list):
+        raise ContractError("validate_chart_integrity requires integrity_probes")
+    evidence = run_bug_finder_integrity_probes(probes, bug_finder_root=root)
+    for _ in range(11):
+        if evidence.get("valid") is True:
+            break
+        time.sleep(10)
+        evidence = run_bug_finder_integrity_probes(probes, bug_finder_root=root)
+    context["chart_integrity_evidence"] = evidence
+    if evidence.get("valid") is not True:
+        failed = [
+            {"check": item.get("check"), "error": item.get("error"), "row_count": item.get("row_count")}
+            for item in evidence.get("checks", [])
+            if item.get("status") != "passed"
+        ]
+        raise ContractError(f"constructed chart integrity validation failed: {failed}")
+    return ApiResponse(status_code=200, body={"Result": {"FailureCode": 0}, "Value": evidence})
+
+
 def chart_action_handlers() -> dict[str, Callable[..., Any]]:
-    return {"bind_stat_chart_config": bind_stat_chart_config_action}
+    return {
+        "bind_stat_chart_config": bind_stat_chart_config_action,
+        "prime_stat_chart_data": prime_stat_chart_data_action,
+        "validate_chart_integrity": validate_chart_integrity_action,
+    }

@@ -14,6 +14,9 @@ from .evaluation import evaluate_run
 from .env_precheck import run_n07_env_precheck, run_n16_env_fix
 from .candidate_landing import land_automation_candidates
 from .execution import run_n08_automation
+from .tapd_submission import submit_test_candidates
+from .bug_review import apply_bug_review_decision, prepare_bug_review
+from .tapd_bug_adapter import register_tapd_bugs
 from .quality_pipeline import run_server_quality_tail
 from .server_automation import prepare_server_automation
 from .errors import ContractError, InputError, QaAgentError, SecurityPolicyError
@@ -569,6 +572,7 @@ def build_parser() -> argparse.ArgumentParser:
     n08_parser.add_argument("--automation-policy", type=Path, required=True)
     n08_parser.add_argument("--execution-policy", type=Path, required=True)
     n08_parser.add_argument("--output", type=Path, required=True)
+    n08_parser.add_argument("--bug-finder-root", type=Path)
 
     land_parser = subparsers.add_parser(
         "land-automation-candidates",
@@ -584,6 +588,38 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Optional workspace root confined under --output",
     )
+
+    tapd_submission_parser = subparsers.add_parser(
+        "submit-test-candidates",
+        help="Create/reuse one TAPD-story branch and commit approved landing candidates",
+    )
+    tapd_submission_parser.add_argument("--story", required=True)
+    tapd_submission_parser.add_argument("--landing", type=Path, required=True)
+    tapd_submission_parser.add_argument("--repository-config", type=Path, required=True)
+    tapd_submission_parser.add_argument("--output", type=Path, required=True)
+
+    bug_review_parser = subparsers.add_parser(
+        "prepare-bug-review",
+        help="Render the human Bug registration approval card",
+    )
+    bug_review_parser.add_argument("--input", type=Path, required=True)
+    bug_review_parser.add_argument("--output", type=Path, required=True)
+
+    bug_decision_parser = subparsers.add_parser(
+        "apply-bug-review-decision",
+        help="Apply an approved or rejected Bug registration decision",
+    )
+    bug_decision_parser.add_argument("--decision", type=Path, required=True)
+    bug_decision_parser.add_argument("--review-artifact", type=Path, required=True)
+    bug_decision_parser.add_argument("--output", type=Path, required=True)
+
+    tapd_bug_parser = subparsers.add_parser(
+        "register-tapd-bugs", help="Register approved Bug candidates through tapd-cli"
+    )
+    tapd_bug_parser.add_argument("--review-artifact", type=Path, required=True)
+    tapd_bug_parser.add_argument("--repository-config", type=Path, required=True)
+    tapd_bug_parser.add_argument("--output", type=Path, required=True)
+    tapd_bug_parser.add_argument("--dry-run", action="store_true")
 
     server_quality_parser = subparsers.add_parser(
         "run-server-quality",
@@ -982,6 +1018,38 @@ def _run(argv: list[str] | None = None) -> int:
             args.automation_policy,
             args.execution_policy,
             args.output,
+            bug_finder_root=args.bug_finder_root,
+        )
+        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "submit-test-candidates":
+        result = submit_test_candidates(
+            args.story,
+            args.landing,
+            args.repository_config,
+            args.output,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "prepare-bug-review":
+        artifact = prepare_bug_review(args.input, args.output)
+        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "apply-bug-review-decision":
+        artifact = apply_bug_review_decision(
+            args.decision,
+            args.review_artifact,
+            args.output,
+        )
+        print(json.dumps(artifact, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "register-tapd-bugs":
+        artifact = register_tapd_bugs(
+            args.review_artifact, args.repository_config, args.output, dry_run=args.dry_run
         )
         print(json.dumps(artifact, ensure_ascii=False, indent=2))
         return 0

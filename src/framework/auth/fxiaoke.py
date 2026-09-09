@@ -6,7 +6,7 @@ import base64
 import secrets
 from typing import Any
 
-from framework.clients.http import HttpClient
+from framework.clients.http import HttpClient, _employee_id_from_body
 from framework.config.environment import EnvironmentConfig
 
 
@@ -90,6 +90,8 @@ def authenticate_fxiaoke(environment: EnvironmentConfig, http_client: HttpClient
         "Referer": f"{login_base_url}/XV/UI/Home",
         "User-Agent": environment.get("auth.user_agent", "pytest-interface-client"),
     }
+    if hasattr(http_client, "set_trace_identity"):
+        http_client.set_trace_identity(str(environment.get("auth.enterprise_account") or ""))
     response = http_client.post(f"{login_base_url}{login_path}", json_body=payload, headers=headers)
     if response.status_code != 200:
         raise FxiaokeAuthenticationError(f"CRM login failed with HTTP {response.status_code}")
@@ -98,3 +100,8 @@ def authenticate_fxiaoke(environment: EnvironmentConfig, http_client: HttpClient
         if error.get("Code") or error.get("code"):
             message = error.get("Message") or error.get("message") or "unknown error"
             raise FxiaokeAuthenticationError(f"CRM login was rejected: {message}")
+        if hasattr(http_client, "set_trace_identity"):
+            http_client.set_trace_identity(
+                str(environment.get("auth.enterprise_account") or ""),
+                _employee_id_from_body(response.body),
+            )

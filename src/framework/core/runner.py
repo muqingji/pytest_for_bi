@@ -339,6 +339,20 @@ class CaseRunner:
                     asset = self._constructed_asset_from_step(step, response, context)
                     if asset:
                         context.setdefault("__constructed_assets__", []).append(asset)
+                    if self._operation_ref(
+                        step
+                    ) == "fs_bi_crm.rpt_view_display.rename_rpt_view":
+                        request_body = step.get("request", {}).get("json", {})
+                        resource_id = str(request_body.get("viewID", "")).strip()
+                        visible_name = str(request_body.get("viewName", "")).strip()
+                        if resource_id and visible_name:
+                            for item in context.get("__constructed_assets__", []):
+                                if (
+                                    isinstance(item, dict)
+                                    and str(item.get("resource_id", "")) == resource_id
+                                    and str(item.get("resource_type", "")) == "stat_chart"
+                                ):
+                                    item["display_name"] = visible_name
             except BaseException as error:
                 failure_category = {
                     "setup": "test_data_setup",

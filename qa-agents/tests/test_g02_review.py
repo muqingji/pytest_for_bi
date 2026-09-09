@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from qa_agents.contracts import ArtifactEnvelope, ArtifactStatus, EvidenceRef, Producer
+from qa_agents.contracts import ArtifactEnvelope, ArtifactStatus, EvidenceRef, Producer, content_hash
 from qa_agents.errors import ContractError, SecurityPolicyError
 from qa_agents.g02_review import (
     DECISION_FILE,
@@ -114,6 +114,12 @@ class FakeMultica:
         self.calls.append(args)
         if args[:2] == ["issue", "create"]:
             return dict(self.issue)
+        if args[:2] == ["issue", "update"]:
+            return dict(self.issue)
+        if args[:2] == ["issue", "assign"]:
+            self.issue["assignee_id"] = args[args.index("--to-id") + 1]
+            self.issue["assignee_type"] = "member"
+            return dict(self.issue)
         if args[:3] == ["issue", "metadata", "set"]:
             self.issue["metadata"][args[args.index("--key") + 1]] = args[
                 args.index("--value") + 1
@@ -146,7 +152,15 @@ def test_prepare_g02_is_content_addressed_and_idempotent(tmp_path: Path) -> None
     assert first["multica_control"]["assignee_member_id"] == MEMBER_ID
     assert first["review_summary"]["n04_valid"] is True
     assert [item["case_id"] for item in first["review_items"]] == ["CASE-001"]
+    assert first["decision_items"] == []
+    assert first["skipped_scenarios"] == []
+    assert first["review_summary"]["decision_count"] == 0
     assert read_json(output / STATE_FILE)["state"] == "prepared"
+    case_cards = (output / "case-cards.md").read_text(encoding="utf-8")
+    assert case_cards.startswith("# 中文用例")
+    assert "`CASE-001`" in case_cards
+    request_md = (output / "g02-review-request.md").read_text(encoding="utf-8")
+    assert "本 Issue 附件 `case-cards.md`" in request_md
 
 
 def test_prepare_g02_rejects_current_invalid_pilot_n04(tmp_path: Path) -> None:
@@ -179,6 +193,83 @@ def test_open_g02_creates_one_bound_multica_review_issue(tmp_path: Path) -> None
     assert second == first
     assert len(multica.calls) == call_count
     assert multica.issue["metadata"]["qa_request_hash"] == first["request_hash"]
+    created = next(call for call in multica.calls if call[:2] == ["issue", "create"])
+    attachments = [
+        created[index + 1]
+        for index, item in enumerate(created)
+        if item == "--attachment"
+    ]
+    assert "g02-review-request.json" in attachments
+    assert "case-cards.md" in attachments
+
+
+def test_prepare_g02_rewrites_unbound_prepared_request(tmp_path: Path) -> None:
+    artifacts, output = prepare_valid_review(tmp_path)
+    request_path = output / "g02-review-request.json"
+    stale = read_json(request_path)
+    stale.pop("decision_items", None)
+    stale.pop("skipped_scenarios", None)
+    stale.get("review_summary", {}).pop("decision_count", None)
+    stale.pop("request_hash", None)
+    stale["request_hash"] = content_hash(stale)
+    request_path.write_text(json.dumps(stale, ensure_ascii=False), encoding="utf-8")
+
+    refreshed = prepare_test_case_review_request(*artifacts, POLICY_PATH, output)
+    assert "decision_items" in refreshed
+    assert "skipped_scenarios" in refreshed
+    assert refreshed["request_hash"] != stale["request_hash"]
+    assert read_json(output / STATE_FILE)["state"] == "prepared"
+    assert read_json(output / STATE_FILE)["issue_id"] is None
+
+
+def test_prepare_g02_keeps_bound_request_frozen(tmp_path: Path) -> None:
+    artifacts, output = prepare_valid_review(tmp_path)
+    state_path = output / STATE_FILE
+    state = read_json(state_path)
+    state.pop("state_hash", None)
+    state["state"] = "waiting_for_review"
+    state["issue_id"] = "c3-issue"
+    state["state_hash"] = content_hash(state)
+    state_path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+
+    request_path = output / "g02-review-request.json"
+    stale = read_json(request_path)
+    stale.pop("decision_items", None)
+    stale.pop("skipped_scenarios", None)
+    stale.pop("request_hash", None)
+    stale["request_hash"] = content_hash(stale)
+    request_path.write_text(json.dumps(stale, ensure_ascii=False), encoding="utf-8")
+
+    with pytest.raises(ContractError, match="different frozen inputs"):
+        prepare_test_case_review_request(*artifacts, POLICY_PATH, output)
+
+
+def test_open_g02_binds_stage_card_and_keeps_done_status(tmp_path: Path) -> None:
+    artifacts, output = prepare_valid_review(tmp_path)
+    request = output / "g02-review-request.json"
+    multica = FakeMultica()
+    multica.issue = {
+        **multica.issue,
+        "id": "c3-issue",
+        "project_id": "84580297-a0ca-4cce-9db9-59cade66f83c",
+        "status": "done",
+        "updated_at": "2026-09-01T12:00:00Z",
+    }
+    opened = open_multica_test_case_review(
+        request, POLICY_PATH, output, issue_id="c3-issue", runner=multica
+    )
+    assert opened["issue_id"] == "c3-issue"
+    assert opened["observed_multica_status"] == "done"
+    assert ["issue", "status", "c3-issue", "in_review"] not in [
+        args[:4] for args in multica.calls if args[:2] == ["issue", "status"]
+    ]
+    assert not any(args[:2] == ["issue", "create"] for args in multica.calls)
+
+    approved = sync_multica_test_case_review(
+        request, artifacts[2], POLICY_PATH, output, runner=multica
+    )
+    assert approved["decision"] == "approved"
+    assert approved["next_node"] == "N25"
 
 
 def test_in_review_pauses_and_done_resumes_once(tmp_path: Path) -> None:

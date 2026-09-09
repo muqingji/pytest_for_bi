@@ -6,6 +6,7 @@ import pytest
 from qa_agents.errors import ContractError
 from qa_agents.requirement_case_renderer import (
     normalize_ir_parent_case,
+    render_case_cards_document,
     render_case_ir,
     render_g02_review_items,
     render_review_card,
@@ -186,6 +187,17 @@ def test_render_review_card_has_scenario_steps_expected() -> None:
     assert f"：`{EN_MESSAGE}`" in card
 
 
+def test_render_case_cards_document_guides_reviewer_to_chinese_cases() -> None:
+    (case,) = parse_requirement_cards(CARD)
+    document = render_case_cards_document([case])
+    assert document.startswith("# 中文用例")
+    assert "请打开本文件阅读本次生成的全部父用例" in document
+    assert "不要打开 JSON 或自动化代码来审批用例" in document
+    assert "**测试场景**" in document
+    assert "`TC-BE-001`" in document
+    assert "deterministic · equals" not in document
+
+
 def test_g02_review_items_match_g02_review_shape() -> None:
     (case,) = parse_requirement_cards(CARD)
     items = render_g02_review_items([case])
@@ -350,3 +362,38 @@ def test_human_expected_value_spells_out_messages_and_codes() -> None:
     assert "（不得包含：`机密收入`）" in card
     assert "manual_confirmation" not in card
     assert "preserve_actual_business_response" not in card
+
+
+def test_human_expected_value_one_of_messages_and_not_contains_on_locale() -> None:
+    card = render_review_card({
+        "case_id": "TC-X", "title": "t", "layer": "backend", "risk": "high",
+        "priority": "P1", "source_refs": ["r"],
+        "scenario": "s", "steps": ["x"], "preconditions": [],
+        "expected": [
+            {
+                "id": "EXP-ZH",
+                "description": "中文提示等于其中一条专用批准模板。",
+                "oracle_type": "deterministic", "matcher": "one_of",
+                "observation_point": "detail_api.response.error_message.zh_CN",
+                "expected_value": "['维度或数据范围中使用了自定义维度字段，暂不支持查看明细', '基于多关联关系创建的统计指标，暂不支持查看明细']",
+            },
+            {
+                "id": "EXP-EN",
+                "description": "英文提示等于其中一条专用批准模板。",
+                "oracle_type": "deterministic", "matcher": "one_of",
+                "observation_point": "detail_api.response.error_message.en",
+                "expected_value": "['Custom dimension fields are used in the dimension or data range. Details view is not supported.', 'Metrics created based on multiple relationships do not support Details view.']",
+            },
+            {
+                "id": "EXP-NC",
+                "description": "中文提示不得把多条原因拼成一句话。",
+                "oracle_type": "deterministic", "matcher": "not_contains",
+                "observation_point": "detail_api.response.error_message.zh_CN",
+                "expected_value": "暂不支持查看明细，基于",
+            },
+        ],
+    })
+    assert "（允许文案：「维度或数据范围中使用了自定义维度字段，暂不支持查看明细」、「基于多关联关系创建的统计指标，暂不支持查看明细」）" in card
+    assert "（允许文案：`Custom dimension fields are used in the dimension or data range. Details view is not supported.`、`Metrics created based on multiple relationships do not support Details view.`）" in card
+    assert "（不得包含：`暂不支持查看明细，基于`）" in card
+    assert "：「['维度或数据范围中使用了自定义维度字段，暂不支持查看明细'" not in card

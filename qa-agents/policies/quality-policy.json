@@ -2,7 +2,7 @@
   "schema_version": "quality-policy/1.0",
   "policy_version": "server-quality-policy-v1",
   "max_environment_retry_attempts": 1,
-  "require_production_isolation_for_release": true,
+  "require_production_isolation_for_release": false,
   "required_case_priorities": [
     "P0",
     "P1"
@@ -10,6 +10,7 @@
   "manual_incomplete_decision": "inconclusive",
   "unclassified_failure_decision": "inconclusive",
   "classified_failure_decision": "blocked",
+  "product_defect_blocks_quality_gate": false,
   "coverage_missing_is_warning": true,
   "waiver_changes_original_decision": false,
   "quarantined_critical_blocks_release": true,

@@ -47,6 +47,22 @@ def write_json(path: Path, value: dict) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _valid_chart_integrity_evidence() -> dict:
+    checks = [
+        {"check": item, "status": "passed"}
+        for item in ("chart_topology", "source_data", "warehouse_aggregation", "warehouse_dimension")
+    ]
+    packet = {
+        "schema_version": "test-data-integrity-evidence/1.0",
+        "provider": "bug-finder/fxops_query",
+        "required_checks": sorted(item["check"] for item in checks),
+        "checks": checks,
+        "valid": True,
+    }
+    packet["evidence_hash"] = content_hash(packet)
+    return packet
+
+
 def test_prepare_multica_inputs_enforces_profile_input_isolation(tmp_path: Path) -> None:
     manifest = prepare_multica_inputs(
         PILOT_INPUT,
@@ -1160,7 +1176,7 @@ def test_prepare_and_ingest_multica_a09_input(tmp_path: Path) -> None:
     assert artifact["payload"]["code_coverage_reviewed"] is False
 
 
-def test_ingest_a09_rejects_blocking_issue_without_plain_summary(
+def test_ingest_a09_backfills_blocking_issue_human_facing_fields(
     tmp_path: Path,
 ) -> None:
     bundle = prepare_a09_bundle(tmp_path)
@@ -1182,18 +1198,20 @@ def test_ingest_a09_rejects_blocking_issue_without_plain_summary(
             "recommendation": "改为可解析期望值。",
         }
     ]
-    with pytest.raises(ContractError, match="plain_summary"):
-        ingest_multica_output(
-            tmp_path / "inputs" / "a09-input.json",
-            json.dumps(output, ensure_ascii=False),
-            tmp_path / "stage5",
-            task_id="task-a09",
-            issue_id="issue-a09",
-            attachment_id="attachment-a09",
-            model_provider="codex",
-            model_snapshot="gpt-test",
-            prompt_version="1.1.0",
-        )
+    artifact = ingest_multica_output(
+        tmp_path / "inputs" / "a09-input.json",
+        json.dumps(output, ensure_ascii=False),
+        tmp_path / "stage5",
+        task_id="task-a09",
+        issue_id="issue-a09",
+        attachment_id="attachment-a09",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.1.0",
+    )
+    issue = artifact["payload"]["issues"][0]
+    assert issue["plain_summary"]
+    assert issue["human_title"]
 
 
 def test_ingest_a09_accepts_issue_with_plain_summary(tmp_path: Path) -> None:
@@ -1284,6 +1302,16 @@ def test_ingest_a09_rejects_code_coverage_claim(tmp_path: Path) -> None:
             model_snapshot="gpt-test",
             prompt_version="1.1.0",
         )
+
+
+def test_a03_instructions_fail_closed_on_missing_blocking_evidence() -> None:
+    workspace = read_json(ROOT / "multica" / "workspace-manifest.json")
+    a03 = next(item for item in workspace["agents"] if item["logical_id"] == "A03")
+    instruction = (ROOT.parent / a03["instruction_path"]).read_text(encoding="utf-8")
+
+    assert a03["instruction_version"] == "1.1.2"
+    assert "blocking_items | all(.source_refs 是非空数组)" in instruction
+    assert "不得把它放进" in instruction
 
 
 def test_g02_pilot_approver_policy_matches_workspace_manifest() -> None:
@@ -1567,6 +1595,22 @@ def test_prepare_and_ingest_multica_a11_input(tmp_path: Path) -> None:
     assert artifact["payload"]["input_bundle_hash"] == bundle["bundle_hash"]
     assert artifact["producer"]["component_id"] == "A11"
     assert artifact["producer"]["prompt_version"] == "1.0.0"
+
+
+def test_ingest_a11_allows_extra_not_applicable_layer(tmp_path: Path) -> None:
+    bundle, _, _ = build_a11_prepare_inputs(tmp_path)
+    output = valid_a11_output(bundle)
+    output["layer_coverage"].append(
+        {
+            "layer": "frontend",
+            "status": "not_applicable",
+            "case_ids": [],
+            "source_refs": [{"type": "layer", "id": "frontend"}],
+            "rationale": "no compiled frontend child",
+        }
+    )
+    artifact = ingest_a11(bundle, output, tmp_path)
+    assert artifact["payload"]["approved"] is True
 
 
 def test_ingest_a11_rejects_evaluation_oracle_access(tmp_path: Path) -> None:
@@ -2428,6 +2472,97 @@ def test_prepare_and_ingest_multica_a22_plan_input(tmp_path: Path) -> None:
     assert artifact["status"] == "completed"
 
 
+def test_a22_existing_asset_reuse_must_bind_frozen_discovery(tmp_path: Path) -> None:
+    from qa_agents.existing_asset_discovery import discover_existing_assets
+    from qa_agents.test_data import validate_test_data_plan
+
+    setup = build_c5_prepare_inputs(tmp_path)
+    initial = prepare_multica_test_data_plan_input(
+        setup["compiled_path"],
+        tmp_path / "stage14" / "artifacts" / "n15-execution-plan.json",
+        ROOT / "policies" / "test-data-policy.json",
+        tmp_path / "initial-a22",
+    )
+    case = initial["allowed_inputs"]["cases"][0]
+    case_id = str(case["id"])
+    case.setdefault("test_data", {})["resource_requirements"] = [
+        {"resource_key": "chart", "resource_type": "stat_chart"}
+    ]
+    discovery = discover_existing_assets(
+        [case],
+        [{"case_id": case_id, "resource_key": "chart", "resource_type": "stat_chart", "resource_id": "BI-1"}],
+        verifier=lambda _: {
+            "live_readback_status": "succeeded",
+            "baseline_status": "passed",
+            "configuration": {"id": "BI-1"},
+            "baseline": {"Result": {"FailureCode": 0}},
+            "readback_operation": "fs_bi_stat.stat_edit.get_chart_config",
+            "baseline_operation": "fs_bi_stat.stat_base.chart_query",
+            "integrity_evidence": _valid_chart_integrity_evidence(),
+        },
+    )
+    bundle = prepare_multica_test_data_plan_input(
+        setup["compiled_path"],
+        tmp_path / "stage14" / "artifacts" / "n15-execution-plan.json",
+        ROOT / "policies" / "test-data-policy.json",
+        tmp_path / "a22-with-discovery",
+        existing_asset_discovery=discovery,
+    )
+    candidate = discovery["candidates"][0]
+    output = {
+        "schema_version": "test-data-plan/1.0",
+        "workflow_run_id": bundle["workflow_run_id"],
+        "source_snapshot_id": bundle["source_snapshot_id"],
+        "input_bundle_hash": bundle["bundle_hash"],
+        "status": "completed",
+        "environment": "112",
+        "namespace": "qa-a22-existing-assets",
+            "case_plans": [{
+                "case_id": case_id,
+                "requirement_name": case.get("requirement_name") or case.get("title") or case_id,
+                "requires_data_construction": False,
+            "source_refs": [case_id],
+                "resources": [{
+                "resource_key": "chart",
+                "resource_type": "stat_chart",
+                "resource_id": "BI-1",
+                    "resource_id_variable": "chart_view_id",
+                    "asset_folder_name": case.get("requirement_name") or case.get("title") or case_id,
+                "lifecycle_mode": "existing_read_only",
+                "existing_asset_evidence": candidate["existing_asset_evidence"],
+                "discovery": candidate["discovery"],
+                "readiness": candidate["readiness"],
+                "validity_contract": candidate["validity_contract"],
+                "discovery_hash": discovery["discovery_hash"],
+            }],
+        }],
+        "paused_cases": [],
+        "unresolved_requirements": [],
+        "planning_mode": "assisted",
+        "evaluation_oracle_accessed": False,
+    }
+    validation = validate_test_data_plan(
+        output, read_json(ROOT / "policies" / "test-data-policy.json")
+    )
+    assert validation["valid"] is True
+    ingest_multica_output(
+        tmp_path / "a22-with-discovery" / "a22-input.json",
+        json.dumps(output),
+        tmp_path / "accepted-existing",
+        task_id="task", issue_id="issue", attachment_id="attachment",
+        model_provider="codex", model_snapshot="test", prompt_version="1.0.0",
+    )
+    output["case_plans"][0]["resources"][0]["resource_id"] = "BI-forged"
+    with pytest.raises(SecurityPolicyError, match="unverified asset"):
+        ingest_multica_output(
+            tmp_path / "a22-with-discovery" / "a22-input.json",
+            json.dumps(output),
+            tmp_path / "rejected-existing",
+            task_id="task", issue_id="issue", attachment_id="attachment",
+            model_provider="codex", model_snapshot="test", prompt_version="1.0.0",
+        )
+
+
 def test_c5_agent_contracts_match_workspace_manifest(tmp_path: Path) -> None:
     workspace = read_json(ROOT / "multica" / "workspace-manifest.json")
     agents = {a["logical_id"]: a for a in workspace["agents"]}
@@ -2556,6 +2691,68 @@ def test_ingest_a22_rejects_unknown_case_plan(tmp_path: Path) -> None:
         ROOT / "policies" / "test-data-policy.json",
         setup["inputs_dir"],
     )
+
+
+def test_ingest_a22_rejects_chart_detail_case_without_resources(tmp_path: Path) -> None:
+    setup = build_c5_prepare_inputs(tmp_path)
+    frozen_case = json.loads((setup["compiled_path"]).read_text())["payload"][
+        "compiled_cases"
+    ][0]
+    frozen_case["test_data"]["required_scene"] = "chart_detail"
+    raw_compiled = json.loads((setup["compiled_path"]).read_text())
+    raw_compiled["payload"]["compiled_cases"] = [frozen_case]
+    compiled_envelope = ArtifactEnvelope(
+        workflow_run_id=raw_compiled["workflow_run_id"],
+        workflow_mode=raw_compiled["workflow_mode"],
+        artifact_id=raw_compiled["artifact_id"],
+        source_snapshot_id=raw_compiled["source_snapshot_id"],
+        producer=Producer(**raw_compiled["producer"]),
+        payload=raw_compiled["payload"],
+        status=ArtifactStatus(raw_compiled["status"]),
+        created_at=raw_compiled["created_at"],
+    )
+    (setup["compiled_path"]).write_text(
+        json.dumps(compiled_envelope.to_dict(), ensure_ascii=False), encoding="utf-8"
+    )
+    bundle = prepare_multica_test_data_plan_input(
+        setup["compiled_path"],
+        tmp_path / "stage14" / "artifacts" / "n15-execution-plan.json",
+        ROOT / "policies" / "test-data-policy.json",
+        setup["inputs_dir"],
+    )
+    plan = {
+        "schema_version": "test-data-plan/1.0",
+        "workflow_run_id": bundle["workflow_run_id"],
+        "source_snapshot_id": bundle["source_snapshot_id"],
+        "input_bundle_hash": bundle["bundle_hash"],
+        "status": "completed",
+        "environment": "112",
+        "namespace": "qa-a22-plan-test",
+        "case_plans": [
+            {
+                "case_id": frozen_case["id"],
+                "required_scene": "chart_detail",
+                "requires_data_construction": False,
+                "resources": [],
+                "source_refs": [frozen_case["id"]],
+            }
+        ],
+        "paused_cases": [],
+        "unresolved_requirements": [],
+        "planning_mode": "case_explicit",
+    }
+    with pytest.raises(ContractError, match="chart_detail without asset resources"):
+        ingest_multica_output(
+            setup["inputs_dir"] / "a22-input.json",
+            json.dumps(plan, ensure_ascii=False),
+            tmp_path / "stage22-chart-gap",
+            task_id="task-a22-chart-gap",
+            issue_id="issue-a22-chart-gap",
+            attachment_id="attachment-a22-chart-gap",
+            model_provider="codex",
+            model_snapshot="gpt-test",
+            prompt_version="1.0.0",
+        )
     plan = {
         "schema_version": "test-data-plan/1.0",
         "workflow_run_id": bundle["workflow_run_id"],
@@ -2622,6 +2819,190 @@ def test_generation_input_regeneration_round_changes_bundle_hash(
     assert first["bundle_hash"] != rerun["bundle_hash"]
     assert rerun["regeneration_round"] == "1"
     assert "regeneration_round" not in first
+
+def _a22_plan_envelope(
+    bundle: dict, case_ids: str | list[str], setup_operation: str
+) -> ArtifactEnvelope:
+    if isinstance(case_ids, str):
+        case_ids = [case_ids]
+    plan = {
+        "schema_version": "test-data-plan/1.0",
+        "environment": "112",
+        "namespace": "qa-a22-pilot-001-source-v1",
+        "status": "completed",
+        "case_plans": [
+            {
+                "case_id": case_id,
+                "requires_data_construction": True,
+                "resources": [
+                    {
+                        "resource_key": "cd_field",
+                        "resource_type": "custom_dimension",
+                        "setup_operation": setup_operation,
+                        "resource_id_variable": "cd_field_id",
+                        "high_risk_write": True,
+                    }
+                ],
+                "source_refs": [case_id],
+            }
+            for case_id in case_ids
+        ],
+        "paused_cases": [],
+        "unresolved_requirements": [],
+        "planning_mode": "case_explicit",
+    }
+    return ArtifactEnvelope(
+        workflow_run_id=bundle["workflow_run_id"],
+        workflow_mode=bundle["workflow_mode"],
+        artifact_id="a22-test-data-plan",
+        source_snapshot_id=bundle["source_snapshot_id"],
+        producer=Producer(component_id="A22", runtime="agent"),
+        payload=plan,
+        status=ArtifactStatus.COMPLETED,
+    )
+
+
+def test_ingest_a14_rejects_setup_contract_unavailable_when_verified(
+    tmp_path: Path,
+) -> None:
+    """已验证 setup 契约存在时，A14 不得用 setup_contract_unavailable 拒案。"""
+    setup = build_c5_prepare_inputs(tmp_path)
+    n15_path = tmp_path / "stage14" / "artifacts" / "n15-execution-plan.json"
+    backend_case_id = str(setup["case_ids"][0])
+    store = ArtifactStore(tmp_path / "stage-a22-verified")
+    store.write_artifact(
+        _a22_plan_envelope(
+            setup["a14_bundle"],
+            setup["case_ids"],
+            "fs_bi_stat.custom_dimension.create_custom_dimension",
+        )
+    )
+    bundle = prepare_multica_automation_generation_input(
+        setup["compiled_path"],
+        n15_path,
+        ROOT / "policies" / "automation-target-policy.json",
+        tmp_path / "c5-inputs-false-reject",
+        profile_id="A14",
+        test_data_plan_path=tmp_path / "stage-a22-verified" / "artifacts" / "a22-test-data-plan.json",
+    )
+    frozen_ids = [str(item["id"]) for item in bundle["allowed_inputs"]["cases"]]
+    output = valid_a14_output(bundle, frozen_ids)
+    output["manifest"] = None
+    output["code_candidates"] = []
+    output["status"] = "not_applicable"
+    output["rejected_cases"] = [
+        {
+            "case_id": case_id,
+            "reason_code": "setup_contract_unavailable",
+            "source_refs": [case_id],
+        }
+        for case_id in frozen_ids
+    ]
+    with pytest.raises(ContractError, match="already verified"):
+        ingest_multica_output(
+            tmp_path / "c5-inputs-false-reject" / "a14-input.json",
+            json.dumps(output, ensure_ascii=False),
+            tmp_path / "stage14-false-reject",
+            task_id="task-a14-false-reject",
+            issue_id="issue-a14-false-reject",
+            attachment_id="attachment-a14-false-reject",
+            model_provider="codex",
+            model_snapshot="gpt-test",
+            prompt_version="1.0.0",
+        )
+
+
+def test_ingest_a14_rejects_setup_contract_unavailable_without_setup_operation(
+    tmp_path: Path,
+) -> None:
+    """没有 setup_operation 的 Case 不能用 setup_contract_unavailable 拒绝。"""
+    setup = build_c5_prepare_inputs(tmp_path)
+    bundle = setup["a14_bundle"]
+    frozen_ids = [str(item["id"]) for item in bundle["allowed_inputs"]["cases"]]
+    output = valid_a14_output(bundle, frozen_ids)
+    output["manifest"] = None
+    output["code_candidates"] = []
+    output["status"] = "not_applicable"
+    output["rejected_cases"] = [
+        {
+            "case_id": case_id,
+            "reason_code": "setup_contract_unavailable",
+            "source_refs": [case_id],
+        }
+        for case_id in frozen_ids
+    ]
+    with pytest.raises(ContractError, match="has no setup_operation"):
+        ingest_multica_output(
+            setup["inputs_dir"] / "a14-input.json",
+            json.dumps(output, ensure_ascii=False),
+            tmp_path / "stage14-no-setup",
+            task_id="task-a14-no-setup",
+            issue_id="issue-a14-no-setup",
+            attachment_id="attachment-a14-no-setup",
+            model_provider="codex",
+            model_snapshot="gpt-test",
+            prompt_version="1.0.0",
+        )
+
+
+def test_ingest_a14_allows_setup_contract_unavailable_for_unverified_operation(
+    tmp_path: Path,
+) -> None:
+    setup = build_c5_prepare_inputs(tmp_path)
+    n15_path = tmp_path / "stage14" / "artifacts" / "n15-execution-plan.json"
+    backend_case_id = str(setup["case_ids"][0])
+    store = ArtifactStore(tmp_path / "stage-a22-unknown")
+    store.write_artifact(
+        _a22_plan_envelope(
+            setup["a14_bundle"],
+            backend_case_id,
+            "fs_bi.unknown.create_unverified_resource",
+        )
+    )
+    bundle = prepare_multica_automation_generation_input(
+        setup["compiled_path"],
+        n15_path,
+        ROOT / "policies" / "automation-target-policy.json",
+        tmp_path / "c5-inputs-true-reject",
+        profile_id="A14",
+        test_data_plan_path=tmp_path / "stage-a22-unknown" / "artifacts" / "a22-test-data-plan.json",
+    )
+    frozen_ids = [str(item["id"]) for item in bundle["allowed_inputs"]["cases"]]
+    output = valid_a14_output(bundle, frozen_ids)
+    output["manifest"] = None
+    output["code_candidates"] = []
+    output["status"] = "not_applicable"
+    output["rejected_cases"] = [
+        {
+            "case_id": case_id,
+            "reason_code": (
+                "setup_contract_unavailable"
+                if case_id == backend_case_id
+                else "case_not_machine_executable"
+            ),
+            "source_refs": [case_id],
+        }
+        for case_id in frozen_ids
+    ]
+    artifact = ingest_multica_output(
+        tmp_path / "c5-inputs-true-reject" / "a14-input.json",
+        json.dumps(output, ensure_ascii=False),
+        tmp_path / "stage14-true-reject",
+        task_id="task-a14-true-reject",
+        issue_id="issue-a14-true-reject",
+        attachment_id="attachment-a14-true-reject",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.0.0",
+    )
+    assert artifact["artifact_id"] == "a14-backend-automation-generation"
+    rejected = {
+        item["case_id"]: item["reason_code"]
+        for item in artifact["payload"]["rejected_cases"]
+    }
+    assert rejected[backend_case_id] == "setup_contract_unavailable"
+
+
 def test_generation_input_merges_a22_resources_and_verified_contracts(
     tmp_path: Path,
 ) -> None:
@@ -2695,7 +3076,7 @@ def test_generation_input_merges_a22_resources_and_verified_contracts(
     contracts = bundle["allowed_inputs"]["verified_setup_contracts"]
     assert contracts["contracts"][
         "fs_bi_stat.custom_dimension.create_custom_dimension"
-    ]["response_id_paths"] == ["Value.fieldId"]
+    ]["response_id_paths"] == ["Value.dimensionId", "Value.fieldId"]
     assert contracts["schema_version"] == "verified-setup-contracts/1.0"
     assert "fs_bi_stat.custom_dimension.create_custom_dimension" in contracts["contracts"]
     assert "required_body_keys" in contracts["contracts"][
@@ -2717,3 +3098,34 @@ def test_generation_input_merges_a22_resources_and_verified_contracts(
         profile_id="A15",
     )
     assert "verified_setup_contracts" not in a15["allowed_inputs"]
+
+
+def test_ingest_a14_rejects_chart_binding_without_chart_resource(tmp_path: Path) -> None:
+    """A14 不能在 A22 没有图表资源时注入 chart_view_id。"""
+    setup = build_c5_prepare_inputs(tmp_path)
+    bundle = setup["a14_bundle"]
+    output = valid_a14_output(bundle, setup["case_ids"])
+    content = (
+        "CASE_SPEC={'id':'PC-BE-007-BACKEND','steps':[{'name':'call',"
+        "'request':{'api':'fs_bi_stat.stat_base.data_query_da655ba1',"
+        "'json':{'id':'{{chart_view_id}}'}},'expect':{'status_code':200}}],"
+        "'expected':[],'cleanup':[]}\n"
+        "def test_case(case_runner):\n"
+        "    observations=case_runner.execute(CASE_SPEC)\n"
+        "    case_runner.assert_oracles(observations,CASE_SPEC['expected'])\n"
+    )
+    output["code_candidates"][0]["content"] = content
+    output["code_candidates"][0]["content_hash"] = content_hash(content)
+    output["manifest"]["candidate_files"][0]["content_hash"] = content_hash(content)
+    with pytest.raises(ContractError, match="bind chart_view_id without a chart resource"):
+        ingest_multica_output(
+            setup["inputs_dir"] / "a14-input.json",
+            json.dumps(output, ensure_ascii=False),
+            tmp_path / "stage14-chart-gap",
+            task_id="task-a14-chart-gap",
+            issue_id="issue-a14-chart-gap",
+            attachment_id="attachment-a14-chart-gap",
+            model_provider="codex",
+            model_snapshot="gpt-test",
+            prompt_version="1.0.0",
+        )

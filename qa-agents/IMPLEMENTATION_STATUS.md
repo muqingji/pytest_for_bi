@@ -1,8 +1,8 @@
 # Implementation Status
 
-更新时间：2026-08-21（新增 Case 可执行性分类、A14/N05 确定性能力门禁、严格断言和 N08
-生命周期失败分类；PC-001–PC-007 完整自动化与 112 实况覆盖仍在进行。历史快照：独立置信
-运行已过 G01/N24/A08/A09/N04 双轮修正，N04 预算耗尽升级 human）
+更新时间：2026-09-08（本地质量链路和报告可读性已按 20260901 运行刷新；N08 仍是
+0/7 通过，N11 结论为 `blocked/pending`。这不是生产准出通过，生产隔离 Runner 与外部
+发布/缺陷/MR Adapter 仍未接入。）
 
 | 范围 | 状态 | 说明 |
 | --- | --- | --- |
@@ -42,8 +42,30 @@
 | A01 歧义路由建议 Profile | 已实现 | N00 注册 5 个确定性模板，仅未知模式/触发不匹配时调用 A01 建议，N00 校验后生效；建议不能自行创建或执行流程 |
 | N07/N16 环境与数据门禁 | 已实现 | 确定性节点 + 15 项测试：N07 环境指纹、8 类检查、指纹节流、失败即 blocked 路由 N16；N16 幂等键/无状态变化拒绝/未覆盖失败项拒绝/补偿清理；CLI 与 Makefile 命令就绪 |
 | N08 自动化执行 | 已实现参考切片 | 认证 N07/A18/N05 producer/contract，绑定 generation/manifest/candidate 哈希；响应断言和 Oracle matcher 严格白名单，生命周期失败区分 setup/readiness/assertion-or-product/cleanup/residue；本地 Runner 非生产隔离，生产 Adapter 待接入 |
-| N09-N12/N17-N23 归因与门禁 | 已实现确定性参考链并实跑 | N10 重试预算、N17 人工结果汇合、N18 信号、N09 证据/指纹聚类、N20 缺陷去重、N11 决策、N12 JSON/Markdown/HTML 报告及 N13/N19/N23 审计已实现；缺人工结果或自动化证据时严格输出 `inconclusive`，生产发布/MR/Bug 写入 Adapter 仍未接入 |
+| N09-N12/N17-N23 归因与门禁 | 已实现确定性参考链并实跑 | N10 重试预算、N17 未执行用例收口、N18 信号、N09 证据/指纹聚类、N20 缺陷去重、N11 决策、N12 JSON/Markdown/HTML 报告及 N13/N19/N23 审计已实现。`ContractError`/`AssertionError` 会解析为结构化失败详情，并透出到 Markdown/HTML；缺执行证据时仍严格输出 `inconclusive`/`blocked`。生产发布/MR/Bug 写入 Adapter 仍未接入 |
 | 服务端全链实跑 | 已到最终报告；无待执行项 | `multica-pilot-001` 历史尾链为 `inconclusive/pending`：可执行 1、实际执行 1、延期 13、pending 0。CASE-BE-002-BACKEND 的四类指标错误码和实际名称已在 112 复跑，但精确中英文文案及移除筛选后的正常响应未完整覆盖，因此结果为 blocked，不伪装为通过 |
+
+
+### TODO: 8 卡服务端流程接入 E2E 生成器（A16）
+
+- 当前 8 卡 / 服务端质量尾链**跳过 e2e 层**：N15 `skip_layers={"e2e"}`，N17/N11 不把 e2e 当必测。
+- 准出以服务端（backend/contract）执行结果为准。
+- 原因：A16 端到端生成器尚未接入 8 卡 C5，不能自动点页面。
+- 后续：接入 A16 后，从 `SERVER_QUALITY_SKIPPED_LAYERS` 和 `ensure_n15_execution_plan` 的 skip 中移除 e2e，重新纳入执行与准出。
+
+### 2026-08-21 任意 Case 自动化能力门禁更新
+
+### 2026-09-08 本地质量链路刷新
+
+- 以 `generated/multica-eight-card-run-20260901/current/workflow-center-spec.json` 为准；
+  N11/N12 已重新计算为 `blocked/pending`，执行结果是 7 执行、0 通过、7 失败、4 按策略跳过。
+- 官方测试入口恢复：`make -C qa-agents test` 可收集 `scripts`，当前基线为 `727 passed`。
+- 统计图编译器输出补齐 `validity_contract`、`integrity_probes` 和 `asset_folder_name`；
+  已有资产发现候选保留目录元数据，避免保留型统计图被 N27 误拒。
+- Multica 有 usage 时记录最后调用的 provider/model；没有 usage 时记录 `unknown/unknown`，
+  不再把本机 `~/.codex/config.toml` 伪造成远端运行来源。
+- N09 支持 Oracle 字段差异、`ContractError` 和 `AssertionError`；20260901 的 7 个失败簇
+  detail 均非空。报告新增 Failure Details，保留 `blocked`，不把产品缺陷或造数失败洗成通过。
 
 ### 2026-08-21 任意 Case 自动化能力门禁更新
 

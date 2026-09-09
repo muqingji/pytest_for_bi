@@ -345,6 +345,7 @@ def run_n15_after_n26(
     asset_catalog_path: Path | None = None,
     run_manifest_path: Path | None = None,
     deferred_layers: set[str] | None = None,
+    skip_layers: set[str] | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
     """Compile the deterministic execution plan from the N26 selection."""
@@ -371,6 +372,7 @@ def run_n15_after_n26(
         child_cases,
         asset_catalog,
         deferred_layers=deferred_layers,
+        skip_layers=skip_layers,
     )
     workflow_run_id, workflow_mode, snapshot_id = _identity(compiled)
     artifact = ArtifactEnvelope(

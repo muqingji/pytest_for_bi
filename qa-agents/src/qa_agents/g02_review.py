@@ -10,7 +10,13 @@ import subprocess
 from typing import Any
 
 from .card_copy import g02_review_description, g02_review_title
-from .requirement_case_renderer import normalize_ir_parent_case, render_g02_review_items
+from .requirement_case_renderer import (
+    CASE_CARDS_FILENAME,
+    normalize_ir_parent_case,
+    render_case_cards_document,
+    render_g02_review_items,
+)
+from .review_copy import build_g02_decision_items, humanize_review_item
 from .contracts import artifact_hash_from_mapping, content_hash
 from .errors import ContractError, RetryableAgentError, SecurityPolicyError
 from .multica_cli import resolve_multica_binary
@@ -23,6 +29,7 @@ REQUEST_FILE = "g02-review-request.json"
 DECISION_FILE = "g02-review-decision.json"
 OUTCOME_FILE = "g02-review-outcome.json"
 STATE_FILE = "g02-workflow-state.json"
+CASE_CARDS_FILE = CASE_CARDS_FILENAME
 
 
 def _read_mapping(path: Path, label: str) -> dict[str, Any]:
@@ -167,7 +174,16 @@ def _request_core(
             for ref in case.get("source_refs", [])
             if isinstance(ref, str)
         ]
+        item.update(humanize_review_item(item))
         review_items.append(item)
+    skipped_scenarios = [
+        dict(item)
+        for item in design.get("payload", {}).get("skipped_scenarios", [])
+        if isinstance(item, Mapping)
+    ]
+    decision_items = build_g02_decision_items(
+        review_items, skipped_scenarios=skipped_scenarios
+    )
     multica = policy["multica"]
     return {
         "schema_version": "test-case-ir-review-request/1.0",
@@ -188,8 +204,11 @@ def _request_core(
             "blocking_issue_count": 0,
             "warning_count": len(warnings),
             "warnings": warnings,
+            "decision_count": len(decision_items),
         },
         "review_items": review_items,
+        "skipped_scenarios": skipped_scenarios,
+        "decision_items": decision_items,
         "review_policy": {
             "schema_version": policy["schema_version"],
             "policy_hash": policy_hash,
@@ -230,6 +249,14 @@ def test_case_review_decision_template(request: Mapping[str, Any]) -> dict[str, 
     }
 
 
+def _write_g02_review_sidecars(store: ArtifactStore, request: Mapping[str, Any]) -> None:
+    """Write the G02 task-card markdown and the human-readable Chinese case file."""
+    store.write_text("g02-review-request.md", render_test_case_review_markdown(request))
+    review_items = request.get("review_items")
+    cases = review_items if isinstance(review_items, list) else []
+    store.write_text(CASE_CARDS_FILE, render_case_cards_document(cases))
+
+
 def render_test_case_review_markdown(request: Mapping[str, Any]) -> str:
     return g02_review_description(request)
 
@@ -262,9 +289,18 @@ def prepare_test_case_review_request(
             for key, value in existing.items()
             if key not in {"request_hash", "created_at"}
         }
-        if comparable != core:
+        if comparable == core:
+            _write_g02_review_sidecars(store, existing)
+            return existing
+        state_path = output_dir / STATE_FILE
+        state = _read_mapping(state_path, "G02 workflow state") if state_path.exists() else {}
+        if state:
+            _validate_hash(state, "state_hash", "G02 workflow state")
+        # Copy/policy refreshes are safe before the Gate is bound. Once C3/G02
+        # is waiting, the frozen request is the review surface and must not
+        # change under the reviewer.
+        if state.get("issue_id") or str(state.get("state") or "prepared") != "prepared":
             raise ContractError("Existing G02 request belongs to different frozen inputs")
-        return existing
 
     request = {
         **core,
@@ -276,7 +312,7 @@ def prepare_test_case_review_request(
     store.write_json(
         "g02-decision-template.json", test_case_review_decision_template(request)
     )
-    store.write_text("g02-review-request.md", render_test_case_review_markdown(request))
+    _write_g02_review_sidecars(store, request)
     state = {
         "schema_version": "workflow-gate-state/1.0",
         "gate_id": "G02",
@@ -348,11 +384,21 @@ def _load_bound_request_policy(
     return request, policy
 
 
+def _allowed_project_ids(multica: Mapping[str, Any]) -> set[str]:
+    allowed = {str(multica.get("project_id") or "")}
+    extra = multica.get("review_project_ids")
+    if isinstance(extra, list):
+        allowed.update(str(item) for item in extra if str(item).strip())
+    allowed.discard("")
+    return allowed
+
+
 def open_multica_test_case_review(
     request_path: Path,
     policy_path: Path,
     output_dir: Path,
     *,
+    issue_id: str | None = None,
     runner: CommandRunner | None = None,
     security: SecurityPolicy | None = None,
 ) -> dict[str, Any]:
@@ -367,48 +413,107 @@ def open_multica_test_case_review(
     _validate_hash(state, "state_hash", "G02 workflow state")
     if state.get("request_hash") != request["request_hash"]:
         raise ContractError("G02 workflow state belongs to another request")
+    if issue_id and state.get("issue_id") and state.get("issue_id") != issue_id:
+        raise ContractError("G02 workflow state is already bound to another issue")
     if state.get("issue_id") and state.get("state") != "opening_review":
         return state
 
     multica = policy["multica"]
     workspace_args = ["--workspace-id", multica["workspace_id"]]
+    bound_issue: Mapping[str, Any] | None = None
     if not state.get("issue_id"):
-        created = runner(
+        if issue_id:
+            bound = runner(
+                ["issue", "get", issue_id, "--output", "json", *workspace_args],
+                request_path.parent,
+            )
+            if not isinstance(bound, Mapping) or bound.get("id") != issue_id:
+                raise ContractError("Multica did not return the requested G02 issue")
+            if bound.get("workspace_id") != multica["workspace_id"]:
+                raise SecurityPolicyError("G02 issue belongs to another Multica workspace")
+            if bound.get("project_id") not in _allowed_project_ids(multica):
+                raise SecurityPolicyError("G02 issue belongs to another Multica project")
+            if bound.get("assignee_type") != "member" or bound.get("assignee_id") not in policy["allowed_multica_member_ids"]:
+                runner(
+                    [
+                        "issue",
+                        "assign",
+                        issue_id,
+                        "--to-id",
+                        multica["assignee_member_id"],
+                        "--output",
+                        "json",
+                        *workspace_args,
+                    ],
+                    request_path.parent,
+                )
+                bound = {**bound, "assignee_type": "member", "assignee_id": multica["assignee_member_id"]}
+            created = bound
+            bound_issue = bound
+        else:
+            created = runner(
+                [
+                    "issue",
+                    "create",
+                    "--title",
+                    g02_review_title(request),
+                    "--description-file",
+                    "g02-review-request.md",
+                    "--attachment",
+                    REQUEST_FILE,
+                    *(
+                        ["--attachment", CASE_CARDS_FILE]
+                        if (request_path.parent / CASE_CARDS_FILE).is_file()
+                        else []
+                    ),
+                    "--assignee-id",
+                    multica["assignee_member_id"],
+                    "--project",
+                    multica["project_id"],
+                    "--status",
+                    "todo",
+                    "--output",
+                    "json",
+                    *workspace_args,
+                ],
+                request_path.parent,
+            )
+            created_id = str(created.get("id", ""))
+            if not created_id or created.get("workspace_id") != multica["workspace_id"]:
+                raise ContractError("Multica did not create the expected G02 issue")
+        state = _write_state(
+            store,
+            {
+                **state,
+                "state": "opening_review",
+                "issue_id": str(created["id"]),
+                "observed_multica_status": str(created.get("status", "todo")),
+            },
+        )
+
+    issue_id = str(state["issue_id"])
+    live = bound_issue or runner(
+        ["issue", "get", issue_id, "--output", "json", *workspace_args],
+        request_path.parent,
+    )
+    if not isinstance(live, Mapping) or live.get("id") != issue_id:
+        raise ContractError("Multica did not return the G02 issue")
+    live_status = str(live.get("status") or "").strip()
+    terminal = live_status in {"done", "cancelled", "blocked"}
+    if not terminal and bound_issue is not None:
+        runner(
             [
                 "issue",
-                "create",
-                "--title",
-                g02_review_title(request),
+                "update",
+                issue_id,
                 "--description-file",
                 "g02-review-request.md",
-                "--attachment",
-                REQUEST_FILE,
-                "--assignee-id",
-                multica["assignee_member_id"],
-                "--project",
-                multica["project_id"],
-                "--status",
-                "todo",
                 "--output",
                 "json",
                 *workspace_args,
             ],
             request_path.parent,
         )
-        issue_id = str(created.get("id", ""))
-        if not issue_id or created.get("workspace_id") != multica["workspace_id"]:
-            raise ContractError("Multica did not create the expected G02 issue")
-        state = _write_state(
-            store,
-            {
-                **state,
-                "state": "opening_review",
-                "issue_id": issue_id,
-                "observed_multica_status": str(created.get("status", "todo")),
-            },
-        )
-
-    issue_id = str(state["issue_id"])
     metadata = {
         "qa_gate_id": "G02",
         "qa_review_key": request["review_key"],
@@ -435,24 +540,27 @@ def open_multica_test_case_review(
             ],
             request_path.parent,
         )
-    runner(
-        [
-            "issue",
-            "status",
-            issue_id,
-            "in_review",
-            "--output",
-            "json",
-            *workspace_args,
-        ],
-        request_path.parent,
-    )
+    observed = live_status or "in_review"
+    if not terminal:
+        runner(
+            [
+                "issue",
+                "status",
+                issue_id,
+                "in_review",
+                "--output",
+                "json",
+                *workspace_args,
+            ],
+            request_path.parent,
+        )
+        observed = "in_review"
     return _write_state(
         store,
         {
             **state,
             "state": "waiting_for_review",
-            "observed_multica_status": "in_review",
+            "observed_multica_status": observed,
         },
     )
 
@@ -483,7 +591,7 @@ def _event_decision(
     multica = policy["multica"]
     if issue.get("workspace_id") != multica["workspace_id"]:
         raise SecurityPolicyError("G02 issue belongs to another Multica workspace")
-    if issue.get("project_id") != multica["project_id"]:
+    if issue.get("project_id") not in _allowed_project_ids(multica):
         raise SecurityPolicyError("G02 issue belongs to another Multica project")
     if issue.get("assignee_type") != "member":
         raise SecurityPolicyError("G02 issue must be assigned to a human member")

@@ -25,6 +25,11 @@
   "multica": {
     "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
     "project_id": "f2f893a2-55dc-414d-87d9-a483e51765d6",
+    "review_project_ids": [
+      "f2f893a2-55dc-414d-87d9-a483e51765d6",
+      "84580297-a0ca-4cce-9db9-59cade66f83c",
+      "1b6d44c3-ea4b-4d9c-b86d-9074802fb604"
+    ],
     "assignee_member_id": "c2c6b9c6-4fb9-4439-a4a5-de4e93784c54",
     "identity_evidence_mode": "assigned_member_pilot",
     "initial_status": "in_review",

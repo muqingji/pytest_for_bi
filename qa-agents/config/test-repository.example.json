@@ -1,0 +1,11 @@
+{
+  "schema_version": "test-repository-config/1.0",
+  "repository_id": "pytest_for_bi",
+  "repository_path": "/absolute/path/to/pytest_for_bi",
+  "access_class": "approved_test_repository",
+  "base_ref": "main",
+  "remote": "origin",
+  "push": false,
+  "purpose": "temporary_shared_repository",
+  "dedicated_results_repository_todo": true
+}

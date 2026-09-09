@@ -14,6 +14,8 @@ from qa_agents.errors import ContractError, SecurityPolicyError
 from qa_agents.g01_review import (
     DECISION_FILE,
     STATE_FILE,
+    _is_concise_comment,
+    _parse_concise_responses,
     open_multica_scope_review,
     sync_multica_scope_review,
 )
@@ -50,6 +52,40 @@ POLICY = {
     "production_release_authority": False,
     "required_approval_fields": ["test_rules"],
 }
+
+
+def test_g01_validation_feedback_is_not_a_new_review_comment() -> None:
+    request = {"issues": [{"issue_id": "A02:AMB-001"}]}
+    feedback = {
+        "content": (
+            "G01 审核提交未通过校验，流程仍保持 in_review。\n\n"
+            "- 原因: G01 concise review is missing issues: A02:AMB-001"
+        )
+    }
+
+    assert _is_concise_comment(feedback, request) is False
+
+
+def test_g01_concise_replies_can_be_combined_across_comments() -> None:
+    request = {
+        "issues": [
+            {"issue_id": "A02:AMB-001"},
+            {"issue_id": "A03:COPY"},
+        ]
+    }
+    combined = "A02:AMB-001：展示一个\n\nA03:COPY：同意端无关文案"
+
+    rows = _parse_concise_responses(combined, request)
+
+    assert [row["issue_id"] for row in rows] == ["A02:AMB-001", "A03:COPY"]
+    assert all(row["disposition"] == "confirmed" for row in rows)
+
+
+def test_g01_pending_guidance_is_not_a_decision_comment() -> None:
+    request = {"issues": [{"issue_id": "A03:COPY"}]}
+    guidance = {"content": "审核项：A03:COPY\n当前状态：待 QA Owner 明确同意或退回。"}
+
+    assert _is_concise_comment(guidance, request) is False
 
 WORKFLOW_INPUT = {
     "schema_version": "workflow-input/1.0",
@@ -326,6 +362,34 @@ def test_g01_comment_parses_structured_test_rules(tmp_path: Path) -> None:
     decision = json.loads((output / DECISION_FILE).read_text(encoding="utf-8"))
     assert outcome["decision"] == "approved"
     assert decision["test_rules"] == {"multiple_reasons": {"message_count": 1}}
+
+
+
+def test_concise_comment_blanket_ignore_covers_missing_issues(tmp_path: Path) -> None:
+    request, output, gate_policy_path, adapter_policy_path, multica = prepare_multica_review(tmp_path)
+    # Answer only the first issue explicitly; cover the rest with a trailing blanket note.
+    first = request["issues"][0]["issue_id"]
+    multica.comments = [{
+        "id": "concise-blanket-1",
+        "creator_id": MEMBER_ID,
+        "creator_type": "member",
+        "created_at": "2026-08-11T08:05:00Z",
+        "content": f"- `{first}`：按当前实现确认\n技术问题以目前实现为准，你先都忽略",
+    }]
+
+    outcome = sync_multica_scope_review(
+        output / "g01-review-request.json",
+        gate_policy_path,
+        adapter_policy_path,
+        output,
+        runner=multica,
+    )
+
+    assert outcome["decision"] == "approved"
+    assert multica.issue["status"] == "done"
+    decision = json.loads((output / DECISION_FILE).read_text(encoding="utf-8"))
+    resolved = {item["issue_id"] for item in decision["resolutions"]}
+    assert resolved == {item["issue_id"] for item in request["issues"]}
 
 
 def test_concise_comment_returns_unclear_question_to_a06(tmp_path: Path) -> None:

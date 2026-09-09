@@ -84,7 +84,7 @@
         "dimension_config_json": "JSON 字符串，groups 的 values 必须来自 112 实时 get_ui_type 枚举（evidence 中 optionCode 为 1/2/3/other）"
       },
       "readback_operation": "fs_bi_stat.custom_dimension.get_custom_dimension",
-      "response_id_paths": ["Value.fieldId"],
+      "response_id_paths": ["Value.dimensionId", "Value.fieldId"],
       "required_body_keys": [
         "topologyDescribeId",
         "customType",
@@ -104,11 +104,9 @@
         "schemaObjectName": "biz_sales_order",
         "displayName": "{{namespace}}-{{metric_name}}",
         "aggObject": {
-          "dbFieldName": "mc_exchange_rate",
-          "fieldName": "汇率",
-          "fieldType": "Number",
-          "dbObjName": "object_1Lhg5__c",
-          "fieldId": "BI_a23fbc479ea07edab8c7fd5fddf90cc7"
+          "refObjName": "object_1Lhg5__c",
+          "refObjShowName": "销售订单关联从对象",
+          "refJoinField": ""
         },
         "aggField": {
           "dbFieldName": "mc_exchange_rate",

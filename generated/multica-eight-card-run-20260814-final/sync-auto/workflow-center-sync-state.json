@@ -1,8 +1,0 @@
-{
-  "projection_hash": "sha256:b521f095c3ae4f520120e10e175e79c1564a77e79789eb1c30f28d090ddcdefb",
-  "result_hash": "sha256:839d885045a793f32973fd4a849e2522da51e0ff3cea9b53d8eb5636b81adc0c",
-  "revision": 10,
-  "schema_version": "workflow-center-sync-state/1.0",
-  "workflow_id": "REQ-DETAIL-DRILL-I18N",
-  "workflow_run_id": "detail-drill-i18n-8card-20260814-final-01"
-}

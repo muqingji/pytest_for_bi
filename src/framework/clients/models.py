@@ -13,4 +13,5 @@ class ApiResponse:
     headers: dict[str, str] = field(default_factory=dict)
     elapsed_ms: float | None = None
     raw_text: str = ""
+    trace_id: str = ""
 

@@ -67,6 +67,17 @@ def test_node_record_description_appends_approval_block_when_provided() -> None:
     assert "需要你审批重试决策" in with_block
 
 
+def test_node_record_description_prints_standard_report_in_outputs() -> None:
+    description = node_record_description(
+        "N12",
+        "质量报告发布",
+        artifact_name="n12-quality-report.json",
+        standard_quality_report="## 标准测试报告\n\n### 1. 报告结论\n\n- 测试结论：**测试通过，可以准出**",
+    )
+    assert "## 标准测试报告" in description
+    assert description.index("## 标准测试报告") > description.index("## 产出")
+
+
 def test_node_issue_description_includes_approval_details() -> None:
     approval_issues = [
         {
@@ -156,7 +167,16 @@ def test_review_titles_are_readable() -> None:
     )
     assert g02_review_title(
         {"workflow_run_id": "run-1", "review_summary": {"parent_case_count": 3}}
-    ) == "[run-1] G02 测试用例审核 · 待审核 3 条用例"
+    ) == "[run-1] G02 用例设计确认 · 3 条已按冻结规则写完"
+    assert g02_review_title(
+        {
+            "workflow_run_id": "run-1",
+            "review_summary": {"parent_case_count": 11},
+            "decision_items": [
+                {"id": "PC-BE-006:human_review", "human_title": "没权限时不要改提示"}
+            ],
+        }
+    ) == "[run-1] G02 用例设计确认 · 1 项待拍板"
 
 
 def test_test_case_review_description_follows_five_sections() -> None:
@@ -173,16 +193,18 @@ def test_test_case_review_description_follows_five_sections() -> None:
             ],
         }
     )
-    for heading in ("## 目标", "## 背景", "## 范围", "## 输入材料", "## 你需要审核什么", "## 验收"):
+    for heading in ("## 目标", "## 背景", "## 范围", "## 输入材料", "## 你需要拍板", "## 验收"):
         assert heading in description
     assert "置 **done**" in description and "置 **blocked**" in description
+    assert "没有未冻结的产品口径" in description
+    assert "## 待审核用例明细" not in description
 
 
-def test_test_case_review_description_renders_review_items() -> None:
+def test_test_case_review_description_surfaces_uncertainties_not_every_case() -> None:
     description = g02_review_description(
         {
             "review_summary": {
-                "parent_case_count": 1,
+                "parent_case_count": 2,
                 "blocking_issue_count": 0,
                 "warning_count": 0,
                 "n04_valid": True,
@@ -190,9 +212,18 @@ def test_test_case_review_description_renders_review_items() -> None:
             "upstream_artifacts": [
                 {"artifact_id": "n04-test-case-ir-validation", "artifact_hash": "sha256:n04"}
             ],
+            "decision_items": [
+                {
+                    "id": "PC-BE-006:human_review",
+                    "human_title": "没权限时不要改提示",
+                    "product_scene": "没权限点查看明细应继续走原来的权限失败。",
+                    "plain_summary": "权限失败用哪条错误码没有写死。",
+                    "confirm_action": "接受维持原权限失败即可交付。",
+                }
+            ],
             "review_items": [
                 {
-                    "case_id": "TC-BE-001",
+                    "case_id": "PC-BE-001",
                     "title": "自定义维度三类位置的专用错误与双语提示",
                     "layer": "backend",
                     "risk": "critical",
@@ -208,68 +239,30 @@ def test_test_case_review_description_renders_review_items() -> None:
                             "expected_value": "s307011534",
                         }
                     ],
-                }
-            ],
-        }
-    )
-    assert "## 待审核用例明细" in description
-    assert "`TC-BE-001` 自定义维度三类位置的专用错误与双语提示 · backend / critical / P0" in description
-    assert "`EXP-BE-001-01`：三个变体均拒绝查看明细并返回错误码（错误码 `s307011534`）" in description
-    assert "（错误码 `s307011534`）" in description
-    assert "deterministic · equals" not in description
-
-    assert "**测试场景**" in description
-    assert "**测试步骤**" in description
-    assert "**预期结果**" in description
-
-
-def test_test_case_review_description_renders_scenario_and_steps() -> None:
-    description = g02_review_description(
-        {
-            "review_summary": {
-                "parent_case_count": 1,
-                "blocking_issue_count": 0,
-                "warning_count": 0,
-                "n04_valid": True,
-            },
-            "upstream_artifacts": [
-                {"artifact_id": "n04-test-case-ir-validation", "artifact_hash": "sha256:n04"}
-            ],
-            "review_items": [
+                },
                 {
-                    "case_id": "TC-BE-001",
-                    "title": "自定义维度三类位置的专用错误与双语提示",
+                    "case_id": "PC-BE-006",
+                    "title": "没权限时不要改提示",
                     "layer": "backend",
                     "risk": "critical",
                     "priority": "P0",
-                    "source_refs": ["REQ-001"],
-                    "scenario": "三个变体均拒绝查看明细并返回错误码。",
-                    "preconditions": ["测试租户支持创建统计图并触发查看明细。"],
-                    "steps": [
-                        "对变体 A、B、C 分别以 zh_CN 和 en 调用真实查看明细接口。",
-                        "核对三类位置沿用现有检测顺序。",
-                    ],
-                    "expected": [
-                        {
-                            "id": "EXP-BE-001-01",
-                            "description": "三个变体均拒绝查看明细并返回错误码。",
-                            "oracle_type": "deterministic",
-                            "matcher": "equals",
-                            "observation_point": "detail_api.error.code",
-                            "expected_value": "s307011534",
-                        }
-                    ],
-                }
+                    "source_refs": ["RULE-PERMISSION-PRIORITY"],
+                    "expected": [],
+                },
             ],
         }
     )
-    assert "### 1. `TC-BE-001` 自定义维度三类位置的专用错误与双语提示 · backend / critical / P0" in description
-    assert "**测试场景**" in description
-    assert "三个变体均拒绝查看明细并返回错误码。" in description
-    assert "**前置条件**" in description
-    assert "测试租户支持创建统计图并触发查看明细。" in description
-    assert "**测试步骤**" in description
-    assert "1. 对变体 A、B、C 分别以 zh_CN 和 en 调用真实查看明细接口。" in description
-    assert "**预期结果**" in description
-    assert "（错误码 `s307011534`）" in description
+    assert "## 你需要拍板" in description
+    assert "本 Issue 附件 `case-cards.md`" in description
+    assert "请打开该文件阅读测试场景 / 前置条件 / 测试步骤 / 预期结果。" in description
+    assert "请打开附件 `case-cards.md` 阅读完整中文用例。" in description
+    assert "没权限时不要改提示" in description
+    assert "产品场景：没权限点查看明细应继续走原来的权限失败。" in description
+    assert "设计不确定点：权限失败用哪条错误码没有写死。" in description
+    assert "请拍板：接受维持原权限失败即可交付。" in description
+    assert "## 已按冻结规则写完（不逐条审批）" in description
+    assert "`PC-BE-001` 自定义维度三类位置的专用错误与双语提示" in description
+    assert "## 待审核用例明细" not in description
+    assert "**测试步骤**" not in description
+    assert "请确认该用例的场景、步骤和预期结果可直接执行" not in description
     assert "deterministic · equals" not in description

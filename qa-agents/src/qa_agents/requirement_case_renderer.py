@@ -48,11 +48,21 @@ import re
 from typing import Any
 
 from .errors import ContractError
+from .review_copy import has_cjk, humanize_review_item
 
 SCHEMA_VERSION = "requirement-case/1.0"
 RISK_VALUES = ("low", "medium", "high", "critical")
 PRIORITY_VALUES = ("P0", "P1", "P2", "P3")
 ALLOWED_SECTIONS = ("变体", "测试场景", "前置条件", "测试步骤", "预期结果")
+CASE_CARDS_FILENAME = "case-cards.md"
+CASE_CARDS_HEADER = (
+    "# 中文用例\n"
+    "\n"
+    "请打开本文件阅读本次生成的全部父用例。"
+    "每条格式为测试场景 / 前置条件 / 测试步骤 / 预期结果。\n"
+    "未冻结的产品口径仍在 G02 任务卡「你需要拍板」里确认；"
+    "不要打开 JSON 或自动化代码来审批用例。\n"
+)
 
 HEADER_RE = re.compile(
     r"^#{3}\s*`(?P<case_id>[^`]+)`\s+(?P<title>.+?)\s*·\s*(?P<attrs>.+?)\s*$"
@@ -482,18 +492,24 @@ def _human_expected_value(item: Mapping[str, Any]) -> str:
     description = str(item.get("description", ""))
     if matcher == "manual_confirmation" or oracle_type == "human_review":
         return ""
+    if matcher == "not_contains":
+        return f"（不得包含：`{value}`）"
+    if matcher == "one_of":
+        allowed = _parse_code_list(value)
+        if not allowed:
+            return ""
+        if "message.zh_CN" in point:
+            return "（允许文案：" + "、".join(f"「{entry}」" for entry in allowed) + "）"
+        if "message.en" in point:
+            return "（允许文案：" + "、".join(f"`{entry}`" for entry in allowed) + "）"
+        if point.endswith("code") or ".code" in point or "_code" in point:
+            return f"（允许错误码：{'、'.join(allowed)}）"
+        return ""
     if "message.zh_CN" in point:
         return f"：「{value}」"
     if "message.en" in point:
         return f"：`{value}`"
-    if matcher == "not_contains":
-        return f"（不得包含：`{value}`）"
     if point.endswith("code") or ".code" in point or "_code" in point:
-        if matcher == "one_of":
-            allowed = _parse_code_list(value)
-            if allowed:
-                return f"（允许错误码：{'、'.join(allowed)}）"
-            return ""
         if matcher == "equals" and value not in description:
             return f"（错误码 `{value}`）"
     return ""
@@ -519,14 +535,32 @@ def render_review_card(case: Mapping[str, Any], *, index: int | None = None) -> 
     carries expectations.
     """
     requirement, scenario, preconditions, steps, expected = _case_parts(case)
+    copy = humanize_review_item(
+        {
+            "case_id": requirement["id"],
+            "title": requirement["title"],
+            "layer": requirement["layer"],
+            "risk": requirement["risk"],
+            "priority": requirement["priority"],
+            "scenario": scenario,
+            "preconditions": preconditions,
+            "steps": steps,
+            "expected": expected,
+            "source_refs": case.get("source_refs", []),
+            "human_title": case.get("human_title", ""),
+            "plain_summary": case.get("plain_summary", ""),
+        }
+    )
+    display_title = requirement["title"] if has_cjk(requirement["title"]) else copy["human_title"]
+    display_scenario = scenario if has_cjk(scenario) else copy["plain_summary"]
     header_index = f"{index}. " if index is not None else ""
     lines = [
-        f"### {header_index}`{requirement['id']}` {requirement['title']}"
+        f"### {header_index}`{requirement['id']}` {display_title}"
         f" · {requirement['layer']} / {requirement['risk']} / {requirement['priority']}",
         "",
         "**测试场景**",
         "",
-        scenario,
+        display_scenario,
         "",
     ]
     if preconditions:
@@ -556,6 +590,14 @@ def render_review_cards(cases: Iterable[Mapping[str, Any]]) -> str:
     return "\n\n".join(blocks)
 
 
+def render_case_cards_document(cases: Iterable[Mapping[str, Any]]) -> str:
+    """Render the human-approval case file written next to the G02 task card."""
+    cards = render_review_cards(cases).strip()
+    if not cards:
+        return CASE_CARDS_HEADER + "\n（本轮没有可渲染的父用例。）\n"
+    return CASE_CARDS_HEADER + "\n" + cards + "\n"
+
+
 def render_g02_review_items(cases: Iterable[Mapping[str, Any]]) -> list[dict[str, Any]]:
     """Render requirement cases into the exact review_items shape of g02_review.py."""
     items: list[dict[str, Any]] = []
@@ -572,27 +614,27 @@ def render_g02_review_items(cases: Iterable[Mapping[str, Any]]) -> list[dict[str
             }
             for item in case["expected"]
         ]
-        items.append(
-            {
-                "case_id": requirement["id"],
-                "title": requirement["title"],
-                "layer": requirement["layer"],
-                "risk": requirement["risk"],
-                "priority": requirement["priority"],
-                "source_refs": [
-                    f"requirement-case/{requirement['id']}"
-                ],
-                "scenario": str(case.get("scenario", "")),
-                "preconditions": [
-                    str(item) for item in case.get("preconditions", [])
-                    if isinstance(item, str)
-                ],
-                "steps": [
-                    str(item) for item in case.get("steps", []) if isinstance(item, str)
-                ],
-                "expected": expected,
-            }
-        )
+        item = {
+            "case_id": requirement["id"],
+            "title": requirement["title"],
+            "layer": requirement["layer"],
+            "risk": requirement["risk"],
+            "priority": requirement["priority"],
+            "source_refs": [
+                f"requirement-case/{requirement['id']}"
+            ],
+            "scenario": str(case.get("scenario", "")),
+            "preconditions": [
+                str(entry) for entry in case.get("preconditions", [])
+                if isinstance(entry, str)
+            ],
+            "steps": [
+                str(entry) for entry in case.get("steps", []) if isinstance(entry, str)
+            ],
+            "expected": expected,
+        }
+        item.update(humanize_review_item(item))
+        items.append(item)
     return items
 
 
@@ -653,7 +695,7 @@ def render_requirement_case_bundle(input_path, output_dir) -> dict[str, Any]:
         store.write_text("case-card.md", render_review_card(cases[0]))
     else:
         store.write_json("requirement-cases.json", {"schema_version": SCHEMA_VERSION, "cases": cases})
-        store.write_text("case-cards.md", render_review_cards(cases))
+        store.write_text(CASE_CARDS_FILENAME, render_case_cards_document(cases))
     store.write_json("g02-review-items.json", {"schema_version": "g02-review-items/1.0", "items": render_g02_review_items(cases)})
     irs = [render_case_ir(case) for case in cases]
     store.write_json("case-ir.json" if len(irs) == 1 else "case-irs.json", irs[0] if len(irs) == 1 else irs)

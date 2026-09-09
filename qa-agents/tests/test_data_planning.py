@@ -412,21 +412,23 @@ def test_declared_empty_resources_are_inferred_from_compiled_case_semantics() ->
     assert plan["case_plans"][0]["resources"]
 
 
-def test_unproven_relation_recipe_is_not_selected_by_semantics() -> None:
+def test_verified_relation_recipe_is_selected_by_semantics() -> None:
     case = {
         "id": "CASE-RELATION",
         "title": "多关联失败替换后原成功关系回归",
         "test_level": "functional",
-        "test_data": {"datasets": [{"type": "多关联"}]},
+        "test_data": {"datasets": ["metric_multi_relation_failure"]},
         "steps": [{"action": "查看明细"}],
         "expected": [{"description": "关联关系正确"}],
     }
     intent = extract_test_data_intents([case], _load(CATALOG))
-    assert intent["case_intents"][0]["resource_goals"] == []
-    assert intent["unresolved_requirements"][0]["reason_code"] == "data_capability_not_registered"
+    assert intent["case_intents"][0]["recipe_id"] == "multi-relation-metric-chart-detail"
+    assert intent["case_intents"][0]["resource_goals"]
+    assert intent["unresolved_requirements"] == []
+    assert intent["unresolved_requirements"] == []
 
 
-def test_declared_unproven_relation_recipe_is_structurally_blocked() -> None:
+def test_declared_relation_recipe_is_structurally_compiled() -> None:
     plan = compile_declared_a22_plan(
         {
             "case_plans": [{
@@ -441,9 +443,40 @@ def test_declared_unproven_relation_recipe_is_structurally_blocked() -> None:
         environment="112",
         namespace="qa-relation-blocked",
     )
-    assert plan["ready_for_execution"] is False
+    assert plan["ready_for_execution"] is True
+    assert plan["case_plans"][0]["recipe_refs"][0]["recipe_id"] == (
+        "multi-relation-metric-chart-detail"
+    )
+    assert plan["case_plans"][0]["resources"]
+
+
+def test_declared_case_requiring_no_construction_is_not_semantically_inferred() -> None:
+    case = {
+        "id": "PC-BE-007-BACKEND",
+        "title": "Backend historical in-place evaluation and non-target compatibility",
+        "test_level": "functional",
+        "test_data": {"dataset": "historical_chart_custom_dim_no_migration"},
+        "steps": [{"action": "查看明细"}],
+        "expected": [{"description": "历史配置兼容"}],
+    }
+    plan = compile_declared_a22_plan(
+        {
+            "case_plans": [{
+                "case_id": case["id"],
+                "required_scene": "",
+                "requires_data_construction": False,
+                "resources": [],
+            }]
+        },
+        _load(CATALOG),
+        environment="112",
+        namespace="qa-no-construction",
+        compiled_cases=[case],
+    )
+    assert plan["case_plans"][0]["requires_data_construction"] is False
     assert plan["case_plans"][0]["resources"] == []
-    assert plan["unsupported_requirements"][0]["reason_code"] == "data_recipe_semantics_not_proven"
+    assert plan["case_plans"][0]["recipe_refs"] == []
+    assert plan["unsupported_requirements"] == []
     assert validate_test_data_plan(plan, _load(POLICY))["valid"] is True
 
 

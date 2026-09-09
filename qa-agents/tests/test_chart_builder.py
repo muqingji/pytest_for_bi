@@ -20,7 +20,8 @@ def _compile(**overrides):
                                                    "yAxisIndex": 1}]},
                   layout={"showTitle": 1},
                   identity={"timeZone": "Asia/Shanghai", "templateID": "BI_live_template", "permType": 2,
-                            "userOwnerList": [{"id": "1002", "type": "user"}]})
+                            "userOwnerList": [{"id": "1002", "type": "user"}],
+                            "integrity_probes": []})
     values.update(overrides)
     return compile_chart_resource(**values)
 
@@ -43,9 +44,22 @@ def test_compile_chart_rejects_unproven_dynamic_inputs(change):
 
 def test_n27_rechecks_chart_folder_provenance():
     resource = _compile()
+    resource["scenario_key"] = "live-chart"
+    resource["case_binding"] = "CHART"
+    resource["asset_folder_name"] = "CHART"
+    resource["folder_binding"]["folder_name"] = "CHART"
+    resource["chart_config_contract"] = {
+        "scenario_key": "live-chart",
+        "case_binding": "CHART",
+        "required_bind_action": "bind_stat_chart_config",
+        "source_reuse_mode": "template_with_case_specific_bind",
+        "strict_binding": True,
+        "forbid_cross_scenario_source_reuse": True,
+    }
     plan = {"schema_version": "test-data-plan/1.0", "environment": "112",
             "namespace": "qa-chart-test", "case_plans": [{
-                "case_id": "CHART", "requirement_name": "统计图查看明细限制原因提示优化",
+                "case_id": "CHART", "requirement_name": "CHART",
+                "recipe_refs": [{"recipe_id": "live-chart"}],
                 "resources": [resource]}]}
     root = Path(__file__).resolve().parents[1]
     policy = json.loads((root / "policies/test-data-policy.json").read_text())
@@ -53,6 +67,73 @@ def test_n27_rechecks_chart_folder_provenance():
     resource["folder_binding"]["category_id"] = "BI_tampered"
     with pytest.raises(SecurityPolicyError, match="category"):
         validate_test_data_plan(plan, policy)
+
+
+def test_n27_rejects_chart_scenario_and_case_cross_binding():
+    resource = _compile()
+    resource.update({
+        "scenario_key": "custom-dimension-chart-detail",
+        "case_binding": "CHART",
+        "asset_folder_name": "CHART",
+        "folder_binding": {
+            **resource["folder_binding"],
+            "folder_name": "CHART",
+        },
+        "chart_config_contract": {
+            "scenario_key": "custom-dimension-chart-detail",
+            "case_binding": "CHART",
+            "required_bind_action": "bind_stat_chart_config",
+            "source_reuse_mode": "template_with_case_specific_bind",
+            "strict_binding": True,
+            "forbid_cross_scenario_source_reuse": True,
+        },
+    })
+    plan = {
+        "schema_version": "test-data-plan/1.0",
+        "environment": "112",
+        "namespace": "qa-chart-test",
+        "case_plans": [{
+            "case_id": "CHART",
+            "requirement_name": "CHART",
+            "recipe_refs": [{"recipe_id": "result-set-filter-name-resolution"}],
+            "resources": [resource],
+        }],
+    }
+    policy = json.loads(
+        (Path(__file__).resolve().parents[1] / "policies/test-data-policy.json").read_text()
+    )
+    with pytest.raises(SecurityPolicyError, match="scenario binding"):
+        validate_test_data_plan(plan, policy)
+    resource["scenario_key"] = "result-set-filter-name-resolution"
+    resource["case_binding"] = "OTHER-CASE"
+    resource["chart_config_contract"]["scenario_key"] = (
+        "result-set-filter-name-resolution"
+    )
+    resource["chart_config_contract"]["case_binding"] = "OTHER-CASE"
+    with pytest.raises(SecurityPolicyError, match="not bound to its Case"):
+        validate_test_data_plan(plan, policy)
+
+
+def test_strict_chart_binding_rejects_off_schema_dimension(monkeypatch):
+    from qa_agents import chart_config
+    from qa_agents.chart_config import bind_stat_chart_config
+
+    monkeypatch.setattr(
+        chart_config,
+        "_list_schema_fields",
+        lambda runner, schema: [
+            {"fieldId": "BI_off_schema", "fieldType": "String"},
+            {"fieldId": "BI_on_schema", "fieldType": "SingleSelectEnum"},
+        ],
+    )
+    with pytest.raises(ContractError, match="strict chart binding failed: dimension"):
+        bind_stat_chart_config(
+            object(),
+            chart_view_id="BI_chart",
+            schema_id="BI_schema",
+            dimension_field_id="BI_missing",
+            strict_binding=True,
+        )
 
 
 def test_compile_chart_clone_uses_verified_crm_lifecycle():

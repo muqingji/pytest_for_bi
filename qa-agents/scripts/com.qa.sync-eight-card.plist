@@ -4,22 +4,19 @@
   <key>Label</key><string>com.qa.sync-eight-card</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/liushanshan/code/my/pytest_for_bi/qa-agents/.venv/bin/python</string>
+    <string>__PYTHON__</string>
     <string>-u</string>
-    <string>/Users/liushanshan/code/my/pytest_for_bi/qa-agents/scripts/sync_eight_card_progress.py</string>
-    <string>--config</string><string>/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/workflow-config.json</string>
-    <string>--artifact-root</string><string>/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02</string>
-    <string>--spec</string><string>/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/current/workflow-center-spec.json</string>
-    <string>--sync-output</string><string>/Users/liushanshan/code/my/pytest_for_bi/generated/multica-eight-card-run-20260817-02/sync-auto</string>
-    <string>--apply</string>
+    <string>__ROOT__/qa-agents/scripts/workflow_monitor.py</string>
+    <string>--registry</string><string>__ROOT__/generated/active-workflows.json</string>
+    <string>scan</string>
   </array>
-  <key>StartInterval</key><integer>120</integer>
+  <key>StartInterval</key><integer>30</integer>
   <key>RunAtLoad</key><true/>
   <key>StandardOutPath</key><string>/tmp/qa-sync-eight-card.out.log</string>
   <key>StandardErrorPath</key><string>/tmp/qa-sync-eight-card.err.log</string>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>PYTHONPATH</key><string>/Users/liushanshan/code/my/pytest_for_bi/qa-agents/src</string>
+    <key>PYTHONPATH</key><string>__ROOT__/qa-agents/src</string>
     <key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
 </dict></plist>

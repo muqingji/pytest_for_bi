@@ -2450,3 +2450,287 @@ N27 和 N08 的唯一设计基线（B01、D01 为早期名称，分别对应 A14
 3. 触发条件符合 §33.2 的边界：确定性节点能判定时不调用 Agent，Agent 不能自行扩大职责。
 4. 审查类 Agent 与生成类 Agent 使用不同服务身份和写权限（§3.2、§6.4）。
 5. 结果可回查到 Artifact 哈希、模型/Prompt 版本和来源快照（§24）。
+
+## 34. 2026-09 准出能力实现更新与剩余待办
+
+本节以当前 `qa-agents/src/qa_agents/` 实现、CLI、契约和测试为准，补充记录
+TAPD 需求分支提交和 Bug 准出审批门的实际边界。当前能力是“本地可审计参考实现”，
+不能将本地提交、人工审批或 `completed_with_gaps` 解释为生产发布放行。
+
+### 34.1 已落地能力
+
+- `extract_tapd_story_id` 支持卡片文本、查询参数和符合当前编码规则的 TAPD 详情链接；
+  需求 ID 映射到唯一分支 `qa/tapd-story-<story_id>`，重跑复用分支，并以 N29 landing
+  Artifact 的候选哈希校验后提交。
+- 测试候选仓库通过 `test-repository-config/1.0` 配置，默认本地提交，只有显式
+  `push=true` 才执行远端 push；提交结果记录分支、commit、文件哈希和仓库存储迁移 TODO。
+- `prepare-bug-review` 生成绑定 workflow/run/snapshot/candidate hash 的人工审批卡，
+  覆盖 Case、业务场景、期望行为、实际问题、Bug 解释、真实测试数据和候选 Bug ID。
+- `apply-bug-review-decision` 要求具名审批人；批准结果进入 `TAPD_BUG_ADAPTER`，
+  驳回结果生成受影响 Case 的数据构造、Case/Oracle 复核和重测计划，并递增评审轮次。
+
+### 34.2 当前硬边界与风险
+
+1. TAPD Bug Adapter、MR/发布 Adapter 和群消息通知均未实现；批准只能表示
+   `approved_for_bug_adapter`，不能表示 TAPD 已建 Bug 或版本可发布。
+2. N08 仍为本地/参考受控 Runner，生产隔离 Runner、真实 staging 适配和凭证生命周期未完成。
+3. 8 卡模板仍跳过 E2E，A16 尚未进入执行和 N11 准出范围；当前结论不能代表完整用户链路。
+4. 提交源文件的 `absolute_path` 目前只做存在性和内容哈希校验，未绑定 landing workspace
+   根目录；必须补路径白名单，防止 Artifact 驱动读取任意本地文件。
+5. 分支提交缺少并发锁、stale worktree 恢复和远端分支状态感知；同一需求内容变化、已合并
+   或已有 MR 时的幂等策略尚未定义。
+6. 审批人当前是自由文本；`review_hash` 可省略，审批身份、角色、签名、时间和来源尚未
+   由外部控制面认证，决策输入也缺少独立 JSON Schema 校验。
+
+### 34.3 待办清单（按优先级）
+
+**P0：闭合准出主链**
+
+- [~] 实现 TAPD Bug Adapter：已完成 `tapd-cli` Skill 复制、字段/描述映射、需求关联、幂等键、
+  TAPD ID/URL 回写、部分成功记录和 `blocked` 重试产物；仍需真实 TAPD 联调确认字段枚举、
+  重复 Bug 查询和线上状态回流。
+- [ ] 接入审批身份与权限校验：Multica/TAPD 身份、QA 角色白名单、签名/时间戳、审批审计，
+  强制 `review_hash`、workflow、snapshot、candidate hash 全量绑定。
+- [ ] 实现 MR/发布 Adapter：创建 MR、绑定需求和提交哈希、收集 CI、申请 QA 审核、发布单
+  阻断/放行及回滚；外部写入失败必须保持 `blocked`，不能降级为通过。
+- [ ] 接入通知 Skill 和群 ID/webhook：审批、驳回重测、阻塞、重试、Bug 创建失败和超时升级，
+  支持签名、去重、重试和消息审计。
+
+**P1：提升执行与提交可靠性**
+
+- [ ] 建设生产隔离 Runner 和 staging Adapter：网络/凭证/文件系统隔离、取消超时、资源清理、
+  证据上传、最小权限和生产环境拒绝策略。
+- [ ] 修复候选提交安全边界：校验 `absolute_path` realpath 在允许 workspace 内，绑定 N29
+  producer、run、snapshot 和上游哈希；增加分支/工作树锁、崩溃恢复、远端分支检测。
+- [ ] 定义同一需求多次提交策略：候选哈希相同完全幂等，哈希变化生成可追踪新提交；对已合并、
+  已关闭分支或已有 MR 明确禁止/转新轮次。
+
+**P1：补齐测试范围**
+
+- [ ] 接入 A16 E2E，移除 8 卡模板的 E2E skip，并将 E2E 失败纳入 N11 准出。
+- [ ] 补齐 A04、A13、A17 非功能专项及对应 A18 审查在真实模板中的路由、权限和证据测试。
+- [ ] 为 TAPD/通知/MR Adapter 增加契约、幂等、网络失败、重复运行、权限拒绝和审计回放测试。
+
+**P2：仓储与运营治理**
+
+- [ ] provision 专用测试结论仓库，迁移 `repository_path`，配置 ACL、分支保护、保留周期和
+  结果索引；迁移期间继续明确 `temporary_shared_repository` 不具备生产隔离属性。
+- [ ] 将外部系统 webhook/轮询统一纳入工作流中心，记录触发事件、状态版本和重复事件去重键。
+- [ ] 完成 A02/A06/A08/A09 语义差距评估、真实人工执行证据接入和生产模型网关的发布/灰度/回滚。
+
+### 34.4 准出升级条件
+
+在 P0 全部完成、P1 的生产 Runner 和 E2E 达标、外部 Adapter 具备幂等和审计回放能力之前，
+系统最高只能输出 `local_only`、`pending_external_*`、`blocked` 或 `inconclusive`。只有候选、
+执行证据、人工审批、TAPD/MR/发布回执和通知审计全部可按哈希回放时，才允许将结果标记为生产
+发布准出。
+
+## 35. 活跃工作流监听与分发准确性监管方案
+
+### 35.1 目标与设计原则
+
+当前单次运行路径写入 LaunchAgent 的方式不能支持多工作流生命周期：创建新运行后需要重新
+生成并安装 plist，旧配置、已安装配置和当前运行容易漂移；任一同步进程退出还会使人工评论、
+Agent Run 和卡片变化无人消费。目标架构改为“一个监听控制面管理全部活跃工作流”，但监听器
+不得直接决定下一个节点，也不得把用户手工修改的阶段卡状态当作流程事实。
+
+职责必须分离：
+
+- **监听器（Watcher）**：发现新评论、Issue revision、Agent Run 和注册表变化，只负责唤醒。
+- **状态机（Planner）**：只读取已验证 Artifact、当前策略和 DAG，产生候选动作计划。
+- **契约校验器（Validator）**：验证 run/snapshot/bundle/request/policy 身份及 Gate 授权。
+- **分发器（Dispatcher）**：仅执行已签名且二次校验通过的动作计划。
+- **监管器（Supervisor）**：独立核验计划与实际分发，统计准确率，异常时熔断工作流或全局写入。
+- **投影器（Projector）**：由内部节点状态计算 C1-C8 卡片；阶段卡是视图，不是调度输入。
+
+### 35.2 活跃工作流注册表
+
+新工作流初始化成功后原子写入统一注册表，而不是改写定时器参数。每个条目至少包含：
+
+```json
+{
+  "workflow_id": "REQ-DETAIL-DRILL-I18N",
+  "workflow_run_id": "detail-drill-i18n-r001",
+  "status": "active",
+  "config_path": "generated/.../workflow-config.json",
+  "artifact_root": "generated/...",
+  "spec_path": "generated/.../current/workflow-center-spec.json",
+  "registered_at": "2026-09-09T10:00:00Z",
+  "last_success_at": null,
+  "last_event_cursor": null,
+  "consecutive_failures": 0
+}
+```
+
+注册前必须 fail-closed 校验：路径均位于允许根目录且可读写；三处 `workflow_run_id` 一致；
+G01/G02/G03 所需 adapter policy 齐全并绑定当前项目、请求哈希和审批人；C1-C8 绑定唯一；
+Agent ID、Prompt 版本和运行时有效；同一 run 未重复注册。缺少任一必需配置时不得进入
+`active`，而应生成可见的 `registration_blocked` 诊断。
+
+终态工作流标记为 `completed`、`cancelled` 或 `archived` 后移出扫描集合，但保留注册记录和
+审计索引。注册表更新使用临时文件加原子替换，并保留单调递增 revision，禁止多个初始化器
+最后写入者覆盖前一条记录。
+
+### 35.3 扫描与事件处理
+
+系统级 LaunchAgent 只启动统一 monitor，不携带任何单次 workflow 路径。monitor 可常驻循环，
+也可由 LaunchAgent 每 20～30 秒启动一次扫描；两种模式都必须先取得全局扫描锁。每轮流程为：
+
+1. 读取注册表快照，筛选 `active/running/needs_action` 工作流。
+2. 按 `workflow_run_id` 获取独立租约锁；同一 run 串行，不同 run 可受控并行。
+3. 拉取 Multica Issue revision、评论和 Run，读取本地 Artifact 游标。
+4. 只把未处理事件写入 inbox；事件必须带 workspace/project/issue/run/request 标识。
+5. Planner 基于当前 Artifact 图计算候选动作，不依据阶段卡的手工状态计算。
+6. Supervisor 审核候选动作，通过后 Dispatcher 执行。
+7. 摄取结果、重新 reconcile、更新 C1-C8 投影、记录游标与 heartbeat。
+8. 单个工作流失败只隔离该 run；进程继续处理其他工作流。
+
+评论事件使用稳定标识：
+
+```text
+event_id = sha256(workflow_run_id + issue_id + comment_id + request_hash + comment_hash)
+```
+
+分发动作使用稳定幂等键：
+
+```text
+dispatch_key = sha256(workflow_run_id + node_id + input_bundle_hash + attempt)
+```
+
+inbox、计划、分发回执和 Artifact 均记录这些键。重复扫描只能返回既有回执，不得创建第二个
+任务。游标只能在事件完成处理或明确进入人工修正队列后推进，不能在外部调用前提前提交。
+
+### 35.4 分发准确性的硬性不变量
+
+监管的核心不是观察“有没有任务运行”，而是证明“运行的是唯一正确任务”。每次分发必须同时
+满足以下不变量：
+
+1. **身份一致**：registry、config、spec、input、上游 Artifact 的 `workflow_run_id` 和
+   `source_snapshot_id` 完全一致。
+2. **输入绑定**：计划中的 `input_bundle_hash` 等于磁盘输入的规范化哈希；Agent 结果必须原样
+   回传该哈希，旧 bundle 的晚到结果不得覆盖新结果。
+3. **依赖闭合**：DAG 所有前置节点均有当前 run 的有效终态 Artifact；卡片 `done` 不算证据。
+4. **Gate 有效**：人工 Gate 必须有授权成员产生、绑定当前 request/policy hash、覆盖全部问题的
+   Decision Artifact；不能由 Issue 状态或普通评论代替。
+5. **Agent 匹配**：node/profile/output contract/Agent ID/Prompt 版本与注册清单一致。
+6. **唯一分发**：同一 `dispatch_key` 最多一个非取消任务；存在 running/completed 回执时禁止重发。
+7. **尝试单调**：attempt 只能递增，重试必须引用前一 task 和结构化失败原因，不能重置预算。
+8. **权限边界**：只读分析节点不得获得业务写权限；外部副作用必须经过对应 Gate 和 Adapter。
+9. **投影单向**：Artifact 状态可以更新卡片；用户手工改变 C1-C8 状态不能反向推进 DAG。
+10. **终态不可回退**：同一输入的已接受 Artifact 不得被较旧事件、较早 Run 或低 revision 覆盖。
+
+任一不变量无法证明时，Planner 只能返回 `no_op`、`needs_action` 或 `blocked`，不得返回
+`dispatch`。禁止用自动补数据、放宽校验或修改 Agent 输出的方式恢复流转。
+
+### 35.5 计划签名与分发前后二次校验
+
+Planner 输出不可直接执行，必须形成内容寻址的 `dispatch-plan/1.0`：
+
+```json
+{
+  "workflow_run_id": "detail-drill-i18n-r001",
+  "action": "dispatch",
+  "node_id": "A08",
+  "dispatch_key": "sha256:...",
+  "input_bundle_hash": "sha256:...",
+  "spec_revision": 17,
+  "registry_revision": 8,
+  "preconditions": {
+    "g01_decision_hash": "sha256:...",
+    "n24_artifact_hash": "sha256:...",
+    "matching_task_absent": true
+  },
+  "plan_hash": "sha256:..."
+}
+```
+
+Supervisor 在执行前从源数据重新计算前置条件和 `plan_hash`，不能信任 Planner 自报值。外部创建
+任务后再执行后置校验：返回的 Issue 必须属于预期 workspace/project，附件 hash、assignee、
+Agent ID 和 metadata 必须与计划一致。后置校验失败时记录 `dispatch_quarantined`，停止该 run
+后续写操作；不得把可疑任务当作成功分发。若平台支持 cancel，则只按已验证的 task ID 执行
+补偿取消，不做模糊搜索取消。
+
+### 35.6 独立监管与准确率指标
+
+Supervisor 必须与 Dispatcher 分离模块和审计记录，不能使用 Dispatcher 的布尔成功值作为准确
+依据。监管分三层：
+
+- **实时规则监管**：每次分发前后执行上述不变量，P0 违规立即熔断。
+- **影子判定**：用只读独立 Planner 对相同 spec 重新计算期望动作；两者的 node、bundle、Gate
+  和 attempt 不一致时不分发，记录 `planner_disagreement`。
+- **离线回放**：按事件日志重建状态机，验证任意时点产生的计划和卡片投影都可复现。
+
+必须持续发布以下指标，并按 workflow、node、Agent、版本分维度观察：
+
+| 指标 | 定义 | 目标/处置 |
+| --- | --- | --- |
+| `dispatch_precision` | 正确分发数 / 全部分发数 | 必须 100%；任何误分发全局熔断写入 |
+| `duplicate_dispatch_total` | 相同 dispatch_key 的重复任务数 | 必须为 0 |
+| `cross_run_violation_total` | run/project/snapshot 串线次数 | 必须为 0，P0 告警 |
+| `gate_bypass_total` | 缺有效 Decision Artifact 的下游分发数 | 必须为 0，P0 告警 |
+| `stale_result_rejected_total` | 被拒绝的旧 bundle/旧 revision 结果数 | 允许非零，必须有审计 |
+| `eligible_dispatch_latency` | 节点满足条件到成功分发的时延 | P95 小于两个扫描周期 |
+| `monitor_heartbeat_age` | 距最近成功扫描时间 | 超过两个周期告警，三个周期熔断新写入 |
+| `workflow_sync_failure_streak` | 单 run 连续失败次数 | 3 次隔离该 run 并人工介入 |
+
+“准确率 100%”只表示所有已发生分发均通过事后独立核验，不表示覆盖率充分；漏分发由 latency、
+heartbeat 和 eligible-without-dispatch 巡检另行发现，防止系统通过“不分发”维持表面准确率。
+
+### 35.7 审计日志与可回放性
+
+每个事件必须形成只追加审计链，至少记录：registry/spec revision、输入和策略哈希、事件 ID、
+候选计划、Supervisor 判定、实际 CLI/API 请求摘要、外部回执、前后状态、错误分类和时间戳。
+日志条目包含前一条哈希，按 run 建立 hash chain；敏感字段只记录脱敏摘要。
+
+审计回放工具不得访问在线写 API。它从注册快照、事件、Artifact 和策略版本重新计算：
+
+- 当时哪些节点 eligible；
+- 预期唯一动作及 dispatch key；
+- 实际动作是否与预期一致；
+- Gate 是否有效且未过期；
+- 投影到 C1-C8 的状态是否正确。
+
+每次发布状态机、同步器、Gate parser 或 adapter policy 前，必须对历史成功、人工回流、重复评论、
+晚到结果、跨 run 和崩溃恢复样本全量回放；出现动作差异则阻止发布，除非有版本化迁移说明和
+人工批准。
+
+### 35.8 熔断、告警与恢复
+
+错误按影响分类，不能统一无限重试：
+
+- **P0 准确性错误**：跨 run、越 Gate、重复分发、身份或 bundle 不一致。立即停止全局新分发，
+  保留读取和诊断能力，通知 QA Owner。
+- **P1 单工作流契约错误**：评论缺问题 ID、adapter 缺失、输出不合约。隔离当前 run，状态置为
+  `needs_action`，不自动修数据。
+- **P2 可恢复基础设施错误**：网络超时、限流、临时不可用。按错误指纹和预算指数退避；重试前
+  重新执行全部前置校验。
+- **监听器失活**：heartbeat 超时后由独立 watchdog 告警；watchdog 只负责重启 monitor，不能
+  直接分发任务。
+
+恢复必须从最后一个已提交审计事件重新扫描外部事实，不能依赖进程内存。对于“外部任务已创建、
+本地回执未写入”的不确定状态，先用 `dispatch_key` 精确查询；确认不存在才补发，查询失败时保持
+阻塞。人工解除 P0 熔断前必须完成受影响 run 清单、实际/预期动作对比和补偿方案审阅。
+
+### 35.9 上线与验证策略
+
+监听器不得一次性替换现有流程，按以下阶段上线：
+
+1. **回放模式**：仅消费历史事件，验证结果与已接受 Artifact 一致。
+2. **影子模式**：监听实时事件并生成计划，但禁止外部写入；与人工/旧同步器动作比较。
+3. **单项目灰度**：只允许白名单项目写入，Supervisor 不一致即熔断。
+4. **多项目灰度**：限制并发为 1，再逐步增加；验证锁、隔离和公平性。
+5. **正式切换**：停用所有写死 run 路径的定时器，只保留统一 monitor 和独立 watchdog。
+
+上线验收必须覆盖：同时创建多个 workflow、同一秒完成多个 Agent、重复/乱序评论、旧 request
+评论、手工修改 C2 状态、adapter 缺失、进程在外部创建后崩溃、网络超时、旧 Run 晚到、注册表
+并发更新和单 workflow 持续失败。验收通过标准是零误分发、零越 Gate、零跨 run、零重复任务，
+且所有应分发节点在规定扫描时延内被调度。
+
+### 35.10 实现闭环约束
+
+- 初始化写出带哈希的注册描述符；标准 `generated/<run>/{initial,current}` 布局同时写入全局活跃注册表，周期发现仅作断电恢复兜底。
+- 授权计划冻结 spec revision/hash、上游 Artifact hash、Gate state/decision hash；分发前由不复用主规划函数的影子遍历器重新推导允许节点。
+- 事件游标分别记录 spec revision/hash、Issue 投影 hash、同步结果 hash，以及每个 Gate 的候选评论 ID、已处理事件 ID和状态 hash。
+- watchdog 无分发授权，只写结构化告警并可对固定 launchd label 执行 kickstart；恢复后的 monitor 必须重新经过计划、影子校验和审计。
+- 指标必须包含分发精确率、可分发未分发、重复分发、跨 Run 返回和 Gate 绕过；准确性异常立即挂起对应 Run，恢复要求显式确认。
+- 旧审计迁移记录源快照 hash、事件数和迁移时间；迁移后的事件继续接入不可断裂的 hash 链。

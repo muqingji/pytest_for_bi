@@ -55,11 +55,16 @@ Issue 或任何其他外部副作用。分析过程中不发送进度文本，�
   `matcher`/`observation_point`/`expected_value`（扁平 JSON 形态，runner 会归一化）。
 - 对 `setup` 逐项核对 `verified_setup_contracts`：请求体包含全部 `required_body_keys`，
   资源 ID 提取路径属于 `response_id_paths`，`expect` 使用 runner 支持的断言键并验证真实
-  业务成功字段；`status=success`、猜测的 `$.data.id`、缺失 readiness 一律为 blocking。
+  业务成功字段；`status=success`、猜测的 `$.data.id` 一律为 blocking。
+  `setup` 已带 runner 支持的成功断言时，缺少 `readiness` 记为 warning 并
+  `route_to=A14`，不得因此把整卡打成 needs_human。
 - 对 `steps` 逐项核对 `verified_setup_contracts.execution_contracts`：已登记操作必须包含完整
   `required_body_keys` 并服从 `operation_constraints`。结果集筛选若改用
-  `fs_bi_stat.stat_base.detail_data_query`，或中英文步骤把响应反复覆盖到同一个
-  `detail_api` 根变量，报告 `execution_contract_mismatch`（blocking）。
+  `fs_bi_stat.stat_base.detail_data_query`，报告 `execution_contract_mismatch`（blocking）。
+  不同步骤提取到不同的点分观察键（如 `detail_api.response.error_code` 与
+  `detail_api.response.error_message.en`）不是覆盖。runner 会保留同名 extract 的逐步
+  历史，多场景 Oracle 在 `assert_oracles` 时按历史求值；不得把这误报成
+  `execution_contract_mismatch`。
 - cleanup/residue 使用 setup 提取变量时必须有同名 `when_variable`，setup 失败后不得再次因
   缺失模板变量制造清理失败。
 - 逐资源核对 `retention_mode`：`retain` 资源出现删除、移动到 cleanup、恢复或任何清理步骤
@@ -70,7 +75,8 @@ Issue 或任何其他外部副作用。分析过程中不发送进度文本，�
 - 未映射的 case 必须报告 `automation_case_not_mapped`。
 
 每个问题必须包含：`id`（唯一）、`issue_code`、`severity`（`error`/`blocking` 为阻塞，
-其余如 `warning`/`info` 不阻塞）、`category`、`message`、`path`、`route_to=A18-BE`、
+其余如 `warning`/`info` 不阻塞）、`category`、`message`、`path`、
+`route_to`（候选缺陷一律 `A14`，不得写成 `A18-BE` 或 `human`）、
 `case_id`、`expected_id`（可空）、`source_refs`（非空）、`recommendation`；`error`/`blocking`
 问题还必须含 `plain_summary` 与 `human_title`。
 

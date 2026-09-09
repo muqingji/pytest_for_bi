@@ -28,8 +28,16 @@ description: "规范 qa-agents 多卡流程所有面向 multica 详情页的输�
 
 - `plain_summary`：一句话人话描述，禁止出现字段路径（如 `test_data.matrix.xxx`）、
   内部宏名（如 `ORACLE_EXPECTED_REFERENCE_UNRESOLVABLE`）、JSON 结构和英文技术术语。
-- `human_title`：不超过 12 字的通俗标题。
+- `human_title`：问题类不超过 12 字。
 - `message`：保留完整技术细节，供修正执行与审计。
+
+G02 详情页审批项走 `decision_items`（`review_copy.build_g02_decision_items`），不是全部 `review_items`：
+
+- 只投用例设计未冻结的产品口径：`human_review` 期望、本轮跳过的产品场景。
+- 每条必须有中文 `human_title`、`product_scene`（产品功能场景）、`plain_summary`（设计不确定点）、`confirm_action`（请拍板）。
+- 禁止把「服务端校验某某，共 N 条预期 / 请确认可直接执行」当成审批项。产品人员必须能看出：哪个功能还没定、要接受什么或补什么口径。
+- 已写死错误码/文案的父用例只出现在覆盖摘要，不进审批项。没有未冻结口径时，只留一条放行确认，审批项不得为空。
+- 完整中文用例必须写成 `case-cards.md` 附件；G02 任务卡要明确写出「打开 `case-cards.md` 阅读生成的 case」，禁止让审核人自己翻 JSON。
 
 契约校验（`qa-agents/src/qa_agents/multica.py`）必须强制非空：`A09/A11 issues[*].plain_summary`
 缺省或为空即入库失败。新增其他 agent 的面向用户集合时同样要求。
@@ -41,6 +49,9 @@ description: "规范 qa-agents 多卡流程所有面向 multica 详情页的输�
 - 标题优先级：`human_title` → `_HUMAN_ISSUE_TITLES` 映射 → 类别中文 → 原文兜底。
 - 问题描述优先级：`plain_summary` → `_issue_plain_problem` 映射 → 首句截断兜底。
 - 产物说明必须包含：artifact 名、中文节点名、状态、一句人话结论。
+- 已构造测试数据必须按 `constructed-asset-card-display` 分类列出中文名称和 ID，禁止把 JSON 路径或规划 key 当主信息。
+- N11 产出必须按 `n11-quality-result-display` 列出通过/不通过/未执行的短标题、完整中文测试场景、不通过的中文原因，以及实际请求 TraceId；Trace 必须是 `fxiaoke-platform-trace-id` 的 `FSW-...`，禁止 `QA-uuid`。
+- N12 产出必须按 `n12-standard-test-report` 直接打印标准中文测试报告；每个 case 都要列出实际测试数据及名称/ID，附件不能替代报告正文。
 - 人工操作必须包含：来源说明、逐条可读清单、明确的二选一操作（done 授权 / cancelled 终止）。
 
 ### 3. 修改必须四件套
@@ -58,7 +69,11 @@ description: "规范 qa-agents 多卡流程所有面向 multica 详情页的输�
 ## 验收清单
 
 - [ ] 详情页无裸 `issue_code`/状态码/JSON 路径作为主要信息
+- [ ] G02 审批项只包含未冻结的产品口径，能看出要拍什么板；不得把全部父用例投成审批项
 - [ ] 每条待办都有：通俗标题、一句话问题、明确操作
 - [ ] 产出部分每个 artifact 都带中文节点名、状态和说明
+- [ ] C5/C6/N08 详情能按统计图/报表/交叉表/驾驶舱/指标/自定义维度看到构造成功的数据
+- [ ] N11 详情能按通过/不通过/未执行看到完整中文测试场景、中文失败原因和平台 `FSW-...` TraceId
+- [ ] N12 详情的产出中能直接看到结论、统计、准出依据、逐用例明细、风险与后续动作
 - [ ] 新输出缺 `plain_summary` 时契约层直接拒绝
 - [ ] 全量测试通过（`cd qa-agents && .venv/bin/python -m pytest -q`）

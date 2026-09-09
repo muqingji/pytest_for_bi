@@ -13,7 +13,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from .requirement_case_renderer import render_review_card
+from .requirement_case_renderer import CASE_CARDS_FILENAME
+from .review_copy import g02_approval_items, g02_decision_items_from_request, humanize_review_item
 
 STAGE_CARD_COPY: dict[str, dict[str, Any]] = {
     "C1": {
@@ -49,17 +50,22 @@ STAGE_CARD_COPY: dict[str, dict[str, Any]] = {
         "acceptance": ["G01 审核完成并形成 Decision Artifact", "N24 测试策略已冻结"],
     },
     "C3": {
-        "goal": "产出可执行的 Test Case IR 与覆盖矩阵，通过确定性校验，并把用例交付给 QA Owner 评审。",
-        "background": "范围与策略冻结后进入测试设计；A08 设计、A09 审查、N04 确定性校验、G02 交付评审缺一不可。",
+        "goal": "产出可执行的 Test Case IR，并把用例设计里还没冻结的产品口径交给 QA Owner 拍板。",
+        "background": "范围与策略冻结后进入测试设计；A08 设计、A09 审查、N04 确定性校验后，G02 只确认未冻结口径，不逐条审全部用例。",
         "scope_includes": [
             "Test Case IR 设计与覆盖矩阵（A08）",
             "Oracle 与覆盖审查（A09）",
             "Test Case IR 确定性校验（N04）",
-            "用例交付评审（G02）：评论缺场景后由 A08 按评论修正",
+            "用例设计确认（G02）：只拍板未冻结的产品口径，缺项评论回流 A08",
         ],
         "scope_excludes": ["不修改冻结需求与技术方案", "不执行自动化用例"],
         "inputs": ["冻结需求与 G01 结论", "N24 测试策略", "A08/A09/N04/G02 Artifact 链"],
-        "acceptance": ["N04 校验通过", "G02 形成有效评审 Decision Artifact", "缺场景评论回流 A08 修正闭环"],
+        "acceptance": [
+            "N04 校验通过",
+            "G02 形成有效评审 Decision Artifact",
+            "G02 任务卡引导打开中文用例附件 case-cards.md",
+            "缺场景评论回流 A08 修正闭环",
+        ],
     },
     "C4": {
         "goal": "把已审核的父用例编译为可执行子用例，完成覆盖回查、测试选择与执行计划。",
@@ -82,33 +88,32 @@ STAGE_CARD_COPY: dict[str, dict[str, Any]] = {
             "测试数据计划（A22）",
             "独立复核（A18-BE/A18-CT）",
             "数据安全校验（N27）与确定性代码检查（N05）",
-            "自动化代码人工审核（G03）",
         ],
         "scope_excludes": ["不执行自动化用例", "不修改业务仓库"],
         "inputs": ["C4 执行计划与 Test Case IR", "冻结 OpenAPI", "112 能力目录与测试数据能力"],
         "acceptance": ["自动化 Manifest、测试数据计划、审查与检查结论全部就绪"],
     },
     "C6": {
-        "goal": "完成环境预检、受控自动化执行与人工/探索测试，给出重试预算结论。",
+        "goal": "完成环境预检、受控自动化执行，并收口尚未自动执行的用例。",
         "background": "C5 已就绪自动化与数据；本阶段在真实环境执行并收集证据。",
         "scope_includes": [
             "环境预检（N07）",
             "受控自动化执行（N08）",
-            "人工与探索测试（N17）",
+            "未执行用例收口（N17）",
             "环境失败重试预算（N10）",
         ],
         "scope_excludes": ["不跳过安全校验直接执行", "不发布"],
         "inputs": ["C5 已就绪自动化与数据", "测试环境账号与资源"],
-        "acceptance": ["预检通过，自动化与人工任务执行完毕", "重试预算有明确结论"],
+        "acceptance": ["预检通过，自动化执行完毕，未执行用例已收口或明确跳过", "重试预算有明确结论"],
     },
     "C7": {
-        "goal": "归一执行证据与缺陷，做出确定性质量决策，登记可选豁免。",
-        "background": "C6 产生原始证据；本阶段负责把失败聚类、跨运行去重并形成质量结论。",
+        "goal": "归一执行证据与缺陷，根据服务端测试结果判定能否准出，登记可选豁免。",
+        "background": "C6 产生原始证据；本阶段负责把失败聚类、跨运行去重，并给出服务端准出结论。",
         "scope_includes": [
             "运行质量信号采集（N18）",
             "证据标准化与失败聚类（N09）",
             "跨运行缺陷去重（N20）",
-            "确定性质量决策（N11）",
+            "服务端准出判定（N11）",
             "质量豁免审计（N19）",
         ],
         "scope_excludes": ["不重新执行用例", "不代签豁免"],
@@ -226,7 +231,11 @@ NODE_CARD_COPY: dict[str, dict[str, Any]] = {
         ],
         "scope_excludes": ["修改冻结需求/技术方案", "修改业务代码、提交或发布"],
         "inputs": ["输入参数包（附件）", "冻结需求快照与 G01 结论", "N24 测试策略"],
-        "acceptance": ["产出 a08-test-design-ir Artifact 并入库", "通过 N04 校验，覆盖缺口由 A09 审查确认"],
+        "acceptance": [
+            "产出 a08-test-design-ir Artifact 并入库",
+            "父用例标题、场景、步骤、预期描述为中文，供 G02 渲染 case-cards.md",
+            "通过 N04 校验，覆盖缺口由 A09 审查确认",
+        ],
     },
     "A09": {
         "goal": "审查 Oracle 期望值与测试覆盖，输出可执行结论或需要修正的问题清单。",
@@ -260,7 +269,7 @@ NODE_CARD_COPY: dict[str, dict[str, Any]] = {
     },
     "A14": {
         "goal": "按执行计划把后端用例生成独立 pytest 接口自动化候选，并产出自动化 Manifest。",
-        "background": "C4 执行计划确定后由 A14 生成后端自动化；候选须绑定接口、测试数据计划与 Oracle，经 A18-BE 独立复核、N05 代码检查与 G03 人工审核后才可执行。",
+        "background": "C4 执行计划确定后由 A14 生成后端自动化；候选须绑定接口、测试数据计划与 Oracle，经 A18-BE 独立复核与 N05 代码检查后才可执行。",
         "scope_includes": [
             "绑定接口、数据计划与 Oracle 生成 pytest",
             "维护每条 Case 到用例的可追溯性",
@@ -283,7 +292,7 @@ NODE_CARD_COPY: dict[str, dict[str, Any]] = {
     },
     "A15": {
         "goal": "生成接口契约自动化候选，保护 DTO 与接口兼容性。",
-        "background": "契约层需要独立保护；A15 基于冻结契约生成契约校验与兼容性测试，经 A18-CT 复核、N05 检查与 G03 审核后放行。",
+        "background": "契约层需要独立保护；A15 基于冻结契约生成契约校验与兼容性测试，经 A18-CT 复核与 N05 检查后放行。",
         "scope_includes": [
             "生成契约校验与兼容性测试",
             "绑定契约版本、断言与数据依赖",
@@ -508,12 +517,26 @@ def node_issue_description(
     return "\n".join(lines)
 
 
+def constructed_assets_markdown(
+    assets: Sequence[Mapping[str, Any]] | None = None,
+) -> str:
+    """Render the 已构造测试数据 section (constructed-asset-card-display skill)."""
+
+    from .constructed_assets import render_constructed_assets_markdown
+
+    return render_constructed_assets_markdown(assets)
+
+
 def node_record_description(
     node_id: str,
     label: str,
     *,
     artifact_name: str = "",
     approval_block: Sequence[str] | None = None,
+    constructed_assets: Sequence[Mapping[str, Any]] | None = None,
+    quality_results: Sequence[Mapping[str, Any]] | None = None,
+    quality_summary: str = "",
+    standard_quality_report: str = "",
 ) -> str:
     """Five-section card for a deterministic node record Issue.
 
@@ -572,6 +595,19 @@ def node_record_description(
         "",
         artifact_line,
     ]
+    assets_section = constructed_assets_markdown(constructed_assets)
+    if assets_section:
+        lines.extend(["", assets_section.rstrip()])
+    if quality_results:
+        from .quality_results import render_quality_results_markdown
+
+        results_section = render_quality_results_markdown(
+            quality_results, summary=quality_summary
+        )
+        if results_section:
+            lines.extend(["", results_section.rstrip()])
+    if standard_quality_report:
+        lines.extend(["", standard_quality_report.rstrip()])
     if approval_block:
         lines.extend(
             [
@@ -666,26 +702,94 @@ def scope_review_title(request: Mapping[str, Any]) -> str:
 
 
 def g02_review_title(request: Mapping[str, Any]) -> str:
+    decisions = g02_decision_items_from_request(request)
+    run_id = request.get("workflow_run_id", "")
+    if decisions:
+        return f"[{run_id}] G02 用例设计确认 · {len(decisions)} 项待拍板"
     summary = request.get("review_summary") or {}
-    return (
-        f"[{request.get('workflow_run_id', '')}] G02 测试用例审核 · "
-        f"待审核 {summary.get('parent_case_count', 0)} 条用例"
-    )
+    parent_count = summary.get("parent_case_count", 0) if isinstance(summary, Mapping) else 0
+    return f"[{run_id}] G02 用例设计确认 · {parent_count} 条已按冻结规则写完"
+
+
+def _g02_frozen_coverage_lines(request: Mapping[str, Any]) -> list[str]:
+    review_items = request.get("review_items")
+    if not isinstance(review_items, list) or not review_items:
+        return []
+    lines = [
+        "",
+        "## 已按冻结规则写完（不逐条审批）",
+        "",
+        f"下面这些用例的错误码、文案和覆盖已经写死，不需要你逐条确认。"
+        f"请打开附件 `{CASE_CARDS_FILENAME}` 阅读完整中文用例。",
+        "",
+    ]
+    for item in review_items:
+        if not isinstance(item, Mapping):
+            continue
+        case_id = str(item.get("case_id") or item.get("id") or "").strip()
+        copy = humanize_review_item(item)
+        title = copy["human_title"] or str(item.get("title") or "").strip() or "用例"
+        prefix = f"`{case_id}` " if case_id else ""
+        lines.append(f"- {prefix}{title}")
+    lines.append("")
+    return lines
+
+
+def _g02_decision_section(items: list[Mapping[str, Any]]) -> list[str]:
+    lines = [
+        "## 你需要拍板",
+        "",
+        "只列出用例设计还没冻结的产品口径。已写死错误码和文案的用例不在这里，不用逐条审。",
+        "",
+    ]
+    for index, item in enumerate(items, start=1):
+        title = str(item.get("human_title") or "用例设计待确认").strip()
+        item_id = str(item.get("id") or "").strip()
+        header = f"{index}. **{title}**"
+        if item_id:
+            header += f"（`{item_id}`）"
+        lines.append(header)
+        scene = str(item.get("product_scene") or "").strip()
+        if scene:
+            lines.append(f"   - 产品场景：{scene}")
+        uncertainty = str(item.get("plain_summary") or "").strip()
+        if uncertainty:
+            lines.append(f"   - 设计不确定点：{uncertainty}")
+        action = str(item.get("confirm_action") or "").strip()
+        if action:
+            lines.append(f"   - 请拍板：{action}")
+        lines.append("")
+    return lines
 
 
 def g02_review_description(request: Mapping[str, Any]) -> str:
     summary = request["review_summary"]
+    parent_count = summary["parent_case_count"]
+    decisions = g02_approval_items(request)
+    uncertainties = g02_decision_items_from_request(request)
     upstream = "\n".join(
         f"- `{item['artifact_id']}`：`{item['artifact_hash']}`"
         for item in request["upstream_artifacts"]
     )
+    if uncertainties:
+        goal = (
+            f"只拍板用例设计里还没冻结的产品口径（{len(uncertainties)} 项）。"
+            f"其余覆盖已按冻结规则写进 {parent_count} 条父用例，不逐条审批。"
+        )
+        scope_include = f"- {len(uncertainties)} 个未冻结的产品口径，需要你按产品功能拍板。"
+    else:
+        goal = (
+            f"{parent_count} 条父用例没有未冻结的产品口径。"
+            "没有缺场景就放行，进入 N25 父子 Case 编译。"
+        )
+        scope_include = f"- {parent_count} 条父用例已按冻结规则写完，无需逐条确认。"
     body = "\n".join(
         [
-            "# 测试用例审核",
+            "# 用例设计确认",
             "",
             "## 目标",
             "",
-            f"确认 {summary['parent_case_count']} 条父用例的预期结果与覆盖可直接执行；批准后进入 N25 父子 Case 编译。",
+            goal,
             "",
             "## 背景",
             "",
@@ -694,47 +798,37 @@ def g02_review_description(request: Mapping[str, Any]) -> str:
             "## 范围",
             "",
             "包含：",
-            f"- {summary['parent_case_count']} 条父用例的预期结果、覆盖与来源引用。",
+            scope_include,
             "",
             "不包含：",
-            "- 修改用例本身；需要修改时置 blocked 回流 A08。",
+            "- 逐条审核已经写死的用例；需要改口径时置 blocked 回流 A08。",
             "",
             "## 输入材料",
             "",
+            f"- 完整中文用例：本 Issue 附件 `{CASE_CARDS_FILENAME}`。"
+            "请打开该文件阅读测试场景 / 前置条件 / 测试步骤 / 预期结果。",
+            "- 本 Issue 技术附件：`g02-review-request.json`",
             upstream,
-            "- 本 Issue 附件：`g02-review-request.json`",
             "",
-            "## 你需要审核什么",
-            "",
-            f"- 每条用例的预期结果是否可执行、覆盖是否满足冻结规则（warning {summary['warning_count']} 个）。",
-            f"- N04 结论（n04_valid={summary['n04_valid']}）与 A09 覆盖结论是否一致。",
-            "",
+            *(_g02_decision_section(decisions)),
             "## 怎么反馈",
             "",
-            "这是交付评审，不是审批仪式：",
-            "",
-            "- 发现缺场景 / 预期不可执行 / 覆盖不够：**在评论里逐条写明缺什么**，然后置 **blocked**。",
-            "- 评论内容会被作为 A08 的修正指令回流：A08 按评论修复 → A09 复审 → N04 重新校验 → 重新生成用例卡片给你。",
-            "- 没有缺项：置 **done** 进入 N25 Case 编译。",
+            "- 同意这些未冻结口径的处理方式：置 **done** 进入 N25。",
+            "- 不同意或要补产品口径：**在评论里写明缺什么**，然后置 **blocked**。",
+            "- 评论会作为 A08 修正指令回流：A08 按评论修复 → A09 复审 → N04 重新校验 → 再给你拍板。",
             "- 保持 **in_review**：流程保持暂停。",
             "",
             "## 验收",
             "",
-            "- 置 **done**：用例无缺项，继续 N25。",
+            "- 置 **done**：接受当前未冻结口径的处理，继续 N25。",
             "- 置 **blocked**（必须带评论）：回流 A08 按评论修正。",
             "- 置 **cancelled**：终止当前流程。",
             "",
         ]
     )
-    review_items = request.get("review_items")
-    if isinstance(review_items, list) and review_items:
-        lines = ["", "## 待审核用例明细", ""]
-        for index, item in enumerate(review_items, start=1):
-            if not isinstance(item, Mapping):
-                continue
-            lines.append(render_review_card(item, index=index))
-            lines.append("")
-        body = body + "\n".join(lines)
+    extra = _g02_frozen_coverage_lines(request)
+    if extra:
+        body = body + "\n".join(extra)
     return body
 
 

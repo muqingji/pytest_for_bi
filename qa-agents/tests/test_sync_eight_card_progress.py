@@ -3,6 +3,7 @@ from pathlib import Path
 import shutil
 
 import importlib.util
+import pytest
 
 from qa_agents.contracts import (
     ArtifactEnvelope,
@@ -31,6 +32,7 @@ ensure_g01_scope_review = _sync_module.ensure_g01_scope_review
 prepare_reconcile_spec = _sync_module.prepare_reconcile_spec
 publish_g01_decision_artifact = _sync_module.publish_g01_decision_artifact
 ensure_n24_test_strategy = _sync_module.ensure_n24_test_strategy
+ensure_a06_dispatch = _sync_module.ensure_a06_dispatch
 ensure_a08_dispatch = _sync_module.ensure_a08_dispatch
 ensure_a08_correction_dispatch = _sync_module.ensure_a08_correction_dispatch
 ensure_a09_dispatch = _sync_module.ensure_a09_dispatch
@@ -49,16 +51,115 @@ ensure_a14_dispatch = _sync_module.ensure_a14_dispatch
 ensure_a15_dispatch = _sync_module.ensure_a15_dispatch
 ensure_a22_dispatch = _sync_module.ensure_a22_dispatch
 ensure_a18_dispatch = _sync_module.ensure_a18_dispatch
+ensure_a18_be_deterministic_review = _sync_module.ensure_a18_be_deterministic_review
+_already_ingested = _sync_module._already_ingested
+_completed_run_ingest_action = _sync_module._completed_run_ingest_action
 ensure_n27_validation = _sync_module.ensure_n27_validation
 ensure_a22_correction_dispatch = _sync_module.ensure_a22_correction_dispatch
 ensure_n05_aggregation = _sync_module.ensure_n05_aggregation
 ensure_g03_review = _sync_module.ensure_g03_review
 ensure_n07_precheck = _sync_module.ensure_n07_precheck
+ensure_quality_tail = _sync_module.ensure_quality_tail
 _comment_artifact_output = _sync_module._comment_artifact_output
 _ingest_issue = _sync_module._ingest_issue
 
 PILOT_RUN = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "pilot"
 QA_AGENTS_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_node_dispatch_rejects_node_missing_from_monitor_plan(
+    tmp_path: Path, monkeypatch
+) -> None:
+    plan = {
+        "schema_version": "dispatch-authorization/1.0",
+        "workflow_run_id": "run-1",
+        "allowed_nodes": ["A03"],
+    }
+    plan["plan_hash"] = content_hash(plan)
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(json.dumps(plan), encoding="utf-8")
+    input_path = tmp_path / "a02-input.json"
+    input_path.write_text(json.dumps({"bundle_hash": "sha256:bundle"}), encoding="utf-8")
+    calls = []
+    monkeypatch.setattr(_sync_module, "_multica", lambda *args, **kwargs: calls.append(args))
+
+    _sync_module._load_dispatch_authorization(plan_path, "run-1")
+    try:
+        with pytest.raises(ContractError, match="A02 was not authorized"):
+            _sync_module._create_node_issue(
+                config={
+                    "internal_project_id": "project",
+                    "workspace_id": "workspace",
+                    "node_agents": {"A02": "agent"},
+                },
+                run_id="run-1",
+                node_id="A02",
+                label="需求分析",
+                input_path=input_path,
+            )
+    finally:
+        _sync_module._load_dispatch_authorization(None, "run-1")
+    assert calls == []
+
+
+def test_ensure_a06_dispatch_records_issue_bundle_binding(
+    tmp_path: Path, monkeypatch
+) -> None:
+    auto_dir = tmp_path / "artifacts-auto"
+    inputs_dir = tmp_path / "inputs"
+    artifacts = auto_dir / "artifacts"
+    artifacts.mkdir(parents=True)
+    for artifact_id in (
+        "a02-requirement-analysis",
+        "a03-technical-testability-analysis",
+        "a05-backend-change-analysis",
+    ):
+        (artifacts / f"{artifact_id}.json").write_text("{}", encoding="utf-8")
+
+    def fake_prepare(_artifact_dir: Path, target_dir: Path) -> dict:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        (target_dir / "a06-input.json").write_text("{}", encoding="utf-8")
+        return {"bundle_hash": "sha256:test"}
+
+    monkeypatch.setattr(_sync_module, "prepare_multica_alignment_input", fake_prepare)
+    monkeypatch.setattr(
+        _sync_module,
+        "_create_node_issue",
+        lambda **kwargs: {"issue_id": "issue-a06", "issue_identifier": "QAA-1"},
+    )
+
+    result = ensure_a06_dispatch(
+        {}, "run-1", auto_dir, inputs_dir, tmp_path, {}, apply=True
+    )
+
+    assert result["issue_id"] == "issue-a06"
+    bindings = json.loads((inputs_dir / ".issue-bundles.json").read_text(encoding="utf-8"))
+    assert bindings == {"issue-a06": str((inputs_dir / "a06-input.json").resolve())}
+
+
+def test_ensure_a06_dispatch_repairs_missing_existing_issue_binding(tmp_path: Path) -> None:
+    inputs_dir = tmp_path / "inputs"
+    inputs_dir.mkdir()
+    bundle = inputs_dir / "a06-input.json"
+    bundle.write_text("{}", encoding="utf-8")
+
+    result = ensure_a06_dispatch(
+        {},
+        "run-1",
+        tmp_path / "artifacts-auto",
+        inputs_dir,
+        tmp_path,
+        {"A06": [{"id": "existing-a06", "status": "in_progress"}]},
+        apply=True,
+    )
+
+    assert result == {
+        "node_id": "A06",
+        "action": "already_dispatched",
+        "issue_id": "existing-a06",
+    }
+    bindings = json.loads((inputs_dir / ".issue-bundles.json").read_text(encoding="utf-8"))
+    assert bindings == {"existing-a06": str(bundle.resolve())}
 
 
 def _write_artifact(dir_path: Path, artifact_id: str, payload: dict, status: ArtifactStatus) -> None:
@@ -1285,6 +1386,10 @@ def test_ensure_g02_review_opens_after_valid_n04(tmp_path: Path, monkeypatch) ->
         )
     )
     assert gate_artifact["status"] == "needs_human"
+    review_items = gate_artifact["payload"]["review_items"]
+    assert isinstance(review_items, list) and review_items
+    assert all(item.get("case_id") for item in review_items)
+    assert gate_artifact["payload"]["review_summary"]["parent_case_count"] == len(review_items)
 
 
 def test_ensure_g02_review_skips_without_valid_n04(tmp_path: Path) -> None:
@@ -1298,6 +1403,77 @@ def test_ensure_g02_review_skips_without_valid_n04(tmp_path: Path) -> None:
         )
         is None
     )
+
+
+def test_ensure_g02_review_binds_done_c3_and_unlocks_n25(
+    tmp_path: Path, monkeypatch
+) -> None:
+    state = _correction_state(tmp_path)
+    _flip_state_to_g02_ready(state)
+    config = {
+        "g02_policy": str(QA_AGENTS_ROOT / "policies" / "g02-review-policy.json")
+    }
+    policy = json.loads(
+        (QA_AGENTS_ROOT / "policies" / "g02-review-policy.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    workspace_id = policy["multica"]["workspace_id"]
+    member_id = policy["multica"]["assignee_member_id"]
+    metadata: dict[str, str] = {}
+    status_calls: list[str] = []
+    issue = {
+        "id": "c3-issue",
+        "workspace_id": workspace_id,
+        "project_id": "84580297-a0ca-4cce-9db9-59cade66f83c",
+        "assignee_id": member_id,
+        "assignee_type": "member",
+        "status": "done",
+        "updated_at": "2026-09-01T12:00:00Z",
+        "metadata": metadata,
+    }
+
+    def fake_runner(args: list, cwd: Path):
+        if args[:2] == ["issue", "create"]:
+            raise AssertionError("G02 must bind the C3 stage card")
+        if args[:3] == ["issue", "metadata", "set"]:
+            metadata[args[args.index("--key") + 1]] = args[args.index("--value") + 1]
+            return {}
+        if args[:2] == ["issue", "status"]:
+            status_calls.append(args[3])
+            issue["status"] = args[3]
+            return dict(issue)
+        if args[:2] == ["issue", "get"]:
+            return {**issue, "metadata": dict(metadata)}
+        if args[:3] == ["issue", "comment", "list"]:
+            return {"comments": []}
+        return {}
+
+    import qa_agents.g02_review as g02_module
+
+    monkeypatch.setattr(g02_module, "_default_runner", fake_runner)
+    review_dir = tmp_path / "g02-auto"
+    result = ensure_g02_review(
+        config,
+        state["artifact_dir"],
+        review_dir,
+        QA_AGENTS_ROOT,
+        apply=True,
+        issue_id="c3-issue",
+    )
+    assert result is not None
+    assert result.get("error") is None
+    assert "in_review" not in status_calls
+    gate = json.loads(
+        (state["artifact_dir"] / "artifacts" / "g02-test-case-ir-review.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert gate["status"] == "completed"
+    assert gate["payload"]["decision"] == "approved"
+    n25 = ensure_n25_compilation(state["artifact_dir"], review_dir)
+    assert n25 is not None
+    assert n25["artifact_id"] == "n25-compiled-test-cases"
 
 
 def test_ensure_g02_correction_dispatch_dispatches_a08_v140(
@@ -2233,8 +2409,8 @@ def test_ingest_issue_uses_last_usage_entry(tmp_path: Path) -> None:
 def test_ingest_issue_falls_back_without_usage(tmp_path: Path) -> None:
     _, envelope = _ingest_issue_fixture(tmp_path, {})
     producer = envelope["producer"]
-    assert producer["model_provider"] == "deepseek"
-    assert producer["model_snapshot"] == "deepseek-v4-flash"
+    assert producer["model_provider"] == "unknown"
+    assert producer["model_snapshot"] == "unknown"
 
 
 def _human_route_state(tmp_path: Path) -> dict:
@@ -3367,6 +3543,23 @@ def test_ensure_a11_dispatch_is_idempotent_when_issue_exists(tmp_path: Path) -> 
     assert result["issue_id"] == "issue-running"
 
 
+def test_ensure_a11_dispatch_does_not_replace_blocked_ingest(tmp_path: Path) -> None:
+    setup = _stage_two_setup(tmp_path)
+    config = _a11_config()
+    result = ensure_a11_dispatch(
+        config,
+        "run-1",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        tmp_path,
+        {"A11": [{"id": "issue-blocked", "title": "[run-1] A11 拆分覆盖审查", "status": "blocked"}]},
+        apply=True,
+    )
+    assert result is not None
+    assert result["action"] == "awaiting_ingest"
+    assert result["issue_id"] == "issue-blocked"
+
+
 def test_ensure_n26_selection_runs_after_approved_a11(tmp_path: Path) -> None:
     setup = _stage_two_setup(tmp_path)
     config = _a11_config()
@@ -3677,6 +3870,89 @@ def test_ensure_node_record_issues_refreshes_retry_content_when_already_in_revie
     assert "批准重试" in desc
 
 
+def test_ensure_node_record_issues_refreshes_existing_n12_with_standard_report(
+    tmp_path: Path, monkeypatch
+) -> None:
+    artifact_dir = tmp_path / "artifacts-auto"
+    _write_artifact(
+        artifact_dir,
+        "n11-quality-decision",
+        {
+            "summary": "测试完成：执行 2，通过 1，失败 1",
+            "case_outcomes": [
+                {
+                    "case_id": "PC-BE-001",
+                    "title": "限制提示",
+                    "scene": "命中限制时返回专用中文提示。",
+                    "status": "failed",
+                    "reason": "实际返回通用提示，本应返回专用提示",
+                    "requests": [{"name": "main", "trace_id": "FSW-1.2-abc"}],
+                },
+                {
+                    "case_id": "PC-BE-002",
+                    "title": "正常明细",
+                    "scene": "不受限时正常返回明细。",
+                    "status": "passed",
+                    "requests": [{"name": "main", "trace_id": "FSW-1.2-def"}],
+                },
+            ],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    n12 = artifact_dir / "artifacts" / "n12-quality-report.json"
+    _write_artifact(
+        artifact_dir,
+        "n12-quality-report",
+        {
+            "decision": "completed_with_defects",
+            "release_disposition": "pending",
+            "bug_draft_count": 1,
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    (artifact_dir / "artifacts" / "constructed-test-assets.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "constructed-test-assets/1.0",
+                "assets": [
+                    {
+                        "case_id": "PC-BE-001",
+                        "resource_type": "stat_chart",
+                        "display_name": "限制提示验证统计图",
+                        "resource_id": "BI_chart_1",
+                    }
+                ],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    calls = []
+
+    def fake_multica(*args: str, **kwargs):
+        calls.append(list(args))
+        return {"id": args[2] if len(args) > 2 else "record", "status": "done"}
+
+    monkeypatch.setattr(_sync_module, "_multica", fake_multica)
+    synced = ensure_node_record_issues(
+        _a11_config(),
+        "run-1",
+        artifact_dir,
+        {"N12": [{"id": "existing-n12", "identifier": "QAA-442", "status": "done"}]},
+        apply=True,
+    )
+    n12_synced = next(record for record in synced if record["node_id"] == "N12")
+    assert n12_synced["action"] == "synced"
+    update = next(call for call in calls if call[:2] == ["issue", "update"] and call[2] == "existing-n12")
+    assert "--description-file" in update
+    description = n12.with_name(f"{n12.name}.record.md").read_text(encoding="utf-8")
+    assert "## 产出" in description
+    assert "## 标准测试报告" in description
+    assert "### 4. 用例执行明细" in description
+    assert "FSW-1.2-abc" in description
+    assert "统计图：`限制提示验证统计图`（`BI_chart_1`）" in description
+
+
 def _c5_config() -> dict:
     return {
         "internal_project_id": "project-internal",
@@ -3795,6 +4071,39 @@ def _c5_setup(tmp_path: Path) -> dict:
     return {"artifact_dir": artifact_dir, "inputs_dir": inputs_dir}
 
 
+
+
+def _write_valid_n27(artifact_dir: Path) -> None:
+    """N27 valid + A22 completed, which A14 now requires before dispatch."""
+
+    _write_artifact(
+        artifact_dir,
+        "a22-test-data-plan",
+        {
+            "schema_version": "test-data-plan/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "status": "completed",
+            "environment": "112",
+            "namespace": "qa-namespace-from-plan",
+            "case_plans": [],
+            "paused_cases": [],
+            "unresolved_requirements": [],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+    _write_artifact(
+        artifact_dir,
+        "n27-test-data-plan-validation",
+        {
+            "schema_version": "test-data-plan-validation/1.0",
+            "valid": True,
+            "decision": "validated",
+            "deferred_cases": [],
+        },
+        ArtifactStatus.COMPLETED,
+    )
+
 def _generation_artifact(
     artifact_dir: Path,
     bundle_path: Path,
@@ -3867,6 +4176,7 @@ def _generation_artifact(
 
 def test_ensure_a14_dispatch_prepares_input_in_dry_run(tmp_path: Path) -> None:
     setup = _c5_setup(tmp_path)
+    _write_valid_n27(setup["artifact_dir"])
     result = ensure_a14_dispatch(
         _c5_config(),
         "REQ-1-r001",
@@ -4124,6 +4434,176 @@ def test_ensure_a18_dispatch_keeps_frozen_bundle_when_issue_in_flight(
     assert review_path.exists()
 
 
+def test_ensure_a18_be_deterministic_review_replaces_llm_overblock(
+    tmp_path: Path,
+) -> None:
+    """LLM A18-BE 误把可执行候选打成 needs_human 时，确定性复核必须改回 approved。"""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A14",
+    )
+    generation_path = _generation_artifact(
+        setup["artifact_dir"],
+        setup["inputs_dir"] / "a14-input.json",
+        "A14",
+        "a14-backend-automation-generation",
+        ["TC-BE-001-BACKEND"],
+    )
+    generation = json.loads(generation_path.read_text(encoding="utf-8"))
+    _write_artifact(
+        setup["artifact_dir"],
+        "a18-be-backend-automation-review",
+        {
+            "schema_version": "automation-review/1.0",
+            "workflow_run_id": "REQ-1-r001",
+            "source_snapshot_id": "snapshot-1",
+            "generation_hash": content_hash(generation["payload"]),
+            "approved": False,
+            "issues": [
+                {
+                    "issue_code": "execution_contract_mismatch",
+                    "severity": "blocking",
+                    "route_to": "A18-BE",
+                    "message": "dotted extract keys are not overwrite",
+                }
+            ],
+        },
+        ArtifactStatus.NEEDS_HUMAN,
+    )
+    result = ensure_a18_be_deterministic_review(setup["artifact_dir"])
+    assert result is not None
+    assert result["approved"] is True
+    assert result["status"] == "completed"
+    artifact = json.loads(
+        (
+            setup["artifact_dir"] / "artifacts" / "a18-be-backend-automation-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert artifact["status"] == "completed"
+    assert artifact["payload"]["approved"] is True
+    assert artifact["payload"]["issues"] == []
+
+
+def test_already_ingested_accepts_deterministic_a18_be_review(tmp_path: Path) -> None:
+    """In-repo A18-BE reviewer must count as ingested so LLM ingest failures cannot pin the card."""
+    auto_dir = tmp_path / "artifacts-auto"
+    (auto_dir / "artifacts").mkdir(parents=True)
+    bundle_path = tmp_path / "a18-be-input.json"
+    bundle_path.write_text(
+        json.dumps({"profile_id": "A18-BE", "bundle_hash": "sha256:bundle"}),
+        encoding="utf-8",
+    )
+    review = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="a18-be-backend-automation-review",
+        source_snapshot_id="snapshot-1",
+        producer=Producer(component_id="A18-BE", runtime="automation-review-runtime"),
+        payload={"approved": True, "generation_hash": "sha256:gen", "issues": []},
+        status=ArtifactStatus.COMPLETED,
+    )
+    ArtifactStore(auto_dir).write_artifact(review)
+    assert _already_ingested(auto_dir, bundle_path, "llm-run-1") is True
+    failures = {
+        "A18-BE": [{"issue_id": "issue-a18", "run_id": "llm-run-1"}],
+    }
+    assert (
+        _completed_run_ingest_action(
+            auto_dir=auto_dir,
+            bundle_path=bundle_path,
+            run_id="llm-run-1",
+            ingest_failures=failures,
+            node_id="A18-BE",
+            issue_id="issue-a18",
+        )
+        == "mark_done"
+    )
+
+
+def test_completed_run_keeps_blocked_when_no_deterministic_artifact(
+    tmp_path: Path,
+) -> None:
+    auto_dir = tmp_path / "artifacts-auto"
+    (auto_dir / "artifacts").mkdir(parents=True)
+    bundle_path = tmp_path / "a18-be-input.json"
+    bundle_path.write_text(
+        json.dumps({"profile_id": "A18-BE", "bundle_hash": "sha256:bundle"}),
+        encoding="utf-8",
+    )
+    failures = {
+        "A18-BE": [{"issue_id": "issue-a18", "run_id": "llm-run-1"}],
+    }
+    assert (
+        _completed_run_ingest_action(
+            auto_dir=auto_dir,
+            bundle_path=bundle_path,
+            run_id="llm-run-1",
+            ingest_failures=failures,
+            node_id="A18-BE",
+            issue_id="issue-a18",
+        )
+        == "keep_blocked"
+    )
+
+
+def test_ensure_a18_be_deterministic_review_closes_blocked_issue(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Approved deterministic A18-BE must close a leftover blocked Multica Issue."""
+    setup = _c5_setup(tmp_path)
+    config = _c5_config()
+    prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(config["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A14",
+    )
+    _generation_artifact(
+        setup["artifact_dir"],
+        setup["inputs_dir"] / "a14-input.json",
+        "A14",
+        "a14-backend-automation-generation",
+        ["TC-BE-001-BACKEND"],
+    )
+    calls: list[list[str]] = []
+
+    def fake_multica(*args: str, **kwargs):
+        calls.append(list(args))
+        return {"id": args[2], "status": args[3]}
+
+    monkeypatch.setattr(_sync_module, "_multica", fake_multica)
+    issues = {
+        "A18-BE": [
+            {
+                "id": "issue-a18-be",
+                "identifier": "QAA-451",
+                "title": "[REQ-1-r001] A18-BE 服务端自动化独立复核",
+                "status": "blocked",
+            }
+        ]
+    }
+    result = ensure_a18_be_deterministic_review(
+        setup["artifact_dir"], issues, apply=True
+    )
+    assert result is not None
+    assert result["approved"] is True
+    assert result["closed_issues"] == ["issue-a18-be"]
+    assert issues["A18-BE"][0]["status"] == "done"
+    assert any(
+        call[:4] == ["issue", "status", "issue-a18-be", "done"] for call in calls
+    )
+    rerun = ensure_a18_be_deterministic_review(
+        setup["artifact_dir"], issues, apply=True
+    )
+    assert rerun is None
+
+
 def test_ensure_n05_aggregation_recomputes_when_review_changes(tmp_path: Path) -> None:
     """复核 Artifact 变化后 N05 必须重算，避免用旧复核放行新代码。"""
     setup = _c5_setup(tmp_path)
@@ -4180,8 +4660,11 @@ def test_ensure_n05_aggregation_recomputes_when_review_changes(tmp_path: Path) -
 def test_ensure_n05_aggregation_excludes_stale_review_after_regeneration(
     tmp_path: Path,
 ) -> None:
-    """A14 重生成后遗留的旧复核（generation_hash 不匹配）不得算 review_passed，
-    否则 N05 会用旧复核放行新候选，G03 卡也会展示错误的"复核已通过"。"""
+    """A14 重生成后遗留的旧复核（generation_hash 不匹配）不得算 review_passed。
+
+    N05 本身只做确定性代码检查；A18 是否批准不再把 N05 打成 needs_human，
+    否则去掉 G03 后 C5 仍会显示成人工审核中。
+    """
     setup = _c5_setup(tmp_path)
     config = _c5_config()
     bundle = prepare_multica_automation_generation_input(
@@ -4208,8 +4691,16 @@ def test_ensure_n05_aggregation_excludes_stale_review_after_regeneration(
         return bool(artifact.get("payload", {}).get("passed"))
 
     no_review = ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
-    assert no_review is not None and no_review["status"] == "needs_human"
-    assert _n05_passed() is False
+    assert no_review is not None and no_review["status"] == "completed"
+    assert _n05_passed() is True
+    no_review_artifact = json.loads(
+        (setup["artifact_dir"] / "artifacts" / "n05-automation-code-check.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert no_review_artifact.get("status") == "completed"
+    assert no_review_artifact.get("payload", {}).get("issues") == []
+    assert no_review_artifact.get("payload", {}).get("review_passed") is False
     # 旧复核：generation_hash 指向旧代，不得计入。
     _write_artifact(
         setup["artifact_dir"],
@@ -4224,10 +4715,15 @@ def test_ensure_n05_aggregation_excludes_stale_review_after_regeneration(
         },
         ArtifactStatus.COMPLETED,
     )
-    # 陈旧复核被排除后，N05 的证据集与无复核时一致（生成 hash 相同），
-    # 引擎判定无需重算；无论如何 N05 都不能是 passed。
+    # 陈旧复核被排除后，N05 代码检查仍可通过；review_passed 不能被旧复核带真。
     ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
-    assert _n05_passed() is False
+    assert _n05_passed() is True
+    stale_artifact = json.loads(
+        (setup["artifact_dir"] / "artifacts" / "n05-automation-code-check.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert stale_artifact.get("payload", {}).get("review_passed") is False
     # 新复核：generation_hash 绑定当前生成，才计入 review_passed。
     _write_artifact(
         setup["artifact_dir"],
@@ -4257,8 +4753,10 @@ def test_ensure_n05_aggregation_excludes_stale_review_after_regeneration(
 
 
 def test_ensure_n05_aggregation_recomputes_when_review_removed(tmp_path: Path) -> None:
-    """复核被移除（A14 重生成后旧复核失效）必须触发 N05 重算，不能停留在
-    passed=True：无有效复核时 N05 必须是 needs_human。"""
+    """复核被移除必须触发 N05 重算证据，但代码检查通过时 N05 仍是 completed。
+
+    A18 缺失不再把 N05 打成 needs_human，避免 C5 阶段卡回到人工审核中。
+    """
     setup = _c5_setup(tmp_path)
     config = _c5_config()
     bundle = prepare_multica_automation_generation_input(
@@ -4301,11 +4799,17 @@ def test_ensure_n05_aggregation_recomputes_when_review_removed(tmp_path: Path) -
 
     assert ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT) is not None
     assert _n05_passed() is True
-    # 移除复核（旧复核被清理）后必须重算为 needs_human，而不是继续 passed。
+    # 移除复核后必须重算证据；代码检查通过则 N05 保持 completed。
     review_path.unlink()
     result = ensure_n05_aggregation(config, setup["artifact_dir"], QA_AGENTS_ROOT)
-    assert result is not None and result["status"] == "needs_human"
-    assert _n05_passed() is False
+    assert result is not None and result["status"] == "completed"
+    assert _n05_passed() is True
+    artifact = json.loads(
+        (setup["artifact_dir"] / "artifacts" / "n05-automation-code-check.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert artifact.get("payload", {}).get("review_passed") is False
 
 
 def test_ensure_n27_validation_writes_artifact(tmp_path: Path) -> None:
@@ -4591,7 +5095,7 @@ def test_ensure_n05_aggregation_after_generation_and_reviews(tmp_path: Path) -> 
     assert result["passed"] is True
 
 
-def test_ensure_g03_review_prepares_request(tmp_path: Path) -> None:
+def test_ensure_g03_review_skips_human_gate(tmp_path: Path) -> None:
     setup = _c5_setup(tmp_path)
     config = _c5_config()
     bundle = prepare_multica_automation_generation_input(
@@ -4640,8 +5144,18 @@ def test_ensure_g03_review_prepares_request(tmp_path: Path) -> None:
     )
     assert result is not None
     assert result["node_id"] == "G03"
-    assert result["action"] == "would_open"
-    assert (tmp_path / "g03-auto" / "g03-review-request.json").exists()
+    assert result["action"] == "skipped_human_gate_removed"
+    g03 = json.loads(
+        (
+            setup["artifact_dir"] / "artifacts" / "g03-automation-code-review.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert g03["status"] == "skipped_by_policy"
+    assert g03["payload"]["decision"] == "skipped_by_policy"
+    again = ensure_g03_review(
+        config, setup["artifact_dir"], tmp_path / "g03-auto", QA_AGENTS_ROOT, apply=False
+    )
+    assert again is None
 
 
 def test_ensure_a14_dispatch_does_not_overwrite_bundle_while_in_flight(
@@ -4653,6 +5167,7 @@ def test_ensure_a14_dispatch_does_not_overwrite_bundle_while_in_flight(
     hash; the Agent output binds the original hash and ingestion fails forever.
     """
     setup = _c5_setup(tmp_path)
+    _write_valid_n27(setup["artifact_dir"])
     config = _c5_config()
     first = ensure_a14_dispatch(
         config,
@@ -4731,6 +5246,7 @@ def test_ensure_a14_dispatch_redispatch_after_failed_attempt(
     """A blocked (ingest-failed) attempt frees the rerun budget: the node can
     re-dispatch with a fresh bundle instead of staying in_progress forever."""
     setup = _c5_setup(tmp_path)
+    _write_valid_n27(setup["artifact_dir"])
     config = _c5_config()
     config["agent_rerun_budget"] = 1
 
@@ -5251,6 +5767,68 @@ def _c5_terminal_artifacts(artifact_dir: Path) -> None:
     )
 
 
+
+def test_ensure_a14_dispatch_waits_until_n27_valid(tmp_path: Path) -> None:
+    """A14 must not dispatch before the data plan is validated; otherwise
+    resource_requirements never reach the generator and N08 cannot construct 112 data."""
+    setup = _c5_setup(tmp_path)
+    result = ensure_a14_dispatch(
+        _c5_config(),
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {},
+        apply=False,
+    )
+    assert result is None
+    assert not (setup["inputs_dir"] / "a14-input.json").exists()
+    _write_valid_n27(setup["artifact_dir"])
+    result = ensure_a14_dispatch(
+        _c5_config(),
+        "REQ-1-r001",
+        setup["artifact_dir"],
+        setup["inputs_dir"],
+        QA_AGENTS_ROOT,
+        {},
+        apply=False,
+    )
+    assert result is not None
+    assert result["action"] == "would_dispatch"
+    bundle = json.loads((setup["inputs_dir"] / "a14-input.json").read_text(encoding="utf-8"))
+    assert any(
+        item["artifact_id"] == "a22-test-data-plan"
+        for item in bundle["upstream_artifacts"]
+    )
+
+
+def test_c5_terminal_blocks_when_backend_generate_new_missing(tmp_path: Path) -> None:
+    """C5 cannot open N07/N08 while a backend generate_new Case is absent from A14."""
+    setup = _c5_setup(tmp_path)
+    _c5_terminal_artifacts(setup["artifact_dir"])
+    assert _sync_module._c5_terminal(setup["artifact_dir"]) is False
+
+    _write_valid_n27(setup["artifact_dir"])
+    bundle = prepare_multica_automation_generation_input(
+        setup["artifact_dir"] / "artifacts" / "n25-compiled-test-cases.json",
+        setup["artifact_dir"] / "artifacts" / "n15-execution-plan.json",
+        Path(_c5_config()["automation_target_policy"]),
+        setup["inputs_dir"],
+        profile_id="A14",
+        test_data_plan_path=setup["artifact_dir"] / "artifacts" / "a22-test-data-plan.json",
+        test_data_validation_path=setup["artifact_dir"] / "artifacts" / "n27-test-data-plan-validation.json",
+    )
+    _generation_artifact(
+        setup["artifact_dir"],
+        setup["inputs_dir"] / "a14-input.json",
+        "A14",
+        "a14-backend-automation-generation",
+        ["TC-BE-001-BACKEND"],
+    )
+    assert bundle["profile_id"] == "A14"
+    assert _sync_module._c5_terminal(setup["artifact_dir"]) is True
+
+
 def test_ensure_n07_precheck_synthesizes_env_inputs(tmp_path: Path) -> None:
     """N07 must synthesize env target/observed from the run's own data instead
     of waiting forever for a manual environment handoff, so C6 can start."""
@@ -5531,3 +6109,127 @@ def test_refresh_a22_waiting_card_renders_ur_and_sets_in_review(
     assert "UR-01" in card
     assert "未决数据需求" in card
     assert "stat_chart 创建接口及参数未验证" in card
+
+
+def test_ensure_quality_tail_waits_when_n17_needs_human_even_if_n18_exists(
+    tmp_path: Path,
+) -> None:
+    auto_dir = tmp_path / "artifacts-auto"
+    artifacts = auto_dir / "artifacts"
+    artifacts.mkdir(parents=True)
+    (artifacts / "n08-automation-execution.json").write_text("{}", encoding="utf-8")
+    (artifacts / "n17-manual-execution.json").write_text(
+        json.dumps({"status": "blocked", "payload": {"pending_count": 2}}),
+        encoding="utf-8",
+    )
+    (artifacts / "n18-quality-signals.json").write_text("{}", encoding="utf-8")
+    (artifacts / "n11-quality-decision.json").write_text("{}", encoding="utf-8")
+
+    result = ensure_quality_tail({}, auto_dir, tmp_path)
+
+    assert result == {
+        "node_id": "QUALITY_TAIL",
+        "status": "blocked",
+        "current_node": "N17",
+        "next_node": "N17",
+    }
+    assert not (artifacts / "n18-quality-signals.json").exists()
+    assert not (artifacts / "n11-quality-decision.json").exists()
+
+
+def test_ensure_quality_tail_reruns_blocked_n17_when_inputs_exist(
+    tmp_path: Path, monkeypatch
+) -> None:
+    auto_dir = tmp_path / "artifacts-auto"
+    artifacts = auto_dir / "artifacts"
+    artifacts.mkdir(parents=True)
+    (artifacts / "n08-automation-execution.json").write_text("{}", encoding="utf-8")
+    (artifacts / "n17-manual-execution.json").write_text(
+        json.dumps({"status": "blocked", "payload": {"pending_count": 4}}),
+        encoding="utf-8",
+    )
+    (artifacts / "n15-execution-plan.json").write_text("{}", encoding="utf-8")
+    (artifacts / "n25-compiled-test-cases.json").write_text("{}", encoding="utf-8")
+    (artifacts / "n07-environment-precheck.json").write_text("{}", encoding="utf-8")
+    (artifacts / "n18-quality-signals.json").write_text("{}", encoding="utf-8")
+    policy = tmp_path / "policies" / "quality-policy.json"
+    policy.parent.mkdir(parents=True)
+    policy.write_text("{}", encoding="utf-8")
+    calls: list[int] = []
+    monkeypatch.setattr(
+        _sync_module,
+        "run_server_quality_tail",
+        lambda *args, **kwargs: calls.append(1)
+        or {"decision": "blocked", "current_node": "N11"},
+    )
+
+    result = ensure_quality_tail({}, auto_dir, tmp_path)
+
+    assert calls == [1]
+    assert result == {
+        "node_id": "QUALITY_TAIL",
+        "status": "blocked",
+        "current_node": "N11",
+        "next_node": "N11",
+    }
+    assert not (artifacts / "n18-quality-signals.json").exists()
+
+
+
+
+def test_ensure_node_record_issues_refreshes_n08_constructed_assets(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """An existing done N08 record must still get the constructed-asset section."""
+
+    artifact_dir = tmp_path / "artifacts-auto"
+    n08 = _write_artifact_with_reason(
+        artifact_dir,
+        "n08-automation-execution",
+        {
+            "schema_version": "n08-automation-execution/1.0",
+            "decision": "test_failures",
+            "next_node": "N09",
+            "summary": {"total": 1, "failed": 1, "passed": 0, "skipped": 0},
+        },
+        ArtifactStatus.COMPLETED_WITH_GAPS,
+        reason_code="automation_test_failures",
+    )
+    inventory = {
+        "schema_version": "constructed-test-assets/1.0",
+        "assets": [
+            {
+                "resource_type": "stat_chart",
+                "display_name": "自定义维度查看明细验证统计图",
+                "resource_id": "BI_chart_46",
+                "resource_key": "variant_chart_set",
+            }
+        ],
+    }
+    (artifact_dir / "artifacts" / "constructed-test-assets.json").write_text(
+        json.dumps(inventory, ensure_ascii=False), encoding="utf-8"
+    )
+    calls = []
+
+    def fake_multica(*args: str, **kwargs):
+        calls.append(list(args))
+        if args[:2] == ("issue", "update"):
+            return {"id": args[2], "status": args[args.index("--status") + 1]}
+        return {"id": f"record-{len(calls)}", "identifier": "QAA-980"}
+
+    monkeypatch.setattr(_sync_module, "_multica", fake_multica)
+    synced = ensure_node_record_issues(
+        _a11_config(),
+        "run-1",
+        artifact_dir,
+        {"N08": [{"id": "existing-n08", "identifier": "QAA-349", "status": "done"}]},
+        apply=True,
+    )
+    n08_synced = next(record for record in synced if record["node_id"] == "N08")
+    assert n08_synced["action"] == "synced"
+    update = next(call for call in calls if call[:2] == ["issue", "update"])
+    assert "--description-file" in update
+    desc = (n08.with_name(f"{n08.name}.record.md")).read_text(encoding="utf-8")
+    assert "## 已构造测试数据" in desc
+    assert "自定义维度查看明细验证统计图" in desc
+    assert "销售订单统计_副本" not in desc

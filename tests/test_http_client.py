@@ -41,3 +41,48 @@ def test_set_cookie_creates_missing_session_cookie() -> None:
 
     assert session.cookies.get("lang") == "en"
     session.close()
+
+
+def test_fxiaoke_requests_use_platform_fsw_trace_id() -> None:
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((str(request.url), dict(request.headers)))
+        return httpx.Response(
+            200,
+            json={"Result": {"FailureCode": 0, "UserInfo": {"EmployeeID": 1002, "EnterpriseAccount": "91863"}}},
+        )
+
+    raw_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = HttpClient(base_url="https://crm.ceshi112.com", client=raw_client)
+    client.set_trace_identity("91863")
+    first = client.post("/FHH/EM1HBICRM/statCreateController/copyStatView", json_body={"ok": True})
+    second = client.post("/FHH/EM1HBISTAT/fs-bi-stat/stat/dataQuery", json_body={"ok": True})
+    raw_client.close()
+
+    first_url, first_headers = seen[0]
+    second_url, second_headers = seen[1]
+    assert "traceId=FSW-91863.0-" in first_url
+    assert first.trace_id.startswith("FSW-91863.0-")
+    assert first_headers.get("x-trace-id", "").startswith("91863_0_")
+    assert "traceId=FSW-91863.1002-" in second_url
+    assert second.trace_id.startswith("FSW-91863.1002-")
+    assert second_headers.get("x-trace-id", "").startswith("91863_1002_")
+    assert not first.trace_id.startswith("QA-")
+    assert first.trace_id != second.trace_id
+
+
+def test_non_fxiaoke_requests_do_not_invent_qa_trace_ids() -> None:
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(str(request.url))
+        return httpx.Response(200, json={"ok": True})
+
+    raw_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = HttpClient(base_url="http://test.local", client=raw_client)
+    response = client.get("/health")
+    raw_client.close()
+
+    assert "traceId=" not in seen[0]
+    assert response.trace_id == ""

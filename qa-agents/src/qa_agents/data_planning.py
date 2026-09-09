@@ -632,6 +632,16 @@ def compile_resource_plan(
                     **resource,
                     "retention_mode": str(resource.get("retention_mode") or "retain"),
                     "ownership_namespace": namespace,
+                    "scenario_key": recipe_id,
+                    "case_binding": str(item.get("case_id", "")),
+                    "chart_config_contract": {
+                        "scenario_key": recipe_id,
+                        "case_binding": str(item.get("case_id", "")),
+                        "required_bind_action": "bind_stat_chart_config",
+                        "source_reuse_mode": "template_with_case_specific_bind",
+                        "strict_binding": True,
+                        "forbid_cross_scenario_source_reuse": True,
+                    },
                 },
                 str(item.get("requirement_name") or item.get("title") or item.get("case_id", "")),
             )
@@ -661,6 +671,27 @@ def compile_resource_plan(
                 "resources": resources,
             }
         )
+        for resource in resources:
+            if resource.get("resource_type") != "stat_chart":
+                continue
+            post_setup = resource.get("post_setup")
+            if (
+                isinstance(post_setup, list)
+                and len(post_setup) >= 2
+                and isinstance(post_setup[1], dict)
+                and str(
+                    (post_setup[1].get("request") or {}).get("api") or ""
+                )
+                == "fs_bi_crm.stat_edit.get_stat_view"
+            ):
+                post_setup[1]["expect"] = {
+                    "status_code": 200,
+                    "json_path": {"Result.FailureCode": 0},
+                    "body_contains_values": [
+                        f"{namespace}-{item.get('case_id', '')}-"
+                        f"{resource.get('display_name', '')}"
+                    ],
+                }
     setup_actions = [
         {"case_id": case["case_id"], "resource_key": resource["resource_key"], **deepcopy(resource["setup"])}
         for case in case_plans for resource in case["resources"]
@@ -751,6 +782,15 @@ def compile_declared_a22_plan(
             for item in case_plan.get("resources", [])
             if isinstance(item, Mapping) and str(item.get("resource_key") or "")
         }
+        if not required and case_plan.get("requires_data_construction") is False:
+            intents.append({
+                "case_id": str(case_plan.get("case_id") or ""),
+                "requirement_name": str(case_plan.get("requirement_name") or case_plan.get("case_id") or ""),
+                "required_scene": str(case_plan.get("required_scene") or ""),
+                "requires_data_construction": False,
+                "recipe_id": "",
+            })
+            continue
         if not required:
             case_id = str(case_plan.get("case_id") or "")
             semantic_case = next(

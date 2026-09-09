@@ -424,6 +424,41 @@ def test_runner_exports_hash_only_lifecycle_evidence(tmp_path, monkeypatch) -> N
     assert "resource-1" not in (tmp_path / "detail-integration.json").read_text(encoding="utf-8")
 
 
+def test_runner_updates_chart_asset_after_rename() -> None:
+    class RenameApi:
+        def call(self, operation_id, **kwargs):
+            assert operation_id == "fs_bi_crm.rpt_view_display.rename_rpt_view"
+            body = kwargs["body"]
+            return ApiResponse(status_code=200, body={"Result": {"FailureCode": 0}})
+
+    runner = CaseRunner(
+        EnvironmentConfig("112", {"http": {"base_url": "http://test.local"}}),
+        FakeHttpClient(),
+        FakeRpcClient(),
+        FakeDatabaseClient(),
+    )
+    runner.http_api = RenameApi()
+    context = {
+        "chart_view_id": "BI_chart",
+        "__expected_keys": [],
+        "__lifecycle__": {"setup": [], "readiness": [], "test": [], "cleanup": [], "residue": []},
+        "__constructed_assets__": [{
+            "resource_type": "stat_chart",
+            "display_name": "old-name",
+            "resource_id": "BI_chart",
+        }],
+    }
+    runner._run_steps([{
+        "name": "rename chart",
+        "request": {
+            "api": "fs_bi_crm.rpt_view_display.rename_rpt_view",
+            "json": {"viewID": "{{ chart_view_id }}", "viewName": "qa-run-PC-BE-004-name"},
+        },
+        "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}},
+    }], context, "setup")
+    assert context["__constructed_assets__"][0]["display_name"] == "qa-run-PC-BE-004-name"
+
+
 def test_failed_setup_step_records_trace_id(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("QA_LIFECYCLE_EVIDENCE_DIR", str(tmp_path))
 

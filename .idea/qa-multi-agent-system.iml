@@ -5,6 +5,7 @@
       <sourceFolder url="file://$MODULE_DIR$/qa-agents/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/qa-agents/.venv" />
     </content>
+    <orderEntry type="jdk" jdkName="uv (qa-agents)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

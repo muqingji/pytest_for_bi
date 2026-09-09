@@ -12,6 +12,10 @@ from .contracts import ValidationIssue, content_hash
 from .errors import SecurityPolicyError
 from .security import SecurityPolicy
 
+ALLOWED_LIFECYCLE_ACTIONS = frozenset(
+    {"bind_stat_chart_config", "prime_stat_chart_data", "validate_chart_integrity"}
+)
+
 
 class AutomationPolicy:
     def __init__(
@@ -108,6 +112,124 @@ def _literal_eval_case_spec(value_node: ast.AST) -> Any:
     return ast.literal_eval(value_node)
 
 
+class _CaseSpecFoldError(ValueError):
+    """CASE_SPEC cannot be folded into a static dict without executing code."""
+
+
+def _fold_case_spec_expr(
+    node: ast.AST,
+    env: dict[str, Any],
+    funcs: dict[str, ast.FunctionDef],
+) -> Any:
+    """Evaluate one expression using only constants, names, and pure helpers."""
+
+    if isinstance(node, ast.Constant):
+        return node.value
+    if isinstance(node, ast.Name):
+        if node.id in env:
+            return env[node.id]
+        raise _CaseSpecFoldError(f"unbound name {node.id}")
+    if isinstance(node, ast.List):
+        return [_fold_case_spec_expr(elt, env, funcs) for elt in node.elts]
+    if isinstance(node, ast.Tuple):
+        return tuple(_fold_case_spec_expr(elt, env, funcs) for elt in node.elts)
+    if isinstance(node, ast.Set):
+        return {_fold_case_spec_expr(elt, env, funcs) for elt in node.elts}
+    if isinstance(node, ast.Dict):
+        if any(key is None for key in node.keys):
+            raise _CaseSpecFoldError("dict unpacking is not static")
+        return {
+            _fold_case_spec_expr(key, env, funcs): _fold_case_spec_expr(value, env, funcs)
+            for key, value in zip(node.keys, node.values)
+        }
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        return -_fold_case_spec_expr(node.operand, env, funcs)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.UAdd):
+        return +_fold_case_spec_expr(node.operand, env, funcs)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not):
+        return not _fold_case_spec_expr(node.operand, env, funcs)
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        left = _fold_case_spec_expr(node.left, env, funcs)
+        right = _fold_case_spec_expr(node.right, env, funcs)
+        if not isinstance(left, (str, bytes, list, tuple, int, float)) or type(left) is not type(right):
+            raise _CaseSpecFoldError("unsupported addition")
+        return left + right
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
+        func = funcs.get(node.func.id)
+        if func is None:
+            raise _CaseSpecFoldError(f"call {node.func.id} is not a pure helper")
+        return _fold_pure_helper_call(func, node, env, funcs)
+    raise _CaseSpecFoldError(f"unsupported expression {type(node).__name__}")
+
+
+def _fold_pure_helper_call(
+    func: ast.FunctionDef,
+    call: ast.Call,
+    env: dict[str, Any],
+    funcs: dict[str, ast.FunctionDef],
+) -> Any:
+    """Inline a single-return helper whose body is itself foldable."""
+
+    if (
+        func.args.vararg
+        or func.args.kwarg
+        or func.args.kwonlyargs
+        or func.args.posonlyargs
+        or len(func.body) != 1
+        or not isinstance(func.body[0], ast.Return)
+        or func.body[0].value is None
+    ):
+        raise _CaseSpecFoldError(f"helper {func.name} is not a pure single-return function")
+    names = [arg.arg for arg in func.args.args]
+    defaults = func.args.defaults
+    required = len(names) - len(defaults)
+    if len(call.args) > len(names):
+        raise _CaseSpecFoldError(f"helper {func.name} received extra positional arguments")
+    bound: dict[str, Any] = {}
+    for index, name in enumerate(names):
+        if index < len(call.args):
+            bound[name] = _fold_case_spec_expr(call.args[index], env, funcs)
+        elif index >= required:
+            bound[name] = _fold_case_spec_expr(defaults[index - required], env, funcs)
+        else:
+            raise _CaseSpecFoldError(f"helper {func.name} missing argument {name}")
+    for keyword in call.keywords:
+        if not keyword.arg:
+            raise _CaseSpecFoldError(f"helper {func.name} uses keyword unpacking")
+        bound[keyword.arg] = _fold_case_spec_expr(keyword.value, env, funcs)
+    return _fold_case_spec_expr(func.body[0].value, {**env, **bound}, funcs)
+
+
+def _statically_eval_case_spec(tree: ast.Module) -> Any:
+    """Fold CASE_SPEC from top-level constants and pure helper functions.
+
+    A14 sometimes compresses a large CASE_SPEC with names like ``NS`` / ``API``
+    and a single-return ``q(...)`` builder. Those files are valid pytest source
+    and still a static dict; N05 must fold them instead of blocking the run.
+    Arbitrary calls, imports, and attribute access stay rejected.
+    """
+
+    env: dict[str, Any] = {}
+    funcs: dict[str, ast.FunctionDef] = {}
+    for stmt in tree.body:
+        if (
+            isinstance(stmt, ast.Assign)
+            and len(stmt.targets) == 1
+            and isinstance(stmt.targets[0], ast.Name)
+        ):
+            name = stmt.targets[0].id
+            if name == "CASE_SPEC":
+                return _fold_case_spec_expr(stmt.value, env, funcs)
+            env[name] = _fold_case_spec_expr(stmt.value, env, funcs)
+            continue
+        if isinstance(stmt, ast.FunctionDef):
+            funcs[stmt.name] = stmt
+            continue
+        if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant):
+            continue
+    raise _CaseSpecFoldError("CASE_SPEC assignment is missing")
+
+
 def _candidate_spec_structure_issues(
     content: str,
     path: str,
@@ -115,6 +237,7 @@ def _candidate_spec_structure_issues(
     known_operations: set[str] | None = None,
     verified_setup_contracts: Mapping[str, Any] | None = None,
     verified_execution_contracts: Mapping[str, Any] | None = None,
+    route_to: str = "A14",
 ) -> list["ValidationIssue"]:
     """Deterministic N05 guard: generated CASE_SPEC must be executable.
 
@@ -150,22 +273,25 @@ def _candidate_spec_structure_issues(
                         f"空值用 None；JSON 风格 {json_literals} 在 pytest 导入时"
                         "会抛 NameError",
                         f"code_candidates.{path}.CASE_SPEC",
-                        "A14",
+                        route_to,
                     )
                 )
                 return issues
             try:
                 case_spec = _literal_eval_case_spec(node.value)
             except (ValueError, TypeError):
-                issues.append(
-                    ValidationIssue(
-                        "case_spec_not_literal",
-                        "CASE_SPEC must be a static dict literal",
-                        f"code_candidates.{path}.CASE_SPEC",
-                        "A14",
+                try:
+                    case_spec = _statically_eval_case_spec(tree)
+                except _CaseSpecFoldError:
+                    issues.append(
+                        ValidationIssue(
+                            "case_spec_not_literal",
+                            "CASE_SPEC must be a static dict literal",
+                            f"code_candidates.{path}.CASE_SPEC",
+                            route_to,
+                        )
                     )
-                )
-                return issues
+                    return issues
             break
     if not isinstance(case_spec, dict):
         issues.append(
@@ -173,7 +299,7 @@ def _candidate_spec_structure_issues(
                 "case_spec_missing",
                 "Candidate must declare a CASE_SPEC dict",
                 f"code_candidates.{path}.CASE_SPEC",
-                "A14",
+                route_to,
             )
         )
         return issues
@@ -200,6 +326,39 @@ def _candidate_spec_structure_issues(
             required_body_keys_by_api.setdefault(operation, set()).update(
                 str(key) for key in keys
             )
+    chart_resources = {
+        str(item.get("resource_id_variable", "")).strip()
+        for item in resource_requirements
+        if isinstance(item, Mapping)
+        and str(item.get("resource_type", "")) in {"stat_chart", "report"}
+    }
+    chart_resources.discard("")
+    serialized_spec = json.dumps(case_spec, ensure_ascii=False)
+    if "chart_view_id" in serialized_spec and not chart_resources:
+        issues.append(
+            ValidationIssue(
+                "chart_binding_missing",
+                "Case binds chart_view_id but A22 supplies no chart resource",
+                "test_data.resource_requirements",
+                route_to,
+            )
+        )
+    declared_variables = (
+        case_spec.get("variables", {})
+        if isinstance(case_spec.get("variables", {}), Mapping)
+        else {}
+    )
+    for variable in chart_resources:
+        value = str(declared_variables.get(variable, ""))
+        if value.startswith("BI_"):
+            issues.append(
+                ValidationIssue(
+                    "chart_id_forgery",
+                    f"{variable} must resolve from its chart resource, not a literal BI ID",
+                    f"variables.{variable}",
+                    route_to,
+                )
+            )
     contracts = verified_setup_contracts or {}
     execution_contracts = verified_execution_contracts or {}
     serialized_case = json.dumps(case_spec, ensure_ascii=False)
@@ -223,7 +382,7 @@ def _candidate_spec_structure_issues(
                         "execution_step_not_structured",
                         f"{phase}[{index}] must be a structured step object",
                         f"code_candidates.{path}.{phase}[{index}]",
-                        "A14",
+                        route_to,
                     )
                 )
                 continue
@@ -241,9 +400,32 @@ def _candidate_spec_structure_issues(
                             "retained_resource_cleanup_forbidden",
                             f"cleanup[{index}] targets a resource whose retention_mode is retain",
                             f"code_candidates.{path}.cleanup[{index}]",
-                            "A14",
+                            route_to,
                         )
                     )
+            action = str(step.get("action") or "").strip()
+            if action:
+                if action not in ALLOWED_LIFECYCLE_ACTIONS:
+                    issues.append(
+                        ValidationIssue(
+                            "unsupported_step_action",
+                            f"{phase}[{index}] action {action!r} is not allowed",
+                            f"code_candidates.{path}.{phase}[{index}].action",
+                            route_to,
+                        )
+                    )
+                    continue
+                expect = step.get("expect")
+                if phase in {"setup", "readiness"} and not isinstance(expect, Mapping):
+                    issues.append(
+                        ValidationIssue(
+                            "lifecycle_assertion_missing",
+                            f"{phase}[{index}] must assert the requested state",
+                            f"code_candidates.{path}.{phase}[{index}].expect",
+                            route_to,
+                        )
+                    )
+                continue
             request = step.get("request")
             if not isinstance(request, Mapping):
                 issues.append(
@@ -251,7 +433,7 @@ def _candidate_spec_structure_issues(
                         "execution_request_missing",
                         f"{phase}[{index}] has no request",
                         f"code_candidates.{path}.{phase}[{index}].request",
-                        "A14",
+                        route_to,
                     )
                 )
                 continue
@@ -265,7 +447,7 @@ def _candidate_spec_structure_issues(
                         "execution_operation_missing",
                         f"{phase}[{index}] request has no api/method+path/url",
                         f"code_candidates.{path}.{phase}[{index}].request",
-                        "A14",
+                        route_to,
                     )
                 )
             api = str(request.get("api", ""))
@@ -280,7 +462,7 @@ def _candidate_spec_structure_issues(
                             "execution_contract_mismatch",
                             f"{api} is not the verified operation for this execution scenario",
                             f"code_candidates.{path}.{phase}[{index}].request.api",
-                            "A14",
+                            route_to,
                         )
                     )
             if known_operations is not None and api and api not in known_operations:
@@ -289,7 +471,7 @@ def _candidate_spec_structure_issues(
                         "operation_not_registered",
                         f"{phase}[{index}] operation {api!r} is not defined in idl/http",
                         f"code_candidates.{path}.{phase}[{index}].request.api",
-                        "A14",
+                        route_to,
                     )
                 )
             required_keys = required_body_keys_by_api.get(api)
@@ -306,7 +488,7 @@ def _candidate_spec_structure_issues(
                             f"setup[{index}] body for {api} must be an object"
                             " carrying the verified contract keys",
                             f"code_candidates.{path}.setup[{index}].request.json",
-                            "A14",
+                            route_to,
                         )
                     )
                 else:
@@ -318,7 +500,7 @@ def _candidate_spec_structure_issues(
                                 f"setup[{index}] {api} body lacks verified contract"
                                 f" keys: {', '.join(missing)}",
                                 f"code_candidates.{path}.setup[{index}].request.json",
-                                "A14",
+                                route_to,
                             )
                         )
             if phase == "steps" and isinstance(execution_contract, Mapping):
@@ -338,7 +520,29 @@ def _candidate_spec_structure_issues(
                             f"steps[{index}] {api} body lacks verified contract keys: "
                             + ", ".join(missing),
                             f"code_candidates.{path}.steps[{index}].request.json",
-                            "A14",
+                            route_to,
+                        )
+                    )
+                chart_bound = any(
+                    isinstance(item, Mapping)
+                    and str(item.get("resource_type") or "") in {
+                        "stat_chart", "report", "pivot_table", "joined_report"
+                    }
+                    for item in case_spec.get("data_validity", [])
+                )
+                if (
+                    chart_bound
+                    and isinstance(body, Mapping)
+                    and str(body.get("id") or "").replace(" ", "")
+                    == "{{chart_view_id}}"
+                    and body.get("isView") != 1
+                ):
+                    issues.append(
+                        ValidationIssue(
+                            "chart_detail_query_mode_mismatch",
+                            f"steps[{index}] binds chart_view_id but isView is not 1",
+                            f"code_candidates.{path}.steps[{index}].request.json.isView",
+                            route_to,
                         )
                     )
             expect = step.get("expect")
@@ -348,7 +552,7 @@ def _candidate_spec_structure_issues(
                         "lifecycle_assertion_missing",
                         f"{phase}[{index}] must assert the requested state",
                         f"code_candidates.{path}.{phase}[{index}].expect",
-                        "A14",
+                        route_to,
                     )
                 )
             if isinstance(expect, Mapping):
@@ -366,7 +570,7 @@ def _candidate_spec_structure_issues(
                                 + ", ".join(unknown)
                             ),
                             f"code_candidates.{path}.{phase}[{index}].expect",
-                            "A14",
+                            route_to,
                         )
                     )
             if phase == "setup" and isinstance(contract, Mapping):
@@ -384,7 +588,7 @@ def _candidate_spec_structure_issues(
                             f"setup[{index}] {api} must extract its resource id from one of "
                             f"{sorted(allowed_paths)}",
                             f"code_candidates.{path}.setup[{index}].extract",
-                            "A14",
+                            route_to,
                         )
                     )
     expected = case_spec.get("expected")
@@ -404,7 +608,7 @@ def _candidate_spec_structure_issues(
                         "executable_oracle_missing",
                         f"expected[{index}] must carry an oracle with observation_point/matcher",
                         f"code_candidates.{path}.expected[{index}].oracle",
-                        "A14",
+                        route_to,
                     )
                 )
                 continue
@@ -416,12 +620,13 @@ def _candidate_spec_structure_issues(
                         "oracle_matcher_not_supported",
                         f"expected[{index}] matcher {matcher!r} is not executable",
                         f"code_candidates.{path}.expected[{index}].oracle.matcher",
-                        "A14",
+                        route_to,
                     )
                 )
             if (
-                normalized_matcher not in {"exists", "one_of"}
+                normalized_matcher not in {"exists", "one_of", "not_one_of", "one_of_actually_matched"}
                 and "expected_value" not in oracle
+                and "expected_values" not in oracle
                 and not matcher.startswith("equals:")
             ):
                 issues.append(
@@ -429,7 +634,7 @@ def _candidate_spec_structure_issues(
                         "oracle_expected_value_missing",
                         f"expected[{index}] matcher requires expected_value",
                         f"code_candidates.{path}.expected[{index}].oracle.expected_value",
-                        "A14",
+                        route_to,
                     )
                 )
     execute_seen = False
@@ -453,7 +658,7 @@ def _candidate_spec_structure_issues(
                 "case_runner_execute_missing",
                 "Candidate must call case_runner.execute(CASE_SPEC)",
                 f"code_candidates.{path}",
-                "A14",
+                route_to,
             )
         )
     if not assert_ok:
@@ -462,7 +667,7 @@ def _candidate_spec_structure_issues(
                 "assert_oracles_signature_invalid",
                 "assert_oracles must be called with (observations, CASE_SPEC[\"expected\"])",
                 f"code_candidates.{path}",
-                "A14",
+                route_to,
             )
         )
     return issues
@@ -676,6 +881,7 @@ def check_automation_generation(
                     ),
                     verified_setup_contracts=policy.verified_setup_contracts,
                     verified_execution_contracts=policy.verified_execution_contracts,
+                    route_to=_generator_route(manifest),
                 )
             )
         for node in ast.walk(tree):

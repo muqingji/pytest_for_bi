@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import contextmanager
+from datetime import datetime, timezone
 import fcntl
 import json
 from pathlib import Path
@@ -17,6 +18,7 @@ from .contracts import (
     artifact_hash_from_mapping,
     content_hash,
 )
+from .review_copy import g02_approval_items, g02_decision_items_from_request, humanize_review_item
 from .errors import ContractError, InputError, RetryableAgentError
 from .multica_cli import resolve_multica_binary
 from .security import SecurityPolicy
@@ -52,12 +54,12 @@ SERVER_NODE_DEFINITIONS = (
     ("G03", "自动化代码人工审核", 18),
     ("N07", "环境、数据与资源预检", 19),
     ("N08", "受控自动化执行", 20),
-    ("N17", "人工与探索测试执行", 20),
+    ("N17", "未执行用例收口", 20),
     ("N10", "环境失败重试预算", 21),
     ("N18", "运行质量信号采集", 21),
     ("N09", "执行证据标准化与失败聚类", 22),
     ("N20", "跨运行缺陷去重", 23),
-    ("N11", "确定性质量决策", 24),
+    ("N11", "服务端准出判定", 24),
     ("N19", "质量豁免审计", 25),
     ("N12", "质量报告发布", 26),
     ("N13", "报告反馈入口", 27),
@@ -76,7 +78,7 @@ SERVER_STAGE_CARD_DEFINITIONS = (
         ("A14", "A15", "A22", "A18-BE", "A18-CT", "N27", "N05", "G03"),
     ),
     ("C6", "环境预检与测试执行", ("N07", "N08", "N17", "N10")),
-    ("C7", "证据归一与质量决策", ("N18", "N09", "N20", "N11", "N19")),
+    ("C7", "证据归一与准出判定", ("N18", "N09", "N20", "N11", "N19")),
     ("C8", "报告与关闭", ("N12", "N13", "N23")),
 )
 
@@ -182,7 +184,7 @@ ARTIFACT_STATE_MAP = {
     "skipped_by_policy": "skipped",
     "stale": "superseded",
     "cancelled": "cancelled",
-    "inconclusive": "completed",
+    "inconclusive": "waiting_human",
     "failed_retryable": "blocked",
     "failed_fatal": "failed",
 }
@@ -810,6 +812,17 @@ def initialize_autopilot(
     }
     store = ArtifactStore(output_dir)
     store.write_json("workflow-center-spec.json", spec)
+    registration = {
+        "schema_version": "workflow-monitor-registration/1.0",
+        "workflow_id": request["workflow_id"],
+        "workflow_run_id": run_id,
+        "config_path": str(config_path.resolve()),
+        "artifact_root": str(output_dir.parent.resolve()),
+        "spec_path": str((output_dir / "workflow-center-spec.json").resolve()),
+        "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+    registration["registration_hash"] = content_hash(registration)
+    store.write_json("workflow-monitor-registration.json", registration)
     result = {
         "schema_version": "autopilot-initialization-result/1.0",
         "workflow_id": request["workflow_id"],
@@ -825,11 +838,147 @@ def initialize_autopilot(
     }
     result["result_hash"] = content_hash(result)
     store.write_json("autopilot-initialization-result.json", result)
+    if config_path.name == "workflow-config.json":
+        repo_root = next(
+            (parent for parent in config_path.resolve().parents if (parent / "qa-agents").is_dir()),
+            None,
+        )
+        if repo_root is not None and output_dir.name in {"initial", "current"}:
+            from .workflow_monitor import register_workflow
+
+            try:
+                monitor_entry = register_workflow(
+                    repo_root / "generated/active-workflows.json",
+                    config_path,
+                    output_dir.parent,
+                    output_dir / "workflow-center-spec.json",
+                    repo_root,
+                )
+                result["monitor_registration"] = {
+                    "status": "registered",
+                    "workflow_run_id": monitor_entry["workflow_run_id"],
+                }
+            except ContractError as error:
+                result["monitor_registration"] = {
+                    "status": "pending_validation",
+                    "workflow_run_id": run_id,
+                    "reason": str(error),
+                }
+            result["result_hash"] = content_hash(
+                {key: value for key, value in result.items() if key != "result_hash"}
+            )
+            store.write_json("autopilot-initialization-result.json", result)
     return result
+
+
+REVIEW_CASE_CONFIRM_ACTION = (
+    "请确认该用例的场景、步骤和预期结果可直接执行；"
+    "如缺场景、预期不可执行或覆盖不够，请在评论中写明后置 blocked。"
+)
+REVIEW_CODE_CONFIRM_ACTION = (
+    "请确认候选代码与安全红线可交付；缺项请评论后置 blocked。"
+)
+
+
+def _preview_names(items: Sequence[Any], *keys: str, limit: int = 4) -> str:
+    names: list[str] = []
+    for item in items:
+        if not isinstance(item, Mapping):
+            continue
+        for key in keys:
+            value = str(item.get(key) or "").strip()
+            if value:
+                names.append(value)
+                break
+    if not names:
+        return ""
+    preview = "、".join(names[:limit])
+    if len(names) > limit:
+        preview += f" 等 {len(names)} 项"
+    return preview
+
+
+def _requirement_ids_from_item(item: Mapping[str, Any]) -> list[str]:
+    requirement_ids = item.get("requirement_ids")
+    detail = item.get("detail")
+    if not isinstance(requirement_ids, list) and isinstance(detail, Mapping):
+        requirement_ids = detail.get("requirement_ids")
+    if isinstance(requirement_ids, list):
+        return [str(value) for value in requirement_ids if str(value).strip()]
+    refs = item.get("source_refs")
+    if isinstance(refs, list):
+        return [
+            str(ref)
+            for ref in refs
+            if isinstance(ref, str) and str(ref).startswith("REQ-")
+        ]
+    return []
+
+
+def _waiting_review_summary(payload: Mapping[str, Any]) -> str:
+    if str(payload.get("gate_id") or "") == "G02":
+        decisions = g02_decision_items_from_request(payload)
+        if decisions:
+            names = _preview_names(decisions, "human_title", "id")
+            if names:
+                return f"{len(decisions)} 个用例设计待确认（{names}）"
+            return f"{len(decisions)} 个用例设计待确认"
+        review_summary = payload.get("review_summary")
+        count = review_summary.get("parent_case_count") if isinstance(review_summary, Mapping) else 0
+        if isinstance(count, int) and count > 0:
+            return f"{count} 条用例没有未冻结口径，待放行"
+        return "用例设计没有未冻结口径，待放行"
+    review_items = payload.get("review_items")
+    if isinstance(review_items, list) and review_items:
+        names = _preview_names(review_items, "case_id")
+        if names:
+            return f"待审核 {len(review_items)} 条测试用例（{names}）"
+        return f"待审核 {len(review_items)} 条测试用例"
+    review_summary = payload.get("review_summary")
+    if isinstance(review_summary, Mapping):
+        count = review_summary.get("parent_case_count")
+        if isinstance(count, int) and count > 0:
+            return f"待审核 {count} 条父用例"
+    issue_items = payload.get("issue_items")
+    if isinstance(issue_items, list) and issue_items:
+        return f"待审核 {len(issue_items)} 项自动化产物"
+    tasks = payload.get("tasks")
+    if isinstance(tasks, list) and tasks:
+        pending = [
+            item
+            for item in tasks
+            if isinstance(item, Mapping)
+            and str(item.get("status") or "") in {"pending", "not_executed"}
+        ]
+        target = pending or [item for item in tasks if isinstance(item, Mapping)]
+        names = _preview_names(target, "case_id", "title")
+        if pending:
+            if names:
+                return f"{len(pending)} 条用例尚未执行（{names}）"
+            return f"{len(pending)} 条用例尚未执行"
+        if names:
+            return f"{len(tasks)} 条人工任务已完成（{names}）"
+        return f"{len(tasks)} 条人工任务已完成"
+    summary = payload.get("summary")
+    if isinstance(summary, Mapping):
+        count = summary.get("candidate_count")
+        if isinstance(count, int) and count > 0:
+            return f"待审核 {count} 个自动化候选"
+    return ""
 
 
 def _artifact_summary(artifact: Mapping[str, Any]) -> str:
     payload = artifact.get("payload", {})
+    waiting = str(artifact.get("status") or "") == "needs_human" or (
+        isinstance(payload, Mapping) and str(payload.get("status") or "") == "needs_human"
+    )
+    if waiting and isinstance(payload, Mapping):
+        review_summary = _waiting_review_summary(payload)
+        if review_summary:
+            return review_summary
+    if str(artifact.get("artifact_id") or "") == "n11-quality-decision" and isinstance(payload, Mapping):
+        from qa_agents.quality_pipeline import n11_decision_summary
+        return n11_decision_summary(payload)
     for field in ("decision", "summary"):
         value = payload.get(field) if isinstance(payload, Mapping) else None
         if isinstance(value, str) and value.strip():
@@ -837,7 +986,7 @@ def _artifact_summary(artifact: Mapping[str, Any]) -> str:
         if isinstance(value, Mapping):
             return ", ".join(f"{key}={item}" for key, item in sorted(value.items()))[:500]
     status = str(payload.get("status") or "").strip()
-    if status == "needs_human" and isinstance(payload, Mapping):
+    if waiting and isinstance(payload, Mapping):
         requirements = payload.get("unresolved_requirements")
         if isinstance(requirements, list) and requirements:
             codes = [
@@ -873,7 +1022,14 @@ def _action_count(artifact: Mapping[str, Any]) -> int:
     payload = artifact.get("payload", {})
     if not isinstance(payload, Mapping):
         return 1
-    for field in ("issues", "tasks", "unresolved_items", "unresolved_requirements"):
+    for field in (
+        "review_items",
+        "issue_items",
+        "issues",
+        "tasks",
+        "unresolved_items",
+        "unresolved_requirements",
+    ):
         value = payload.get(field)
         if isinstance(value, list) and value:
             return len(value)
@@ -903,17 +1059,19 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
         category: str = "",
     ) -> None:
         item_id = str(
-            item.get("issue_id") or item.get("id") or item.get("requirement_id") or ""
+            item.get("issue_id")
+            or item.get("id")
+            or item.get("case_id")
+            or item.get("requirement_id")
+            or item.get("generator_id")
+            or item.get("reviewer_id")
+            or ""
         ).strip()
         if not item_id:
             item_id = f"{artifact['artifact_id']}-{len(items) + 1}"
         if item_id in seen:
             return
         seen.add(item_id)
-        detail = item.get("detail")
-        requirement_ids = item.get("requirement_ids")
-        if not isinstance(requirement_ids, list) and isinstance(detail, Mapping):
-            requirement_ids = detail.get("requirement_ids")
         items.append(
             {
                 "id": item_id,
@@ -921,22 +1079,20 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "summary": summary.strip() or title or "请查看 Artifact 获取详情",
                 "confirm_action": confirm_action.strip(),
                 "category": category.strip(),
-                "severity": str(item.get("severity") or "").strip(),
+                "severity": str(item.get("severity") or item.get("risk") or "").strip(),
                 "issue_code": str(item.get("issue_code") or "").strip(),
                 "human_title": str(item.get("human_title") or "").strip(),
                 "plain_summary": str(item.get("plain_summary") or "").strip(),
                 "case_id": str(item.get("case_id") or "").strip(),
                 "expected_id": str(item.get("expected_id") or "").strip(),
                 "recommendation": str(item.get("recommendation") or "").strip(),
-                "requirement_ids": (
-                    [str(value) for value in requirement_ids if str(value).strip()]
-                    if isinstance(requirement_ids, list)
-                    else []
-                ),
+                "requirement_ids": _requirement_ids_from_item(item),
                 "source_refs": [
-                    str(value) for value in item.get("source_refs", [])
-                    if isinstance(item.get("source_refs"), list)
+                    str(value)
+                    for value in item.get("source_refs", [])
+                    if isinstance(item.get("source_refs"), list) and str(value).strip()
                 ],
+                "product_scene": str(item.get("product_scene") or "").strip(),
             }
         )
 
@@ -1009,19 +1165,158 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
             title="阻塞问题",
             summary=str(item.get("question") or item.get("summary") or "").strip(),
         )
-    if not items:
-        summary = _artifact_summary(artifact)
-        items.append(
-            {
-                "id": f"{artifact['artifact_id']}-approval",
-                "title": "审批确认",
-                "summary": summary,
-                "severity": "",
-                "requirement_ids": [],
-                "source_refs": [],
-            }
-        )
+    g02 = (
+        str(payload.get("gate_id") or "") == "G02"
+        or str(artifact.get("artifact_id") or "") == "g02-test-case-ir-review"
+    )
+    if g02:
+        for item in g02_approval_items(payload):
+            if not isinstance(item, Mapping):
+                continue
+            append(
+                item,
+                title=str(item.get("human_title") or "用例设计待确认"),
+                summary=str(item.get("plain_summary") or item.get("product_scene") or "").strip(),
+                confirm_action=str(item.get("confirm_action") or "").strip(),
+                category="用例设计待确认",
+            )
+    else:
+        for item in payload.get("review_items", []):
+            if not isinstance(item, Mapping):
+                continue
+            case_id = str(item.get("case_id") or "").strip()
+            copy = humanize_review_item(item)
+            summary = copy["plain_summary"]
+            append(
+                {
+                    **dict(item),
+                    "id": case_id or item.get("id"),
+                    "human_title": copy["human_title"],
+                    "plain_summary": summary,
+                },
+                title="待审核用例",
+                summary=summary,
+                confirm_action=REVIEW_CASE_CONFIRM_ACTION,
+                category="待审核用例",
+            )
+    for item in payload.get("issue_items", []):
+        if not isinstance(item, Mapping):
+            continue
+        generator_id = str(item.get("generator_id") or "").strip()
+        reviewer_id = str(item.get("reviewer_id") or "").strip()
+        if generator_id:
+            count = item.get("candidate_count") or 0
+            summary = f"`{generator_id}` 生成 {count} 个候选"
+            append(
+                {**dict(item), "id": generator_id, "plain_summary": summary},
+                title="待审核自动化候选",
+                summary=summary,
+                confirm_action=REVIEW_CODE_CONFIRM_ACTION,
+                category="待审核自动化候选",
+            )
+            continue
+        if reviewer_id:
+            issue_count = item.get("issue_count") or 0
+            summary = f"`{reviewer_id}` 复核问题 {issue_count} 个"
+            append(
+                {**dict(item), "id": reviewer_id, "plain_summary": summary},
+                title="待审核自动化候选",
+                summary=summary,
+                confirm_action=REVIEW_CODE_CONFIRM_ACTION,
+                category="待审核自动化候选",
+            )
+    if not items and not g02:
+        review_summary = payload.get("review_summary")
+        if isinstance(review_summary, Mapping):
+            count = review_summary.get("parent_case_count")
+            if isinstance(count, int) and count > 0:
+                summary = f"N04 已通过，请审核 {count} 条父用例的预期结果与覆盖是否可执行。"
+                items.append(
+                    {
+                        "id": f"{artifact['artifact_id']}-review",
+                        "title": "待审核用例",
+                        "human_title": f"待审核 {count} 条父用例",
+                        "summary": summary,
+                        "plain_summary": summary,
+                        "confirm_action": REVIEW_CASE_CONFIRM_ACTION,
+                        "category": "待审核用例",
+                        "severity": "",
+                        "requirement_ids": [],
+                        "source_refs": [],
+                    }
+                )
+        summary_payload = payload.get("summary")
+        if not items and isinstance(summary_payload, Mapping):
+            count = summary_payload.get("candidate_count")
+            if isinstance(count, int) and count > 0:
+                summary = f"请审核 {count} 个自动化候选的 Manifest、候选代码与安全红线。"
+                items.append(
+                    {
+                        "id": f"{artifact['artifact_id']}-review",
+                        "title": "待审核自动化候选",
+                        "human_title": f"待审核 {count} 个自动化候选",
+                        "summary": summary,
+                        "plain_summary": summary,
+                        "confirm_action": REVIEW_CODE_CONFIRM_ACTION,
+                        "category": "待审核自动化候选",
+                        "severity": "",
+                        "requirement_ids": [],
+                        "source_refs": [],
+                    }
+                )
+        if not items:
+            summary = _artifact_summary(artifact)
+            items.append(
+                {
+                    "id": f"{artifact['artifact_id']}-approval",
+                    "title": "审批确认",
+                    "summary": summary,
+                    "severity": "",
+                    "requirement_ids": [],
+                    "source_refs": [],
+                }
+            )
     return items
+
+
+def _refresh_definition_labels(spec: Mapping[str, Any]) -> dict[str, Any]:
+    """Keep live spec titles aligned with current node/stage definitions."""
+
+    labels = {node_id: label for node_id, label, _stage in SERVER_NODE_DEFINITIONS}
+    stage_by_node = _stage_card_by_node()
+    stage_titles = {
+        card_id: title for card_id, title, _nodes in SERVER_STAGE_CARD_DEFINITIONS
+    }
+    nodes = []
+    for node in spec.get("nodes") or []:
+        if not isinstance(node, Mapping):
+            continue
+        item = dict(node)
+        node_id = str(item.get("node_id") or "")
+        if node_id in labels:
+            item["label"] = labels[node_id]
+        if node_id in stage_by_node:
+            item["stage_card_id"] = stage_by_node[node_id][0]
+            item["stage_card_title"] = stage_by_node[node_id][1]
+        nodes.append(item)
+    cards = []
+    for card in spec.get("stage_cards") or []:
+        if not isinstance(card, Mapping):
+            continue
+        item = dict(card)
+        card_id = str(item.get("stage_card_id") or "")
+        if card_id in stage_titles:
+            item["title"] = stage_titles[card_id]
+        cards.append(item)
+    refreshed = dict(spec)
+    refreshed["nodes"] = nodes
+    if cards:
+        refreshed["stage_cards"] = cards
+    if refreshed.get("nodes") != list(spec.get("nodes") or []) or (
+        cards and refreshed.get("stage_cards") != list(spec.get("stage_cards") or [])
+    ):
+        refreshed["revision"] = int(spec.get("revision") or 0) + 1
+    return refreshed
 
 
 def reconcile_autopilot(
@@ -1041,6 +1336,7 @@ def reconcile_autopilot(
             raise ContractError("Autopilot workflow spec schema_version is invalid")
         run_id = _text(spec, "workflow_run_id", "Autopilot workflow spec")
         snapshot_id = _text(spec, "source_snapshot_id", "Autopilot workflow spec")
+        spec = _refresh_definition_labels(spec)
 
         # The registry is the durable binding source for execution Issues.  A
         # retry may replace an Issue after the spec was first published; refresh
@@ -1213,6 +1509,17 @@ def reconcile_autopilot(
                             "issue_identifier": item.get("issue_identifier"),
                         }
                     )
+            elif item.get("artifact_id") or item.get("artifact_path"):
+                # A previously projected Artifact disappeared (for example the
+                # quality tail stopped at N17 and dropped N18-N13). Keep the
+                # node from looking complete without evidence.
+                item["state"] = "not_started"
+                item["completion"] = "0/1"
+                item.pop("artifact_id", None)
+                item.pop("artifact_hash", None)
+                item.pop("artifact_path", None)
+                item.pop("result_summary", None)
+                item.pop("approval_items", None)
             nodes.append(item)
         _propagate_human_routed_blocks(nodes, selected, owner_id, run_id, actions)
         _advance_frontier(nodes)

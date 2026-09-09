@@ -31,6 +31,34 @@ def test_stage_cards_do_not_report_downstream_done_after_upstream_block() -> Non
         assert "等待 `C5` 解除" in cards[card_id]["description"]
 
 
+def test_stage_card_leaves_backlog_after_first_node_completes() -> None:
+    projection = {
+        "nodes": [
+            {
+                "node_id": "N25",
+                "state": "completed",
+                "stage_card_id": "C4",
+                "stage_card_title": "用例编译与选择",
+            },
+            {
+                "node_id": "A11",
+                "state": "not_started",
+                "stage_card_id": "C4",
+                "stage_card_title": "用例编译与选择",
+            },
+            {
+                "node_id": "N26",
+                "state": "not_started",
+                "stage_card_id": "C4",
+                "stage_card_title": "用例编译与选择",
+            },
+        ]
+    }
+    cards = {card["stage_card_id"]: card for card in _stage_cards(projection)}
+    assert cards["C4"]["status"] == "in_progress"
+
+
+
 WORKSPACE_ID = "workspace-1"
 WORKFLOW_PROJECT_ID = "project-workflows"
 INTERNAL_PROJECT_ID = "project-internal"
@@ -207,6 +235,73 @@ def test_human_action_renders_approval_items_in_cockpit_and_stage_card() -> None
     assert "**实现与测试范围待确认**（`A06:FIND-004`）" in stage_markdown
     assert "需要确认：请确认是接受当前实现口径还是补齐实现证据。" in stage_markdown
     assert "涉及需求：`REQ-005`" in stage_markdown
+
+
+def test_g02_review_items_render_on_cockpit_and_stage_card() -> None:
+    spec = workflow_spec()
+    approval_items = [
+        {
+            "id": "PC-BE-006:human_review",
+            "title": "没权限时不要改提示",
+            "category": "用例设计待确认",
+            "human_title": "没权限时不要改提示",
+            "product_scene": "没权限点查看明细应继续走原来的权限失败，不能改成暂不支持查看明细。",
+            "summary": "权限失败用哪条错误码没有写死，只能对照改前同一账号、同一张图。",
+            "plain_summary": "权限失败用哪条错误码没有写死，只能对照改前同一账号、同一张图。",
+            "confirm_action": "接受「维持原权限失败，对照改前基线人工核对」即可交付。",
+            "severity": "critical",
+            "requirement_ids": ["REQ-010"],
+            "source_refs": ["RULE-PERMISSION-PRIORITY"],
+        }
+    ]
+    spec["nodes"] = [
+        {
+            "execution_id": "G02-1",
+            "node_id": "G02",
+            "label": "Test Case IR 人工审核",
+            "stage": 10,
+            "stage_card_id": "C3",
+            "stage_card_title": "测试设计与审核",
+            "state": "waiting_human",
+            "completion": "1/1",
+            "result_summary": "1 个用例设计待确认（没权限时不要改提示）",
+            "approval_items": approval_items,
+        }
+    ]
+    spec["actions"] = [
+        {
+            "action_id": "G02-review",
+            "gate_id": "G02",
+            "title": "Test Case IR 人工审核处理",
+            "status": "open",
+            "owner_member_id": "member-qa",
+            "item_count": 1,
+            "summary": "1 个用例设计待确认（没权限时不要改提示）",
+            "approval_items": approval_items,
+            "issue_id": None,
+            "issue_identifier": None,
+        }
+    ]
+
+    projection = build_workflow_projection(spec)
+    markdown = render_workflow_center_markdown(projection)
+    assert "#### 审批项（1）" in markdown
+    assert "**没权限时不要改提示**（`PC-BE-006:human_review`）" in markdown
+    assert "产品场景：没权限点查看明细应继续走原来的权限失败" in markdown
+    assert "设计不确定点：权限失败用哪条错误码没有写死" in markdown
+    assert "请拍板：接受「维持原权限失败，对照改前基线人工核对」即可交付。" in markdown
+    assert "请确认该用例的场景、步骤和预期结果可直接执行" not in markdown
+    assert "涉及需求：`REQ-010`" in markdown
+    assert "审批确认" not in markdown
+    assert "Artifact g02-test-case-ir-review accepted" not in markdown
+
+    g02_node = next(node for node in projection["nodes"] if node["node_id"] == "G02")
+    stage_markdown = _render_stage_card_markdown("C3", "测试设计与审核", [g02_node])
+    assert "共 1 个用例设计待确认事项，请按产品口径拍板后继续。" in stage_markdown
+    assert "其余已按冻结规则写完的用例不逐条审批。" in stage_markdown
+    assert "产品场景：没权限点查看明细应继续走原来的权限失败" in stage_markdown
+    assert "请确认该用例的场景、步骤和预期结果可直接执行" not in stage_markdown
+    assert "审批项：请打开审核入口查看具体审批项。" not in stage_markdown
 
 
 def test_human_action_without_approval_items_renders_fallback_hint() -> None:
@@ -524,6 +619,12 @@ class FakeMultica:
         self.calls.append((command, stdin))
         if command[1:3] == ["issue", "list"]:
             return {"issues": list(self.issues.values())}
+        if command[1:3] == ["issue", "get"]:
+            issue_id = command[3]
+            found = self.issues.get(issue_id)
+            if found:
+                return dict(found)
+            return {"id": issue_id}
         if command[1:3] == ["issue", "update"]:
             result = {
                 "id": command[3],
@@ -728,6 +829,45 @@ def test_stage_card_shared_issue_is_aggregated_and_synced_once(tmp_path: Path) -
     assert "- `G02` 人工审核 · 等待人工 · [QAA-G02](mention://issue/issue-g02-execution)" in description
     assert result["stage_card_count"] == 1
     assert result["classified_node_count"] == 2
+
+
+
+def test_sync_does_not_downgrade_completed_stage_card_to_in_review(tmp_path: Path) -> None:
+    spec = workflow_spec()
+    spec["nodes"] = [
+        {
+            "execution_id": "G02-run",
+            "node_id": "G02",
+            "label": "人工审核",
+            "stage": 10,
+            "state": "waiting_human",
+            "completion": "0/1",
+            "result_summary": "等待 QA 审核",
+            "stage_card_id": "C3",
+            "stage_card_title": "测试设计与审核",
+            "stage_issue_id": "issue-c3",
+            "stage_issue_identifier": "QAA-C3",
+        }
+    ]
+    spec["actions"] = []
+    store = ArtifactStore(tmp_path / "input")
+    multica = FakeMultica(
+        issues={"issue-c3": {"id": "issue-c3", "status": "done"}}
+    )
+    sync_multica_workflow_center(
+        store.write_json("workflow.json", spec),
+        store.write_json("config.json", workflow_config()),
+        tmp_path / "output",
+        runner=multica,
+    )
+    card_updates = [
+        command
+        for command, _ in multica.calls
+        if command[1:4] == ["issue", "update", "issue-c3"]
+    ]
+    assert card_updates
+    assert card_updates[0][card_updates[0].index("--status") + 1] == "done"
+
 
 
 def test_sync_binds_discovered_node_issues_into_stage_cards(tmp_path: Path) -> None:
@@ -986,3 +1126,210 @@ def test_projection_rejects_non_run_only_autopilot() -> None:
 
     with pytest.raises(ContractError, match="must use run_only"):
         build_workflow_projection(spec)
+
+
+def test_live_todo_with_completed_run_is_not_running() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            assert command[:3] == ["multica", "issue", "runs"]
+            return [{"id": "run-1", "status": "completed", "created_at": "2026-09-01T00:00:00Z"}]
+
+    state, summary = _live_node_state_from_issue(
+        current_state="queued",
+        issue_status="todo",
+        runner=Runner(),
+        issue_id="issue-1",
+        workspace_id="ws",
+    )
+    assert state == "queued"
+    assert "等待同步入库" in (summary or "")
+
+
+def test_live_todo_without_run_stays_queued() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            return []
+
+    state, summary = _live_node_state_from_issue(
+        current_state="queued",
+        issue_status="todo",
+        runner=Runner(),
+        issue_id="issue-1",
+        workspace_id="ws",
+    )
+    assert state == "queued"
+    assert "等待 Agent 领取" in (summary or "")
+
+
+def test_live_in_progress_without_run_is_not_running() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            return []
+
+    state, summary = _live_node_state_from_issue(
+        current_state="queued",
+        issue_status="in_progress",
+        runner=Runner(),
+        issue_id="issue-1",
+        workspace_id="ws",
+    )
+    assert state == "queued"
+    assert "等待 Agent 领取" in (summary or "")
+
+
+def test_live_done_does_not_resurrect_not_started_node() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            raise AssertionError("runs should not be queried for missing artifacts")
+
+    state, summary = _live_node_state_from_issue(
+        current_state="not_started",
+        issue_status="done",
+        runner=Runner(),
+        issue_id="issue-1",
+        workspace_id="ws",
+    )
+    assert state is None
+    assert summary is None
+
+def test_live_todo_does_not_downgrade_completed_artifact_state() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            raise AssertionError("runs should not be queried for protected states")
+
+    state, summary = _live_node_state_from_issue(
+        current_state="completed",
+        issue_status="todo",
+        runner=Runner(),
+        issue_id="issue-1",
+        workspace_id="ws",
+    )
+    assert state is None
+    assert summary is None
+
+def test_live_blocked_with_completed_run_explains_ingest_failure() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            assert command[:3] == ["multica", "issue", "runs"]
+            return [{"id": "run-1", "status": "completed", "created_at": "2026-09-01T00:00:00Z"}]
+
+    state, summary = _live_node_state_from_issue(
+        current_state="queued",
+        issue_status="blocked",
+        runner=Runner(),
+        issue_id="issue-1",
+        workspace_id="ws",
+    )
+    assert state == "blocked"
+    assert "入库失败" in (summary or "")
+
+
+def test_bind_discovered_replaces_stale_waiting_summary() -> None:
+    from qa_agents.workflow_center import _bind_discovered_node_issues
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            if command[:3] == ["multica", "issue", "list"]:
+                return {
+                    "issues": [
+                        {
+                            "id": "issue-a09",
+                            "identifier": "QAA-420",
+                            "title": "[run-1] A09 Oracle",
+                            "status": "todo",
+                            "created_at": "2026-09-01T00:00:00Z",
+                        }
+                    ]
+                }
+            if command[:3] == ["multica", "issue", "runs"]:
+                return [
+                    {
+                        "id": "run-1",
+                        "status": "completed",
+                        "created_at": "2026-09-01T00:01:00Z",
+                    }
+                ]
+            raise AssertionError(command)
+
+    projection = {
+        "schema_version": "requirement-workflow-projection/1.0",
+        "workflow_run_id": "run-1",
+        "nodes": [
+            {
+                "node_id": "A09",
+                "execution_id": "A09-run-1",
+                "state": "queued",
+                "result_summary": "上游节点已完成，等待调度",
+            }
+        ],
+        "actions": [],
+        "run_history": [],
+        "autopilot": None,
+        "autopilot_runs": [],
+        "workflow_id": "wf",
+        "requirement_id": "req",
+        "workflow_definition_version": "v1",
+        "revision": 1,
+        "source_snapshot_id": "snap",
+        "title": "t",
+        "parent_issue": {"id": "p", "identifier": "QAA-1"},
+        "run_issue": None,
+    }
+    # _bind_discovered_node_issues expects a full projection but only mutates nodes.
+    # Provide minimal fields used by discovery path.
+    config = {
+        "internal_project_id": "proj",
+        "workspace_id": "ws",
+        "discover_node_issues": True,
+    }
+    enriched = _bind_discovered_node_issues(projection, config, Runner())
+    node = enriched["nodes"][0]
+    assert node["state"] == "queued"
+    assert "等待同步入库" in node["result_summary"]
+
+def test_live_completed_with_active_correction_run_upgrades_to_running() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            return [{"id": "run-2", "status": "running", "created_at": "2026-09-01T01:00:00Z"}]
+
+    state, summary = _live_node_state_from_issue(
+        current_state="completed",
+        issue_status="todo",
+        runner=Runner(),
+        issue_id="issue-corr",
+        workspace_id="ws",
+    )
+    assert state == "running"
+    assert summary is None
+
+
+def test_live_completed_with_todo_placeholder_stays_completed() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            return []
+
+    state, summary = _live_node_state_from_issue(
+        current_state="completed",
+        issue_status="todo",
+        runner=Runner(),
+        issue_id="issue-placeholder",
+        workspace_id="ws",
+    )
+    assert state is None
+    assert summary is None

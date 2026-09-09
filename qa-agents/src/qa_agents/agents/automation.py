@@ -182,6 +182,15 @@ def _review_backend(case_spec: Mapping[str, Any], content: str) -> list[dict[str
             issues.append({"issue_code": "executable_oracle_incomplete", "expected_index": index})
     if case_spec.get("setup") and not case_spec.get("readiness"):
         issues.append({"issue_code": "test_data_readiness_missing"})
+    for validity in case_spec.get("data_validity", []):
+        if not isinstance(validity, Mapping):
+            issues.append({"issue_code": "test_data_validity_contract_invalid"})
+            continue
+        contract = validity.get("contract")
+        if not isinstance(contract, Mapping) or contract.get("decision_policy") != "all_required_checks_pass":
+            issues.append({"issue_code": "test_data_validity_contract_missing"})
+        if not validity.get("existing_integrity_evidence") and not validity.get("integrity_probes"):
+            issues.append({"issue_code": "test_data_integrity_probe_missing"})
     return issues
 
 
@@ -432,7 +441,7 @@ class DomainAutomationAgent(BaseAgent):
             }
             for lifecycle_key in (
                 "environment", "namespace", "variables", "setup", "readiness",
-                "residue_checks",
+                "residue_checks", "data_validity",
             ):
                 if lifecycle_key in case:
                     case_spec[lifecycle_key] = case[lifecycle_key]

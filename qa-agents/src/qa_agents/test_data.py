@@ -478,10 +478,12 @@ def validate_test_data_plan(
         for item in plan.get("unsupported_requirements", [])
         if isinstance(item, Mapping)
     }
+    chart_source_scenarios: dict[str, set[str]] = {}
     validated_resources = 0
     for case_index, case_plan in enumerate(plan.get("case_plans", [])):
         if not isinstance(case_plan, Mapping):
             raise ContractError(f"case_plans[{case_index}] must be an object")
+        case_id = str(case_plan.get("case_id") or "")
         resources = case_plan.get("resources", [])
         if not isinstance(resources, list):
             raise ContractError(f"case_plans[{case_index}].resources must be a list")
@@ -528,10 +530,15 @@ def validate_test_data_plan(
             if not id_variable:
                 raise ContractError(f"{path}.resource_id_variable is required")
             if resource_type in _CHART_RESOURCES:
+                requirement_name = str(
+                    case_plan.get("requirement_name")
+                    or resource.get("asset_folder_name")
+                    or ""
+                )
                 if (
                     str(resource.get("retention_mode", "retain")) == "retain"
                     and resource.get("asset_folder_name")
-                    != str(case_plan.get("requirement_name", ""))
+                    != requirement_name
                 ):
                     raise SecurityPolicyError(
                         f"{path} chart folder must equal the requirement name"
@@ -539,7 +546,10 @@ def validate_test_data_plan(
                 validate_validity_contract(
                     resource.get("validity_contract"), resource_type=resource_type, path=path
                 )
-                if str(resource.get("lifecycle_mode", "create")) == "create":
+                # Autonomous plans must carry concrete warehouse probes. A
+                # direct/assisted compiler result may carry the validity
+                # contract before environment-specific probes are available.
+                if autonomous and str(resource.get("lifecycle_mode", "create")) == "create":
                     validate_integrity_probe_plan(resource.get("integrity_probes"), path=path)
             setup_operation = resource.get("setup_operation")
             if isinstance(setup_operation, str) and setup_operation.strip():
@@ -657,16 +667,50 @@ def validate_test_data_plan(
                         f"{path} requires typed Chinese semantic naming evidence"
                     )
             if retention_mode == "retain" and resource_type in _CHART_RESOURCES:
-                requirement_name = str(case_plan.get("requirement_name", ""))
-                if not requirement_name or resource.get("asset_folder_name") != requirement_name:
+                plan_case_id = str(case_plan.get("case_id") or "")
+                requirement_name = str(case_plan.get("requirement_name") or "")
+                if requirement_name != plan_case_id or resource.get("asset_folder_name") != plan_case_id:
                     raise SecurityPolicyError(
-                        f"{path} chart folder must equal the requirement name"
+                        f"{path} chart folder must equal Case {plan_case_id}"
                     )
             if resource_type == "stat_chart":
+                scenario_key = str(resource.get("scenario_key", ""))
+                recipe_refs = case_plan.get("recipe_refs", [])
+                planned_recipe_id = str(
+                    recipe_refs[0].get("recipe_id", "")
+                    if isinstance(recipe_refs, list)
+                    and recipe_refs
+                    and isinstance(recipe_refs[0], Mapping)
+                    else ""
+                )
+                if not scenario_key or scenario_key != planned_recipe_id:
+                    raise SecurityPolicyError(
+                        f"{path} chart scenario binding does not match its Case recipe"
+                    )
+                if str(resource.get("case_binding", "")) != case_id:
+                    raise SecurityPolicyError(f"{path} chart is not bound to its Case")
+                config_contract = resource.get("chart_config_contract")
+                if not isinstance(config_contract, Mapping):
+                    raise SecurityPolicyError(f"{path} chart requires a scenario config contract")
+                if (
+                    str(config_contract.get("scenario_key", "")) != scenario_key
+                    or str(config_contract.get("case_binding", "")) != case_id
+                    or config_contract.get("required_bind_action") != "bind_stat_chart_config"
+                    or config_contract.get("source_reuse_mode") != "template_with_case_specific_bind"
+                    or config_contract.get("strict_binding") is not True
+                    or config_contract.get("forbid_cross_scenario_source_reuse") is not True
+                ):
+                    raise SecurityPolicyError(
+                        f"{path} chart config contract does not match its scenario"
+                    )
                 folder = resource.get("folder_binding")
                 if not isinstance(folder, Mapping):
                     raise SecurityPolicyError(f"{path} chart requires live folder binding")
-                requirement_name = str(case_plan.get("requirement_name", ""))
+                requirement_name = str(
+                    case_plan.get("requirement_name")
+                    or resource.get("asset_folder_name")
+                    or ""
+                )
                 if str(folder.get("folder_name", "")) != requirement_name:
                     raise SecurityPolicyError(f"{path} chart folder binding name mismatch")
                 category_id = str(folder.get("category_id", ""))
@@ -706,8 +750,25 @@ def validate_test_data_plan(
                         rename.get("json", {}).get("viewName", "")
                     ) != str(resource.get("display_name", "")):
                         raise SecurityPolicyError(f"{path} chart clone rename does not match display name")
+                    namespace = str(plan.get("namespace", ""))
+                    expected_visible_name = f"{namespace}-{case_id}-{resource.get('display_name', '')}"
+                    if not origin_readback.get("expect", {}).get("body_contains_values") == [
+                        expected_visible_name
+                    ]:
+                        raise SecurityPolicyError(
+                            f"{path} chart clone requires live visible-name readback"
+                        )
                 elif not isinstance(base_info, Mapping) or str(base_info.get("categoryID", "")) != category_id:
                     raise SecurityPolicyError(f"{path} chart category does not match folder binding")
+                if str(resource.get("lifecycle_mode", "create")) == "create":
+                    provenance = resource.get("source_provenance")
+                    source_id = (
+                        str(provenance.get("source_view_id", ""))
+                        if isinstance(provenance, Mapping)
+                        else ""
+                    )
+                    if source_id:
+                        chart_source_scenarios.setdefault(source_id, set()).add(scenario_key)
             readiness = resource.get("readiness", [])
             if not isinstance(readiness, list):
                 raise ContractError(f"{path}.readiness must be a list")
@@ -933,7 +994,7 @@ def bind_plan_to_case(
             existing_name=str(resource.get("display_name") or ""),
         ) or str(resource.get("display_name") or resource.get("resource_key") or "asset")
         visible_name = (
-            f"{namespace}-{display_name}"
+            f"{namespace}-{case_id}-{display_name}"
             if namespace and str(resource.get("resource_type") or "") == "stat_chart"
             else display_name
         )
@@ -953,6 +1014,16 @@ def bind_plan_to_case(
                 "name",
                 f"{display_name} post_setup {index}",
             )
+            if (
+                str(resource.get("resource_type") or "") == "stat_chart"
+                and index == 2
+                and isinstance(post_step.get("request"), Mapping)
+            ):
+                post_step["expect"] = {
+                    "status_code": 200,
+                    "json_path": {"Result.FailureCode": 0},
+                    "body_contains_values": [visible_name],
+                }
             post_step.setdefault(
                 "expect",
                 {"status_code": 200, "json_path": {"Result.FailureCode": 0}},
@@ -1005,6 +1076,7 @@ def bind_plan_to_case(
                         "measure_field_id": measure_value,
                         "filter_field_id": filter_value,
                     },
+                    "strict_binding": True,
                     "expect": {"status_code": 200, "json_path": {"Result.FailureCode": 0}},
                 }
                 setup.append(bind_step)

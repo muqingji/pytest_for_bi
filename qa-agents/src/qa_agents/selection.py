@@ -394,11 +394,13 @@ def compile_execution_plan(
     asset_catalog: Mapping[str, Any] | None = None,
     *,
     deferred_layers: set[str] | None = None,
+    skip_layers: set[str] | None = None,
 ) -> dict[str, Any]:
     assets = (asset_catalog or {}).get("automation_assets", {})
     cases_by_id = {str(case["id"]): case for case in cases}
     actions: list[dict[str, Any]] = []
     deferred = set(deferred_layers or ())
+    skipped = set(skip_layers or ())
     for item in selection.get("selected_cases", []):
         case_id = str(item["case_id"])
         case = cases_by_id[case_id]
@@ -407,7 +409,10 @@ def compile_execution_plan(
             asset = None
         test_level = str(case.get("test_level", "") or "").strip().lower()
         layer = str(case.get("layer", "")).strip().lower()
-        if layer in deferred:
+        if layer in skipped:
+            action = "skip"
+            reason_code = f"{layer}_capability_not_ready"
+        elif layer in deferred:
             action = "deferred_frontend" if layer in {"frontend", "e2e"} else "deferred_by_policy"
             reason_code = f"{layer}_scope_deferred_by_policy"
         elif test_level in {"unit", "unit_test", "单元", "单元测试"}:

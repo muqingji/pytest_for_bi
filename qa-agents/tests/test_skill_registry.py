@@ -90,6 +90,14 @@ def test_data_router_authorizes_registered_resource_skills_only() -> None:
     assert authorization["allowed_tools"] == []
 
 
+def test_a22_existing_asset_discovery_skill_is_read_only() -> None:
+    registry = SkillRegistry.from_file(REGISTRY)
+    entry = registry.skills["a22-existing-asset-discovery"]
+    assert entry["agents"] == ["A22"]
+    assert entry["side_effect"] == "validation_only"
+    assert entry["tools"] == ["case_runner_read_only", "bug_finder_fxops_query"]
+
+
 def test_data_router_authorizes_recipe_adapter_for_unmatched_data_cases() -> None:
     registry = SkillRegistry.from_file(REGISTRY)
     catalog = json.loads((ROOT / "knowledge/bi-data-capability-catalog.json").read_text())
@@ -116,6 +124,14 @@ def test_language_h5_skill_is_published_for_contract_and_e2e_agents() -> None:
     assert entry["agents"] == ["A15", "A16"]
     assert entry["side_effect"] == "validation_only"
     assert entry["tools"] == ["case_runner", "visible_browser_read"]
+
+
+def test_platform_trace_id_skill_is_published_for_execution_agents() -> None:
+    registry = SkillRegistry.from_file(REGISTRY)
+    entry = registry.skills["fxiaoke-platform-trace-id"]
+    assert entry["agents"] == ["N07", "A14", "A15"]
+    assert entry["side_effect"] == "validation_only"
+    assert entry["tools"] == ["case_runner"]
 
 
 def _knowledge_catalog() -> dict:

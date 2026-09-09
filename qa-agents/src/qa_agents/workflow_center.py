@@ -11,7 +11,7 @@ from pathlib import Path
 import subprocess
 from typing import Any
 
-from .card_copy import stage_card_sections, stage_card_title
+from .card_copy import constructed_assets_markdown, stage_card_sections, stage_card_title
 from .contracts import content_hash
 from .errors import ContractError, InputError, RetryableAgentError
 from .multica_cli import resolve_multica_binary
@@ -94,6 +94,40 @@ LIVE_ISSUE_TO_NODE_STATE = {
     "running": "running",
     "in_review": "waiting_human",
     "blocked": "blocked",
+    "done": "completed",
+    "cancelled": "cancelled",
+}
+
+# Artifact/reconcile states that live Multica Issue status must not downgrade.
+_PROTECTED_NODE_STATES = {
+    "completed",
+    "skipped",
+    "cancelled",
+    "failed",
+    "waiting_human",
+    "blocked",
+}
+
+_AUTOPILOT_PLACEHOLDER_SUMMARIES = {
+    "上游节点已完成，等待调度",
+    "等待上游节点",
+    "等待调度",
+}
+_LIVE_STATE_DEFAULT_SUMMARIES = {
+    "running": "Agent 执行中",
+    "queued": "排队等待 Agent 领取",
+    "blocked": "节点阻塞，待失败恢复或人工介入",
+    "waiting_human": "等待人工处理",
+    "failed": "执行失败",
+}
+
+_LIVE_RUN_TO_NODE_STATE = {
+    "running": "running",
+    "in_progress": "running",
+    "queued": "queued",
+    "dispatched": "queued",
+    "completed": "queued",
+    "failed": "failed",
     "cancelled": "cancelled",
 }
 
@@ -121,10 +155,10 @@ SERVER_NODE_DETAILS = {
     "A18-CT": "独立审查契约自动化候选的 Schema、操作和兼容判断。",
     "N27": "校验测试数据计划的安全性、可复现性和能力边界。",
     "N05": "对自动化候选执行格式、lint、编译和安全扫描。",
-    "G03": "人工审核自动化代码质量、风险和发布边界。",
+    "G03": "N05 通过后自动跳过自动化代码人工审核，进入环境预检与执行。",
     "N07": "检查测试环境、账号、数据和资源是否满足执行条件。",
     "N08": "受控执行自动化测试并收集运行证据。",
-    "N17": "执行人工与探索测试，并记录过程和结果。",
+    "N17": "核对尚未自动执行的用例并记录缺口；未完成则阻塞，不是人工审批。",
     "N10": "按重试预算处理环境失败，给出继续、暂停或阻塞结论。",
     "N18": "采集自动化与人工执行的运行质量信号。",
     "N09": "标准化执行证据并对失败做聚类和根因归纳。",
@@ -485,12 +519,137 @@ def _discover_node_issues(
     return discovered
 
 
+def _latest_issue_run_status(
+    runner: CommandRunner, issue_id: str, workspace_id: str
+) -> str:
+    """Return the latest Multica run status for one Issue, or empty if none."""
+
+    try:
+        payload = runner(
+            [
+                "multica",
+                "issue",
+                "runs",
+                issue_id,
+                "--output",
+                "json",
+                "--workspace-id",
+                workspace_id,
+            ],
+            None,
+        )
+    except Exception:
+        return ""
+    runs = payload if isinstance(payload, list) else (
+        payload.get("runs") if isinstance(payload, Mapping) else None
+    )
+    if not isinstance(runs, list) or not runs:
+        return ""
+    latest = max(
+        (item for item in runs if isinstance(item, Mapping)),
+        key=lambda item: str(item.get("created_at") or item.get("started_at") or ""),
+        default=None,
+    )
+    if not isinstance(latest, Mapping):
+        return ""
+    return str(latest.get("status") or "").strip()
+
+
+def _live_node_state_from_issue(
+    *,
+    current_state: str,
+    issue_status: str,
+    runner: CommandRunner,
+    issue_id: str,
+    workspace_id: str,
+) -> tuple[str | None, str | None]:
+    """Map Multica Issue (+ run) status onto projection node state.
+
+    Multica often leaves agent Issues in ``todo`` both while the agent is
+    running and after the run completed but before local ingest marks the
+    Issue done. Blindly mapping ``todo`` -> ``queued`` made C3 show
+    "A08 排队中" when nothing was queued and the agent had already finished.
+    """
+
+    # Skipped/cancelled stay authoritative: a Multica Issue must not rewrite
+    # ``skipped`` into ``completed``. ``completed``/``failed`` Artifacts may
+    # still be re-entered by a correction Issue (A08/A09 loop); those open
+    # Issues must project as live execution instead of freezing the old
+    # terminal label (which also caused sync to force the new Issue ``done``).
+    if current_state in {"skipped", "cancelled"}:
+        return None, None
+    if current_state == "not_started" and issue_status in {
+        "done", "cancelled", "in_review", ""
+    }:
+        # Artifact evidence is gone. A leftover record Issue must not
+        # resurrect a completed or waiting node in the cockpit.
+        return None, None
+
+    def _from_runs() -> tuple[str | None, str | None]:
+        run_status = _latest_issue_run_status(runner, issue_id, workspace_id)
+        if not run_status:
+            return None, None
+        if run_status == "completed":
+            return "queued", "Agent 已完成，等待同步入库"
+        mapped = _LIVE_RUN_TO_NODE_STATE.get(run_status)
+        if mapped:
+            return mapped, None
+        return None, None
+
+    # completed/failed Artifacts stay put unless a real re-entry Issue has runs
+    # (correction loop). Bare todo placeholders must not downgrade completed.
+    if current_state in {"completed", "failed"}:
+        if issue_status in {"done", "cancelled", ""}:
+            return None, None
+        mapped = _from_runs()
+        if mapped[0]:
+            return mapped
+        if issue_status in {"in_progress", "running", "blocked"}:
+            live_state = LIVE_ISSUE_TO_NODE_STATE.get(issue_status)
+            if live_state:
+                return live_state, None
+        return None, None
+
+    # Human-waiting nodes can be upgraded when a revision Issue is executing.
+    if current_state == "waiting_human":
+        if issue_status in {"in_progress", "running"}:
+            return "running", None
+        if issue_status in {"todo", "queued", "backlog"}:
+            mapped = _from_runs()
+            if mapped[0]:
+                return mapped
+        return None, None
+
+    if current_state == "blocked" and issue_status not in {"in_progress", "running", "todo"}:
+        return None, None
+
+    if issue_status in {"todo", "queued", "backlog", "in_progress", "running"}:
+        mapped = _from_runs()
+        if mapped[0]:
+            return mapped
+        # Issue.todo/in_progress is not proof the Agent is executing. Without a
+        # live run, the card must stay queued so C4 does not show "运行中".
+        return "queued", "已派发，等待 Agent 领取"
+
+    live_state = LIVE_ISSUE_TO_NODE_STATE.get(issue_status)
+    if not live_state:
+        return None, None
+    if live_state == "blocked":
+        run_status = _latest_issue_run_status(runner, issue_id, workspace_id)
+        if run_status == "completed":
+            return "blocked", "Agent 已完成，产出入库失败或待人工处理"
+        if run_status in {"running", "in_progress", "queued", "dispatched"}:
+            return "blocked", "节点阻塞（存在未完成或异常 run）"
+        return "blocked", "节点阻塞，待失败恢复或人工介入"
+    return live_state, None
+
+
 def _bind_discovered_node_issues(
     projection: Mapping[str, Any],
     config: Mapping[str, Any],
     runner: CommandRunner,
 ) -> dict[str, Any]:
-    """Enrich unbound nodes with already-created per-node Issues for clickable links."""
+    """Enrich nodes with per-node Issues and honest live execution states."""
 
     if config.get("discover_node_issues", True) is False:
         return dict(projection)
@@ -507,6 +666,7 @@ def _bind_discovered_node_issues(
     )
     if not discovered:
         return dict(projection)
+    workspace_id = str(config["workspace_id"])
     enriched = {**dict(projection), "nodes": [dict(node) for node in projection["nodes"]]}
     for node in enriched["nodes"]:
         node_id = str(node.get("node_id") or node["execution_id"])
@@ -515,9 +675,28 @@ def _bind_discovered_node_issues(
         binding = discovered[node_id]
         node["issue_id"] = binding["id"]
         node["issue_identifier"] = binding["identifier"]
-        live_state = LIVE_ISSUE_TO_NODE_STATE.get(binding.get("status", ""))
+        live_state, summary = _live_node_state_from_issue(
+            current_state=str(node.get("state") or ""),
+            issue_status=str(binding.get("status") or ""),
+            runner=runner,
+            issue_id=str(binding["id"]),
+            workspace_id=workspace_id,
+        )
         if live_state:
+            previous_state = str(node.get("state") or "")
+            current_summary = str(node.get("result_summary") or "").strip()
             node["state"] = live_state
+            if summary:
+                node["result_summary"] = summary
+            elif current_summary in _AUTOPILOT_PLACEHOLDER_SUMMARIES or (
+                live_state == "running"
+                and previous_state in {"completed", "failed", "queued", "not_started", "blocked"}
+            ):
+                # Autopilot leaves "等待调度", and correction re-entry can keep an
+                # old completed_with_gaps summary while the new Issue is running.
+                node["result_summary"] = _LIVE_STATE_DEFAULT_SUMMARIES.get(
+                    live_state, current_summary
+                )
     return enriched
 
 
@@ -724,6 +903,26 @@ def _default_runner(command: list[str], stdin: str | None) -> Any:
         raise ContractError("Multica workflow-center command returned invalid JSON") from error
 
 
+
+def _live_issue_status(
+    runner: CommandRunner, issue_id: str, workspace_id: str
+) -> str:
+    try:
+        issue = _run_object(
+            runner,
+            [
+                "multica", "issue", "get", issue_id,
+                "--output", "json",
+                "--workspace-id", workspace_id,
+            ],
+            None,
+            "stage-card status",
+        )
+    except (ContractError, RetryableAgentError):
+        return ""
+    return str(issue.get("status") or "").strip()
+
+
 def _run_object(
     runner: CommandRunner, command: list[str], stdin: str | None, label: str
 ) -> Mapping[str, Any]:
@@ -853,6 +1052,10 @@ def _stage_card_status(nodes: list[Mapping[str, Any]]) -> str:
         if states <= {"cancelled", "superseded"}:
             return "cancelled"
         return "done"
+    # N25 compiles locally. Once any C4 node is complete, the stage has
+    # started and must leave backlog so C4 is visibly triggered.
+    if states & TERMINAL_NODE_STATES:
+        return "in_progress"
     return "backlog"
 
 
@@ -877,7 +1080,11 @@ _HUMAN_CATEGORY_LABELS = {
     "blocker": "阻塞项",
     "question": "待确认事项",
     "needs_human": "待确认事项",
+    "待审核用例": "待审核用例",
+    "待审核自动化候选": "待审核自动化候选",
+    "用例设计待确认": "用例设计待确认",
 }
+
 
 _RESULT_SUMMARY_LABELS = {
     "completed": "已完成",
@@ -940,14 +1147,27 @@ def _approval_lines(approval: Mapping[str, Any], index: int) -> list[str]:
         summary = str(approval.get("summary") or "").strip()
         if summary:
             problem = _first_sentence(summary)
-    if problem:
-        lines.append(f"   - 问题：{problem}")
-    recommendation = str(approval.get("recommendation") or "").strip()
-    if recommendation:
-        lines.append(f"   - 建议修正：{recommendation}")
+    category = str(approval.get("category") or "").strip()
+    scene = str(approval.get("product_scene") or "").strip()
     confirm_action = str(approval.get("confirm_action") or "").strip()
-    if confirm_action:
-        lines.append(f"   - 需要确认：{confirm_action}")
+    if category == "用例设计待确认":
+        if scene:
+            lines.append(f"   - 产品场景：{scene}")
+        if problem:
+            lines.append(f"   - 设计不确定点：{problem}")
+        if confirm_action:
+            lines.append(f"   - 请拍板：{confirm_action}")
+    else:
+        if scene:
+            lines.append(f"   - 场景：{scene}")
+        if problem:
+            label = "场景" if category == "待审核用例" and not scene else "问题"
+            lines.append(f"   - {label}：{problem}")
+        recommendation = str(approval.get("recommendation") or "").strip()
+        if recommendation:
+            lines.append(f"   - 建议修正：{recommendation}")
+        if confirm_action:
+            lines.append(f"   - 需要确认：{confirm_action}")
     requirement_ids = approval.get("requirement_ids") or []
     if requirement_ids:
         lines.append("   - 涉及需求：" + "、".join(f"`{value}`" for value in requirement_ids))
@@ -985,6 +1205,7 @@ def _render_stage_card_markdown(
     title: str,
     nodes: list[Mapping[str, Any]],
     all_nodes: list[Mapping[str, Any]] | None = None,
+    constructed_assets: list[Mapping[str, Any]] | None = None,
 ) -> str:
     all_nodes = all_nodes if all_nodes is not None else nodes
     copy = stage_card_sections(card_id)
@@ -1055,7 +1276,27 @@ def _render_stage_card_markdown(
         if unique_items:
             label = str(node.get("label") or "").strip()
             label_text = f"（{label}）" if label else ""
-            if isinstance(node.get("human_action_entry"), Mapping):
+            categories = {
+                str(item.get("category") or "").strip()
+                for item in unique_items
+            }
+            if categories == {"用例设计待确认"}:
+                human_lines.append(
+                    f"- 来源：`{node.get('node_id')}`{label_text}，共 "
+                    f"{len(unique_items)} 个用例设计待确认事项，请按产品口径拍板后继续。"
+                    "其余已按冻结规则写完的用例不逐条审批。"
+                )
+            elif categories == {"待审核用例"}:
+                human_lines.append(
+                    f"- 来源：`{node.get('node_id')}`{label_text}，共 "
+                    f"{len(unique_items)} 条待审核用例，请逐条确认预期结果与覆盖后继续。"
+                )
+            elif categories == {"待审核自动化候选"}:
+                human_lines.append(
+                    f"- 来源：`{node.get('node_id')}`{label_text}，共 "
+                    f"{len(unique_items)} 项待审核自动化产物，请确认后继续。"
+                )
+            elif isinstance(node.get("human_action_entry"), Mapping):
                 human_lines.append(
                     f"- 来源：`{node.get('node_id')}`{label_text} 审查发现 "
                     f"{len(unique_items)} 个问题，需你决策是否授权修正。"
@@ -1118,6 +1359,11 @@ def _render_stage_card_markdown(
     scope_excludes = [f"- {item}" for item in copy["scope_excludes"]]
     inputs = [f"- {item}" for item in copy["inputs"]]
     acceptance = [f"- {item}" for item in copy["acceptance"]]
+    constructed_lines: list[str] = []
+    if card_id in {"C5", "C6"}:
+        section = constructed_assets_markdown(constructed_assets)
+        if section:
+            constructed_lines = ["", section.rstrip()]
     return "\n".join(
         [
             f"# {card_id} {title}",
@@ -1149,6 +1395,7 @@ def _render_stage_card_markdown(
             "",
             "## 产出",
             *(artifacts or ["暂无已验收 Artifact。"]),
+            *constructed_lines,
             "",
             "## 异常处理",
             *(failures or ["当前无阻塞异常；回流和重试只更新本卡。"]),
@@ -1166,7 +1413,10 @@ def _render_stage_card_markdown(
     )
 
 
-def _stage_cards(projection: Mapping[str, Any]) -> list[dict[str, Any]]:
+def _stage_cards(
+    projection: Mapping[str, Any],
+    constructed_assets: list[Mapping[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
     grouped: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     titles: dict[str, str] = {}
     issues: dict[str, tuple[str, str]] = {}
@@ -1183,8 +1433,16 @@ def _stage_cards(projection: Mapping[str, Any]) -> list[dict[str, Any]]:
     upstream_blocker = ""
     for card_id, nodes in sorted(grouped.items()):
         status = _stage_card_status(nodes)
+        assets = constructed_assets
+        if assets is None:
+            raw_assets = projection.get("constructed_assets")
+            assets = raw_assets if isinstance(raw_assets, list) else None
         description = _render_stage_card_markdown(
-            card_id, titles[card_id], nodes, all_nodes=projection["nodes"]
+            card_id,
+            titles[card_id],
+            nodes,
+            all_nodes=projection["nodes"],
+            constructed_assets=assets,
         )
         if upstream_blocker:
             status = "backlog"
@@ -1360,7 +1618,10 @@ def _sync_multica_workflow_center_unlocked(
             ),
             None,
         )
-    stage_cards = _stage_cards(projection)
+    from .constructed_assets import discover_constructed_assets
+
+    constructed_assets = discover_constructed_assets(spec_path.parent, output_dir)
+    stage_cards = _stage_cards(projection, constructed_assets=constructed_assets)
     if not stage_cards:
         action_issue_ids = {
             str(action.get("issue_id"))
@@ -1420,16 +1681,44 @@ def _sync_multica_workflow_center_unlocked(
             node_state = str(node["state"])
             status = NODE_MULTICA_STATUS[node_state]
             node_id = str(node.get("node_id") or node["execution_id"])
-            if (
-                node_id in agent_node_ids
-                and item_type == "node_execution"
-                and status not in {"done", "cancelled"}
-            ):
+            if node_id in agent_node_ids and item_type == "node_execution":
                 # The Agent runtime owns open Issue lifecycle
                 # (todo/in_progress/in_review). The workflow sync only writes
                 # terminal statuses so a completed Agent run is never flipped
                 # back to in_review by a stale needs_human Artifact.
-                continue
+                live_status = _live_issue_status(
+                    active_runner, issue_id, workspace_id
+                )
+                run_status = _latest_issue_run_status(
+                    active_runner, issue_id, workspace_id
+                )
+                if status not in {"done", "cancelled"}:
+                    # Multica may leave the Issue at todo while a run is live.
+                    # Align it to in_progress so the linked card matches C4.
+                    if (
+                        node_state == "running"
+                        and run_status in {"running", "in_progress"}
+                        and live_status in {"todo", "queued", "backlog", ""}
+                    ):
+                        _ensure_run_issue_state(
+                            active_runner,
+                            issue_id,
+                            run_project_id,
+                            "in_progress",
+                            workspace_id,
+                        )
+                    continue
+                # Never close a still-active agent Issue just because an older
+                # Artifact remains completed (A08 correction re-dispatch).
+                if run_status in {
+                    "running",
+                    "in_progress",
+                    "queued",
+                    "dispatched",
+                    "completed",
+                }:
+                    # completed runs are marked done by ingest, not here.
+                    continue
             _ensure_run_issue_state(
                 active_runner, issue_id, run_project_id, status, workspace_id
             )
@@ -1457,6 +1746,20 @@ def _sync_multica_workflow_center_unlocked(
         issue_id = str(card["issue_id"]).strip()
         if not issue_id:
             continue
+        status = str(card["status"])
+        live_status = _live_issue_status(active_runner, issue_id, workspace_id)
+        card_id = str(card.get("stage_card_id") or "")
+        if (
+            card_id in {"C2", "C3"}
+            and live_status in {"done", "cancelled"}
+            and status in {
+                "in_review", "in_progress", "todo", "backlog",
+            }
+        ):
+            # Human already closed C2/C3 (G01/G02). Do not overwrite that
+            # decision. C6-C8 system cards must be allowed to reopen when
+            # execution is restarted.
+            status = live_status
         updated = _run_object(
             active_runner,
             [
@@ -1468,14 +1771,14 @@ def _sync_multica_workflow_center_unlocked(
                     str(card["title"]),
                 ),
                 "--project", str(config["workflow_project_id"]),
-                "--status", str(card["status"]),
+                "--status", status,
                 "--output", "json",
                 "--workspace-id", workspace_id,
             ],
             str(card["description"]),
             "stage-card update",
         )
-        if updated.get("id") != issue_id or updated.get("status") != card["status"]:
+        if updated.get("id") != issue_id or updated.get("status") != status:
             raise ContractError("Workflow center stage-card update was not confirmed")
         metadata = {
             "qa_item_type": "stage_card",

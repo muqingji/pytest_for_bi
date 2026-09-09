@@ -196,6 +196,7 @@ def run_n08_automation(
     output_dir: Path,
     *,
     runner: LocalProcessRunner | None = None,
+    bug_finder_root: Path | None = None,
 ) -> dict[str, Any]:
     generation_artifact = _load(generation_path, "automation generation Artifact")
     review_artifact = _load(review_path, "automation review Artifact")
@@ -469,6 +470,9 @@ def run_n08_automation(
             "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
             "QA_ENV_CLASS": env_class,
         }
+        if bug_finder_root is not None:
+            env["QA_BUG_FINDER_ROOT"] = str(bug_finder_root)
+            env["UV_CACHE_DIR"] = str(workdir / ".uv-cache")
         if needs_network or needs_secrets:
             # Controlled path: allow optional host passthrough names and secret env names.
             for name in controlled.get("allowed_env_passthrough", []):
@@ -541,11 +545,25 @@ def run_n08_automation(
             else:
                 coverage_available = True
 
+        constructed_assets_file = next(
+            (
+                candidate
+                for candidate in (
+                    output_dir / "artifacts" / "constructed-test-assets.json",
+                    output_dir.parent / "artifacts-auto" / "artifacts" / "constructed-test-assets.json",
+                )
+                if candidate.is_file()
+            ),
+            None,
+        )
+
         def execute(index_path: tuple[int, str]) -> dict[str, Any]:
             index, path = index_path
             shard_lifecycle_dir = evidence_dir / f"lifecycle-{index:03d}"
             shard_lifecycle_dir.mkdir()
             shard_env = {**env, "QA_LIFECYCLE_EVIDENCE_DIR": str(shard_lifecycle_dir)}
+            if constructed_assets_file is not None:
+                shard_env["QA_CONSTRUCTED_ASSETS_FILE"] = str(constructed_assets_file.resolve())
             junit = evidence_dir / f"shard-{index:03d}.xml"
             coverage_json = evidence_dir / f"coverage-{index:03d}.json"
             pytest_policy_args: list[str] = []
@@ -626,6 +644,22 @@ def run_n08_automation(
                     case_id == item.stem for case_id in mappings_by_path.get(path, [])
                 )
             ]
+            constructed_assets = []
+            for item in sorted(shard_lifecycle_dir.glob("*.constructed-assets.json")):
+                try:
+                    payload = json.loads(item.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                assets = payload.get("assets") if isinstance(payload, dict) else None
+                case_id = str(payload.get("case_id") or "") if isinstance(payload, dict) else ""
+                if isinstance(assets, list):
+                    for asset in assets:
+                        if not isinstance(asset, dict):
+                            continue
+                        item = dict(asset)
+                        if case_id and not item.get("case_id"):
+                            item["case_id"] = case_id
+                        constructed_assets.append(item)
             if lifecycle_evidence_required and len(lifecycle_evidence) < len(
                 mappings_by_path.get(path, [])
             ):
@@ -664,6 +698,7 @@ def run_n08_automation(
                 "_junit_xml_content": junit_content,
                 "_coverage_json_content": coverage_content if coverage_summary else "",
                 "_lifecycle_evidence": lifecycle_evidence,
+                "_constructed_assets": constructed_assets,
             }
 
         with ThreadPoolExecutor(max_workers=min(max_workers, len(declared_paths))) as pool:
@@ -672,6 +707,7 @@ def run_n08_automation(
             junit_content = shard.pop("_junit_xml_content")
             coverage_content = shard.pop("_coverage_json_content", "")
             lifecycle_evidence = shard.pop("_lifecycle_evidence", [])
+            constructed_assets = shard.pop("_constructed_assets", [])
             if shard["junit_xml_valid"]:
                 evidence_path = f"evidence/{shard['shard_id']}/junit.xml"
                 store.write_text(evidence_path, junit_content)
@@ -695,6 +731,15 @@ def run_n08_automation(
             else:
                 shard["lifecycle_evidence_path"] = None
                 shard["lifecycle_evidence_hash"] = None
+            if constructed_assets:
+                constructed_path = f"evidence/{shard['shard_id']}/constructed-assets.json"
+                store.write_json(constructed_path, {
+                    "schema_version": "constructed-test-assets/1.0",
+                    "assets": constructed_assets,
+                })
+                shard["constructed_assets_path"] = constructed_path
+            else:
+                shard["constructed_assets_path"] = None
 
     counts = {name: sum(item["outcome"] == name for item in shards) for name in (
         "passed", "failed", "timed_out", "infrastructure_error"

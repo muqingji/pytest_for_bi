@@ -41,7 +41,13 @@ def _artifact(
 
 
 def _inputs(
-    tmp_path: Path, *, manual: bool = True, production_isolation: bool = True
+    tmp_path: Path,
+    *,
+    manual: bool = True,
+    production_isolation: bool = True,
+    e2e: bool = False,
+    contract: bool = False,
+    contract_ref: str | None = None,
 ) -> dict[str, object]:
     cases = [
         {
@@ -56,6 +62,40 @@ def _inputs(
     actions = [
         {"case_id": "CASE-AUTO", "action": "generate_new", "reason_code": "new"}
     ]
+    if e2e:
+        cases.append(
+            {
+                "id": "CASE-E2E",
+                "layer": "e2e",
+                "title": "端到端页面核对",
+                "priority": "P0",
+                "risk": "critical",
+                "steps": ["打开页面"],
+                "expected": [{"description": "文案一致"}],
+            }
+        )
+        actions.append(
+            {"case_id": "CASE-E2E", "action": "generate_new", "reason_code": "new"}
+        )
+    if contract:
+        test_data = {}
+        if contract_ref:
+            test_data["contract_ref"] = contract_ref
+        cases.append(
+            {
+                "id": "CASE-CT",
+                "layer": "contract",
+                "title": "契约用例",
+                "priority": "P0",
+                "risk": "critical",
+                "steps": ["调用契约接口"],
+                "expected": [{"description": "契约断言成立"}],
+                "test_data": test_data,
+            }
+        )
+        actions.append(
+            {"case_id": "CASE-CT", "action": "generate_new", "reason_code": "new"}
+        )
     if manual:
         cases.append(
             {
@@ -225,14 +265,95 @@ def test_quality_tail_accepts_pending_human_n27_evidence(tmp_path: Path) -> None
     assert (tmp_path / "out/artifacts/n12-quality-report.json").exists()
 
 
-def test_missing_manual_results_is_inconclusive_not_passed(tmp_path: Path) -> None:
+def test_missing_manual_results_stops_at_n17_not_passed(tmp_path: Path) -> None:
     result = _run(tmp_path, _inputs(tmp_path))
 
-    assert result["decision"] == "inconclusive"
+    assert result["decision"] == "blocked"
+    assert result["current_node"] == "N17"
+    assert result["stopped_at"] == "N17"
     assert result["metrics"]["pending"] == 1
     n17 = json.loads((tmp_path / "out/artifacts/n17-manual-execution.json").read_text())
-    assert n17["status"] == "needs_human"
+    assert n17["status"] == "blocked"
+    assert n17["payload"]["next_node"] == "N17"
     assert n17["payload"]["tasks"][0]["status"] == "pending"
+    assert not (tmp_path / "out/artifacts/n11-quality-decision.json").exists()
+    assert not (tmp_path / "out/artifacts/n12-quality-report.json").exists()
+    assert not (tmp_path / "out/artifacts/n18-quality-signals.json").exists()
+
+
+def test_unexecuted_generate_new_stops_at_n17_and_drops_stale_quality_decision(
+    tmp_path: Path,
+) -> None:
+    inputs = _inputs(tmp_path, manual=False)
+    inputs["execution"] = _artifact(
+        tmp_path / "n08-empty.json",
+        "N08",
+        "n08-automation-execution",
+        {
+            "schema_version": "n08-automation-execution/1.0",
+            "environment_fingerprint": "sha256:" + "1" * 64,
+            "next_node": "N09",
+            "shards": [],
+        },
+    )
+    stale_dir = tmp_path / "out/artifacts"
+    stale_dir.mkdir(parents=True, exist_ok=True)
+    (stale_dir / "n18-quality-signals.json").write_text("{}", encoding="utf-8")
+    (stale_dir / "n11-quality-decision.json").write_text("{}", encoding="utf-8")
+    (stale_dir / "n12-quality-report.json").write_text("{}", encoding="utf-8")
+
+    result = _run(tmp_path, inputs)
+
+    assert result["decision"] == "blocked"
+    assert result["current_node"] == "N17"
+    assert result["metrics"]["pending"] == 1
+    n17 = json.loads((tmp_path / "out/artifacts/n17-manual-execution.json").read_text())
+    assert n17["status"] == "blocked"
+    assert n17["payload"]["next_node"] == "N17"
+    assert n17["payload"]["tasks"][0]["case_id"] == "CASE-AUTO"
+    assert n17["payload"]["tasks"][0]["reason_code"] == "automation_not_executed"
+    assert not (tmp_path / "out/artifacts/n11-quality-decision.json").exists()
+    assert not (tmp_path / "out/artifacts/n12-quality-report.json").exists()
+    assert not (tmp_path / "out/artifacts/n18-quality-signals.json").exists()
+
+
+def test_server_quality_skips_e2e_and_gates_on_backend(tmp_path: Path) -> None:
+    result = _run(tmp_path, _inputs(tmp_path, manual=False, e2e=True))
+
+    n17 = json.loads((tmp_path / "out/artifacts/n17-manual-execution.json").read_text())
+    assert n17["status"] == "completed"
+    assert n17["payload"]["pending_count"] == 0
+    assert all(item["case_id"] != "CASE-E2E" for item in n17["payload"]["tasks"])
+    assert result["metrics"]["skipped"] >= 1
+    assert result["current_node"] != "N17"
+    assert (tmp_path / "out/artifacts/n11-quality-decision.json").exists()
+
+
+def test_server_quality_skips_contract_without_ref(tmp_path: Path) -> None:
+    result = _run(tmp_path, _inputs(tmp_path, manual=False, contract=True))
+
+    n17 = json.loads((tmp_path / "out/artifacts/n17-manual-execution.json").read_text())
+    assert n17["status"] == "completed"
+    assert n17["payload"]["pending_count"] == 0
+    assert all(item["case_id"] != "CASE-CT" for item in n17["payload"]["tasks"])
+    assert result["metrics"]["skipped"] >= 1
+    assert result["current_node"] != "N17"
+    assert (tmp_path / "out/artifacts/n11-quality-decision.json").exists()
+
+
+def test_unexecuted_contract_with_ref_stops_at_n17(tmp_path: Path) -> None:
+    result = _run(
+        tmp_path,
+        _inputs(tmp_path, manual=False, contract=True, contract_ref="openapi#/paths/x"),
+    )
+
+    assert result["decision"] == "blocked"
+    assert result["current_node"] == "N17"
+    n17 = json.loads((tmp_path / "out/artifacts/n17-manual-execution.json").read_text())
+    assert n17["status"] == "blocked"
+    assert n17["payload"]["tasks"][0]["case_id"] == "CASE-CT"
+    assert n17["payload"]["tasks"][0]["reason_code"] == "automation_not_executed"
+    assert not (tmp_path / "out/artifacts/n11-quality-decision.json").exists()
 
 
 def test_incomplete_pytest_collection_cannot_pass_quality_gate(tmp_path: Path) -> None:
@@ -267,25 +388,28 @@ def test_server_quality_updates_run_manifest_after_artifacts_complete(tmp_path: 
     manifest = json.loads(manifest_path.read_text())
     assert result["current_node"] == "N17"
     assert manifest["current_node"] == "N17"
-    assert manifest["server_quality"]["status"] == "inconclusive"
+    assert manifest["server_quality"]["status"] == "blocked"
     assert manifest["server_quality"]["metrics"]["pending"] == 1
-    assert manifest["server_quality"]["n12_artifact_hash"].startswith("sha256:")
-    assert manifest["server_quality"]["n23_artifact_hash"].startswith("sha256:")
+    assert manifest["server_quality"]["n17_artifact_hash"].startswith("sha256:")
+    assert "n12_artifact_hash" not in manifest["server_quality"]
+    assert "n23_artifact_hash" not in manifest["server_quality"]
 
 
 def test_reference_environment_cannot_be_release_eligible(tmp_path: Path) -> None:
+    """112 是本流程真实环境：服务端用例通过即可准出，不要求生产隔离。"""
     result = _run(
         tmp_path,
         _inputs(tmp_path, manual=False, production_isolation=False),
     )
 
-    assert result["decision"] == "inconclusive"
-    assert result["release_disposition"] == "pending"
+    assert result["decision"] == "passed_with_warning"
+    assert result["release_disposition"] == "eligible"
     n11 = json.loads((tmp_path / "out/artifacts/n11-quality-decision.json").read_text())
-    assert "environment_not_production_isolated" in n11["payload"]["warnings"]
+    assert "environment_not_production_isolated" not in n11["payload"]["warnings"]
+    assert all("生产隔离" not in str(item) for item in n11["payload"]["reasons"])
 
 
-def test_product_failure_is_blocked_and_deduplicated(tmp_path: Path) -> None:
+def test_product_failure_completes_and_drafts_bugs(tmp_path: Path) -> None:
     inputs = _inputs(tmp_path)
     history = _write(
         tmp_path / "bugs.json",
@@ -300,7 +424,17 @@ def test_product_failure_is_blocked_and_deduplicated(tmp_path: Path) -> None:
         bug_history_path=history,
     )
 
-    assert result["decision"] == "blocked"
+    assert result["decision"] == "completed_with_defects"
+    assert result["release_disposition"] == "pending"
+    n11 = json.loads((tmp_path / "out/artifacts/n11-quality-decision.json").read_text())
+    assert n11["status"] == "completed_with_gaps"
+    assert "服务端测试完成（有缺陷）" in n11["payload"]["summary"]
+    assert any("已按产品缺陷流转" in item for item in n11["payload"]["reasons"])
+    outcomes = n11["payload"]["case_outcomes"]
+    by_id = {item["case_id"]: item for item in outcomes}
+    assert by_id["CASE-AUTO"]["status"] == "passed"
+    assert by_id["CASE-MANUAL"]["status"] == "failed"
+    assert by_id["CASE-MANUAL"]["scene"] == "人工核对服务端数据"
     dedup = json.loads((tmp_path / "out/artifacts/n20-defect-dedup.json").read_text())
     assert dedup["payload"]["decisions"][0]["disposition"] == "create_new"
     drafts = json.loads((tmp_path / "out/bug-drafts.json").read_text())
@@ -362,6 +496,49 @@ def test_failed_manual_result_requires_classification(tmp_path: Path) -> None:
             _inputs(tmp_path),
             manual_results_path=_manual_results(tmp_path, status="failed"),
         )
+
+
+def test_n08_failure_categories_block_without_fake_triage(tmp_path: Path) -> None:
+    """N08 已标 test_data_setup 时，N11 必须按造数失败阻断准出，而不是 needs_triage。"""
+    inputs = _inputs(tmp_path, manual=False)
+    original = json.loads(Path(inputs["execution"]).read_text())
+    payload = dict(original["payload"])
+    payload["shards"] = [
+        {
+            "shard_id": "N08-S001",
+            "case_ids": ["CASE-AUTO"],
+            "outcome": "failed",
+            "failure_categories": ["test_data_setup"],
+            "stdout": "ContractError: setup.bind_chart failed",
+            "stderr": "",
+            "duration_ms": 12,
+            "junit_summary": {"tests": 1, "failures": 1, "errors": 0, "skipped": 0},
+        }
+    ]
+    inputs["execution"] = _artifact(
+        tmp_path / "n08-setup-fail.json",
+        "N08",
+        "n08-automation-execution",
+        payload,
+        status=ArtifactStatus.COMPLETED_WITH_GAPS,
+    )
+    result = _run(tmp_path, inputs)
+    assert result["decision"] == "blocked"
+    n09 = json.loads((tmp_path / "out/artifacts/n09-evidence.json").read_text())
+    clusters = n09["payload"]["failure_clusters"]
+    assert clusters
+    assert clusters[0]["classification"] == "test_data"
+    report = json.loads((tmp_path / "out/server-quality-report.json").read_text())
+    markdown = (tmp_path / "out/server-quality-report.md").read_text()
+    assert report["failure_clusters"][0]["detail"]["failure_code"] == "runtime_failure"
+    assert "ContractError" in markdown
+    assert "setup.bind_chart failed" in markdown
+    assert "Failure Details" in (tmp_path / "out/server-quality-report.html").read_text()
+    n11 = json.loads((tmp_path / "out/artifacts/n11-quality-decision.json").read_text())
+    assert n11["status"] == "blocked"
+    assert any("已分类失败簇阻断准出" in item for item in n11["payload"]["reasons"])
+    assert all("仍待归类" not in item for item in n11["payload"]["reasons"])
+    assert "服务端不准出" in n11["payload"]["summary"]
 
 
 def test_a19_reclassifies_needs_triage_before_quality_decision(tmp_path: Path) -> None:

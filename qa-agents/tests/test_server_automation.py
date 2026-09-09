@@ -237,6 +237,41 @@ def test_binds_validated_n28_lifecycle_into_server_candidate(tmp_path: Path) -> 
     assert generation["manifest"]["input_bindings"]["test_data_resource_plan_hash"] == n28_value["artifact_hash"]
 
 
+def test_binds_current_a22_plan_without_reintroducing_n28(tmp_path: Path) -> None:
+    case = _case("CASE-BE", "backend")
+    inputs = _inputs(tmp_path, [case], [{"case_id": "CASE-BE", "action": "generate_new"}])
+    plan_payload = {
+        "schema_version": "test-data-plan/1.0",
+        "environment": "112",
+        "namespace": "qa-a22-bind-001",
+        "case_plans": [{
+            "case_id": "CASE-BE",
+            "resources": [{
+                "resource_key": "metric",
+                "resource_type": "aggregate_metric",
+                "resource_id_variable": "metric_id",
+                "setup": {"request": {"api": "create"}, "extract": {"metric_id": "Value.id"}},
+                "readiness": [{"request": {"api": "query"}}],
+            }],
+        }],
+    }
+    a22 = _artifact(tmp_path / "a22.json", "A22", "a22-test-data-plan", plan_payload)
+    a22_value = json.loads(a22.read_text())
+    n27 = _artifact(
+        tmp_path / "n27-a22.json", "N27", "n27-test-data-plan-validation",
+        {"schema_version": "test-data-plan-validation/1.0", "valid": True,
+         "a22_artifact_hash": a22_value["artifact_hash"], "deferred_cases": []},
+    )
+
+    result = prepare_server_automation(
+        inputs["plan"], inputs["compiled"], ROOT / "policies/automation-target-policy.json",
+        inputs["target"], tmp_path / "out-a22", test_data_validation_path=n27,
+        test_data_resource_plan_path=a22,
+    )
+
+    assert result["test_data_resource_plan_hash"] == a22_value["artifact_hash"]
+
+
 def test_knowledge_readiness_defers_unready_case_and_binds_ready_packet(tmp_path: Path) -> None:
     cases = [_case("CASE-READY", "backend"), _case("CASE-DEFERRED", "backend")]
     inputs = _inputs(

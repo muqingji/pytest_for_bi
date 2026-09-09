@@ -65,6 +65,10 @@ description: "把紧凑需求卡（TC-*/EXP-* oracle 规格）确定性渲染为
 
 - 多个变体必须用 `## 变体` 显式声明（`- id：名称`），不允许用“三个变体”这类
   未枚举的表述代替。
+- 标题、`测试场景`、`测试步骤`、预期结果描述必须用中文写给人看，让审核人不用翻译就能判断这条用例在验什么。
+  错误码、批准英文模板、观测点保持原文，禁止把整条场景/步骤写成英文。
+- G02 不逐条审全部用例。只有期望未冻结（`human_review`）或本轮明确跳过的产品场景才会变成审批项；
+  这些条目必须能让产品人员看出：哪个功能场景还没定、要拍什么板。
 - 测试步骤必须来自领域 skill（bi-custom-dimension / bi-chart-detail-scene /
   bi-result-set-filter 等）或已验证的资产证据，禁止凭空编造接口、payload 或资产。
 - 未写 `## 测试场景` / `## 测试步骤` 时，渲染器会从标题 + 第一条 EXP 描述与变体
@@ -78,12 +82,17 @@ description: "把紧凑需求卡（TC-*/EXP-* oracle 规格）确定性渲染为
 
 1. `requirement-case.json`：`requirement-case/1.0` 规范化契约（schema 见
    `qa-agents/contracts/requirement-case.schema.json`）。
-2. `case-card.md`：测试场景 / 测试步骤 / 预期结果 审核卡；卡内段落标题
+2. `case-card.md` / `case-cards.md`：测试场景 / 测试步骤 / 预期结果 审核卡；卡内段落标题
    渲染为加粗正文（`**测试场景**`、`**前置条件**`、`**测试步骤**`、
    `**预期结果**`），字号小于 `##` 标题且保留加粗，禁止再改回 `##`；
    **预期结果** 只含人读语句，机读 oracle 规格不进本文件。
 3. `g02-review-items.json`：`g02_review.py` 直接消费的 review_items。
 4. `case-ir.json`：`test-case-ir/1.0` 兼容父用例，供 N25 编译与 G02 审核。
+
+A08 生成并经 N04 校验后，G02 准备阶段必须额外写出同一份人读文件
+`g02-auto/case-cards.md`，并把它作为 G02 任务卡附件。G02 任务卡「输入材料」
+必须第一行引导打开该文件；禁止只给 JSON 路径。审批对象是这份中文用例卡，
+不是 `a08-test-design-ir.json` 或自动化代码。
 
 CLI：`PYTHONPATH=src ../.venv/bin/python -m qa_agents render-requirement-case
 --input <card.md> --output-dir <dir>`。

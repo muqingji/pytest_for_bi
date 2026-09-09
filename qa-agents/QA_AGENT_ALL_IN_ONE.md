@@ -172,7 +172,7 @@ flowchart TD
     G03 -->|通过| N07[N07 环境、数据与资源预检]
 
     N07 --> N08[N08 受控自动化执行]
-    N07 --> N17[N17 人工与探索测试执行]
+    N07 --> N17[N17 未执行用例收口]
     N08 --> N10{N10 环境失败重试预算}
     N17 --> N18[N18 运行质量信号采集]
     N10 -->|允许重试| N07
@@ -180,7 +180,7 @@ flowchart TD
 
     N18 --> N09[N09 执行证据标准化与失败聚类]
     N09 --> N20[N20 跨运行缺陷去重]
-    N20 --> N11[N11 确定性质量决策]
+    N20 --> N11[N11 服务端准出判定]
     N11 -->|有豁免申请| N19[N19 质量豁免审计]
     N11 -->|无豁免| N12[N12 质量报告发布]
     N19 --> N12
@@ -287,7 +287,7 @@ flowchart TD
         C6IN[N07 环境数据资源预检<br/>指纹/依赖/账号/数据/锁] -->|通过| P6{{执行分派}}
         C6IN -->|可恢复失败| N10
         P6 --> N08[N08 受控自动化执行<br/>无 shell 最小环境 并行 超时]
-        P6 --> N17[N17 人工与探索测试执行<br/>结构化步骤/证据/结论]
+        P6 --> N17[N17 未执行用例收口<br/>结构化步骤/证据/结论]
         N08 --> N10{N10 环境失败重试预算<br/>业务失败不重试}
         N10 -->|预算内 可重试| C6IN
         N10 -->|继续| N18
@@ -296,11 +296,11 @@ flowchart TD
     end
 
     %% ================= 阶段卡 C7 =================
-    subgraph C7[阶段卡 C7 · 证据归一与质量决策]
+    subgraph C7[阶段卡 C7 · 证据归一与准出判定]
         direction TB
         N18[N18 运行质量信号采集<br/>覆盖率/性能信号] --> N09[N09 证据标准化与失败聚类<br/>指纹归因 一个根因一组]
         N09 --> N20[N20 跨运行缺陷去重<br/>create / link / reopen / needs_human]
-        N20 --> N11{N11 确定性质量决策<br/>passed / blocked / inconclusive}
+        N20 --> N11{N11 服务端准出判定<br/>passed / blocked / inconclusive}
         N11 -->|有豁免申请| N19[N19 质量豁免审计]
         N11 -->|无豁免| N12
         N19 --> N12
@@ -369,7 +369,7 @@ flowchart TD
 | C4 | Case 编译与执行计划 | N25、A11、N26、N15 |
 | C5 | 自动化与测试数据准备 | A14、A15、A22、A18-BE、A18-CT、N27、N05、G03 |
 | C6 | 环境预检与测试执行 | N07、N08、N17、N10 |
-| C7 | 证据归一与质量决策 | N18、N09、N20、N11、N19 |
+| C7 | 证据归一与准出判定 | N18、N09、N20、N11、N19 |
 | C8 | 报告与关闭 | N12、N13、N23 |
 
 用户侧一需求一父卡，只展示 C1-C8；内部 Parent/Run/节点/人工 Gate 卡全部放在
@@ -442,11 +442,11 @@ SkillRegistry 校验 `skill-registry/1.0`，任何未发布或未授权的 Skill
 | --- | --- |
 | A03 / A08 / A22 / K01 | `bi-knowledge-router`、`bi-product-docs-router`、8 个 `repo-*`（fs-bi、fs-bi-crm-report、fs-bi-dev-platform、fs-bi-udf-report、fs-bi-warehouse、fbi、bi-sdk、bi-xkcharts） |
 | A08 / A09 | `requirement-case-render`（需求卡统一渲染规范） |
-| A14 | `pytest-api-test`、`pytest-integration-test`、`pytest-parameterization`、`pytest-oracle-assertions`、`pytest-fixture-binding`、`pytest-evidence`、`pytest-security-boundary`、`retained-test-asset-naming`、`bi-chart-detail-scene` |
-| A15 | `pytest-contract-test`、`pytest-parameterization`、`pytest-oracle-assertions`、`pytest-fixture-binding`、`pytest-evidence`、`pytest-security-boundary`、`retained-test-asset-naming`、`bi-chart-detail-scene`、`fxiaoke-112-auth-session`、`fxiaoke-personal-language-h5` |
+| A14 | `pytest-api-test`、`pytest-integration-test`、`pytest-parameterization`、`pytest-oracle-assertions`、`pytest-fixture-binding`、`pytest-evidence`、`pytest-security-boundary`、`retained-test-asset-naming`、`bi-chart-detail-scene`、`fxiaoke-platform-trace-id` |
+| A15 | `pytest-contract-test`、`pytest-parameterization`、`pytest-oracle-assertions`、`pytest-fixture-binding`、`pytest-evidence`、`pytest-security-boundary`、`retained-test-asset-naming`、`bi-chart-detail-scene`、`fxiaoke-112-auth-session`、`fxiaoke-platform-trace-id`、`fxiaoke-personal-language-h5` |
 | A16 | `fxiaoke-personal-language-h5` |
 | A22 | `data-intent-parser`、`capability-catalog-resolver`、`bi-chart-detail-scene`、`bi-recipe-adapter`、`retained-test-asset-naming` + 上表知识路由 Skill |
-| N07 | `fxiaoke-112-auth-session` |
+| N07 | `fxiaoke-112-auth-session`、`fxiaoke-platform-trace-id` |
 | N27 | `data-plan-security-review`、`residue-verification`、`bi-chart-detail-scene` |
 | N28 | `bi-chart-detail-scene`、`bi-chart-builder`、`bi-report-builder`、`bi-joined-table-builder`、`bi-pivot-table-builder`、`resource-dag-planner`、`namespace-isolation`、`setup-plan`、`readiness-plan`、`cleanup-plan`、`residue-verification`、`runtime-variable-binding`、`retained-test-asset-naming`、`bi-stat-schema`、`bi-aggregate-metric`、`bi-calculated-metric`、`bi-custom-dimension`、`bi-result-set-filter` |
 | K01（额外） | `knowledge-source-ingestion`、`code-knowledge-extraction`、`product-rule-structuring`、`knowledge-provenance-binding`、`knowledge-conflict-detection`、`knowledge-freshness-validation`、`kdocs-authorized-snapshot`、`lexiang-authorized-snapshot`、`fxiaoke-help-snapshot`、`bug-finder-test-knowledge`、`authorized-product-browser-session` |
@@ -470,8 +470,8 @@ SkillRegistry 校验 `skill-registry/1.0`，任何未发布或未授权的 Skill
   `lexiang-authorized-snapshot`、`fxiaoke-help-snapshot`、`bug-finder-test-knowledge`、
   `authorized-product-browser-session`
 - **知识路由/仓库族（validation_only）**：`bi-knowledge-router`、`bi-product-docs-router`、8 个 `repo-*`
-- **认证/会话族（validation_only）**：`fxiaoke-112-auth-session`、`fxiaoke-personal-language-h5`
-- **展示/渲染规范族**：`card-copy`（八卡/节点/审核卡文案）、`human-readable-workflow-output`（面向 Multica 详情页的四件套规范）、`requirement-case-render`
+- **认证/会话族（validation_only）**：`fxiaoke-112-auth-session`、`fxiaoke-platform-trace-id`（112 请求必须注入页面同款 `FSW-企业账号.员工ID-xxxx`，禁止 `QA-uuid`）、`fxiaoke-personal-language-h5`
+- **展示/渲染规范族**：`card-copy`（八卡/节点/审核卡文案）、`human-readable-workflow-output`（面向 Multica 详情页的四件套规范）、`requirement-case-render`、`constructed-asset-card-display`（C5/C6/N08 已构造测试数据分类回显）、`n11-quality-result-display`（N11 中文通过/不通过回显，Trace 必须是 `fxiaoke-platform-trace-id` 的 `FSW-...`）
 
 ---
 
@@ -661,11 +661,11 @@ N15 动作路由：`generate_new`/`update_existing` → A14/A15；`run_existing`
 | N07 | 环境数据资源预检 | 环境指纹、8 类预检、资源锁；失败禁止进入正式执行；接受 N27 `completed_with_gaps + pending_human` 作为有效数据验证证据 |
 | N08 | 受控自动化执行 | 无 shell、最小环境、分片并行、超时、日志脱敏；业务失败→N09，超时/基础设施→N10；从策略声明的框架 venv 启动 pytest，Secret 由 `secret_providers` 按 `secret_map` 从 0600 本地配置注入；`failed_retryable` 进入人工重试审批 |
 | N10 | 环境失败重试预算 | 按预算给继续/暂停/阻塞；无状态变化禁止原地重复预检；可重试失败由记录卡人工审批（done 批准重试 / cancelled 拒绝 / blocked 暂缓） |
-| N17 | 人工/探索测试执行 | 结构化步骤/结果/截图/日志/结论；必测人工未完成时 N11 不能给 passed |
+| N17 | 未执行用例收口 | 结构化步骤/结果/截图/日志/结论；必测人工未完成时 N11 不能给 passed |
 | N18 | 运行质量信号 | 覆盖率/性能等；只用于发现未执行区域，不能替代需求覆盖 |
 | N09 | 证据标准化与失败聚类 | 规则优先指纹聚类；规则无法归因 → `needs_human`，不设归因 Agent |
 | N20 | 跨运行缺陷去重 | `create_new` / `link_existing` / `reopen` / `needs_human` |
-| N11 | 确定性质量决策 | 无失败≠通过；缺执行/必测人工未完成/关键跳过隔离 → blocked 或 inconclusive |
+| N11 | 服务端准出判定 | 无失败≠通过；缺执行/必测人工未完成/关键跳过隔离 → blocked 或 inconclusive |
 | N19 | 质量豁免审计 | 记录授权范围；超期/逃逸率纳入指标 |
 | N12 | 质量报告发布 | JSON / Markdown / HTML 三态报告 |
 | N13 | 报告反馈入口 | 反馈归档为后续动作 |
@@ -803,11 +803,11 @@ bash qa-agents/scripts/install-sync-timer.sh          # 安装八卡同步 Launc
 
 ## 11. 分阶段建设路线与当前状态
 
-| 阶段 | 内容 | 状态（2026-08-21） |
+| 阶段 | 内容 | 状态（2026-09-08） |
 | --- | --- | --- |
 | 阶段 0 | 契约、Envelope、本地 Artifact、评估基础 | ✅ 已实现 |
 | 阶段 1 | 测试设计质量闭环（A02-A09/N04/G01/G02 人工恢复） | ✅ 真实试点闭环到 G02/N25 |
-| 阶段 2 | 测试选择与代码生成（N25/A11/N26/N15、A14/A15/A18/N05/G03） | 🔶 真实链到 N15；A14/A18/N05 参考实现和新门禁就绪，当前项目单 Case 重跑尚未验收 |
+| 阶段 2 | 测试选择与代码生成（N25/A11/N26/N15、A14/A15/A18/N05/G03） | 🔶 20260901 运行链到 N15 并完成 A14/A18-BE/N05/A15/A18-CT/G03；A14 为 `completed_with_gaps` |
 | 阶段 3 | 环境自主执行（N07/N08/N17/N10/N16） | 🔶 参考切片已实现；生产隔离 Runner 未完成 |
 | 阶段 4 | 确定性质量门禁（N09-N12/N17-N23） | 🔶 本地 reference 已实现；外部发布 Adapter 未完成 |
 | 阶段 5 | 有限自治闭环 | ⏳ 未开始 |
@@ -818,9 +818,26 @@ N07/N08/质量尾链自动推进、重试审批）、Multica 真实试点、A22/
 候选（`bi-recipe-adapter`）、环境清单变量解析、K01 知识治理、B01/D01 Skill 路由、
 质量尾链全部节点参考实现、离线评估与可读报告。
 
-已知阻塞项（来自 IMPLEMENTATION_STATUS 与设计文档）：统计图 update/save 完整契约、
-`backend_exception.metric_name_parameters` 真实观察路径、QAA-380 后续 A14/N05/A18/N08 验收、
-生产隔离 Runner、外部发布 Adapter、完整离线评估语义差距、生产模型网关与 Prompt 发布/灰度/回滚。
+已知阻塞项（来自 20260901 产物）：N08 为 0/7 通过，3 个响应路径缺陷和 3 个统计图完整性/
+造数失败仍阻断准出；统计图 update/save 完整契约、`backend_exception.metric_name_parameters`
+真实观察路径、生产隔离 Runner、外部发布 Adapter、完整离线评估语义差距、生产模型网关与
+Prompt 发布/灰度/回滚仍待闭合。
+
+### 11.1 2026-09 准出链新增实现与待办
+
+新增的 TAPD 需求分支提交和 Bug 审批门已在本地参考实现中落地：需求 ID 提取后按
+`qa/tapd-story-<story_id>` 幂等复用分支，提交前复验 N29 landing 候选哈希；Bug 审批卡绑定
+workflow/run/snapshot/candidate hash，批准停在 `TAPD_BUG_ADAPTER`，驳回生成下一轮重测计划。
+这些结果分别是 `local_only`、`pending_external_bug_adapter` 或 `completed_with_gaps`，不构成
+生产准出。
+
+剩余改造统一以顶层方案 §34 为准，核心 TODO 为：
+
+- TAPD Bug 创建/回写/去重/重试和状态回流；MR/发布 Adapter；审批身份、签名和完整哈希绑定。
+- 群机器人通知、审批/阻塞/重测/失败升级及消息审计。
+- 生产隔离 Runner、真实 staging、凭证和资源生命周期；A16 E2E 接入并纳入 N11。
+- 候选源路径白名单、分支并发锁、stale worktree 恢复、远端状态感知和多轮提交幂等策略。
+- 专用测试结论仓库、ACL/分支保护/保留策略，以及外部 webhook/轮询事件去重。
 
 ---
 
@@ -835,7 +852,7 @@ N07/N08/质量尾链自动推进、重试审批）、Multica 真实试点、A22/
 - 策略：`qa-agents/policies/*.json`（risk/quality/selection/execution/permission/repository/
   automation-target/backend-skill-registry/model-runtime/g01-g03/human-correction 等 19 个）
 - Agent Profile：`qa-agents/profiles/*.json`（33 个）
-- Skill 包：`qa-agents/skills/*/SKILL.md`（56 个）
+- Skill 包：`qa-agents/skills/*/SKILL.md`（59 个）
 - Multica 指令：`qa-agents/multica/agent-instructions/*.md`（版本化）
 - 工作流 DAG 参考：`qa-agents/workflows/phase-one-reference-dag.json`
 - 运行产物：`qa-agents/runs/pilot-001/`（multica-stage1..16、g01、g02、multica-inputs、multica-outputs）

@@ -9,16 +9,16 @@
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54"
     },
     {
-      "instruction_version": "1.1.1",
+      "instruction_version": "1.1.2",
       "logical_id": "A03",
       "name": "A03 技术方案与可测性分析",
       "output_contract": "technical-analysis/1.0",
       "remote_id": "5bed44c7-d486-4664-a39f-2666409315b2",
       "runtime_id": "5a1ecc9c-8e48-4345-8d5e-be0efb3b9a54",
-      "instruction_path": "qa-agents/multica/agent-instructions/a03-v1.1.1.md",
-      "published_instruction_version": "1.1.1",
-      "published_at": "2026-08-11T03:11:29Z",
-      "published_from": "qa-agents/multica/agent-instructions/a03-v1.1.1.md"
+      "instruction_path": "qa-agents/multica/agent-instructions/a03-v1.1.2.md",
+      "published_instruction_version": "1.1.2",
+      "published_at": "2026-09-09T09:24:58Z",
+      "published_from": "qa-agents/multica/agent-instructions/a03-v1.1.2.md"
     },
     {
       "instruction_version": "1.1.1",

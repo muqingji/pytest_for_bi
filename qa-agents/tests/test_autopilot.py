@@ -17,6 +17,11 @@ from qa_agents.contracts import ArtifactEnvelope, ArtifactStatus, Producer, cont
 from qa_agents.errors import ContractError
 
 
+def test_inconclusive_artifact_is_waiting_not_completed() -> None:
+    artifact = {"status": "inconclusive", "payload": {"decision": "inconclusive"}}
+    assert _artifact_state(artifact) == "waiting_human"
+
+
 def test_needs_human_with_only_agent_routes_is_automatic_return() -> None:
     artifact = {
         "status": "needs_human",
@@ -42,6 +47,18 @@ def test_needs_human_with_exhausted_budget_routes_to_human_gate() -> None:
         "blocking_questions": [],
     }
     assert _artifact_state(artifact) == "waiting_human"
+
+
+def test_artifact_summary_n11_shows_server_gate_counts() -> None:
+    artifact = {
+        "artifact_id": "n11-quality-decision",
+        "status": "blocked",
+        "payload": {
+            "decision": "blocked",
+            "metrics": {"executed": 7, "passed": 0, "failed": 7},
+        },
+    }
+    assert _artifact_summary(artifact) == "服务端不准出：执行 7，通过 0，失败 7"
 
 
 def test_artifact_summary_needs_human_lists_blocking_issues() -> None:
@@ -97,6 +114,132 @@ def test_approval_items_carry_issue_message_and_recommendation() -> None:
     assert items[0]["case_id"] == "TC-E2E-001"
     assert items[0]["expected_id"] == "EXP-E2E-001-01"
     assert items[0]["recommendation"] == "改为可直接解析的结构化期望矩阵。"
+
+
+def test_approval_items_carry_g02_review_items() -> None:
+    artifact = {
+        "artifact_id": "g02-test-case-ir-review",
+        "status": "needs_human",
+        "payload": {
+            "gate_id": "G02",
+            "issues": [],
+            "review_summary": {
+                "parent_case_count": 2,
+                "n04_valid": True,
+                "blocking_issue_count": 0,
+                "warning_count": 0,
+            },
+            "review_items": [
+                {
+                    "case_id": "PC-BE-001",
+                    "title": "Backend custom dimension dedicated error",
+                    "layer": "backend",
+                    "priority": "P0",
+                    "risk": "critical",
+                    "scenario": "Custom dimension in dimension returns s307011534",
+                    "source_refs": ["REQ-001", "REQ-002", "TF-003"],
+                    "expected": [{"id": "E-1"}, {"id": "E-2"}],
+                },
+                {
+                    "case_id": "PC-BE-002",
+                    "title": "Result-set metric filter dedicated error",
+                    "layer": "backend",
+                    "priority": "P0",
+                    "risk": "critical",
+                    "scenario": "Result-set filter returns s307011535",
+                    "source_refs": ["REQ-003"],
+                    "expected": [{"id": "E-3"}],
+                },
+            ],
+        },
+    }
+    items = _approval_items(artifact)
+    assert len(items) == 1
+    assert items[0]["category"] == "用例设计待确认"
+    assert items[0]["human_title"] == "没有未冻结的产品口径"
+    assert "没有需要你补口径的产品场景" in items[0]["summary"]
+    assert "Custom dimension" not in items[0]["summary"]
+    assert _artifact_summary(artifact) == "2 条用例没有未冻结口径，待放行"
+
+
+def test_approval_items_use_review_summary_when_review_items_missing() -> None:
+    artifact = {
+        "artifact_id": "g02-test-case-ir-review",
+        "status": "needs_human",
+        "payload": {
+            "gate_id": "G02",
+            "issues": [],
+            "review_summary": {"parent_case_count": 11, "n04_valid": True},
+        },
+    }
+    items = _approval_items(artifact)
+    assert len(items) == 1
+    assert items[0]["category"] == "用例设计待确认"
+    assert items[0]["human_title"] == "没有未冻结的产品口径"
+    assert "11 条父用例的错误码、文案和覆盖已经按冻结规则写完" in items[0]["summary"]
+    assert _artifact_summary(artifact) == "11 条用例没有未冻结口径，待放行"
+
+
+
+def test_approval_items_only_surface_g02_case_design_uncertainty() -> None:
+    artifact = {
+        "artifact_id": "g02-test-case-ir-review",
+        "status": "needs_human",
+        "payload": {
+            "gate_id": "G02",
+            "review_summary": {"parent_case_count": 3, "n04_valid": True},
+            "skipped_scenarios": [
+                {
+                    "id": "SKIP-EMPTY-METRIC-NAME",
+                    "reason": "skip_not_applicable",
+                    "details": "Empty metric display name must not generate specialized copy.",
+                    "rule_ref": "RULE-SINGLE-METRIC",
+                }
+            ],
+            "review_items": [
+                {
+                    "case_id": "PC-BE-001",
+                    "title": "Backend custom dimension dedicated error",
+                    "layer": "backend",
+                    "scenario": "Custom dimension returns s307011534",
+                    "source_refs": ["RULE-CUSTOM-DIMENSION"],
+                    "expected": [
+                        {
+                            "id": "E-1",
+                            "oracle": {"type": "deterministic", "matcher": "equals"},
+                        }
+                    ],
+                },
+                {
+                    "case_id": "PC-BE-006",
+                    "title": "Backend permission errors preserve existing behavior",
+                    "layer": "backend",
+                    "source_refs": ["RULE-PERMISSION-PRIORITY"],
+                    "expected": [
+                        {
+                            "id": "E-BE-006-02",
+                            "description": "error_code equals pre-change permission failure",
+                            "oracle": {
+                                "type": "human_review",
+                                "matcher": "manual_confirmation",
+                            },
+                        }
+                    ],
+                },
+            ],
+        },
+    }
+    items = _approval_items(artifact)
+    assert [item["id"] for item in items] == [
+        "PC-BE-006:human_review",
+        "SKIP-EMPTY-METRIC-NAME",
+    ]
+    assert items[0]["human_title"] == "没权限时不要改提示"
+    assert "原来的权限失败" in items[0]["product_scene"]
+    assert "请确认该用例的场景、步骤和预期结果可直接执行" not in items[0]["confirm_action"]
+    assert items[1]["human_title"] == "空指标名这轮不测"
+    assert "PC-BE-001" not in {item["id"] for item in items}
+    assert _artifact_summary(artifact) == "2 个用例设计待确认（没权限时不要改提示、空指标名这轮不测）"
 
 
 def test_frontier_advances_past_skipped_g03_to_n07() -> None:
@@ -323,7 +466,36 @@ def test_autopilot_initializes_complete_server_quality_dag(tmp_path: Path) -> No
     } <= set(nodes)
     assert nodes["A14"]["stage"] == nodes["A15"]["stage"]
     assert nodes["N08"]["stage"] == nodes["N17"]["stage"]
+    assert nodes["N17"]["label"] == "未执行用例收口"
+    assert nodes["N11"]["label"] == "服务端准出判定"
     assert nodes["N23"]["stage"] > nodes["N12"]["stage"]
+
+
+def test_reconcile_refreshes_stale_n11_label(tmp_path: Path) -> None:
+    initialize_autopilot(
+        _request(tmp_path / "request.json"),
+        _config(tmp_path / "config.json"),
+        tmp_path / "registry",
+        tmp_path / "run",
+        runner=FakeMultica(),
+    )
+    spec_path = tmp_path / "run/workflow-center-spec.json"
+    spec = json.loads(spec_path.read_text())
+    for node in spec["nodes"]:
+        if node["node_id"] == "N11":
+            node["label"] = "确定性质量决策"
+            node["stage_card_title"] = "证据归一与质量决策"
+    for card in spec["stage_cards"]:
+        if card["stage_card_id"] == "C7":
+            card["title"] = "证据归一与质量决策"
+    spec_path.write_text(json.dumps(spec, ensure_ascii=False), encoding="utf-8")
+    reconcile_autopilot(spec_path, [tmp_path / "artifacts"], tmp_path / "reconciled")
+    out = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
+    nodes = {item["node_id"]: item for item in out["nodes"]}
+    cards = {item["stage_card_id"]: item for item in out["stage_cards"]}
+    assert nodes["N11"]["label"] == "服务端准出判定"
+    assert nodes["N11"]["stage_card_title"] == "证据归一与准出判定"
+    assert cards["C7"]["title"] == "证据归一与准出判定"
 
 
 def test_reconcile_derives_nodes_and_human_actions_from_artifacts(tmp_path: Path) -> None:
@@ -670,3 +842,117 @@ def test_approval_items_carry_a22_unresolved_requirements() -> None:
     assert items[0]["title"] == "未决数据需求"
     assert "stat_chart 创建接口及参数未验证" in items[0]["summary"]
     assert items[0]["category"] == "test_data_pending_human"
+
+
+def test_reconcile_clears_ghost_completed_nodes_when_artifact_disappears(tmp_path: Path) -> None:
+    initialize_autopilot(
+        _request(tmp_path / "request.json"),
+        _config(tmp_path / "config.json"),
+        tmp_path / "registry",
+        tmp_path / "initial",
+        runner=FakeMultica(),
+    )
+    artifacts = tmp_path / "artifacts"
+    n17 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="n17-manual-execution",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("N17"),
+        payload={
+            "pending_count": 1,
+            "next_node": "N17",
+            "tasks": [
+                {
+                    "case_id": "CASE-AUTO",
+                    "title": "未执行用例",
+                    "status": "pending",
+                    "summary": "自动化未执行",
+                }
+            ],
+        },
+        status=ArtifactStatus.BLOCKED,
+        reason_code="unexecuted_cases_pending",
+    )
+    n11 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="n11-quality-decision",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("N11"),
+        payload={"decision": "inconclusive"},
+        status=ArtifactStatus.INCONCLUSIVE,
+    )
+    _write(artifacts / "n17-manual-execution.json", n17.to_dict())
+    _write(artifacts / "n11-quality-decision.json", n11.to_dict())
+
+    first = reconcile_autopilot(
+        tmp_path / "initial/workflow-center-spec.json",
+        [artifacts],
+        tmp_path / "reconciled",
+    )
+    spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
+    nodes = {item["node_id"]: item for item in spec["nodes"]}
+    assert first["changed"] is True
+    assert nodes["N17"]["state"] == "blocked"
+    assert nodes["N11"]["state"] == "waiting_human"
+
+    (artifacts / "n11-quality-decision.json").unlink()
+    second = reconcile_autopilot(
+        tmp_path / "reconciled/workflow-center-spec.json",
+        [artifacts],
+        tmp_path / "reconciled-again",
+    )
+    spec = json.loads((tmp_path / "reconciled-again/workflow-center-spec.json").read_text())
+    nodes = {item["node_id"]: item for item in spec["nodes"]}
+    assert second["changed"] is True
+    assert nodes["N17"]["state"] == "blocked"
+    assert nodes["N11"]["state"] == "not_started"
+    assert "artifact_id" not in nodes["N11"]
+
+    assert not spec["actions"] or all(item.get("gate_id") != "N17" for item in spec["actions"])
+
+
+def test_unexecuted_n17_is_blocked_without_approval_action(tmp_path: Path) -> None:
+    initialize_autopilot(
+        _request(tmp_path / "request.json"),
+        _config(tmp_path / "config.json"),
+        tmp_path / "registry",
+        tmp_path / "initial",
+        runner=FakeMultica(),
+    )
+    artifacts = tmp_path / "artifacts"
+    n17 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="n17-manual-execution",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("N17"),
+        payload={
+            "pending_count": 1,
+            "next_node": "N17",
+            "summary": "1 条用例尚未执行，不能结束质量流程",
+            "tasks": [
+                {
+                    "case_id": "PC-CT-001-CONTRACT",
+                    "title": "契约用例",
+                    "status": "pending",
+                    "reason_code": "automation_not_executed",
+                    "summary": "自动化未生成或未执行",
+                }
+            ],
+        },
+        status=ArtifactStatus.BLOCKED,
+        reason_code="unexecuted_cases_pending",
+    )
+    _write(artifacts / "n17-manual-execution.json", n17.to_dict())
+    reconcile_autopilot(
+        tmp_path / "initial/workflow-center-spec.json",
+        [artifacts],
+        tmp_path / "reconciled",
+    )
+    spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
+    nodes = {item["node_id"]: item for item in spec["nodes"]}
+    assert nodes["N17"]["state"] == "blocked"
+    assert "approval_items" not in nodes["N17"]
+    assert all(item.get("gate_id") != "N17" for item in spec["actions"])

@@ -197,18 +197,31 @@ def prepare_server_automation(
         }
     if test_data_resource_plan_path is not None:
         if data_validation is None:
-            raise ContractError("N28 resource plan requires an N27 validation binding")
-        data_resource_plan = _verified_artifact(
-            test_data_resource_plan_path,
-            "N28 test-data resource plan",
-            artifact_id="n28-test-data-resource-plan",
-            producer_id="N28",
-            security=security,
-        )
+            raise ContractError("test-data resource plan requires an N27 validation binding")
+        raw_resource_plan = _read_object(test_data_resource_plan_path, "test-data resource plan")
+        resource_artifact_id = str(raw_resource_plan.get("artifact_id") or "")
+        if resource_artifact_id == "a22-test-data-plan":
+            data_resource_plan = _verified_artifact(
+                test_data_resource_plan_path,
+                "A22 test-data resource plan",
+                artifact_id="a22-test-data-plan",
+                producer_id="A22",
+                security=security,
+            )
+            validation_binding_key = "a22_artifact_hash"
+        else:
+            data_resource_plan = _verified_artifact(
+                test_data_resource_plan_path,
+                "N28 test-data resource plan",
+                artifact_id="n28-test-data-resource-plan",
+                producer_id="N28",
+                security=security,
+            )
+            validation_binding_key = "n28_artifact_hash"
         if _identity(data_resource_plan) != identity:
-            raise ContractError("N28 and N15 belong to different workflow runs")
-        if data_validation["payload"].get("n28_artifact_hash") != data_resource_plan["artifact_hash"]:
-            raise ContractError("N27 is not bound to the supplied N28 resource plan")
+            raise ContractError("test-data resource plan and N15 belong to different workflow runs")
+        if data_validation["payload"].get(validation_binding_key) != data_resource_plan["artifact_hash"]:
+            raise ContractError("N27 is not bound to the supplied test-data resource plan")
     if plan["payload"].get("schema_version") != "execution-plan/1.0":
         raise ContractError("N15 execution plan payload contract is invalid")
     if compiled["payload"].get("schema_version") != "n25-compiled-test-cases/1.0":

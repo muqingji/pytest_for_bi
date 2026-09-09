@@ -13,6 +13,8 @@ htmlcov/
 .env.*.local
 .cache/
 .runtime/
+.multica-runtime/
+generated/
 *.egg-info/
 config/environment.*.local.json
 # Hermetic test fixtures mirror the frozen live pilot run artifacts.

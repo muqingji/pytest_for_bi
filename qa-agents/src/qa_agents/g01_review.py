@@ -335,10 +335,59 @@ def _is_protocol_comment(comment: Mapping[str, Any]) -> bool:
 
 _UNCLEAR_MARKERS = ("没看明白", "看不明白", "不清楚", "未看明白")
 
+_BLANKET_CONFIRM_MARKERS = (
+    "都忽略",
+    "先都忽略",
+    "全部忽略",
+    "其余忽略",
+    "其他忽略",
+    "剩下忽略",
+    "剩余忽略",
+    "先忽略",
+    "不用关注",
+    "先都按",
+    "技术问题以目前实现为准",
+)
+
+_VALIDATION_FEEDBACK_PREFIX = "G01 审核提交未通过校验"
+_NON_DECISION_MARKERS = (
+    "待 QA Owner 确认",
+    "待 QA Owner 明确",
+    "当前状态：待",
+)
+
+
 
 def _is_concise_comment(comment: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
     content = str(comment.get("content", ""))
+    if content.lstrip().startswith(_VALIDATION_FEEDBACK_PREFIX):
+        return False
+    if any(marker in content for marker in _NON_DECISION_MARKERS):
+        return False
     return any(str(item.get("issue_id", "")) in content for item in request.get("issues", []))
+
+
+
+
+def _blanket_confirmation_rationale(content: str, rows: list[dict[str, str]]) -> str | None:
+    """Detect a human blanket confirmation that covers unanswered G01 items.
+
+    Real reviewers often answer the main ambiguities one-by-one, then write a
+    short trailing note such as "技术问题以目前实现为准，你先都忽略" for the
+    remaining technical/findings items. Without this, C2 stays done in Multica
+    while the workflow never leaves G01 because some issue IDs were omitted.
+    """
+
+    candidates: list[str] = []
+    if rows:
+        candidates.append(str(rows[-1].get("rationale", "")))
+    candidates.append(content)
+    for text_value in candidates:
+        if any(marker in text_value for marker in _BLANKET_CONFIRM_MARKERS):
+            cleaned = text_value.strip()
+            if cleaned:
+                return cleaned
+    return None
 
 
 def _parse_concise_responses(content: str, request: Mapping[str, Any]) -> list[dict[str, str]]:
@@ -351,13 +400,12 @@ def _parse_concise_responses(content: str, request: Mapping[str, Any]) -> list[d
     occurrences.sort()
     found = {issue_id for _, issue_id in occurrences}
     missing = [issue_id for issue_id in issue_ids if issue_id not in found]
-    if missing:
-        raise ContractError(f"G01 concise review is missing issues: {', '.join(missing)}")
     rows: list[dict[str, str]] = []
+    strip_chars = " `:-" + chr(10) + chr(9) + "："
     for index, (start, issue_id) in enumerate(occurrences):
         reply_start = start + len(issue_id)
         reply_end = occurrences[index + 1][0] if index + 1 < len(occurrences) else len(content)
-        reply = content[reply_start:reply_end].strip(" `：:-\n\t")
+        reply = content[reply_start:reply_end].strip(strip_chars)
         if not reply:
             raise ContractError(f"G01 concise review has a blank response: {issue_id}")
         unclear = any(marker in reply for marker in _UNCLEAR_MARKERS)
@@ -367,8 +415,41 @@ def _parse_concise_responses(content: str, request: Mapping[str, Any]) -> list[d
             "rationale": reply,
             "owner": "A06 需求与变更对齐" if unclear else "QA Owner",
         })
+    if missing:
+        blanket = _blanket_confirmation_rationale(content, rows)
+        if not blanket:
+            descriptions = []
+            by_id = {str(item.get("issue_id")): item for item in request.get("issues", [])}
+            for number, issue_id in enumerate(missing, start=1):
+                item = by_id.get(issue_id, {})
+                summary = str(item.get("plain_summary") or item.get("summary") or "待确认项")
+                action = str(item.get("confirm_action") or "请明确审核结论")
+                category = str(item.get("title") or item.get("issue_type") or "待确认审核项")
+                requirements = item.get("related_requirements") or item.get("requirements") or []
+                req_text = "、".join(str(x) for x in requirements) if requirements else "未关联具体需求"
+                descriptions.append(
+                    f"{number}. **{category}**（`{issue_id}`）\n"
+                    f"   - 问题：{summary}\n"
+                    f"   - 需要确认：{action}\n"
+                    f"   - 涉及需求：{req_text}"
+                )
+            raise ContractError(
+                "G01 审核评论未覆盖以下审核项（共 " + str(len(descriptions)) + " 条）：\n\n"
+                + "\n".join(descriptions)
+                + "\n\n本次只需审核以上缺失项，其他已提交审核项无需重复审核。"
+            )
+        for issue_id in missing:
+            rows.append(
+                {
+                    "issue_id": issue_id,
+                    "disposition": "confirmed",
+                    "rationale": blanket,
+                    "owner": "QA Owner",
+                }
+            )
+    order = {issue_id: index for index, issue_id in enumerate(issue_ids)}
+    rows.sort(key=lambda item: order.get(str(item.get("issue_id", "")), 10**9))
     return rows
-
 
 def _parse_comment_table(content: str) -> tuple[dict[str, Any], list[dict[str, str]]]:
     aliases = {
@@ -651,7 +732,22 @@ def sync_multica_scope_review(
             },
         )
 
-    comment = max(candidates, key=lambda item: (str(item.get("created_at", "")), str(item.get("id", ""))))
+    protocol_candidates = [item for item in candidates if _is_protocol_comment(item)]
+    if protocol_candidates:
+        comment = max(
+            protocol_candidates,
+            key=lambda item: (str(item.get("created_at", "")), str(item.get("id", ""))),
+        )
+    else:
+        ordered = sorted(
+            candidates,
+            key=lambda item: (str(item.get("created_at", "")), str(item.get("id", ""))),
+        )
+        latest = ordered[-1]
+        comment = {
+            **latest,
+            "content": "\n\n".join(str(item.get("content", "")) for item in ordered),
+        }
     try:
         decision = _comment_decision(request, gate_policy, adapter, issue, comment)
     except (ContractError, SecurityPolicyError) as error:

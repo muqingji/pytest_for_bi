@@ -1,104 +1,105 @@
 {
- "schema_version": "execution-policy/1.0",
- "allowed_executables": [
-  "pytest"
- ],
- "max_parallel_shards": 4,
- "max_timeout_seconds": 900,
- "max_log_bytes": 1048576,
- "max_junit_bytes": 10485760,
- "allow_network": false,
- "allow_secrets": false,
- "require_production_isolation": false,
- "runner_backend": "local_process_reference",
- "evidence_arguments": [
-  "--junitxml"
- ],
- "collect_coverage": false,
- "controlled_environment": {
-  "enabled": true,
-  "runner_backend": "controlled_env_reference",
-  "allowed_environment_classes": [
-   "staging_112",
-   "local_reference",
-   "112",
-   "integration_test_112"
+  "schema_version": "execution-policy/1.0",
+  "allowed_executables": [
+    "pytest"
   ],
-  "allow_network": true,
-  "allow_secrets": true,
-  "allowed_secret_env_names": [
-   "FS_BI_TOKEN",
-   "FS_COOKIE",
-   "FS_TOKEN",
-   "QA_ENV_TOKEN",
-   "EA_TOKEN",
-   "FXIAOKE_112_ENTERPRISE_ACCOUNT",
-   "FXIAOKE_112_USERNAME",
-   "FXIAOKE_112_PASSWORD"
+  "max_parallel_shards": 4,
+  "max_timeout_seconds": 900,
+  "max_log_bytes": 1048576,
+  "max_junit_bytes": 10485760,
+  "allow_network": false,
+  "allow_secrets": false,
+  "require_production_isolation": false,
+  "runner_backend": "local_process_reference",
+  "evidence_arguments": [
+    "--junitxml"
   ],
-  "secret_providers": {
-   "112": {
-    "type": "environment_local_config",
-    "path": "../config/environment.112.local.json",
-    "file_mode": "0600",
-    "preflight_command": "PYTHONPATH=src .venv/bin/python scripts/preflight_112_auth.py",
-    "secret_names": [
-     "FXIAOKE_112_ENTERPRISE_ACCOUNT",
-     "FXIAOKE_112_USERNAME",
-     "FXIAOKE_112_PASSWORD"
+  "collect_coverage": false,
+  "controlled_environment": {
+    "enabled": true,
+    "runner_backend": "controlled_env_reference",
+    "allowed_environment_classes": [
+      "staging_112",
+      "local_reference",
+      "112",
+      "integration_test_112"
     ],
-    "secret_map": {
-     "FXIAOKE_112_ENTERPRISE_ACCOUNT": "auth.enterprise_account",
-     "FXIAOKE_112_USERNAME": "auth.username",
-     "FXIAOKE_112_PASSWORD": "auth.password"
-    }
-   },
-   "integration_test_112": {
-    "type": "environment_local_config",
-    "path": "../config/environment.112.local.json",
-    "file_mode": "0600",
-    "preflight_command": "PYTHONPATH=src .venv/bin/python scripts/preflight_112_auth.py",
-    "secret_names": [
-     "FXIAOKE_112_ENTERPRISE_ACCOUNT",
-     "FXIAOKE_112_USERNAME",
-     "FXIAOKE_112_PASSWORD"
+    "allow_network": true,
+    "allow_secrets": true,
+    "allowed_secret_env_names": [
+      "FS_BI_TOKEN",
+      "FS_COOKIE",
+      "FS_TOKEN",
+      "QA_ENV_TOKEN",
+      "EA_TOKEN",
+      "FXIAOKE_112_ENTERPRISE_ACCOUNT",
+      "FXIAOKE_112_USERNAME",
+      "FXIAOKE_112_PASSWORD"
     ],
-    "secret_map": {
-     "FXIAOKE_112_ENTERPRISE_ACCOUNT": "auth.enterprise_account",
-     "FXIAOKE_112_USERNAME": "auth.username",
-     "FXIAOKE_112_PASSWORD": "auth.password"
-    }
-   }
-  },
-  "allowed_env_passthrough": [
-   "PATH",
-   "LANG",
-   "HOME",
-   "TMPDIR",
-   "TMP",
-   "TEMP",
-   "PYTHONPATH",
-   "QA_ENV",
-   "HTTP_PROXY",
-   "HTTPS_PROXY",
-   "NO_PROXY"
-  ],
-  "framework_pythonpath_entries": [
-   "src",
-   "."
-  ],
-  "pytest_plugins": [
-   "framework.pytest_plugin"
-  ],
-  "pytest_arguments_by_environment_class": {
-   "112": [
-    "--env=112"
-   ],
-   "integration_test_112": [
-    "--env=112"
-   ]
-  },
-  "collect_coverage": true,
-  "python_executable": ".venv/bin/python"
- }
+    "secret_providers": {
+      "112": {
+        "type": "environment_local_config",
+        "path": "../config/environment.112.local.json",
+        "file_mode": "0600",
+        "preflight_command": "PYTHONPATH=src .venv/bin/python scripts/preflight_112_auth.py",
+        "secret_names": [
+          "FXIAOKE_112_ENTERPRISE_ACCOUNT",
+          "FXIAOKE_112_USERNAME",
+          "FXIAOKE_112_PASSWORD"
+        ],
+        "secret_map": {
+          "FXIAOKE_112_ENTERPRISE_ACCOUNT": "auth.enterprise_account",
+          "FXIAOKE_112_USERNAME": "auth.username",
+          "FXIAOKE_112_PASSWORD": "auth.password"
+        }
+      },
+      "integration_test_112": {
+        "type": "environment_local_config",
+        "path": "../config/environment.112.local.json",
+        "file_mode": "0600",
+        "preflight_command": "PYTHONPATH=src .venv/bin/python scripts/preflight_112_auth.py",
+        "secret_names": [
+          "FXIAOKE_112_ENTERPRISE_ACCOUNT",
+          "FXIAOKE_112_USERNAME",
+          "FXIAOKE_112_PASSWORD"
+        ],
+        "secret_map": {
+          "FXIAOKE_112_ENTERPRISE_ACCOUNT": "auth.enterprise_account",
+          "FXIAOKE_112_USERNAME": "auth.username",
+          "FXIAOKE_112_PASSWORD": "auth.password"
+        }
+      }
+    },
+    "allowed_env_passthrough": [
+      "PATH",
+      "LANG",
+      "HOME",
+      "TMPDIR",
+      "TMP",
+      "TEMP",
+      "PYTHONPATH",
+      "QA_ENV",
+      "HTTP_PROXY",
+      "HTTPS_PROXY",
+      "NO_PROXY"
+    ],
+    "framework_pythonpath_entries": [
+      "src",
+      ".",
+      "qa-agents/src"
+    ],
+    "pytest_plugins": [
+      "framework.pytest_plugin"
+    ],
+    "pytest_arguments_by_environment_class": {
+      "112": [
+        "--env=112"
+      ],
+      "integration_test_112": [
+        "--env=112"
+      ]
+    },
+    "collect_coverage": true,
+    "python_executable": ".venv/bin/python"
+  }
 }

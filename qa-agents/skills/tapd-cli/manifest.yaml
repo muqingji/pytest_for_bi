@@ -1,0 +1,11 @@
+name: tapd-cli
+display_name: TAPD CLI
+version: "0.2.3"
+author: TAPD
+level: product
+description: Use this skill when you need to query or update TAPD stories, bugs, tasks, comments, iterations, Wiki pages, timesheets, attachments, project document-library files, test cases, test plans, or users with tapd-cli. It distinguishes TAPD project documents from Wiki pages, supports URL parsing, field dictionary lookup, advanced queries, and file link handling.
+license: Proprietary
+dependencies:
+  - node >=18
+  - tapd-cli
+data_classification: L3

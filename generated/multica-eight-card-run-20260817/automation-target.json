@@ -1,7 +1,0 @@
-{
-  "repository_id": "pytest_for_bi",
-  "access_class": "approved_automation_repository",
-  "timeout_seconds": 300,
-  "network": true,
-  "secrets": []
-}

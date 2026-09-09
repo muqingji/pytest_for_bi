@@ -1,60 +1,663 @@
 {
   "schema_version": "skill-registry/1.0",
-  "registry_version": "1.11.0",
+  "registry_version": "1.13.0",
   "skills_root": "skills",
-  "forbidden_skills": ["frontend-playwright", "developer-unit-test"],
+  "forbidden_skills": [
+    "frontend-playwright",
+    "developer-unit-test"
+  ],
   "skills": [
-    {"id":"pytest-api-test","version":"1.0.0","agents":["B01","A14"],"side_effect":"artifact_only","tools":["case_runner"]},
-    {"id":"pytest-integration-test","version":"1.0.0","agents":["B01","A14"],"side_effect":"artifact_only","tools":["case_runner"]},
-    {"id":"pytest-contract-test","version":"1.0.0","agents":["B01","A15"],"side_effect":"artifact_only","tools":["case_runner"]},
-    {"id":"pytest-parameterization","version":"1.0.0","agents":["B01","A14","A15"],"side_effect":"artifact_only","tools":[]},
-    {"id":"pytest-oracle-assertions","version":"1.0.0","agents":["B01","A14","A15"],"side_effect":"artifact_only","tools":["case_runner"]},
-    {"id":"pytest-fixture-binding","version":"1.0.0","agents":["B01","A14","A15"],"side_effect":"artifact_only","tools":["case_runner"]},
-    {"id":"pytest-evidence","version":"1.0.0","agents":["B01","A14","A15"],"side_effect":"artifact_only","tools":[]},
-    {"id":"pytest-security-boundary","version":"1.0.0","agents":["B01","A14","A15"],"side_effect":"artifact_only","tools":[]},
-    {"id":"retained-test-asset-naming","version":"1.0.0","agents":["D01","N28","A14","A15"],"side_effect":"planning_only","tools":[]},
-    {"id":"bi-chart-detail-scene","version":"1.0.0","agents":["A22","D01","N28","N27","A14","A15"],"side_effect":"planning_only","resource_types":["stat_chart","joined_report","pivot_table"],"tools":[]},
-    {"id":"bi-chart-builder","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","resource_types":["stat_chart"],"tools":[]},
-    {"id":"bi-report-builder","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","resource_types":["report"],"tools":[]},
-    {"id":"fxiaoke-112-auth-session","version":"1.0.0","agents":["N07","A15"],"side_effect":"validation_only","tools":[]},
-    {"id":"fxiaoke-personal-language-h5","version":"1.0.0","agents":["A15","A16"],"side_effect":"validation_only","tools":["case_runner","visible_browser_read"]},
-    {"id":"data-intent-parser","version":"1.0.0","agents":["D01","A22"],"side_effect":"planning_only","tools":[]},
-    {"id":"capability-catalog-resolver","version":"1.0.0","agents":["D01","A22"],"side_effect":"planning_only","tools":[]},
-    {"id":"resource-dag-planner","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","tools":[]},
-    {"id":"namespace-isolation","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","tools":[]},
-    {"id":"setup-plan","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","tools":[]},
-    {"id":"readiness-plan","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","tools":[]},
-    {"id":"cleanup-plan","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","tools":[]},
-    {"id":"residue-verification","version":"1.0.0","agents":["D01","N28","N27"],"side_effect":"planning_only","tools":[]},
-    {"id":"runtime-variable-binding","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","tools":[]},
-    {"id":"data-plan-security-review","version":"1.0.0","agents":["D01","N27"],"side_effect":"validation_only","tools":[]},
-    {"id":"bi-stat-schema","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","resource_types":["stat_schema"],"tools":[]},
-    {"id":"bi-aggregate-metric","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","resource_types":["aggregate_metric"],"tools":[]},
-    {"id":"bi-calculated-metric","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","resource_types":["calculated_metric"],"tools":[]},
-    {"id":"bi-custom-dimension","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","resource_types":["custom_dimension"],"tools":[]},
-    {"id":"bi-result-set-filter","version":"1.0.0","agents":["D01","N28"],"side_effect":"planning_only","intent_terms":["result_set_filter","result-set-filter","结果集筛选","结果集数据范围"],"tools":[]},
-    {"id":"knowledge-source-ingestion","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["read_approved_web_snapshot"]},
-    {"id":"code-knowledge-extraction","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["read_frozen_source","read_frozen_openapi"]},
-    {"id":"product-rule-structuring","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":[]},
-    {"id":"knowledge-provenance-binding","version":"1.0.0","agents":["K01"],"side_effect":"validation_only","tools":[]},
-    {"id":"knowledge-conflict-detection","version":"1.0.0","agents":["K01"],"side_effect":"validation_only","tools":[]},
-    {"id":"knowledge-freshness-validation","version":"1.0.0","agents":["K01"],"side_effect":"validation_only","tools":[]},
-    {"id":"kdocs-authorized-snapshot","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["kdocs_cli","visible_browser_read"]},
-    {"id":"lexiang-authorized-snapshot","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["visible_browser_read","same_origin_read"]},
-    {"id":"fxiaoke-help-snapshot","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["approved_http_read"]},
-    {"id":"bug-finder-test-knowledge","version":"1.0.0","agents":["K01"],"side_effect":"artifact_only","tools":["query_bug_finder_knowledge"]},
-    {"id":"authorized-product-browser-session","version":"1.0.0","agents":["K01"],"side_effect":"validation_only","tools":["visible_browser_read"]},
-    {"id":"bi-knowledge-router","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":[]},
-    {"id":"bi-product-docs-router","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_approved_web_snapshot"]},
-    {"id":"repo-fs-bi","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
-    {"id":"repo-fs-bi-crm-report","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
-    {"id":"repo-fs-bi-dev-platform","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
-    {"id":"repo-fs-bi-udf-report","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
-    {"id":"repo-fs-bi-warehouse","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
-    {"id":"repo-fbi","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
-    {"id":"repo-bi-sdk","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
-    {"id":"repo-bi-xkcharts","version":"1.0.0","agents":["K01","A03","A08","A22"],"side_effect":"validation_only","tools":["read_frozen_source"]},
-    {"id":"requirement-case-render","version":"1.0.0","agents":["A08","A09"],"side_effect":"planning_only","tools":[]},
-    {"id":"bi-recipe-adapter","version":"1.0.0","agents":["D01","A22"],"side_effect":"planning_only","resource_types":["aggregate_metric","calculated_metric","custom_dimension","joined_table","stat_chart","pivot_table","report"],"tools":[]}
+    {
+      "id": "pytest-api-test",
+      "version": "1.0.0",
+      "agents": [
+        "B01",
+        "A14"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "case_runner"
+      ]
+    },
+    {
+      "id": "pytest-integration-test",
+      "version": "1.0.0",
+      "agents": [
+        "B01",
+        "A14"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "case_runner"
+      ]
+    },
+    {
+      "id": "pytest-contract-test",
+      "version": "1.0.0",
+      "agents": [
+        "B01",
+        "A15"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "case_runner"
+      ]
+    },
+    {
+      "id": "pytest-parameterization",
+      "version": "1.0.0",
+      "agents": [
+        "B01",
+        "A14",
+        "A15"
+      ],
+      "side_effect": "artifact_only",
+      "tools": []
+    },
+    {
+      "id": "pytest-oracle-assertions",
+      "version": "1.0.0",
+      "agents": [
+        "B01",
+        "A14",
+        "A15"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "case_runner"
+      ]
+    },
+    {
+      "id": "pytest-fixture-binding",
+      "version": "1.0.0",
+      "agents": [
+        "B01",
+        "A14",
+        "A15"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "case_runner"
+      ]
+    },
+    {
+      "id": "pytest-evidence",
+      "version": "1.0.0",
+      "agents": [
+        "B01",
+        "A14",
+        "A15"
+      ],
+      "side_effect": "artifact_only",
+      "tools": []
+    },
+    {
+      "id": "pytest-security-boundary",
+      "version": "1.0.0",
+      "agents": [
+        "B01",
+        "A14",
+        "A15"
+      ],
+      "side_effect": "artifact_only",
+      "tools": []
+    },
+    {
+      "id": "retained-test-asset-naming",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28",
+        "A14",
+        "A15"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "bi-chart-detail-scene",
+      "version": "1.0.0",
+      "agents": [
+        "A22",
+        "D01",
+        "N28",
+        "N27",
+        "A14",
+        "A15"
+      ],
+      "side_effect": "planning_only",
+      "resource_types": [
+        "stat_chart",
+        "joined_report",
+        "pivot_table"
+      ],
+      "tools": []
+    },
+    {
+      "id": "bi-chart-builder",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "resource_types": [
+        "stat_chart"
+      ],
+      "tools": []
+    },
+    {
+      "id": "bi-report-builder",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "resource_types": [
+        "report"
+      ],
+      "tools": []
+    },
+    {
+      "id": "fxiaoke-112-auth-session",
+      "version": "1.0.0",
+      "agents": [
+        "N07",
+        "A15"
+      ],
+      "side_effect": "validation_only",
+      "tools": []
+    },
+    {
+      "id": "fxiaoke-platform-trace-id",
+      "version": "1.0.0",
+      "agents": [
+        "N07",
+        "A14",
+        "A15"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "case_runner"
+      ]
+    },
+    {
+      "id": "fxiaoke-personal-language-h5",
+      "version": "1.0.0",
+      "agents": [
+        "A15",
+        "A16"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "case_runner",
+        "visible_browser_read"
+      ]
+    },
+    {
+      "id": "data-intent-parser",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "A22"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "a22-existing-asset-discovery",
+      "version": "1.1.0",
+      "agents": [
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "case_runner_read_only",
+        "bug_finder_fxops_query"
+      ]
+    },
+    {
+      "id": "capability-catalog-resolver",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "A22"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "resource-dag-planner",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "namespace-isolation",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "setup-plan",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "readiness-plan",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "cleanup-plan",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "residue-verification",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28",
+        "N27"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "runtime-variable-binding",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "data-plan-security-review",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N27"
+      ],
+      "side_effect": "validation_only",
+      "tools": []
+    },
+    {
+      "id": "bi-stat-schema",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "resource_types": [
+        "stat_schema"
+      ],
+      "tools": []
+    },
+    {
+      "id": "bi-aggregate-metric",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "resource_types": [
+        "aggregate_metric"
+      ],
+      "tools": []
+    },
+    {
+      "id": "bi-calculated-metric",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "resource_types": [
+        "calculated_metric"
+      ],
+      "tools": []
+    },
+    {
+      "id": "bi-custom-dimension",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "resource_types": [
+        "custom_dimension"
+      ],
+      "tools": []
+    },
+    {
+      "id": "bi-result-set-filter",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "N28"
+      ],
+      "side_effect": "planning_only",
+      "intent_terms": [
+        "result_set_filter",
+        "result-set-filter",
+        "结果集筛选",
+        "结果集数据范围"
+      ],
+      "tools": []
+    },
+    {
+      "id": "knowledge-source-ingestion",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "read_approved_web_snapshot"
+      ]
+    },
+    {
+      "id": "code-knowledge-extraction",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "read_frozen_source",
+        "read_frozen_openapi"
+      ]
+    },
+    {
+      "id": "product-rule-structuring",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "artifact_only",
+      "tools": []
+    },
+    {
+      "id": "knowledge-provenance-binding",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "validation_only",
+      "tools": []
+    },
+    {
+      "id": "knowledge-conflict-detection",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "validation_only",
+      "tools": []
+    },
+    {
+      "id": "knowledge-freshness-validation",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "validation_only",
+      "tools": []
+    },
+    {
+      "id": "kdocs-authorized-snapshot",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "kdocs_cli",
+        "visible_browser_read"
+      ]
+    },
+    {
+      "id": "lexiang-authorized-snapshot",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "visible_browser_read",
+        "same_origin_read"
+      ]
+    },
+    {
+      "id": "fxiaoke-help-snapshot",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "approved_http_read"
+      ]
+    },
+    {
+      "id": "bug-finder-test-knowledge",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "artifact_only",
+      "tools": [
+        "query_bug_finder_knowledge"
+      ]
+    },
+    {
+      "id": "authorized-product-browser-session",
+      "version": "1.0.0",
+      "agents": [
+        "K01"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "visible_browser_read"
+      ]
+    },
+    {
+      "id": "bi-knowledge-router",
+      "version": "1.0.0",
+      "agents": [
+        "K01",
+        "A03",
+        "A08",
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": []
+    },
+    {
+      "id": "bi-product-docs-router",
+      "version": "1.0.0",
+      "agents": [
+        "K01",
+        "A03",
+        "A08",
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "read_approved_web_snapshot"
+      ]
+    },
+    {
+      "id": "repo-fs-bi",
+      "version": "1.0.0",
+      "agents": [
+        "K01",
+        "A03",
+        "A08",
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "read_frozen_source"
+      ]
+    },
+    {
+      "id": "repo-fs-bi-crm-report",
+      "version": "1.0.0",
+      "agents": [
+        "K01",
+        "A03",
+        "A08",
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "read_frozen_source"
+      ]
+    },
+    {
+      "id": "repo-fs-bi-dev-platform",
+      "version": "1.0.0",
+      "agents": [
+        "K01",
+        "A03",
+        "A08",
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "read_frozen_source"
+      ]
+    },
+    {
+      "id": "repo-fs-bi-udf-report",
+      "version": "1.0.0",
+      "agents": [
+        "K01",
+        "A03",
+        "A08",
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "read_frozen_source"
+      ]
+    },
+    {
+      "id": "repo-fs-bi-warehouse",
+      "version": "1.0.0",
+      "agents": [
+        "K01",
+        "A03",
+        "A08",
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "read_frozen_source"
+      ]
+    },
+    {
+      "id": "repo-fbi",
+      "version": "1.0.0",
+      "agents": [
+        "K01",
+        "A03",
+        "A08",
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "read_frozen_source"
+      ]
+    },
+    {
+      "id": "repo-bi-sdk",
+      "version": "1.0.0",
+      "agents": [
+        "K01",
+        "A03",
+        "A08",
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "read_frozen_source"
+      ]
+    },
+    {
+      "id": "repo-bi-xkcharts",
+      "version": "1.0.0",
+      "agents": [
+        "K01",
+        "A03",
+        "A08",
+        "A22"
+      ],
+      "side_effect": "validation_only",
+      "tools": [
+        "read_frozen_source"
+      ]
+    },
+    {
+      "id": "requirement-case-render",
+      "version": "1.0.0",
+      "agents": [
+        "A08",
+        "A09"
+      ],
+      "side_effect": "planning_only",
+      "tools": []
+    },
+    {
+      "id": "bi-recipe-adapter",
+      "version": "1.0.0",
+      "agents": [
+        "D01",
+        "A22"
+      ],
+      "side_effect": "planning_only",
+      "resource_types": [
+        "aggregate_metric",
+        "calculated_metric",
+        "custom_dimension",
+        "joined_table",
+        "stat_chart",
+        "pivot_table",
+        "report"
+      ],
+      "tools": []
+    }
   ]
 }

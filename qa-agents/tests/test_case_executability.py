@@ -52,6 +52,26 @@ def test_classifies_unknown_operation_as_capability_missing() -> None:
     assert result["reason_codes"] == ["operation_not_registered"]
 
 
+def test_rejects_unbound_template_variable_before_execution() -> None:
+    case = _case()
+    case["steps"][0]["request"]["json"] = {"id": "{{ chart_view_id }}"}
+
+    result = classify_case_executability(case, known_operations={"detail.query"})
+
+    assert result["classification"] == "capability_missing"
+    assert "template_variable_unbound" in result["reason_codes"]
+
+
+def test_accepts_template_variable_declared_by_data_plan() -> None:
+    case = _case()
+    case["variables"] = {"chart_view_id": "BI_existing"}
+    case["steps"][0]["request"]["json"] = {"id": "{{ chart_view_id }}"}
+
+    result = classify_case_executability(case, known_operations={"detail.query"})
+
+    assert result["classification"] == "machine_executable"
+
+
 def test_classifies_text_step_as_invalid_case() -> None:
     case = _case()
     case["steps"] = ["call the real endpoint"]
@@ -84,3 +104,40 @@ def test_requires_readback_and_effective_setup_assertion() -> None:
     assert result["classification"] == "invalid_case"
     assert "response_expectation_unsupported" in result["reason_codes"]
     assert "test_data_readiness_missing" in result["reason_codes"]
+
+
+
+def test_accepts_not_equals_and_membership_oracles() -> None:
+    case = _case()
+    case["expected"] = [
+        {
+            "id": "E-BE-003-05",
+            "oracle": {
+                "type": "deterministic",
+                "matcher": "not_equals",
+                "observation_point": "detail_api.response.error_code",
+                "expected_value": "s307011536",
+            },
+        },
+        {
+            "id": "E-BE-006-01",
+            "oracle": {
+                "type": "deterministic",
+                "matcher": "not_one_of",
+                "observation_point": "detail_api.response.error_code",
+                "expected_value": ["s307011534", "s307011535"],
+            },
+        },
+        {
+            "id": "E-BE-007-01",
+            "oracle": {
+                "type": "deterministic",
+                "matcher": "one_of",
+                "observation_point": "detail_api.response.error_code",
+                "expected_value": ["s307011534", "s307011535"],
+            },
+        },
+    ]
+    result = classify_case_executability(case, known_operations={"detail.query"})
+    assert result["classification"] == "machine_executable"
+    assert result["issues"] == []

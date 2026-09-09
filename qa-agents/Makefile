@@ -1,6 +1,6 @@
 PYTHON ?= ../.venv/bin/python
 PYTEST ?= ../.venv/bin/pytest
-PYTHONPATH := src
+PYTHONPATH := src:../src:.
 PILOT_INPUT := eval/workflows/pilot-001-detail-drill-message-i18n/input
 PILOT_ORACLE := eval/workflows/pilot-001-detail-drill-message-i18n/oracle
 PILOT_RUN := runs/pilot-001

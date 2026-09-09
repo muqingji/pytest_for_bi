@@ -12,6 +12,18 @@ from .errors import ContractError
 _HASH = re.compile(r"sha256:[0-9a-f]{64}")
 
 
+def _default_chart_validity_contract() -> dict[str, Any]:
+    return {
+        "schema_version": "test-data-validity-contract/1.0",
+        "required_checks": [
+            "configuration_readback", "source_data", "chart_topology",
+            "warehouse_dimension", "warehouse_aggregation", "baseline_query",
+        ],
+        "decision_policy": "all_required_checks_pass",
+        "failure_action": "reject_asset_and_reconstruct_or_diagnose",
+    }
+
+
 def canonical_hash(value: object) -> str:
     raw = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(raw.encode()).hexdigest()
@@ -22,6 +34,8 @@ def compile_chart_resource(
     category_id: str, folder_query_operation: str, folder_response_hash: str,
     schema_id: str, axis_data: Mapping[str, Any], layout: Mapping[str, Any],
     identity: Mapping[str, Any], filters: list[Mapping[str, Any]] | None = None,
+    validity_contract: Mapping[str, Any] | None = None,
+    integrity_probes: list[Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compile CreateStatViewArg without inventing directory or field metadata."""
     if not requirement_name or not view_name or not namespace:
@@ -64,12 +78,17 @@ def compile_chart_resource(
         "resource_key": "stat_chart", "resource_type": "stat_chart",
         "resource_id_variable": "chart_view_id", "retention_mode": "retain",
         "ownership_namespace": namespace, "display_name": view_name,
-        "source_field_type": "chart_clone",
-        "source_field_type": "chart", "asset_folder_name": requirement_name,
+        "source_field_type": "chart",
+        "asset_folder_name": requirement_name,
         "folder_binding": {"folder_name": requirement_name, "category_id": category_id,
                            "folder_query_operation": folder_query_operation,
                            "folder_response_hash": folder_response_hash},
         "configuration_hash": config_hash,
+        # A direct compiler call may not have warehouse probe context yet. Keep
+        # the required post-create contract in the resource and let autonomous
+        # N27 plans add the concrete, tenant-bounded probes.
+        "validity_contract": dict(validity_contract or _default_chart_validity_contract()),
+        "integrity_probes": [dict(item) for item in (integrity_probes or [])],
         "setup": {"request": {"api": "fs_bi_crm.stat_create.create_stat_view",
                                "json": body},
                   "extract": {"chart_view_id": "viewID"}},
@@ -103,6 +122,8 @@ def compile_chart_clone_resource(
         "configuration_hash": canonical_hash({"source": source_config_hash,
                                                 "category_id": category_id,
                                                 "view_name": view_name}),
+        "validity_contract": _default_chart_validity_contract(),
+        "integrity_probes": [],
         "setup": {"request": {"api": "fs_bi_crm.stat_create.copy_stat_view",
                                "json": {"statViewBaseInfo": {"viewID": source_view_id,
                                                               "isChange": 0}}},

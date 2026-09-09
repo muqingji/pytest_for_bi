@@ -1,9 +1,0 @@
-{
-  "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
-  "model_source": "codex_local_config",
-  "model": "glm-5.2",
-  "model_provider": "glm_5_2",
-  "config_path": "~/.codex/config.toml",
-  "agents_cleared_model": true,
-  "note": "All Multica agents have model=\"\" (empty), inheriting the local Codex CLI runtime default (glm-5.2). Switching the local model in ~/.codex/config.toml automatically updates all agents."
-}

@@ -16,6 +16,8 @@ from qa_agents.test_data import (
     validate_test_data_plan,
 )
 from qa_agents.contracts import ArtifactEnvelope, Producer
+from qa_agents.contracts import content_hash
+from qa_agents.data_integrity import required_validity_contract
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -233,6 +235,7 @@ def _existing_historical_chart_plan() -> dict:
     resource.pop("setup")
     resource.pop("cleanup")
     resource["resource_type"] = "stat_chart"
+    resource["validity_contract"] = required_validity_contract("stat_chart")
     resource["lifecycle_mode"] = "existing_read_only"
     resource["discovery"] = {
         "request": {
@@ -241,6 +244,17 @@ def _existing_historical_chart_plan() -> dict:
         }
     }
     resource["readiness"] = [resource["discovery"]]
+    integrity = {
+        "schema_version": "test-data-integrity-evidence/1.0",
+        "provider": "bug-finder/fxops_query",
+        "required_checks": ["chart_topology", "source_data", "warehouse_aggregation", "warehouse_dimension"],
+        "checks": [
+            {"check": item, "status": "passed"}
+            for item in ("chart_topology", "source_data", "warehouse_aggregation", "warehouse_dimension")
+        ],
+        "valid": True,
+    }
+    integrity["evidence_hash"] = content_hash(integrity)
     resource["existing_asset_evidence"] = {
         "historical_required": True,
         "evidence_level": "historical_candidate_verified_by_id_timestamp_and_live_readback",
@@ -248,6 +262,7 @@ def _existing_historical_chart_plan() -> dict:
         "requirement_baseline_at": "2026-08-07T11:42:44Z",
         "live_readback_status": "succeeded",
         "configuration_hash": "sha256:" + "c" * 64,
+        "integrity_evidence": integrity,
     }
     return plan
 
@@ -561,6 +576,9 @@ def test_record_constructed_test_data_registers_completed_setup_operations(
     assert result["registered"][0]["namespace"] == "qa-pilot-001-source-v1"
     assert result["registered"][0]["response_hash"] == "sha256:abc"
     assert len(result["registered"]) == 1  # never_created_metric 未构造，不登记
+    inventory = json.loads((auto_dir / "artifacts" / "constructed-test-assets.json").read_text(encoding="utf-8"))
+    assert inventory["asset_count"] == 1
+    assert inventory["assets"][0]["resource_type"] == "custom_dimension"
     updated = json.loads(observed.read_text(encoding="utf-8"))
     keys = {(item.get("case_id"), item.get("key")) for item in updated["test_data"]}
     assert ("TC-BE-001-BACKEND", "cd_field") in keys
@@ -746,6 +764,15 @@ def test_bind_plan_injects_chart_config_differentiation_action() -> None:
     # single aggregate metric => filter falls back to rotated native field (or amount)
     assert inputs["filter_field_id"]
     assert inputs["filter_field_id"] != inputs["measure_field_id"]
+    rename = next(
+        step
+        for step in bound["setup"]
+        if (step.get("request") or {}).get("api")
+        == "fs_bi_crm.rpt_view_display.rename_rpt_view"
+    )
+    assert rename["request"]["json"]["viewName"] == (
+        "qa-chart-diff-001-CASE-CHART-DIFF-自定义维度查看明细验证统计图"
+    )
 
 
 def test_case_chart_bind_inputs_splits_filter_and_fallback_dimension() -> None:

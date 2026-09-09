@@ -1,9 +1,11 @@
 {
   "schema_version": "multica-workflow-center/1.0",
   "workspace_id": "457d700f-6c27-4a59-871d-c2c56bca9f46",
-  "workflow_project_id": "569e2a49-4ae2-4926-88a1-d916b0376afd",
-  "internal_project_id": "f2f893a2-55dc-414d-87d9-a483e51765d6",
+  "workflow_project_id": "84580297-a0ca-4cce-9db9-59cade66f83c",
+  "internal_project_id": "1b6d44c3-ea4b-4d9c-b86d-9074802fb604",
   "precreate_nodes": true,
+  "a22_bug_finder_integrity_enabled": true,
+  "a22_bug_finder_root": "/Users/liushanshan/code/QA/bug-finder",
   "workflow_lead_id": "e7354c2e-c418-4979-8294-5ca3b5707afb",
   "node_agents": {
     "A02": "c67247f6-c668-4d1d-ab01-c1d7d0503d5a",
@@ -29,18 +31,18 @@
   },
   "views": {
     "workflow_center": {
-      "project_id": "569e2a49-4ae2-4926-88a1-d916b0376afd",
+      "project_id": "84580297-a0ca-4cce-9db9-59cade66f83c",
       "metadata": "qa_item_type=workflow"
     },
     "my_actions": {
-      "project_id": "569e2a49-4ae2-4926-88a1-d916b0376afd",
+      "project_id": "84580297-a0ca-4cce-9db9-59cade66f83c",
       "metadata": [
         "qa_item_type=workflow",
         "\"qa_action_required=\"\"true\"\"\""
       ]
     },
     "internal_execution": {
-      "project_id": "f2f893a2-55dc-414d-87d9-a483e51765d6"
+      "project_id": "1b6d44c3-ea4b-4d9c-b86d-9074802fb604"
     }
   }
 }
