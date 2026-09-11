@@ -157,6 +157,41 @@ def test_eligible_without_dispatch_uses_dispatcher_receipt_not_plan(tmp_path: Pa
     assert result["heartbeat"]["eligible_without_dispatch_total"] == 0
 
 
+def test_monitor_lock_skip_is_busy_not_accuracy_violation(tmp_path: Path) -> None:
+    root, artifact_root, config, spec = _workflow(tmp_path)
+    registry_path = root / "registry.json"
+    register_workflow(registry_path, config, artifact_root, spec, root)
+
+    def runner(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            json.dumps({"skipped": "another sync pass is already running"}),
+            "",
+        )
+
+    result = monitor_once(registry_path, root, root / "sync.py", runner=runner)
+    entry = load_registry(registry_path)["workflows"]["run-1"]
+    assert entry["status"] != "suspended_accuracy_violation"
+    assert result["results"][0]["status"] in {"running", "busy"}
+
+
+def test_monitor_fatal_json_is_not_accuracy_violation(tmp_path: Path) -> None:
+    root, artifact_root, config, spec = _workflow(tmp_path)
+    registry_path = root / "registry.json"
+    register_workflow(registry_path, config, artifact_root, spec, root)
+
+    def runner(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            command, 0, json.dumps({"fatal": "multica timed out after 180s"}), ""
+        )
+
+    monitor_once(registry_path, root, root / "sync.py", runner=runner)
+    entry = load_registry(registry_path)["workflows"]["run-1"]
+    assert entry["status"] != "suspended_accuracy_violation"
+    assert "multica timed out" in entry["last_error"]["message"]
+
+
 def test_monitor_suspends_cross_run_result(tmp_path: Path) -> None:
     root, artifact_root, config, spec = _workflow(tmp_path)
     registry_path = root / "registry.json"
@@ -327,6 +362,113 @@ def test_dispatch_plan_allows_retryable_states_but_not_human_or_terminal(
 
     assert plan["allowed_nodes"] == ["A08", "A09"]
     assert plan["authorization_evidence"]["spec_revision"] is None
+
+
+def test_dispatch_plan_authorizes_n04_auto_return_target(tmp_path: Path) -> None:
+    root, artifact_root, config, spec = _workflow(tmp_path)
+    n04_path = artifact_root / "artifacts-auto/artifacts/n04-test-case-ir-validation.json"
+    _write(
+        n04_path,
+        {
+            "artifact_id": "n04-test-case-ir-validation",
+            "payload": {"next_node": "A08", "valid": False},
+        },
+    )
+    value = json.loads(spec.read_text())
+    value["nodes"] = [
+        {"node_id": "A08", "state": "completed"},
+        {
+            "node_id": "N04",
+            "state": "blocked",
+            "artifact_path": str(n04_path),
+        },
+        {"node_id": "G02", "state": "waiting_human"},
+    ]
+    _write(spec, value)
+    entry = register_workflow(root / "active.json", config, artifact_root, spec, root)
+
+    plan = _dispatch_plan(entry, 1)
+
+    assert plan["allowed_nodes"] == ["A08", "N04"]
+
+
+def test_dispatch_plan_blocks_not_started_agent_on_pending_upstream_closure(
+    tmp_path: Path,
+) -> None:
+    root, artifact_root, config, spec = _workflow(tmp_path)
+    value = json.loads(spec.read_text())
+    value["nodes"] = [
+        {"node_id": "A15", "state": "completed"},
+        {"node_id": "A22", "state": "waiting_human"},
+        {"node_id": "A18-CT", "state": "not_started"},
+        {"node_id": "N05", "state": "not_started"},
+    ]
+    _write(spec, value)
+    entry = register_workflow(root / "active.json", config, artifact_root, spec, root)
+
+    plan = _dispatch_plan(entry, 1)
+
+    assert plan["allowed_nodes"] == []
+
+
+def test_monitor_passes_absolute_dispatch_authorization(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    root, artifact_root, config, spec = _workflow(tmp_path)
+    registry_path = root / "active.json"
+    register_workflow(registry_path, config, artifact_root, spec, root)
+    commands = []
+
+    def runner(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        commands.append(command)
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            json.dumps({"workflow_run_id": "run-1", "sync": {"overall_status": "running"}}),
+            "",
+        )
+
+    monkeypatch.chdir(root)
+    monitor_once(Path("active.json"), root, root / "sync.py", runner=runner)
+
+    authorization = Path(commands[0][commands[0].index("--dispatch-authorization") + 1])
+    assert authorization.is_absolute()
+    assert authorization == (root / "plans" / "run-1.json").resolve()
+
+
+def test_dispatch_plan_authorizes_a08_from_waiting_human_n04_new_issues(
+    tmp_path: Path,
+) -> None:
+    root, artifact_root, config, spec = _workflow(tmp_path)
+    n04_path = artifact_root / "artifacts-auto/artifacts/n04-test-case-ir-validation.json"
+    _write(
+        n04_path,
+        {
+            "artifact_id": "n04-test-case-ir-validation",
+            "payload": {
+                "next_node": "human",
+                "valid": False,
+                "issues": [{"id": "ISS-014", "route_to": "A08"}],
+            },
+        },
+    )
+    value = json.loads(spec.read_text())
+    value["nodes"] = [
+        {"node_id": "A08", "state": "completed"},
+        {
+            "node_id": "N04",
+            "state": "waiting_human",
+            "artifact_path": str(n04_path),
+        },
+    ]
+    _write(spec, value)
+    entry = register_workflow(root / "active.json", config, artifact_root, spec, root)
+
+    plan = _dispatch_plan(entry, 1)
+
+    assert "A08" in plan["allowed_nodes"]
+    assert "N04" not in plan["allowed_nodes"]
 
 
 def test_shadow_validator_rejects_planner_disagreement(tmp_path: Path) -> None:

@@ -16,6 +16,7 @@ from typing import Any
 
 from .contracts import content_hash
 from .errors import ContractError
+from .workflow_center import NODE_DIRECT_DEPENDENCIES
 
 
 REGISTRY_SCHEMA = "active-workflow-registry/1.0"
@@ -433,6 +434,27 @@ def _load_audit(path: Path) -> dict[str, Any]:
     return audit
 
 
+
+def _load_sync_output(stdout: str, run_id: str) -> tuple[str, dict[str, Any]]:
+    """Parse one sync process stdout without treating lock skips as cross-run."""
+
+    try:
+        output = json.loads(stdout)
+    except json.JSONDecodeError as error:
+        raise ContractError("Workflow sync returned invalid JSON") from error
+    if not isinstance(output, dict):
+        raise ContractError("Workflow sync returned another workflow run")
+    if output.get("skipped"):
+        return "skipped", output
+    if output.get("fatal") and output.get("workflow_run_id") not in {None, "", run_id}:
+        raise ContractError("Workflow sync returned another workflow run")
+    if output.get("fatal"):
+        raise ContractError(str(output.get("fatal") or "Workflow sync process failed"))
+    if output.get("workflow_run_id") != run_id:
+        raise ContractError("Workflow sync returned another workflow run")
+    return "result", output
+
+
 def _sync_command(
     entry: Mapping[str, Any], sync_script: Path, plan_path: Path
 ) -> list[str]:
@@ -496,18 +518,101 @@ def _gate_event_cursors(entry: Mapping[str, Any]) -> dict[str, Any]:
     return cursors
 
 
+_RETRYABLE_DISPATCH_STATES = {"queued", "blocked", "failed"}
+_SATISFIED_DEPENDENCY_STATES = {"completed", "skipped"}
+_AUTO_RETURN_SKIP_NODES = {"", "human", "G01", "G02", "G03"}
+
+
+def _allowed_dispatch_nodes(spec: Mapping[str, Any]) -> list[str]:
+    """Authorize retryable nodes and the agent they auto-return to.
+
+    N04 can be blocked on the first Test Case IR failure while A08 is still
+    completed. The correction dispatch targets A08, so the plan must include
+    that next_node or the monitor refuses the only recovery path.
+    """
+
+    nodes = spec.get("nodes", [])
+    if not isinstance(nodes, list):
+        return []
+    known = {
+        str(item.get("node_id"))
+        for item in nodes
+        if isinstance(item, Mapping) and item.get("node_id")
+    }
+    allowed: set[str] = set()
+    states = {
+        node_id: state
+        for node_id, state in (
+            (str(item.get("node_id") or ""), item.get("state"))
+            for item in nodes
+            if isinstance(item, Mapping)
+        )
+        if node_id
+    }
+    for item in nodes:
+        if not isinstance(item, Mapping):
+            continue
+        node_id = item.get("node_id")
+        if not isinstance(node_id, str) or not node_id:
+            continue
+        retryable = item.get("state") in _RETRYABLE_DISPATCH_STATES
+        if item.get("state") == "not_started":
+            direct_dependencies = NODE_DIRECT_DEPENDENCIES.get(node_id)
+            dependency_closure = set()
+            pending_dependencies = list(direct_dependencies or ())
+            while pending_dependencies:
+                dependency = pending_dependencies.pop()
+                if dependency in dependency_closure:
+                    continue
+                dependency_closure.add(dependency)
+                pending_dependencies.extend(
+                    NODE_DIRECT_DEPENDENCIES.get(dependency, ())
+                )
+            if node_id.startswith("A") and direct_dependencies and all(
+                states.get(dependency) in _SATISFIED_DEPENDENCY_STATES
+                for dependency in dependency_closure
+            ):
+                allowed.add(node_id)
+            continue
+        if not retryable and item.get("state") != "waiting_human":
+            continue
+        if retryable:
+            allowed.add(node_id)
+        path = item.get("artifact_path")
+        if not path:
+            continue
+        try:
+            artifact = _read(Path(str(path)))
+        except (OSError, ContractError):
+            continue
+        payload = artifact.get("payload") if isinstance(artifact, Mapping) else None
+        if not isinstance(payload, Mapping):
+            continue
+        next_node = str(payload.get("next_node") or "").strip()
+        if next_node in known and next_node not in _AUTO_RETURN_SKIP_NODES:
+            allowed.add(next_node)
+        issues = payload.get("issues")
+        if isinstance(issues, list):
+            for issue in issues:
+                if not isinstance(issue, Mapping):
+                    continue
+                route = str(issue.get("route_to") or "").strip()
+                issue_id = str(issue.get("id") or "").strip()
+                if (
+                    issue_id
+                    and route in known
+                    and route not in _AUTO_RETURN_SKIP_NODES
+                ):
+                    allowed.add(route)
+    return sorted(allowed)
+
+
 def _dispatch_plan(entry: Mapping[str, Any], registry_revision: int) -> dict[str, Any]:
     spec = _read(Path(str(entry["spec_path"])))
     run_id = str(entry["workflow_run_id"])
     if spec.get("workflow_run_id") != run_id:
         raise ContractError("Planner spec belongs to another workflow run")
-    allowed_nodes = sorted(
-        str(item.get("node_id"))
-        for item in spec.get("nodes", [])
-        if isinstance(item, Mapping)
-        and item.get("state") in {"queued", "blocked", "failed"}
-        and item.get("node_id")
-    )
+    allowed_nodes = _allowed_dispatch_nodes(spec)
     return _hashed(
         {
             "schema_version": "dispatch-authorization/1.0",
@@ -526,24 +631,16 @@ def _dispatch_plan(entry: Mapping[str, Any], registry_revision: int) -> dict[str
 def _verify_dispatch_plan(plan: Mapping[str, Any], entry: Mapping[str, Any]) -> None:
     """Independently derive authorization instead of calling the primary planner."""
     spec = _read(Path(str(entry["spec_path"])))
-    shadow_nodes: list[str] = []
     nodes = spec.get("nodes")
     if not isinstance(nodes, list):
         raise ContractError("Shadow validator requires a node list")
-    for node in nodes:
-        if not isinstance(node, Mapping):
-            continue
-        node_id = node.get("node_id")
-        state = node.get("state")
-        if isinstance(node_id, str) and node_id and state in ("queued", "blocked", "failed"):
-            shadow_nodes.append(node_id)
     expected = {
         "schema_version": "dispatch-authorization/1.0",
         "workflow_run_id": str(entry["workflow_run_id"]),
         "workflow_id": entry["workflow_id"],
         "registry_revision": int(plan.get("registry_revision", -1)),
         "spec_hash": content_hash(spec),
-        "allowed_nodes": sorted(shadow_nodes),
+        "allowed_nodes": _allowed_dispatch_nodes(spec),
         "authorization_evidence": _authorization_evidence(entry, spec),
     }
     if any(plan.get(field) != value for field, value in expected.items()):
@@ -580,7 +677,7 @@ def _monitor_once_locked(
                 Path(entry["spec_path"]), repo_root,
             )
             plan = _dispatch_plan(entry, int(registry["revision"]))
-            plan_path = registry_path.parent / "plans" / f"{run_id}.json"
+            plan_path = (registry_path.parent / "plans" / f"{run_id}.json").resolve()
             _write_atomic(plan_path, plan)
             _verify_dispatch_plan(plan, entry)
             futures[run_id] = executor.submit(
@@ -626,12 +723,16 @@ def _monitor_once_locked(
                 )
                 if completed.returncode not in {0, 2}:
                     raise ContractError(completed.stderr.strip() or "Workflow sync process failed")
-                try:
-                    output = json.loads(completed.stdout)
-                except json.JSONDecodeError as error:
-                    raise ContractError("Workflow sync returned invalid JSON") from error
-                if not isinstance(output, dict) or output.get("workflow_run_id") != run_id:
-                    raise ContractError("Workflow sync returned another workflow run")
+                kind, output = _load_sync_output(completed.stdout, run_id)
+                if kind == "skipped":
+                    previous = str(entry.get("status") or "running")
+                    overall = "needs_action" if previous == "needs_action" else "running"
+                    event["skipped"] = str(output.get("skipped"))
+                    output = {
+                        "workflow_run_id": run_id,
+                        "errors": [],
+                        "sync": {"overall_status": overall},
+                    }
                 receipts = _dispatch_receipts(output)
                 eligible_nodes = _eligible_dispatch_nodes(output)
                 event["attempted_dispatches"] = receipts

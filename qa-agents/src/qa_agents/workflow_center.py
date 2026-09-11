@@ -131,6 +131,44 @@ _LIVE_RUN_TO_NODE_STATE = {
     "cancelled": "cancelled",
 }
 
+NODE_DIRECT_DEPENDENCIES = {
+    "N00": ("INPUT-FREEZE",),
+    "A02": ("N00",),
+    "A03": ("N00",),
+    "A05": ("N00",),
+    "A06": ("A02", "A03", "A05"),
+    "G01": ("A06",),
+    "N24": ("G01",),
+    "A08": ("N24",),
+    "A09": ("A08",),
+    "N04": ("A09",),
+    "G02": ("N04",),
+    "N25": ("G02",),
+    "A11": ("N25",),
+    "N26": ("A11",),
+    "N15": ("N26",),
+    "A14": ("N15", "A22", "N27"),
+    "A15": ("N15", "A22", "N27"),
+    "A22": ("N15",),
+    "A18-BE": ("A14",),
+    "A18-CT": ("A15",),
+    "N27": ("A22",),
+    "N05": ("A18-BE", "A18-CT"),
+    "G03": ("N05",),
+    "N07": ("G03", "A22"),
+    "N08": ("N07",),
+    "N17": ("N07",),
+    "N10": ("N08",),
+    "N18": ("N08", "N17"),
+    "N09": ("N18",),
+    "N20": ("N09",),
+    "N11": ("N20",),
+    "N19": ("N11",),
+    "N12": ("N11", "N19"),
+    "N13": ("N12",),
+    "N23": ("N13",),
+}
+
 SERVER_NODE_DETAILS = {
     "INPUT-FREEZE": "冻结需求、技术方案和 ChangeSet，校验输入完整性与权限边界。",
     "N00": "按触发类型和组织策略确定工作流模板、执行深度与节点路由。",
@@ -323,7 +361,12 @@ def _validated_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
 
 def _derive_status(nodes: list[Mapping[str, Any]], actions: list[Mapping[str, Any]]) -> str:
     states = {str(node["state"]) for node in nodes}
-    if states & {"blocked", "failed"}:
+    progressing = bool(states & {"queued", "running"})
+    if "failed" in states:
+        return "blocked"
+    # Auto-return "blocked" (N04 -> A08) must not freeze the whole workflow
+    # while a correction target is already queued or running.
+    if states & {"blocked"} and not progressing:
         return "blocked"
     if any(action.get("status") == "open" for action in actions):
         return "needs_action"
@@ -349,8 +392,16 @@ def _projection_core(value: Mapping[str, Any]) -> dict[str, Any]:
     active_nodes = [
         dict(node)
         for node in nodes
-        if node["state"] in {"running", "waiting_human", "blocked", "failed"}
+        if node["state"] in {"running", "waiting_human"}
     ]
+    if not active_nodes:
+        active_nodes = [dict(node) for node in nodes if node["state"] == "queued"]
+    if not active_nodes:
+        active_nodes = [
+            dict(node)
+            for node in nodes
+            if node["state"] in {"blocked", "failed"}
+        ]
     if not active_nodes and status == "queued":
         active_nodes = [
             dict(node) for node in nodes if node["state"] in {"queued", "not_started"}
@@ -434,20 +485,39 @@ def _node_issue_mention(node: Mapping[str, Any]) -> str:
 def _upstream_decision_hint(
     node: Mapping[str, Any], all_nodes: list[Mapping[str, Any]]
 ) -> str:
-    """Name the human decision a not-started node is stuck on, if any.
+    """Name a direct upstream human decision blocking a node, if any.
 
-    Picks the nearest upstream ``waiting_human`` node by stage ordering so the
-    hint points at the decision that actually gates this node instead of
-    guessing. Returns an empty string when no upstream decision exists.
+    Stage proximity is only a fallback for nodes without an explicit DAG edge.
+    It must never attribute an unrelated waiting node (for example A22) to
+    A18-CT simply because both happen to be near the same stage.
     """
 
     node_stage = int(node.get("stage") or 0)
+    node_id = str(node.get("node_id") or node.get("execution_id"))
+    direct_dependencies = NODE_DIRECT_DEPENDENCIES.get(node_id)
+    dependency_closure: set[str] | None = None
+    if direct_dependencies is not None:
+        dependency_closure = set()
+        pending = list(direct_dependencies)
+        while pending:
+            dependency = pending.pop()
+            if dependency in dependency_closure:
+                continue
+            dependency_closure.add(dependency)
+            pending.extend(NODE_DIRECT_DEPENDENCIES.get(dependency, ()))
     waiting = [
         candidate
         for candidate in all_nodes
         if candidate.get("state") == "waiting_human"
         and int(candidate.get("stage") or 0) < node_stage
     ]
+    if dependency_closure is not None:
+        waiting = [
+            candidate
+            for candidate in waiting
+            if str(candidate.get("node_id") or candidate.get("execution_id"))
+            in dependency_closure
+        ]
     if not waiting:
         return ""
     nearest_stage = max(int(candidate.get("stage") or 0) for candidate in waiting)
@@ -578,11 +648,11 @@ def _live_node_state_from_issue(
     # terminal label (which also caused sync to force the new Issue ``done``).
     if current_state in {"skipped", "cancelled"}:
         return None, None
-    if current_state == "not_started" and issue_status in {
-        "done", "cancelled", "in_review", ""
+    if current_state == "not_started" and issue_status not in {
+        "todo", "queued", "backlog", "in_progress", "running",
     }:
-        # Artifact evidence is gone. A leftover record Issue must not
-        # resurrect a completed or waiting node in the cockpit.
+        # Artifact evidence says this node has not entered execution. A stale
+        # terminal or blocked record Issue must not resurrect it.
         return None, None
 
     def _from_runs() -> tuple[str | None, str | None]:
@@ -600,6 +670,8 @@ def _live_node_state_from_issue(
     # (correction loop). Bare todo placeholders must not downgrade completed.
     if current_state in {"completed", "failed"}:
         if issue_status in {"done", "cancelled", ""}:
+            return None, None
+        if issue_status == "blocked":
             return None, None
         mapped = _from_runs()
         if mapped[0]:
@@ -620,6 +692,15 @@ def _live_node_state_from_issue(
                 return mapped
         return None, None
 
+    # A correction re-entry reopens a completed node as queued while the
+    # previous Issue is still terminal. Do not freeze the old label.
+    if current_state == "queued" and issue_status in {"done", "cancelled"}:
+        return None, None
+
+    if current_state == "blocked" and issue_status in {"done", "cancelled"}:
+        # Auto-return keeps the spec node blocked, but the bound child Issue
+        # already finished. The stage card must show 已完成, not 阻塞.
+        return "completed", None
     if current_state == "blocked" and issue_status not in {"in_progress", "running", "todo"}:
         return None, None
 
@@ -673,6 +754,23 @@ def _bind_discovered_node_issues(
         if node_id not in discovered:
             continue
         binding = discovered[node_id]
+        if (
+            str(node.get("state") or "") == "not_started"
+            and str(binding.get("status") or "")
+            not in {"todo", "queued", "backlog", "in_progress", "running"}
+        ):
+            continue
+        if (
+            str(node.get("state") or "") == "waiting_human"
+            and isinstance(node.get("human_action_entry"), Mapping)
+            and node["human_action_entry"].get("issue_id")
+        ):
+            continue
+        if (
+            str(node.get("state") or "") in {"completed", "failed"}
+            and str(binding.get("status") or "") == "blocked"
+        ):
+            continue
         node["issue_id"] = binding["id"]
         node["issue_identifier"] = binding["identifier"]
         live_state, summary = _live_node_state_from_issue(
@@ -1476,10 +1574,19 @@ def _workflow_sync_lock(output_dir: Path):
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
-def _assert_monotonic_projection(output_dir: Path, projection: Mapping[str, Any]) -> None:
+def _assert_monotonic_projection(
+    output_dir: Path, projection: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Keep published revisions monotonic without dead-ending projector upgrades.
+
+    Same-revision hash changes used to raise and freeze the monitor. Under the
+    exclusive sync lock that is a projector/code change, not a lost writer, so
+    bump the revision instead of blocking the workflow.
+    """
+
     state_path = output_dir / "workflow-center-sync-state.json"
     if not state_path.exists():
-        return
+        return dict(projection)
     state = _read_object(state_path, "workflow center sync state")
     if state.get("schema_version") != "workflow-center-sync-state/1.0":
         raise ContractError("Workflow center sync state schema_version is invalid")
@@ -1495,7 +1602,10 @@ def _assert_monotonic_projection(output_dir: Path, projection: Mapping[str, Any]
         revision == previous_revision
         and state.get("projection_hash") != projection["projection_hash"]
     ):
-        raise ContractError("Workflow center revision conflicts with another projection")
+        return refresh_projection_aggregates(
+            {**dict(projection), "revision": previous_revision + 1}
+        )
+    return dict(projection)
 
 
 def _sync_multica_workflow_center_unlocked(
@@ -1681,14 +1791,17 @@ def _sync_multica_workflow_center_unlocked(
             node_state = str(node["state"])
             status = NODE_MULTICA_STATUS[node_state]
             node_id = str(node.get("node_id") or node["execution_id"])
+            live_status = _live_issue_status(
+                active_runner, issue_id, workspace_id
+            )
+            if live_status == "done" and status == "blocked":
+                # Auto-return must not relabel a finished child Issue as blocked.
+                continue
             if node_id in agent_node_ids and item_type == "node_execution":
                 # The Agent runtime owns open Issue lifecycle
                 # (todo/in_progress/in_review). The workflow sync only writes
                 # terminal statuses so a completed Agent run is never flipped
                 # back to in_review by a stale needs_human Artifact.
-                live_status = _live_issue_status(
-                    active_runner, issue_id, workspace_id
-                )
                 run_status = _latest_issue_run_status(
                     active_runner, issue_id, workspace_id
                 )
@@ -1839,7 +1952,10 @@ def sync_multica_workflow_center(
     with _workflow_sync_lock(output_dir):
         spec = _read_object(spec_path, "requirement workflow spec")
         projection = build_workflow_projection(spec)
-        _assert_monotonic_projection(output_dir, projection)
+        projection = _assert_monotonic_projection(output_dir, projection)
+        if int(projection["revision"]) != int(spec.get("revision") or 0):
+            spec = {**spec, "revision": int(projection["revision"])}
+            ArtifactStore(spec_path.parent).write_json(spec_path.name, spec)
         return _sync_multica_workflow_center_unlocked(
             spec_path,
             config_path,

@@ -541,6 +541,33 @@ def test_stage_card_marks_cross_card_upstream_decision() -> None:
     )
 
 
+def test_stage_card_attributes_contract_review_to_pending_data_gate() -> None:
+    a22 = {
+        "node_id": "A22",
+        "label": "112 测试数据规划",
+        "stage": 15,
+        "stage_card_id": "C5",
+        "state": "waiting_human",
+        "issue_id": "issue-a22",
+        "issue_identifier": "QAA-503",
+    }
+    a18_ct = {
+        "node_id": "A18-CT",
+        "label": "契约自动化独立复核",
+        "stage": 16,
+        "stage_card_id": "C5",
+        "state": "not_started",
+        "result_summary": "等待上游节点",
+    }
+
+    markdown = _render_stage_card_markdown(
+        "C5", "自动化与测试数据准备", [a18_ct], all_nodes=[a18_ct, a22]
+    )
+
+    assert "卡在 `A22` 112 测试数据规划" in markdown
+    assert "`A18-CT` 契约自动化独立复核 · 未开始" in markdown
+
+
 def test_cockpit_marks_not_started_node_with_blocking_decision() -> None:
     spec = workflow_spec()
     spec["nodes"] = [
@@ -578,6 +605,7 @@ def test_cockpit_marks_not_started_node_with_blocking_decision() -> None:
     ("node_states", "action_status", "expected"),
     [
         (["completed", "blocked"], "open", "blocked"),
+        (["queued", "blocked"], "completed", "queued"),
         (["completed", "waiting_human"], "open", "needs_action"),
         (["completed", "running"], "completed", "running"),
         (["completed", "not_started"], "completed", "queued"),
@@ -1050,7 +1078,7 @@ def test_sync_live_issue_state_overrides_stale_artifact_state(tmp_path: Path) ->
     assert a15_updates[0][a15_updates[0].index("--status") + 1] == "done"
 
 
-def test_sync_rejects_conflicting_projection_at_same_revision(tmp_path: Path) -> None:
+def test_sync_bumps_revision_when_same_revision_projection_changes(tmp_path: Path) -> None:
     store = ArtifactStore(tmp_path / "input")
     spec = workflow_spec()
     spec_path = store.write_json("workflow.json", spec)
@@ -1061,10 +1089,17 @@ def test_sync_rejects_conflicting_projection_at_same_revision(tmp_path: Path) ->
     spec["title"] = "同 revision 的冲突标题"
     store.write_json("workflow.json", spec)
 
-    with pytest.raises(ContractError, match="conflicts with another projection"):
-        sync_multica_workflow_center(
-            spec_path, config_path, tmp_path / "output", runner=FakeMultica()
-        )
+    result = sync_multica_workflow_center(
+        spec_path, config_path, tmp_path / "output", runner=FakeMultica()
+    )
+    projection = json.loads(
+        (tmp_path / "output" / "workflow-projection.json").read_text(encoding="utf-8")
+    )
+    persisted = json.loads(spec_path.read_text(encoding="utf-8"))
+    assert result["overall_status"] == "needs_action"
+    assert projection["revision"] == 2
+    assert projection["title"] == "同 revision 的冲突标题"
+    assert persisted["revision"] == 2
 
 
 def test_sync_accepts_newer_projection_revision(tmp_path: Path) -> None:
@@ -1236,6 +1271,24 @@ def test_live_blocked_with_completed_run_explains_ingest_failure() -> None:
     assert "入库失败" in (summary or "")
 
 
+def test_live_blocked_issue_does_not_downgrade_completed_artifact() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            raise AssertionError("a blocked correction Issue must not query runs")
+
+    state, summary = _live_node_state_from_issue(
+        current_state="completed",
+        issue_status="blocked",
+        runner=Runner(),
+        issue_id="issue-a08-failed-ingest",
+        workspace_id="ws",
+    )
+    assert state is None
+    assert summary is None
+
+
 def test_bind_discovered_replaces_stale_waiting_summary() -> None:
     from qa_agents.workflow_center import _bind_discovered_node_issues
 
@@ -1314,6 +1367,175 @@ def test_live_completed_with_active_correction_run_upgrades_to_running() -> None
         workspace_id="ws",
     )
     assert state == "running"
+    assert summary is None
+
+
+def test_bind_discovered_prefers_explicit_human_action_for_waiting_node() -> None:
+    from qa_agents.workflow_center import _bind_discovered_node_issues
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            if command[:3] == ["multica", "issue", "list"]:
+                return {
+                    "issues": [
+                        {
+                            "id": "issue-a09-done",
+                            "identifier": "QAA-478",
+                            "title": "[run-1] A09 Oracle 修正",
+                            "status": "done",
+                            "created_at": "2026-09-10T10:10:13Z",
+                        }
+                    ]
+                }
+            raise AssertionError(command)
+
+    projection = {
+        "schema_version": "requirement-workflow-projection/1.0",
+        "workflow_run_id": "run-1",
+        "nodes": [
+            {
+                "node_id": "A09",
+                "execution_id": "A09-run-1",
+                "state": "waiting_human",
+                "result_summary": "阻塞问题已路由人工处置",
+                "human_action_entry": {
+                    "issue_id": "issue-human",
+                    "issue_identifier": "QAA-483",
+                    "status": "in_review",
+                },
+            }
+        ],
+        "actions": [],
+        "run_history": [],
+        "autopilot": None,
+        "autopilot_runs": [],
+        "workflow_id": "wf",
+        "requirement_id": "req",
+        "workflow_definition_version": "v",
+        "revision": 1,
+        "source_snapshot_id": "snap",
+        "title": "t",
+        "parent_issue": {"id": "p", "identifier": "QAA-1"},
+        "run_issue": None,
+    }
+    config = {
+        "internal_project_id": "proj",
+        "workspace_id": "ws",
+        "discover_node_issues": True,
+    }
+    enriched = _bind_discovered_node_issues(projection, config, Runner())
+    node = enriched["nodes"][0]
+    assert node["state"] == "waiting_human"
+    assert node.get("issue_id") is None
+    assert node["human_action_entry"]["issue_identifier"] == "QAA-483"
+
+
+def test_bind_discovered_skips_failed_ingest_issue_for_completed_node() -> None:
+    from qa_agents.workflow_center import _bind_discovered_node_issues
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            if command[:3] == ["multica", "issue", "list"]:
+                return {
+                    "issues": [
+                        {
+                            "id": "issue-a08-blocked",
+                            "identifier": "QAA-482",
+                            "title": "[run-1] A08 测试设计修正",
+                            "status": "blocked",
+                            "created_at": "2026-09-10T10:46:51Z",
+                        }
+                    ]
+                }
+            raise AssertionError(command)
+
+    projection = {
+        "schema_version": "requirement-workflow-projection/1.0",
+        "workflow_run_id": "run-1",
+        "nodes": [
+            {
+                "node_id": "A08",
+                "execution_id": "A08-run-1",
+                "state": "completed",
+                "result_summary": "completed_with_gaps",
+            }
+        ],
+        "actions": [],
+        "run_history": [],
+        "autopilot": None,
+        "autopilot_runs": [],
+        "workflow_id": "wf",
+        "requirement_id": "req",
+        "workflow_definition_version": "v",
+        "revision": 1,
+        "source_snapshot_id": "snap",
+        "title": "t",
+        "parent_issue": {"id": "p", "identifier": "QAA-1"},
+        "run_issue": None,
+    }
+    config = {
+        "internal_project_id": "proj",
+        "workspace_id": "ws",
+        "discover_node_issues": True,
+    }
+    enriched = _bind_discovered_node_issues(projection, config, Runner())
+    node = enriched["nodes"][0]
+    assert node["state"] == "completed"
+    assert node.get("issue_id") is None
+
+
+def test_live_done_blocked_auto_return_shows_completed_not_blocked() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            raise AssertionError("runs should not be queried for a done auto-return Issue")
+
+    state, summary = _live_node_state_from_issue(
+        current_state="blocked",
+        issue_status="done",
+        runner=Runner(),
+        issue_id="issue-a09-done",
+        workspace_id="ws",
+    )
+    assert state == "completed"
+    assert summary is None
+
+
+def test_live_blocked_record_does_not_resurrect_not_started_node() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            raise AssertionError("runs should not be queried for a stale record Issue")
+
+    state, summary = _live_node_state_from_issue(
+        current_state="not_started",
+        issue_status="blocked",
+        runner=Runner(),
+        issue_id="issue-stale-n05",
+        workspace_id="ws",
+    )
+
+    assert state is None
+    assert summary is None
+
+
+def test_live_done_does_not_freeze_queued_correction_reentry() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            raise AssertionError("runs should not be queried for a done previous Issue")
+
+    state, summary = _live_node_state_from_issue(
+        current_state="queued",
+        issue_status="done",
+        runner=Runner(),
+        issue_id="issue-old-a08",
+        workspace_id="ws",
+    )
+    assert state is None
     assert summary is None
 
 
