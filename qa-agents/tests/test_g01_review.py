@@ -87,6 +87,77 @@ def test_g01_pending_guidance_is_not_a_decision_comment() -> None:
 
     assert _is_concise_comment(guidance, request) is False
 
+
+COPY_ISSUE = {
+    "issue_id": "A03:product-copy-result-filter",
+    "confirm_action": (
+        "产品确认最终中英文模板，建议去除“统计图”，"
+        "使用“数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细”。"
+    ),
+    "plain_summary": "技术方案里有待确认项：需确认结果集筛选提示是否使用端无关文案，以覆盖拼表场景。",
+    "detail": {
+        "recommendation": (
+            "产品确认最终中英文模板，建议去除“统计图”，"
+            "使用“数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细”。"
+        )
+    },
+}
+COPY_CONFIRMATION = (
+    "确认最终中英文模板，建议去除“统计图”，"
+    "使用“数据范围中设置了「{指标名称}」按结果集筛选，不支持查看明细”。"
+)
+
+
+def test_g01_unlabeled_followup_matching_last_missing_item_is_concise() -> None:
+    request = {"issues": [COPY_ISSUE]}
+    comment = {"content": COPY_CONFIRMATION}
+
+    assert _is_concise_comment(comment, request) is True
+
+
+def test_g01_system_followup_guidance_is_not_a_decision_comment() -> None:
+    request = {"issues": [COPY_ISSUE]}
+    guidance = {
+        "content": (
+            "G01 审核补充说明（本次只需审核这一条）\n"
+            f"- 审核项：`{COPY_ISSUE['issue_id']}`\n"
+            "- 当前状态：待 QA Owner 确认"
+        )
+    }
+
+    assert _is_concise_comment(guidance, request) is False
+
+
+def test_g01_unlabeled_followup_covers_last_missing_issue() -> None:
+    request = {
+        "issues": [
+            {"issue_id": "A02:AMB-001", "confirm_action": "请确认提示优先级"},
+            COPY_ISSUE,
+        ]
+    }
+    combined = f"A02:AMB-001：展示任意一个\n\n{COPY_CONFIRMATION}"
+
+    rows = _parse_concise_responses(combined, request)
+
+    assert [row["issue_id"] for row in rows] == ["A02:AMB-001", "A03:product-copy-result-filter"]
+    assert all(row["disposition"] == "confirmed" for row in rows)
+
+
+def test_g01_unlabeled_followup_does_not_cover_unrelated_missing_issues() -> None:
+    request = {
+        "issues": [
+            {"issue_id": "A02:AMB-001", "confirm_action": "请确认提示优先级", "plain_summary": "优先级未写清"},
+            COPY_ISSUE,
+        ]
+    }
+
+    try:
+        _parse_concise_responses(COPY_CONFIRMATION, request)
+    except ContractError as error:
+        assert "A02:AMB-001" in str(error)
+    else:
+        raise AssertionError("unrelated missing issues must stay uncovered")
+
 WORKFLOW_INPUT = {
     "schema_version": "workflow-input/1.0",
     "workflow_mode": "new_requirement",
@@ -390,6 +461,64 @@ def test_concise_comment_blanket_ignore_covers_missing_issues(tmp_path: Path) ->
     decision = json.loads((output / DECISION_FILE).read_text(encoding="utf-8"))
     resolved = {item["issue_id"] for item in decision["resolutions"]}
     assert resolved == {item["issue_id"] for item in request["issues"]}
+
+
+def test_concise_unlabeled_followup_after_missing_item_feedback_approves(tmp_path: Path) -> None:
+    request, output, gate_policy_path, adapter_policy_path, multica = prepare_multica_review(tmp_path)
+    last = request["issues"][-1]
+    tagged = []
+    for item in request["issues"][:-1]:
+        tagged.append(f"- `{item['issue_id']}`：按当前实现确认")
+    recommendation = str(
+        (last.get("detail") or {}).get("recommendation")
+        or last.get("confirm_action")
+        or last.get("plain_summary")
+        or "确认该审核项"
+    )
+    unlabeled = recommendation.replace("产品确认", "确认", 1) if recommendation.startswith("产品确认") else f"确认{recommendation}"
+    multica.comments = [
+        {
+            "id": "tagged-1",
+            "creator_id": MEMBER_ID,
+            "creator_type": "member",
+            "created_at": "2026-09-09T09:50:54Z",
+            "content": "\n".join(tagged),
+        },
+        {
+            "id": "validation-1",
+            "creator_id": MEMBER_ID,
+            "creator_type": "member",
+            "created_at": "2026-09-09T10:59:39Z",
+            "content": (
+                "G01 审核提交未通过校验，流程仍保持 in_review。\n\n"
+                f"- 原因: G01 审核评论未覆盖以下审核项：{last['issue_id']}\n"
+                "系统不会使用不完整提交。"
+            ),
+        },
+        {
+            "id": "unlabeled-1",
+            "creator_id": MEMBER_ID,
+            "creator_type": "member",
+            "created_at": "2026-09-10T06:43:04Z",
+            "content": unlabeled,
+        },
+    ]
+    multica.issue["status"] = "done"
+
+    outcome = sync_multica_scope_review(
+        output / "g01-review-request.json",
+        gate_policy_path,
+        adapter_policy_path,
+        output,
+        runner=multica,
+    )
+
+    assert outcome["decision"] == "approved"
+    assert multica.issue["status"] == "done"
+    decision = json.loads((output / DECISION_FILE).read_text(encoding="utf-8"))
+    assert {item["issue_id"] for item in decision["resolutions"]} == {
+        item["issue_id"] for item in request["issues"]
+    }
 
 
 def test_concise_comment_returns_unclear_question_to_a06(tmp_path: Path) -> None:
@@ -831,6 +960,97 @@ def test_open_g01_binds_existing_issue_and_is_idempotent(tmp_path: Path) -> None
     assert any(call[:2] == ["issue", "update"] for call in multica.calls)
 
 
+def test_open_g01_binds_existing_stage_card_on_workflow_project(tmp_path: Path) -> None:
+    artifacts = write_gate_artifacts(tmp_path / "run")
+    output = tmp_path / "g01"
+    request = prepare_request(artifacts, output)
+    ArtifactStore(output).write_text(
+        "g01-review-request.md", render_scope_review_markdown(request)
+    )
+    gate_policy_path = ArtifactStore(tmp_path / "policies").write_json(
+        "g01-policy.json", POLICY
+    )
+    adapter_policy_path = write_adapter_policy(tmp_path / "policies")
+    multica = FakeG01Multica()
+    multica.issue["project_id"] = "workflow-project"
+    multica.issue["status"] = "done"
+    multica.issue["metadata"] = {
+        "qa_gate_id": "G01",
+        "qa_workflow_run_id": request["workflow_run_id"],
+        "qa_request_hash": request["request_hash"],
+    }
+    replies = [f"- `{item['issue_id']}`：按当前实现确认" for item in request["issues"]]
+    multica.comments = [{
+        "id": "stage-card-1",
+        "creator_id": MEMBER_ID,
+        "creator_type": "member",
+        "created_at": "2026-09-10T06:43:04Z",
+        "content": "\n".join(replies),
+    }]
+
+    open_multica_scope_review(
+        output / "g01-review-request.json",
+        gate_policy_path,
+        adapter_policy_path,
+        output,
+        issue_id=multica.issue["id"],
+        runner=multica,
+    )
+    outcome = sync_multica_scope_review(
+        output / "g01-review-request.json",
+        gate_policy_path,
+        adapter_policy_path,
+        output,
+        runner=multica,
+    )
+
+    assert outcome["decision"] == "approved"
+    assert json.loads((output / STATE_FILE).read_text(encoding="utf-8"))["issue_id"] == multica.issue["id"]
+
+
+def test_open_g01_binds_after_prepared_state_without_issue(tmp_path: Path) -> None:
+    artifacts = write_gate_artifacts(tmp_path / "run")
+    output = tmp_path / "g01"
+    request = prepare_request(artifacts, output)
+    ArtifactStore(output).write_text(
+        "g01-review-request.md", render_scope_review_markdown(request)
+    )
+    gate_policy_path = ArtifactStore(tmp_path / "policies").write_json(
+        "g01-policy.json", POLICY
+    )
+    adapter_policy_path = write_adapter_policy(tmp_path / "policies")
+    from qa_agents.contracts import content_hash
+    adapter = json.loads(adapter_policy_path.read_text(encoding="utf-8"))
+    prepared = {
+        "schema_version": "workflow-gate-state/1.0",
+        "gate_id": "G01",
+        "workflow_run_id": request["workflow_run_id"],
+        "source_snapshot_id": request["source_snapshot_id"],
+        "request_hash": request["request_hash"],
+        "adapter_policy_hash": content_hash(adapter),
+        "state": "prepared",
+        "issue_id": None,
+        "observed_multica_status": None,
+        "processed_event_id": None,
+        "next_node": None,
+    }
+    prepared["state_hash"] = content_hash({k: v for k, v in prepared.items() if k != "state_hash"})
+    ArtifactStore(output).write_json(STATE_FILE, prepared)
+    multica = FakeG01Multica()
+
+    state = open_multica_scope_review(
+        output / "g01-review-request.json",
+        gate_policy_path,
+        adapter_policy_path,
+        output,
+        issue_id=multica.issue["id"],
+        runner=multica,
+    )
+
+    assert state["state"] == "waiting_for_review"
+    assert state["issue_id"] == multica.issue["id"]
+
+
 def test_open_g01_created_issue_uses_autopilot_discovery_title(tmp_path: Path) -> None:
     artifacts = write_gate_artifacts(tmp_path / "run")
     output = tmp_path / "g01"
@@ -855,6 +1075,8 @@ def test_open_g01_created_issue_uses_autopilot_discovery_title(tmp_path: Path) -
     create = next(call for call in multica.calls if call[:2] == ["issue", "create"])
     title = create[create.index("--title") + 1]
     assert title == "[run-1] G01 范围与口径审核 · 4 项待确认"
+    state = json.loads((output / "g01-workflow-state.json").read_text(encoding="utf-8"))
+    assert state["issue_binding"] == "gate_issue"
 
 
 def test_g01_terminal_status_without_decision_comment_is_ignored(tmp_path: Path) -> None:

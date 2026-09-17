@@ -1,0 +1,1164 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>bug-finder · 技术栈拆解图解</title>
+<style>
+:root{
+  --ink:#0f172a;--body:#334155;--muted:#64748b;--line:#e2e8f0;--soft:#f8fafc;
+  --ai:#6d28d9;--ai-bg:#f5f3ff;
+  --py:#0f766e;--py-bg:#ecfdf5;
+  --nd:#b45309;--nd-bg:#fffbeb;
+  --ext:#475569;--ext-bg:#f1f5f9;
+  --art:#1d4ed8;--art-bg:#eff6ff;
+  --dec:#c2410c;--dec-bg:#fff7ed;
+  --bad:#b91c1c;--bad-bg:#fef2f2;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:#eef2f7;color:var(--body);-webkit-font-smoothing:antialiased;
+  font:14px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",Segoe UI,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:26px 18px 80px}
+h1{font-size:23px;margin:0 0 8px;color:var(--ink)}
+h2{font-size:19.5px;margin:0 0 4px;color:var(--ink)}
+h3{font-size:14.5px;margin:20px 0 8px;color:#334155}
+p{margin:0 0 10px}
+.meta{font-size:12.5px;color:var(--muted);margin:0 0 18px}
+.k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;background:#f1f5f9;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--ink);white-space:nowrap}
+nav.toc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px;margin-bottom:22px;font-size:13px}
+nav.toc a{color:#1d4ed8;text-decoration:none;margin-right:16px;white-space:nowrap;line-height:2}
+figure{margin:0 0 34px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 22px 26px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+figcaption{font-size:12.5px;color:var(--muted);margin:0 0 18px}
+figcaption b{color:var(--ink)}
+.canvas{position:relative}
+.card{background:#fff;border:1px solid var(--line);border-left:4px solid #94a3b8;border-radius:10px;
+  padding:11px 14px;box-shadow:0 1px 2px rgba(15,23,42,.05);margin:0}
+.card .hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+.card .no{display:inline-flex;width:22px;height:22px;border-radius:50%;background:#0f172a;color:#fff;
+  font-size:12px;font-weight:700;align-items:center;justify-content:center;flex:none}
+.card .ct{font-size:13.5px;font-weight:700;color:var(--ink)}
+.card .who{margin-left:auto;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;flex:none;color:#475569}
+.card .cd{font-size:12.5px;line-height:1.65}
+.card .cd ul{margin:6px 0 0;padding-left:18px}
+.card .cd li{margin:2px 0}
+.card .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:4px 16px;margin-top:8px}
+.card .io{font-size:11.5px;color:var(--muted);line-height:1.6}
+.card .io b{color:#475569;font-weight:600}
+.card.ai{border-left-color:var(--ai);background:linear-gradient(180deg,#fff,var(--ai-bg))}
+.card.ai .who{color:var(--ai)}
+.card.py{border-left-color:var(--py);background:linear-gradient(180deg,#fff,var(--py-bg))}
+.card.py .who{color:var(--py)}
+.card.nd{border-left-color:var(--nd);background:linear-gradient(180deg,#fff,var(--nd-bg))}
+.card.nd .who{color:var(--nd)}
+.card.ext{border-left-color:var(--ext);background:linear-gradient(180deg,#fff,var(--ext-bg))}
+.card.ext .who{color:var(--ext)}
+.card.art{border-left-color:var(--art);background:linear-gradient(180deg,#fff,var(--art-bg))}
+.card.art .who{color:var(--art)}
+.card.user{border-left-color:#0f172a;background:linear-gradient(180deg,#fff,#f8fafc)}
+.card.user .who{color:#0f172a}
+.card.dec{border-left-color:var(--dec);background:linear-gradient(180deg,#fff,var(--dec-bg))}
+.card.dec .no{background:var(--dec)}
+.card.dec .who{color:var(--dec)}
+.card.bad{border-left-color:var(--bad);background:linear-gradient(180deg,#fff,var(--bad-bg))}
+.card.bad .who{color:var(--bad)}
+.card.ghost{border-style:dashed;border-left-style:solid;background:#fcfcfd}
+.card.sm{padding:9px 12px}
+.card.sm .ct{font-size:12.5px}
+.card.sm .cd{font-size:11.8px}
+.arrow{position:relative;height:32px}
+.arrow::before{content:"";position:absolute;left:50%;top:0;height:23px;width:2px;background:#cbd5e1;transform:translateX(-1px)}
+.arrow::after{content:"";position:absolute;left:50%;top:21px;transform:translateX(-50%);
+  border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid #94a3b8}
+.arrow.tall{height:52px}
+.arrow.tall::before{height:43px}
+.arrow.tall::after{top:41px}
+.arrow .lb{position:absolute;left:50%;top:1px;transform:translateX(12px);font-size:11.5px;background:#fff;
+  border:1px solid var(--line);border-radius:6px;padding:0 7px;color:#475569;white-space:nowrap}
+.qrow{display:grid;grid-template-columns:1.52fr 76px 1fr;gap:10px;align-items:center}
+.har{position:relative;height:2px;background:#cbd5e1;border-radius:2px}
+.har::after{content:"";position:absolute;right:-2px;top:-4px;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid #94a3b8}
+.har .lb{position:absolute;left:50%;top:-23px;transform:translateX(-50%);font-size:11px;background:#fff;
+  border:1px solid var(--line);border-radius:6px;padding:0 6px;color:#475569;white-space:nowrap;line-height:1.6}
+.branch{position:relative;padding-top:2px}
+.branch .rail{position:absolute;top:0;height:2px;background:#cbd5e1}
+.branch .cols{display:grid;gap:16px;padding-top:2px}
+.branch .cols.c2{grid-template-columns:1fr 1fr}
+.branch .cols.c3{grid-template-columns:repeat(3,1fr)}
+.branch .cols.c4{grid-template-columns:repeat(4,1fr)}
+.down{position:relative;height:22px}
+.down::before{content:"";position:absolute;left:50%;top:0;height:13px;width:2px;background:#cbd5e1;transform:translateX(-1px)}
+.down::after{content:"";position:absolute;left:50%;top:11px;transform:translateX(-50%);
+  border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #94a3b8}
+.lbl{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;border:1px solid var(--line);background:#fff;color:#475569;white-space:nowrap}
+.lbl.yes{border-color:#86efac;background:#f0fdf4;color:#15803d}
+.lbl.no{border-color:#fecaca;background:#fef2f2;color:#b91c1c}
+.lbl.mid{border-color:#fdba74;background:#fff7ed;color:#c2410c}
+.seq{position:relative;padding-left:38px}
+.seq .rail{position:absolute;left:15px;top:6px;bottom:6px;width:2px;background:#e2e8f0}
+.seq .step{position:relative;margin-bottom:12px}
+.seq .step::before{content:"";position:absolute;left:-31px;top:16px;width:11px;height:11px;border-radius:50%;
+  background:#fff;border:2px solid #94a3b8}
+.seq .step:nth-child(odd)::before{border-color:#6d28d9}
+.flowline{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.who-flow{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);border-radius:7px;padding:1px 7px;color:#475569}
+.who-flow b{color:var(--ink)}
+.tl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.tl th,.tl td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.tl th{background:#f8fafc;color:#475569;font-weight:600;font-size:12px}
+.tl td b{color:var(--ink)}
+.tl code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;background:#f8fafc;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.layers{display:grid;gap:10px}
+.layer{border:1px solid var(--line);border-radius:12px;background:var(--soft);padding:12px 14px 14px}
+.layer .lt{font-size:12px;font-weight:700;color:#475569;letter-spacing:.3px;margin-bottom:9px}
+.layer .row{display:grid;gap:10px}
+.layer .row.c5{grid-template-columns:repeat(5,1fr)}
+.layer .row.c4{grid-template-columns:repeat(4,1fr)}
+.layer .row.c3{grid-template-columns:repeat(3,1fr)}
+.layer .row.c2{grid-template-columns:repeat(2,1fr)}
+.chip{display:inline-block;padding:1px 7px;margin:2px 3px 2px 0;border-radius:6px;background:#fff;border:1px solid var(--line);font-size:11px;color:#475569;white-space:nowrap}
+.datarow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
+.dl{border:1px dashed #cbd5e1;border-radius:9px;padding:6px 10px;font-size:11.5px;color:#475569;background:#fff}
+.dl.down-flow{border-color:#fdba74;color:#c2410c}
+.dl.up-flow{border-color:#86efac;color:#15803d}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.lg{display:flex;align-items:center;gap:7px;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 11px;color:#475569}
+.dot{width:10px;height:10px;border-radius:3px;flex:none}
+.cmd{display:block;margin-top:7px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11.5px;background:#f8fafc;border:1px solid var(--line);border-radius:7px;padding:7px 10px;
+  white-space:pre-wrap;word-break:break-all;color:#0f172a;line-height:1.7}
+.note{font-size:12.5px;background:#f8fafc;border:1px solid var(--line);border-left:3px solid #94a3b8;border-radius:8px;padding:10px 14px;margin-top:14px}
+.note b{color:var(--ink)}
+.callout{font-size:12.5px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 16px;margin:14px 0}
+.callout b{color:#c2410c}
+.stack{display:grid;gap:0}
+figure .sub{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+.bars{display:grid;gap:7px;margin-top:10px}
+.bar{display:grid;grid-template-columns:170px 1fr 76px;align-items:center;gap:10px;font-size:12px}
+.bar .k2{color:#475569;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .track{height:17px;background:#f1f5f9;border-radius:5px;overflow:hidden}
+.bar .fill{height:100%;border-radius:5px;min-width:2px}
+.bar .val{font-variant-numeric:tabular-nums;color:#0f172a;font-weight:600;font-size:11.5px}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:6px}
+@media(max-width:820px){.split{grid-template-columns:1fr}.bar{grid-template-columns:120px 1fr 66px}}
+.stackbar{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--line);margin:8px 0 4px}
+.stackbar span{display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;overflow:hidden;white-space:nowrap}
+.legendline{font-size:11.5px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+.card{min-width:0}
+.card .cd,.card .io,.card .grid,.card .hd,.layer,.layer .row{min-width:0}
+.card .cd,.card .io,.card .ct,.card .who{overflow-wrap:anywhere}
+.card .k{white-space:normal;overflow-wrap:anywhere}
+.layer .row.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.layer .row.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.layer .row.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.layer .row.c5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.card .no{width:auto;min-width:22px;padding:0 5px;border-radius:999px;box-sizing:border-box}
+.bar .track{display:block}
+.bar .fill{display:block;height:100%}
+.split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>bug-finder 技术栈拆解图解</h1>
+<p class="meta">
+  代码快照 <span class="k">7e1b8157</span> · 2026-09-17 · 配套文档 <span class="k">BUG-FINDER-TECH-STACK.md</span> · 单文件离线可用（直接双击打开，无需联网）
+</p>
+
+<nav class="toc">
+  <a href="#howto">① 怎么看这页图</a>
+  <a href="#fig1">② 技术栈全景分层</a>
+  <a href="#fig2">③ 语言与依赖构成</a>
+  <a href="#fig3">④ 一次诊断的技术链路</a>
+  <a href="#fig4">⑤ 测试与质量门禁栈</a>
+  <a href="#fig5">⑥ Hook 与多编辑器接入</a>
+  <a href="#fig6">⑦ 契约与 Schema 栈</a>
+  <a href="#fig7">⑧ CI 与工程卫生</a>
+  <a href="#summary">⑨ 速查与评价</a>
+</nav>
+
+<figure id="howto">
+  <h2>① 怎么看这页图</h2>
+  <p class="sub">先花 1 分钟看懂颜色和卡片格式，后面 7 张图都能自己读下来。</p>
+
+  <h3>颜色 = 这一格由「谁 / 什么东西」承担</h3>
+  <div class="legend">
+    <div class="lg"><span class="dot" style="background:#6d28d9"></span>紫色 · <b>AI</b>（模型 / Agent，负责判断与撰写）</div>
+    <div class="lg"><span class="dot" style="background:#0f766e"></span>绿色 · <b>Python</b>（采集取证、算事实）</div>
+    <div class="lg"><span class="dot" style="background:#b45309"></span>黄色 · <b>Node / MJS</b>（编排账本、门禁、hook）</div>
+    <div class="lg"><span class="dot" style="background:#475569"></span>灰色 · <b>外部系统</b>（数据库、CLI、平台）</div>
+    <div class="lg"><span class="dot" style="background:#1d4ed8"></span>蓝色 · <b>产物</b>（证据 JSON、报告、配置）</div>
+    <div class="lg"><span class="dot" style="background:#c2410c"></span>橙色 · <b>契约 / 判断</b>（Schema、YAML、决策点）</div>
+    <div class="lg"><span class="dot" style="background:#b91c1c"></span>红色 · <b>风险 / 阻断</b>（失败、残留、反模式）</div>
+  </div>
+
+  <h3>一句话总纲</h3>
+  <div class="callout">
+    <b>这是一套「零重依赖 + 契约驱动 + 知识密集」的技术栈。</b>
+    运行时依赖只有 4 个包（Node 1 个 + Python 3 个），
+    代码只有 329 个 Python + 189 个 Node 文件，
+    却有 <b>1495 个 Markdown</b> 和 <b>21 个 JSON Schema</b>。
+    真正的复杂度不在代码里，在「给 AI 看的说明书」和「约束产物的契约」里。
+  </div>
+
+  <h3>每张卡片里写什么</h3>
+  <table class="tl">
+    <tr><th style="width:130px">字段</th><th>含义</th></tr>
+    <tr><td><b>左上角数字</b></td><td>读图顺序，按数字走即可</td></tr>
+    <tr><td><b>右上角标签</b></td><td>谁执行：AI / Python / Node / 外部 / 契约</td></tr>
+    <tr><td><b>标题</b></td><td>这一步做什么</td></tr>
+    <tr><td><b>做什么</b></td><td>这一格承担的具体职责</td></tr>
+    <tr><td><b>输入 / 输出</b></td><td>吃进什么、吐出什么（这是理解数据流的关键）</td></tr>
+    <tr><td><b>用什么</b></td><td>落到哪个具体技术：语言、库、脚本、命令</td></tr>
+  </table>
+
+  <h3>四层阅读顺序（本页的组织方式）</h3>
+  <table class="tl">
+    <tr><th style="width:110px">图</th><th>回答的问题</th></tr>
+    <tr><td><b>图 1</b></td><td>这套系统的技术栈分成哪几层？每层用什么技术？</td></tr>
+    <tr><td><b>图 2</b></td><td>代码到底由什么语言、什么依赖构成？比例是多少？</td></tr>
+    <tr><td><b>图 3</b></td><td>一次真实的诊断请求，从用户打字到出报告，每一跳用了什么技术？</td></tr>
+    <tr><td><b>图 4–8</b></td><td>门禁、Hook、契约、CI 这四条「保障线」各自怎么搭起来的？</td></tr>
+    <tr><td><b>图 9</b></td><td>一页速查：所有关键数字 + 选型优点 / 风险 / 残留</td></tr>
+  </table>
+</figure>
+
+<figure id="fig1">
+  <h2>② 图 1 · 技术栈全景分层图（从上到下 7 层）</h2>
+  <p class="sub">
+    读法：越靠上越接近「人和模型」，越靠下越接近「数据」。
+    每一层只跟相邻层打交道，<b>不跨层直连</b>——这是这套技术栈最重要的一条结构约束。
+  </p>
+
+  <div class="layers">
+
+    <div class="layer">
+      <div class="lt">第 1 层 · 宿主层（Host）—— 模型住在这里，用户也在这里</div>
+      <div class="row c4">
+        <div class="card ext sm"><div class="hd"><span class="ct">AI 编辑器 / CLI</span><span class="who">14 类</span></div>
+          <div class="cd">
+          <span class="chip">Claude Code 2.1.232</span><span class="chip">Codex 0.147.0</span><span class="chip">Cursor 3.16.17</span><span class="chip">OpenCode 1.18.16</span><span class="chip">MiMoCode 0.1.10</span><span class="chip">Reasonix 1.21.1</span><span class="chip">Pi 0.84.2</span><span class="chip">ZCode</span><span class="chip">CodeBuddy 2.127.3</span><span class="chip">Trae 1.107.1</span><span class="chip">Qoder 1.15.1</span><span class="chip">Grok 1.0.0</span><span class="chip">Kiro</span><span class="chip">Windsurf</span><span class="chip">GitHub Copilot</span>
+        </div></div>
+        <div class="card art sm"><div class="hd"><span class="ct">生成的宿主配置</span><span class="who">生成物</span></div>
+          <div class="cd">全部由 <span class="k">hook-config.json</span> 生成，不手写：<span class="k">.claude/hooks.json</span>、<span class="k">.codex/hooks.json</span>、<span class="k">.cursor/hooks.json</span>、<span class="k">.opencode/plugins/*.ts</span>、<span class="k">.github/copilot-instructions.md</span> 等</div></div>
+        <div class="card ext sm"><div class="hd"><span class="ct">终端 / 人</span><span class="who">使用者</span></div>
+          <div class="cd">输入一句自然语言（traceId、报错、截图）或一条命令；读 Markdown / HTML 报告</div></div>
+        <div class="card py sm"><div class="hd"><span class="ct">环境激活</span><span class="who">Python/Sh</span></div>
+          <div class="cd"><span class="k">scripts/env/activate.sh</span> 向上 32 层找 <span class="k">.env.local</span>；<span class="k">setup-tokens.ts</span> 用 Playwright 自动抓 IDP token</div></div>
+      </div>
+    </div>
+
+    <div class="arrow tall"><span class="lb">宿主把「事件」交给 Hook 引擎</span></div>
+
+    <div class="layer">
+      <div class="lt">第 2 层 · Hook 运行时层（Node，零依赖）—— 独立于模型的门禁</div>
+      <div class="row c4">
+        <div class="card nd sm"><div class="hd"><span class="no">1</span><span class="ct">hook-engine.mjs</span><span class="who">Node</span></div>
+          <div class="cd"><b>做什么</b>：读配置、按事件分发、聚合 checker 结果、决定放行或阻断<br><b>输入</b>：宿主事件 payload<br><b>输出</b>：放行 / 阻断 / 注入提示<br><b>用什么</b>：纯 <span class="k">node:*</span> 标准库</div></div>
+        <div class="card nd sm"><div class="hd"><span class="no">2</span><span class="ct">20 个 checker</span><span class="who">Node</span></div>
+          <div class="cd"><b>做什么</b>：20 个独立校验器，其中 <b>5 个 failClosed</b>（<span class="k">ctx-valid</span>、<span class="k">evidence-index</span>、<span class="k">dispatch-handoff</span>、<span class="k">apl-artifact-write</span>、<span class="k">query-safety</span>）失败即阻断<br><b>输出</b>：pass / warn / block</div></div>
+        <div class="card nd sm"><div class="hd"><span class="no">3</span><span class="ct">6 类事件</span><span class="who">Node</span></div>
+          <div class="cd"><span class="k">session-start</span><br><span class="k">pre-dispatch</span><br><span class="k">pre-tool-use</span><br><span class="k">pre-shell</span><br><span class="k">post-file-write</span><br><span class="k">agent-stop</span></div></div>
+        <div class="card nd sm"><div class="hd"><span class="no">4</span><span class="ct">lib/ 与 AI-Eye</span><span class="who">Node</span></div>
+          <div class="cd"><b>lib 11 个模块</b>：<span class="k">budget-rules</span>、<span class="k">config-generators</span>、<span class="k">detect-tool</span>、<span class="k">hook-config-reconciler</span>、<span class="k">node-test-compat</span>、<span class="k">path-utils</span>、<span class="k">respond</span>、<span class="k">shell</span>、<span class="k">skill-hint</span>、<span class="k">state-finder</span>、<span class="k">sub-skill-names</span><br><b>AI-Eye</b>：<span class="k">ai-eye-hook.mjs</span> 旁路上报 Langfuse，默认关闭、fail-open</div></div>
+      </div>
+    </div>
+
+    <div class="arrow tall"><span class="lb">放行后，模型开始按 SKILL.md 编排</span></div>
+
+    <div class="layer">
+      <div class="lt">第 3 层 · AI 编排层（Markdown，1495 个文件）—— 系统的「大脑」</div>
+      <div class="row c3">
+        <div class="card ai sm"><div class="hd"><span class="no">5</span><span class="ct">3 个 L1 编排器</span><span class="who">AI</span></div>
+          <div class="cd"><b>fx-ops</b>：单点故障机制级 RCA，<b>唯一</b>跨域调度器<br><b>fx-ops-patrol</b>：广度巡检<br><b>fx-ops-postmortem</b>：影响评估 / 复盘<br><b>用什么</b>：三个 <span class="k">SKILL.md</span>，无代码</div></div>
+        <div class="card ai sm"><div class="hd"><span class="no">6</span><span class="ct">36 个技能</span><span class="who">AI</span></div>
+          <div class="cd"><b>做什么</b>：领域知识、排查 SOP、触发词<br><b>关键事实</b>：<b>只有约 18 个技能带 <span class="k">scripts/</span></b>，其余是<b>纯 Markdown</b>（如 <span class="k">fx-ops-query</span> 0 脚本 / 11 references）<br><b>用什么</b>：Markdown + 少量 <span class="k">evals.json</span></div></div>
+        <div class="card ai sm"><div class="hd"><span class="no">7</span><span class="ct">references 知识库</span><span class="who">AI</span></div>
+          <div class="cd"><b>做什么</b>：把口头规则固化成可读文档（实战场景库、团队职责、跨域诊断模式、PromQL 模板、biz 查询索引）<br><b>规模</b>：fx-ops 98 个 · patrol 22 个 · apl 19 个 · 全仓 Markdown 1495 个</div></div>
+      </div>
+    </div>
+
+    <div class="arrow tall"><span class="lb">AI 决定「查什么」，把命令交给采集层</span></div>
+
+    <div class="layer">
+      <div class="lt">第 4 层 · 采集执行层（Python 329 + Node 189）—— 只查事实，不做决定</div>
+      <div class="row c4">
+        <div class="card py sm"><div class="hd"><span class="no">8</span><span class="ct">统一 Python 入口</span><span class="who">Python</span></div>
+          <div class="cd"><b>做什么</b>：所有取证能力的唯一门<br><span class="k">uv run --no-sync python scripts/fx_ops_cli.py run &lt;能力ID&gt; -- …</span><br><b>禁止</b>：<span class="k">fast_rca.py</span> / <span class="k">playbook_collect.py</span> 裸跑会报错退出</div></div>
+        <div class="card py sm"><div class="hd"><span class="no">9</span><span class="ct">采集脚本主力</span><span class="who">Python</span></div>
+          <div class="cd">fx-ops 下 <b>254 个 .py</b>（+ 42 个 Node）<br><b>主导标准库</b>：<span class="k">pathlib</span> 237 · <span class="k">json</span> 196 · <span class="k">subprocess</span> 45<br><b>不直连 HTTP</b>：一律 <span class="k">subprocess</span> 调 Go CLI</div></div>
+        <div class="card ext sm"><div class="hd"><span class="no">10</span><span class="ct">Go CLI（外部）</span><span class="who">外部</span></div>
+          <div class="cd"><b>做什么</b>：真正打数据库 / 监控 / 配置中心的人<br><span class="k">fx-ops idp query|object|cms|tenant|prometheus|grafana</span><br><b>返回信封</b>：<span class="k">{code, data:{columns, items}}</span></div></div>
+        <div class="card py sm"><div class="hd"><span class="no">11</span><span class="ct">证据落盘</span><span class="who">Python</span></div>
+          <div class="cd"><b>路径</b>：<span class="k">output/evidence/&lt;YYYYMMDD-Issue&gt;/</span><br><b>并发保护</b>：<span class="k">proper-lockfile</span> 目录锁（唯一 Node 运行时依赖）<br><b>日志</b>：<span class="k">logs/LOG-*.log</span>，每行带时间戳</div></div>
+      </div>
+    </div>
+
+    <div class="arrow tall"><span class="lb">采集结果被契约校验</span></div>
+
+    <div class="layer">
+      <div class="lt">第 5 层 · 契约与门禁层（YAML / JSON Schema / JSON）—— 稳定性来自这里</div>
+      <div class="row c4">
+        <div class="card dec sm"><div class="hd"><span class="no">12</span><span class="ct">datasources.yaml</span><span class="who">契约</span></div>
+          <div class="cd">391 行 · <b>10 张表全部 clickhouse</b><br>每表声明 <span class="k">engine</span> / <span class="k">time_column</span> / <span class="k">tenant_columns</span> / <span class="k">trace_column</span> / <span class="k">columns</span> / <span class="k">notes</span><br><b>价值</b>：新增日志表不用改 Python</div></div>
+        <div class="card dec sm"><div class="hd"><span class="no">13</span><span class="ct">21 个 JSON Schema</span><span class="who">契约</span></div>
+          <div class="cd">全部 <b>Draft 2020-12</b><br>fx-ops 15 · patrol 3 · postmortem 3 · udobj 1<br>三个编排器共用 <span class="k">events</span>/<span class="k">state</span>/<span class="k">summary</span> 三元组命名<br><b>校验器</b>：Python <span class="k">jsonschema</span> + Node <span class="k">ajv</span></div></div>
+        <div class="card dec sm"><div class="hd"><span class="no">14</span><span class="ct">evidence.yaml</span><span class="who">契约</span></div>
+          <div class="cd">证据命名唯一真相源（试点 2 条）<br>字段：<span class="k">canonical</span> / <span class="k">python_constant</span> / <span class="k">schema</span> / <span class="k">producer</span> / <span class="k">required_by</span> / <span class="k">aliases[]</span><br><b>亮点</b>：alias 带 <span class="k">remove_after</span> 日期，过期断言红灯</div></div>
+        <div class="card dec sm"><div class="hd"><span class="no">15</span><span class="ct">cloud-registry.md</span><span class="who">契约</span></div>
+          <div class="cd">142 行 · 14+ 云环境唯一真相源<br><span class="k">source_id</span> → <span class="k">profile</span> → <span class="k">domain</span> → <span class="k">dash_url</span> → <span class="k">cms_profile</span><br><b>为什么用 Markdown</b>：消费者是 AI 上下文，不是程序</div></div>
+      </div>
+    </div>
+
+    <div class="arrow tall"><span class="lb">契约背后是真实的外部系统</span></div>
+
+    <div class="layer">
+      <div class="lt">第 6 层 · 外部系统层 —— 数据、知识、平台</div>
+      <div class="row c4">
+        <div class="card ext sm"><div class="hd"><span class="ct">诊断数据面</span><span class="who">外部</span></div>
+          <div class="cd"><b>ClickHouse</b>（10 张日志表，biz 统一 <span class="k">biz-app-log</span>）<br><b>Prometheus</b> / <b>Grafana</b>（<span class="k">grafana.foneshare.cn</span>）<br><b>Pyroscope</b>（火焰图）<br><b>MongoDB / MySQL / PG / Redis / RocketMQ / Kafka</b></div></div>
+        <div class="card ext sm"><div class="hd"><span class="ct">平台与代码面</span><span class="who">外部</span></div>
+          <div class="cd"><b>K8s</b>：<span class="k">fs-k8s-cli</span> → fs-k8s-app-manager<br><b>Sourcebot</b>：<span class="k">coder.firstshare.cn</span> 跨仓代码搜索<br><b>IDP</b>：34 个 profile（<span class="k">fx-ops-profiles.json</span>）</div></div>
+        <div class="card ext sm"><div class="hd"><span class="ct">知识与工单面</span><span class="who">外部</span></div>
+          <div class="cd"><b>TAPD</b>：workspace <span class="k">20019471</span> 历史缺陷库<br><b>乐享</b>：<span class="k">lexiangla.com</span><br><b>纷享文档</b>：<span class="k">developer.fxiaoke.com</span>（123 处引用，最高频）<br><b>CMS</b>：<span class="k">oss.foneshare.cn/cs/core</span></div></div>
+        <div class="card ext sm"><div class="hd"><span class="ct">观测与协作</span><span class="who">外部</span></div>
+          <div class="cd"><b>Langfuse</b>：AI-Eye 上报端点（12 类编辑器）<br><b>GitLab</b>：<span class="k">git.firstshare.cn/devops/bug-finder</span><br><b>Multica</b>：workspace <span class="k">bug-finder</span><br><b>企信 / 工作圈</b>：通知与反查</div></div>
+      </div>
+    </div>
+
+    <div class="arrow tall"><span class="lb">产出给人看的东西</span></div>
+
+    <div class="layer">
+      <div class="lt">第 7 层 · 产物层 —— 系统真正的交付物</div>
+      <div class="row c4">
+        <div class="card art sm"><div class="hd"><span class="no">16</span><span class="ct">证据</span><span class="who">产物</span></div>
+          <div class="cd"><span class="k">QRY-*.json</span> / <span class="k">TRC-*.json</span> / <span class="k">CTX-collect-manifest.json</span><br>形状受 <span class="k">meta + data</span> 约定与 Schema 约束</div></div>
+        <div class="card art sm"><div class="hd"><span class="no">17</span><span class="ct">报告</span><span class="who">产物</span></div>
+          <div class="cd">Markdown 摘要 或 HTML 报告<br><b>铁律</b>：报告正文由 <b>AI 撰写</b>，<b>禁止</b> Python / 模板 / 渲染器拼接</div></div>
+        <div class="card art sm"><div class="hd"><span class="no">18</span><span class="ct">分享链接</span><span class="who">产物</span></div>
+          <div class="cd"><span class="k">fx-ops-share</span> → <span class="k">idp share</span><br>默认 plan-first：先出分享计划（路径 / 大小 / 敏感扫描摘要 / 过期时间），授权后才上传</div></div>
+        <div class="card art sm"><div class="hd"><span class="no">19</span><span class="ct">可观测事件</span><span class="who">产物</span></div>
+          <div class="cd">AI-Eye 事件 span（<span class="k">session-start</span> / <span class="k">prompt</span> / <span class="k">tool-before</span> / <span class="k">tool-after</span> / <span class="k">tool-failure</span> / <span class="k">stop</span> / <span class="k">session-end</span>）上报 Langfuse<br><b>边界</b>：不参与诊断决策、不阻断</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <b>这张图最重要的信息：</b>第 3 层（AI 编排）只有 Markdown，没有代码；第 4 层（采集）只有脚本，没有决策。
+    两层之间的接缝是第 5 层的契约——<b>契约让「AI 想」和「程序做」可以各自独立演进</b>。
+    改动采集脚本不会改变 AI 的判断方式，改动 SKILL.md 也不需要动一行 Python。
+  </div>
+</figure>
+
+<figure id="fig2">
+  <h2>③ 图 2 · 语言与依赖构成（这套仓库到底由什么组成）</h2>
+  <p class="sub">先看「什么语言最多」，再看「依赖有几个」，最后看「标准库用了什么」。</p>
+
+  <h3>2.1 文件类型分布（共 2281 个源文件，已排除 .venv / node_modules / tmp / output）</h3>
+  <div class="bars">
+    <div class="bar"><span class="k2">Markdown</span><span class="track"><span class="fill" style="width:100%;background:#1d4ed8"></span></span><span class="val">1495</span></div>
+    <div class="bar"><span class="k2">Python</span><span class="track"><span class="fill" style="width:22%;background:#0f766e"></span></span><span class="val">329</span></div>
+    <div class="bar"><span class="k2">JSON</span><span class="track"><span class="fill" style="width:14.1%;background:#c2410c"></span></span><span class="val">211</span></div>
+    <div class="bar"><span class="k2">MJS</span><span class="track"><span class="fill" style="width:7.8%;background:#b45309"></span></span><span class="val">116</span></div>
+    <div class="bar"><span class="k2">TypeScript</span><span class="track"><span class="fill" style="width:4.5%;background:#0369a1"></span></span><span class="val">67</span></div>
+    <div class="bar"><span class="k2">YAML</span><span class="track"><span class="fill" style="width:3.1%;background:#7c3aed"></span></span><span class="val">47</span></div>
+    <div class="bar"><span class="k2">Shell</span><span class="track"><span class="fill" style="width:0.6%;background:#475569"></span></span><span class="val">9</span></div>
+    <div class="bar"><span class="k2">JavaScript</span><span class="track"><span class="fill" style="width:0.4%;background:#94a3b8"></span></span><span class="val">6</span></div>
+  </div>
+
+  <div class="stackbar" style="margin-top:16px">
+    <span style="width:65.6%;background:#1d4ed8">Markdown 65.6%</span>
+    <span style="width:14.4%;background:#0f766e">Python 14.4%</span>
+    <span style="width:20%;background:#94a3b8">JSON + Node + YAML + Shell 20%</span>
+  </div>
+  <div class="legendline">
+    <span>一句话读法：<b>文档是代码的 4.5 倍</b>——这正是「AI Agent 仓库」与普通服务仓库最大的形态差异。</span>
+  </div>
+
+  <h3>2.2 运行时依赖：一共只有 4 个包</h3>
+  <div class="row-2" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:4px">
+    <div class="card nd">
+      <div class="hd"><span class="no">N</span><span class="ct">Node 运行时依赖 · 1 个</span><span class="who">Node</span></div>
+      <div class="cd">
+        <b><span class="k">proper-lockfile</span> <span class="k">^4.1.2</span></b>（11 个文件引用）
+        <ul>
+          <li><b>唯一用途</b>：跨进程目录锁</li>
+          <li><b>为什么非它不可</b>：多 Agent 同时写同一个 <span class="k">output/evidence/&lt;date-issue&gt;/</span> 时，Node 的 <span class="k">fs</span> 没有原子目录锁</li>
+          <li><b>除此之外</b>：全部能力走 <span class="k">node:*</span> 标准库</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card py">
+      <div class="hd"><span class="no">P</span><span class="ct">Python 运行时依赖 · 3 个</span><span class="who">Python</span></div>
+      <div class="cd">
+        <ul>
+          <li><b><span class="k">jsonschema</span> <span class="k">&gt;=4.23,&lt;5</span></b>（7 文件）—— 用 <span class="k">Draft202012Validator</span> 校验 21 个 schema；显式上界防大版本破坏</li>
+          <li><b><span class="k">pyyaml</span> <span class="k">&gt;=6.0.3</span></b>（11 文件）—— 读 playbook 定义、阈值表、patrol 环境注册表、MQ 消费组映射、数据源目录</li>
+          <li><b><span class="k">sqlparse</span> <span class="k">&gt;=0.5.0</span></b>（<b>仅 2 文件</b>）—— 解析慢 SQL 的 <span class="k">FROM</span>/<span class="k">WHERE</span>/<span class="k">GROUP BY</span>/<span class="k">ORDER BY</span> 做索引覆盖矩阵；正则解 SQL 会误判子查询</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <h3>2.3 Python 侧导入频次 —— 标准库占绝对主导</h3>
+  <div class="split">
+    <div>
+      <div class="bars">
+        <div class="bar"><span class="k2">__future__</span><span class="track"><span class="fill" style="width:100%;background:#0f766e"></span></span><span class="val">300</span></div>
+        <div class="bar"><span class="k2">pathlib</span><span class="track"><span class="fill" style="width:79%;background:#0f766e"></span></span><span class="val">237</span></div>
+        <div class="bar"><span class="k2">json</span><span class="track"><span class="fill" style="width:65%;background:#0f766e"></span></span><span class="val">196</span></div>
+        <div class="bar"><span class="k2">typing</span><span class="track"><span class="fill" style="width:55%;background:#0f766e"></span></span><span class="val">165</span></div>
+        <div class="bar"><span class="k2">sys</span><span class="track"><span class="fill" style="width:42%;background:#14b8a6"></span></span><span class="val">126</span></div>
+        <div class="bar"><span class="k2">collections</span><span class="track"><span class="fill" style="width:23%;background:#14b8a6"></span></span><span class="val">70</span></div>
+        <div class="bar"><span class="k2">re</span><span class="track"><span class="fill" style="width:23%;background:#14b8a6"></span></span><span class="val">70</span></div>
+        <div class="bar"><span class="k2">datetime</span><span class="track"><span class="fill" style="width:21%;background:#14b8a6"></span></span><span class="val">63</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="bars">
+        <div class="bar"><span class="k2">subprocess</span><span class="track"><span class="fill" style="width:15%;background:#14b8a6"></span></span><span class="val">45</span></div>
+        <div class="bar"><span class="k2">argparse</span><span class="track"><span class="fill" style="width:14.7%;background:#14b8a6"></span></span><span class="val">44</span></div>
+        <div class="bar"><span class="k2">dataclasses</span><span class="track"><span class="fill" style="width:11%;background:#5eead4"></span></span><span class="val">33</span></div>
+        <div class="bar"><span class="k2">unittest（测试）</span><span class="track"><span class="fill" style="width:9%;background:#5eead4"></span></span><span class="val">27</span></div>
+        <div class="bar"><span class="k2">hashlib</span><span class="track"><span class="fill" style="width:8%;background:#5eead4"></span></span><span class="val">24</span></div>
+        <div class="bar"><span class="k2">os</span><span class="track"><span class="fill" style="width:6%;background:#5eead4"></span></span><span class="val">18</span></div>
+        <div class="bar"><span class="k2">urllib</span><span class="track"><span class="fill" style="width:3.7%;background:#5eead4"></span></span><span class="val">11</span></div>
+        <div class="bar"><span class="k2">tempfile</span><span class="track"><span class="fill" style="width:2.3%;background:#5eead4"></span></span><span class="val">7</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="note">
+    <b>读法</b>：<span class="k">pathlib</span> + <span class="k">json</span> + <span class="k">subprocess</span> 三个标准库模块就撑起了整个采集主流程——<b>读文件、解析 JSON、调外部 CLI</b>。
+  </div>
+
+  <h3>2.4 Node 侧导入频次 —— 同样只有标准库</h3>
+  <div class="split">
+    <div>
+      <div class="bars">
+        <div class="bar"><span class="k2">node:path</span><span class="track"><span class="fill" style="width:100%;background:#b45309"></span></span><span class="val">142</span></div>
+        <div class="bar"><span class="k2">node:fs</span><span class="track"><span class="fill" style="width:92%;background:#b45309"></span></span><span class="val">131</span></div>
+        <div class="bar"><span class="k2">node:url</span><span class="track"><span class="fill" style="width:47%;background:#f59e0b"></span></span><span class="val">67</span></div>
+        <div class="bar"><span class="k2">node:os</span><span class="track"><span class="fill" style="width:30%;background:#f59e0b"></span></span><span class="val">42</span></div>
+        <div class="bar"><span class="k2">node:child_process</span><span class="track"><span class="fill" style="width:21%;background:#f59e0b"></span></span><span class="val">30</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="bars">
+        <div class="bar"><span class="k2">node:assert/strict</span><span class="track"><span class="fill" style="width:20%;background:#f59e0b"></span></span><span class="val">29</span></div>
+        <div class="bar"><span class="k2">node:fs/promises</span><span class="track"><span class="fill" style="width:18%;background:#fcd34d"></span></span><span class="val">25</span></div>
+        <div class="bar"><span class="k2">node:test</span><span class="track"><span class="fill" style="width:13%;background:#fcd34d"></span></span><span class="val">18</span></div>
+        <div class="bar"><span class="k2">node:crypto</span><span class="track"><span class="fill" style="width:5%;background:#fcd34d"></span></span><span class="val">7</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>2.5 「没有出现的东西」更能说明问题</h3>
+  <table class="tl">
+    <tr><th style="width:200px">常见依赖</th><th>为什么这套系统里没有</th></tr>
+    <tr><td><span class="k">requests</span> / <span class="k">httpx</span></td><td>HTTP 调用统一走 <span class="k">subprocess</span> 调 IDP Go CLI，不在 Python 里直连</td></tr>
+    <tr><td><span class="k">pandas</span> / <span class="k">numpy</span></td><td>数据聚合在 ClickHouse 侧做完，Python 只搬运结果</td></tr>
+    <tr><td><span class="k">pydantic</span></td><td>校验交给 <span class="k">jsonschema</span> + 独立 schema 文件，schema 可被 Node 侧 <span class="k">ajv</span> 复用</td></tr>
+    <tr><td><span class="k">jinja2</span></td><td>报告正文由 AI 撰写（仓库铁律），不走模板渲染</td></tr>
+    <tr><td><span class="k">fastapi</span> / <span class="k">flask</span></td><td>系统没有服务端，不暴露任何 HTTP 接口</td></tr>
+    <tr><td><span class="k">jest</span> / <span class="k">webpack</span> / <span class="k">eslint</span></td><td>测试用 <span class="k">vitest</span> + <span class="k">node:test</span>；没有前端产物需要打包；lint 由 <span class="k">tsc</span> + <span class="k">ruff</span> 承担</td></tr>
+  </table>
+</figure>
+
+<figure id="fig3">
+  <h2>④ 图 3 · 一次诊断请求的技术链路（从用户打字到出报告，17 跳）</h2>
+  <p class="sub">
+    场景：用户在编辑器里贴了一个 <span class="k">traceId</span>，问「这个请求为什么失败」。
+    下面每一跳都标出「谁执行 + 用什么技术」。<b>注意紫色只出现在 5 个环节</b>——AI 只负责判断，不负责搬运。
+  </p>
+
+  <div class="seq">
+    <div class="rail"></div>
+
+    <div class="step"><div class="card user">
+      <div class="hd"><span class="no">1</span><span class="ct">用户输入</span><span class="who">人</span></div>
+      <div class="cd"><b>做什么</b>：在任意 AI 编辑器里丢一句自然语言</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：traceId / 报错文本 / 截图 / 「帮我排查」</div>
+        <div class="io"><b>输出</b>：一条消息</div>
+        <div class="io"><b>用什么</b>：12 类已接入 AI-Eye 的编辑器之一</div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card nd">
+      <div class="hd"><span class="no">2</span><span class="ct">宿主加载 Hook</span><span class="who">Node</span></div>
+      <div class="cd"><b>做什么</b>：编辑器按生成的宿主配置启动 hook 引擎，按事件类型跑 checker、注入 skill 提示</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：宿主事件（<span class="k">session-start</span> / <span class="k">pre-dispatch</span> …）</div>
+        <div class="io"><b>输出</b>：注入的 skill 提示 + 门禁结论</div>
+        <div class="io"><b>用什么</b>：<span class="k">.agents/hooks/hook-engine.mjs</span>（纯 <span class="k">node:*</span>）</div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card ai">
+      <div class="hd"><span class="no">3</span><span class="ct">首跳分流（硬规则）</span><span class="who">AI</span></div>
+      <div class="cd"><b>做什么</b>：判断这句话该走哪个 L1 编排器；消息里已有 traceId → <b>只加载 <span class="k">fx-ops</span></b></div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：用户消息</div>
+        <div class="io"><b>输出</b>：选定 <span class="k">fx-ops</span> + effort 档位（<span class="k">auto</span> / <span class="k">low</span> / <span class="k">medium</span> / <span class="k">high</span>）</div>
+        <div class="io"><b>用什么</b>：<span class="k">fx-ops/SKILL.md</span> + <span class="k">references/effort-tiers.md</span>（纯 Markdown，无代码）</div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card ai">
+      <div class="hd"><span class="no">4</span><span class="ct">分诊 scout 派发</span><span class="who">AI + Python</span></div>
+      <div class="cd"><b>做什么</b>：决定第一波查什么（<span class="k">auto</span> 档默认 error lane core-first、latency lane 请求路径并行）</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：traceId + 症状</div>
+        <div class="io"><b>输出</b>：一条采集命令</div>
+        <div class="io"><b>用什么</b>：<span class="k">uv run --no-sync python scripts/fx_ops_cli.py run fast_rca -- …</span></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card py">
+      <div class="hd"><span class="no">5</span><span class="ct">Python 调 Go CLI</span><span class="who">Python</span></div>
+      <div class="cd"><b>做什么</b>：把「查什么」翻译成 CLI 参数，用 <span class="k">subprocess</span> 调起 Go CLI（Python 不直连 HTTP / 数据库）</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：能力 ID + 参数</div>
+        <div class="io"><b>输出</b>：CLI stdout（compact JSON）</div>
+        <div class="io"><b>用什么</b>：<span class="k">subprocess</span> + <span class="k">scripts/fxops_invoke.py</span>（<span class="k">run_fxops</span> / <span class="k">extract_rows</span>）</div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card ext">
+      <div class="hd"><span class="no">6</span><span class="ct">IDP 网关 → ClickHouse</span><span class="who">外部</span></div>
+      <div class="cd"><b>做什么</b>：真正执行 SQL，从 <span class="k">log_cep_dist</span> 等 10 张表里取行</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：SQL（biz 统一 <span class="k">biz-app-log</span>）</div>
+        <div class="io"><b>输出</b>：<span class="k">{code, data:{columns, items}}</span> —— 二维数组行</div>
+        <div class="io"><b>用什么</b>：<span class="k">fx-ops idp query biz-app-log … -j</span>；错误码优先看 <span class="k">meta.errorCode</span></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card py">
+      <div class="hd"><span class="no">7</span><span class="ct">证据落盘（带并发锁）</span><span class="who">Python</span></div>
+      <div class="cd"><b>做什么</b>：把行物化成 dict，写进证据目录；多进程同时写同一目录时用目录锁互斥</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：CLI 返回的 <span class="k">items</span></div>
+        <div class="io"><b>输出</b>：<span class="k">output/evidence/&lt;YYYYMMDD-Issue&gt;/QRY-*.json</span> + <span class="k">logs/LOG-*.log</span></div>
+        <div class="io"><b>用什么</b>：<span class="k">pathlib</span> / <span class="k">json</span> + Node 侧 <span class="k">proper-lockfile</span></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card dec">
+      <div class="hd"><span class="no">8</span><span class="ct">契约校验（Schema）</span><span class="who">契约</span></div>
+      <div class="cd"><b>做什么</b>：检查证据形状是否符合证据元数据约定（<span class="k">meta</span> + <span class="k">data</span>）；证据文件名是否在白名单</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：落盘的 JSON</div>
+        <div class="io"><b>输出</b>：通过 / 断言失败</div>
+        <div class="io"><b>用什么</b>：<span class="k">jsonschema</span>（Python）+ <span class="k">ajv</span>（Node）+ 21 个 <span class="k">*.schema.json</span>（Draft 2020-12）</div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card nd">
+      <div class="hd"><span class="no">9</span><span class="ct">Hook 放行判断</span><span class="who">Node</span></div>
+      <div class="cd"><b>做什么</b>：<span class="k">evidence-index</span>（failClosed）与 <span class="k">ctx-valid</span>（failClosed）确认证据齐、上下文合法，才允许继续</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：证据索引 + 上下文</div>
+        <div class="io"><b>输出</b>：放行 / <span class="k">BLOCK</span></div>
+        <div class="io"><b>用什么</b>：<span class="k">.agents/hooks/checkers/evidence-index.mjs</span>、<span class="k">ctx-valid.mjs</span></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card ai">
+      <div class="hd"><span class="no">10</span><span class="ct">域子 skill 归类</span><span class="who">AI</span></div>
+      <div class="cd"><b>做什么</b>：把证据映射到业务域（SFA / UDOBJ / FMCG / 工作流 / AI Agent …），生成领域假设</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：已落盘的证据</div>
+        <div class="io"><b>输出</b>：领域假设 + 下一步取证方向</div>
+        <div class="io"><b>用什么</b>：域子 skill 的 <span class="k">SKILL.md</span> + <span class="k">fx-ops-knowledge</span> 实战场景库</div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card ai">
+      <div class="hd"><span class="no">11</span><span class="ct">链路追踪</span><span class="who">AI + Python</span></div>
+      <div class="cd"><b>做什么</b>：从 CEP 网关日志追到应用错误日志、慢 SQL、RPC 调用、APL 耗时，产出 <b>Root Error Span</b> 与带累计耗时的时序表</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：traceId + 窄时间窗</div>
+        <div class="io"><b>输出</b>：链路时序 + 根因 span</div>
+        <div class="io"><b>用什么</b>：<span class="k">fx-ops-tracing</span> → <span class="k">log_cep_dist</span> + <span class="k">logger.app_log_dist</span> + <span class="k">slow_log_dist</span></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card ext">
+      <div class="hd"><span class="no">12</span><span class="ct">跨仓源码钻透</span><span class="who">外部 CLI</span></div>
+      <div class="cd"><b>做什么</b>：拿堆栈 / 符号名跨仓库搜代码，找定义与引用、对比最近变更，输出<b>代码级根因与修复方案</b></div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：异常类名 / 函数名 / 文件路径</div>
+        <div class="io"><b>输出</b>：符号定义 + 引用链 + 变更对比</div>
+        <div class="io"><b>用什么</b>：<span class="k">sourcebot-cli</span>（<span class="k">coder.firstshare.cn</span>，需 <span class="k">SOURCEBOT_API_KEY</span>）</div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card ai">
+      <div class="hd"><span class="no">13</span><span class="ct">裁决</span><span class="who">AI</span></div>
+      <div class="cd"><b>做什么</b>：把所有证据收敛成结构化结论——根因、置信度、反证、未解项。<b>形状受 Schema 约束</b></div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：全部证据</div>
+        <div class="io"><b>输出</b>：<span class="k">verdict-bundle</span> / <span class="k">ai-decision</span> 结构</div>
+        <div class="io"><b>用什么</b>：<span class="k">verdict-bundle.schema.json</span> + <span class="k">ai-decision.schema.json</span></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card ai">
+      <div class="hd"><span class="no">14</span><span class="ct">报告撰写</span><span class="who">AI</span></div>
+      <div class="cd"><b>做什么</b>：写给人看的报告（Markdown 摘要 / HTML 报告）。<b>仓库铁律：禁止 Python 模板、字符串拼接或渲染器生成正文</b></div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：裁决结果 + 证据指针</div>
+        <div class="io"><b>输出</b>：Markdown / HTML 报告</div>
+        <div class="io"><b>用什么</b>：AI 直接撰写；结构受 <span class="k">report-digest</span> / <span class="k">report-decision</span> schema 约束</div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card nd">
+      <div class="hd"><span class="no">15</span><span class="ct">报告门禁</span><span class="who">Node</span></div>
+      <div class="cd"><b>做什么</b>：在 <span class="k">agent-stop</span> 事件上检查报告结构、影响面证据、判定署名——不合格直接打回重写</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：报告文件</div>
+        <div class="io"><b>输出</b>：放行 / 打回</div>
+        <div class="io"><b>用什么</b>：<span class="k">report-structure.mjs</span>、<span class="k">impact-gate.mjs</span>、<span class="k">judge-author.mjs</span>、<span class="k">converge-gate.mjs</span></div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card py">
+      <div class="hd"><span class="no">16</span><span class="ct">外发分享（可选）</span><span class="who">Python</span></div>
+      <div class="cd"><b>做什么</b>：默认 <b>plan-first</b>——先出分享计划（真实路径 / 大小 / 敏感扫描摘要 / 拟过期 / 是否建议密码），授权门通过后才上传</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：报告文件</div>
+        <div class="io"><b>输出</b>：URL + 过期时间</div>
+        <div class="io"><b>用什么</b>：<span class="k">fx-ops-share</span> → <span class="k">idp share</span>（仅允许仓内 <span class="k">output/</span>）</div>
+      </div>
+    </div></div>
+
+    <div class="step"><div class="card nd">
+      <div class="hd"><span class="no">17</span><span class="ct">可观测上报（旁路）</span><span class="who">Node / Python</span></div>
+      <div class="cd"><b>做什么</b>：把整条会话的事件 span 上报 Langfuse 做分析。<b>默认关闭、fail-open、不参与诊断决策</b></div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：宿主事件</div>
+        <div class="io"><b>输出</b>：trace span</div>
+        <div class="io"><b>用什么</b>：<span class="k">ai-eye-hook.mjs</span> → Langfuse Public Ingestion API；Claude/Codex 走上游 transcript/rollout 深度转换器</div>
+      </div>
+    </div></div>
+
+  </div>
+
+  <h3>这条链路暴露出的三条技术分工</h3>
+  <table class="tl">
+    <tr><th style="width:110px">环节</th><th style="width:150px">谁执行</th><th>技术职责边界</th></tr>
+    <tr><td><b>4 / 10 / 13 / 14</b></td><td>紫色 · AI</td><td>只有「决定查什么」「归类领域」「下结论」「写报告」四件事交给模型。<b>模型不碰数据搬运</b></td></tr>
+    <tr><td><b>5 / 7 / 11 / 16</b></td><td>绿色 · Python</td><td>只做三件事：<span class="k">subprocess</span> 调 CLI、<span class="k">pathlib</span>+<span class="k">json</span> 落盘、<span class="k">jsonschema</span> 校验。<b>不做 if/else 流程编排</b></td></tr>
+    <tr><td><b>2 / 9 / 15 / 17</b></td><td>黄色 · Node</td><td>门禁与账本：放行判断、证据索引、报告结构、可观测上报。<b>零依赖、可离线跑</b></td></tr>
+  </table>
+
+  <div class="note">
+    <b>观察到的现象</b>：整条链路上真正「不可替代」的是第 8 个环节——<span class="k">{code, data:{columns, items}}</span> 这个响应信封。
+    Python 侧禁止按旧字段 <span class="k">data.rows</span> / <span class="k">rowCount</span> 解析，兄弟 skill 也不得复制信封逻辑，必须统一走
+    <span class="k">fx_ops_cli.py run fxops_query -- …</span>。信封是「AI 想」与「程序做」之间唯一的数据接口。
+  </div>
+</figure>
+
+<figure id="fig4">
+  <h2>⑤ 图 4 · 测试与质量门禁栈（保障线之一）</h2>
+  <p class="sub">这套系统有 <b>187 个测试文件</b>和 <b>9 类静态 / 语义检查</b>，最后收口到一个统一入口。</p>
+
+  <h3>4.1 三套测试运行时并存（不追求统一框架）</h3>
+  <div class="row" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+    <div class="card py">
+      <div class="hd"><span class="no">1</span><span class="ct">pytest</span><span class="who">Python</span></div>
+      <div class="cd">
+        <b>入口</b>：<span class="k">pnpm test:py</span> → <span class="k">uv run --extra dev pytest</span><br>
+        <b>规模</b>：<b>133</b> 个 <span class="k">test_*.py</span>（其中 fx-ops 内 108 个）<br>
+        <b>覆盖</b>：采集脚本、契约一致性、门禁校验器
+      </div>
+      <div class="cmd">addopts = "--basetemp=tmp/pytest"
+testpaths = ["tests", "scripts", ".agents/skills"]
+python_files = ["test_*.py", "*_test.py"]</div>
+    </div>
+    <div class="card nd">
+      <div class="hd"><span class="no">2</span><span class="ct">vitest</span><span class="who">Node</span></div>
+      <div class="cd">
+        <b>入口</b>：<span class="k">pnpm test</span> → <span class="k">vitest run</span><br>
+        <b>规模</b>：根 <span class="k">tests/</span> 下 <b>14</b> 个 <span class="k">.test.ts</span><br>
+        <b>覆盖</b>：TS 工具函数、trigger-eval 策略、path-eval 打分
+      </div>
+      <div class="cmd">environment: 'node'
+globals: true
+include: ['src/**/*.test.ts', 'tests/**/*.test.ts']</div>
+    </div>
+    <div class="card nd">
+      <div class="hd"><span class="no">3</span><span class="ct">node:test</span><span class="who">Node</span></div>
+      <div class="cd">
+        <b>入口</b>：<span class="k">pnpm test:hooks</span> 及各 <span class="k">test:*</span> 脚本<br>
+        <b>规模</b>：全仓 <b>54</b> 个 <span class="k">.test.ts/.mjs/.js</span>（含 vitest 的 14 个）<br>
+        <b>覆盖</b>：hook checker、报告校验器、回归脚本
+      </div>
+      <div class="cmd">node --test ".agents/hooks/**/*.test.ts" \
+  scripts/generate-hook-configs.test.ts</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>pytest 的 <span class="k">testpaths</span> 写成整树是刻意设计</b>：新增 Python 测试目录<b>不需要改任何配置</b>就自动进 CI（Issue #261）。
+    为了防止有人把测试文件挪出收集范围，配套了审计脚本 <span class="k">scripts/check_py_test_discovery.py</span>，
+    用「磁盘侧预期范围 ↔ pytest 实际收集范围」交叉核对。
+  </div>
+
+  <h3>4.2 静态检查矩阵</h3>
+  <table class="tl">
+    <tr><th style="width:150px">检查</th><th style="width:170px">命令</th><th style="width:130px">工具</th><th>关键配置</th></tr>
+    <tr><td><b>Python lint + format</b></td><td><span class="k">pnpm lint:py</span></td><td><span class="k">ruff</span></td><td><span class="k">py312</span> · 120 列 · <span class="k">E,W,F,I,B,C4,UP,N</span> · 忽略 <span class="k">E501,B008</span> · 双引号 · <span class="k">mccabe max-complexity=15</span></td></tr>
+    <tr><td><b>TypeScript 类型</b></td><td><span class="k">pnpm lint</span></td><td><span class="k">tsc --noEmit</span></td><td><span class="k">strict: true</span> · <span class="k">target ES2022</span> · <span class="k">module esnext</span> · <span class="k">moduleResolution bundler</span></td></tr>
+    <tr><td><b>Markdown</b></td><td><span class="k">pnpm lint:md</span></td><td><span class="k">markdownlint-cli2</span></td><td><span class="k">default: true</span> + 关闭 MD013 / MD033 / MD041 等 14 条</td></tr>
+    <tr><td><b>Skill 结构（语义）</b></td><td><span class="k">pnpm lint:skills</span></td><td>自研 <span class="k">skill-lint.ts</span></td><td>13 条规则 + allowlist（见 4.3）</td></tr>
+    <tr><td><b>数据目录列名</b></td><td><span class="k">pnpm lint:catalog</span></td><td><span class="k">lint_catalog_columns.py</span></td><td>校验 <span class="k">datasources.yaml</span> 列名与 biz 文档一致</td></tr>
+  </table>
+
+  <h3>4.3 skill-lint 的 13 条规则 —— 检查「文档的语义」而不是格式</h3>
+  <div style="margin-top:6px">
+    <span class="chip">no-hardcoded-operational-identity · 硬编码环境/租户标识</span>
+    <span class="chip">literal-sibling-internal-link · 引用兄弟 skill 的 scripts 路径</span>
+    <span class="chip">dangling-fragment · 指向不存在的锚点</span>
+    <span class="chip">module-hint-target-exists · 模块路径不存在</span>
+    <span class="chip">no-sibling-fxops-runner-copy · 复制 fx-ops runner 调用方式</span>
+    <span class="chip">python-help-command-use-no-sync · 帮助命令漏 --no-sync</span>
+    <span class="chip">no-public-share-default · 默认走公开分享</span>
+    <span class="chip">no-old-need-further-phrasing · 使用淘汰的回抛措辞</span>
+    <span class="chip">name-h1-consistency · skill 名与 H1 不一致</span>
+    <span class="chip">missing-evals-escalation · 缺 evals 却未标豁免</span>
+    <span class="chip">control-character · 混入控制字符</span>
+    <span class="chip">allowlist · 豁免机制</span>
+    <span class="chip">types · 规则类型</span>
+  </div>
+  <div class="note">
+    <b>为什么这很特别</b>：普通 lint 管格式（缩进、引号），这套 lint 管<b>语义正确性</b>——比如「不许在子 skill 文档里写兄弟 skill 的脚本路径」这条仓库铁律，
+    是靠 <span class="k">literal-sibling-internal-link</span> 规则机器拦住的，不是靠人 review。
+    <b>把口头规则转成 lint 规则</b>是这套系统对抗 1495 个 Markdown 漂移的核心手段。
+  </div>
+
+  <h3>4.4 九类硬门禁</h3>
+  <table class="tl">
+    <tr><th style="width:150px">门禁</th><th style="width:290px">脚本</th><th>拦什么</th><th style="width:90px">CI 阻断</th></tr>
+    <tr><td><b>结构审计</b></td><td><span class="k">fx-ops/scripts/structure-audit.mjs</span></td><td>fx-ops skill 目录结构契约</td><td style="color:#b91c1c"><b>✅ 是</b></td></tr>
+    <tr><td><b>行数预算</b></td><td><span class="k">fx-ops/scripts/complexity-line-gate.mjs</span></td><td>读 <span class="k">complexity_budgets.json</span>，默认上限 1000 行 + 豁免余量 50</td><td style="color:#b91c1c"><b>✅ 是</b></td></tr>
+    <tr><td><b>AST 复杂度</b></td><td><span class="k">ruff --select C901</span> + <span class="k">complexity_gate</span> 能力</td><td>真正的圈复杂度（需 Python 3.12 + uv，故只在本地跑）</td><td>本地</td></tr>
+    <tr><td><b>报告语义</b></td><td><span class="k">assert-report-semantic-checks-sync.mjs</span></td><td>报告语义检查项在文档与代码间同步</td><td>间接</td></tr>
+    <tr><td><b>SLO 同步</b></td><td><span class="k">assert-agents-md-slo-sync.mjs</span></td><td><span class="k">AGENTS.md</span> 分档表与各 SKILL.md 不矛盾</td><td>间接</td></tr>
+    <tr><td><b>报告布局</b></td><td><span class="k">verify-report-layout.mjs</span> / <span class="k">verify-production-skeleton-layout.mjs</span></td><td>用真实渲染校验 HTML 报告不破版（Playwright）</td><td>间接</td></tr>
+    <tr><td><b>触发器评测</b></td><td><span class="k">lint-trigger-eval.ts</span> + <span class="k">trigger-eval-policy.test.ts</span></td><td>每个 skill 的 <span class="k">description</span> 触发词策略合法</td><td>间接</td></tr>
+    <tr><td><b>路径评测</b></td><td><span class="k">path-eval-score.ts</span></td><td>按 <span class="k">evals.json</span> 给「用户意图 → 首跳 skill」打分卡打分</td><td>间接</td></tr>
+    <tr><td><b>测试发现审计</b></td><td><span class="k">check_py_test_discovery.py</span></td><td>防止测试文件移出 pytest 收集范围</td><td>✅ 是</td></tr>
+  </table>
+
+  <div class="callout">
+    <b>复杂度门禁做了两份实现，读同一份预算文件。</b><br>
+    <span class="k">complexity-line-gate.mjs</span>（Node）与 <span class="k">complexity_gate.py</span>（Python）读同一个 <span class="k">complexity_budgets.json</span>。
+    原因是 CI runner 是 shell runner，可能没有 Python 3.12/uv——所以 Node 版做行数近似门禁兜底，本地跑完整的 AST 版。
+    这是「<b>门禁要在最弱的环境下也能跑</b>」这条原则的直接落地。
+  </div>
+
+  <h3>4.5 统一验证入口：<span class="k">pnpm agents:verify</span>（本地 = pre-push = CI）</h3>
+  <p style="font-size:12.5px;margin-top:2px">
+    <span class="k">scripts/agents-verify.mjs</span> 本身<b>不含任何检查逻辑</b>，只做「按改动文件路由到已有 pnpm script」。
+    按顺序串行执行 10 个步骤；配套 <span class="k">pnpm agents:verify:changed</span> 只跑与本次改动相关的子集。
+  </p>
+  <table class="tl">
+    <tr><th style="width:50px">#</th><th style="width:180px">步骤</th><th>触发路径（改了这些才跑）</th></tr>
+    <tr><td>1</td><td><span class="k">lint</span></td><td><span class="k">*.ts/.mts/.cts/.tsx</span> · <span class="k">tsconfig.json</span> · <span class="k">package.json</span> · <span class="k">pnpm-lock.yaml</span></td></tr>
+    <tr><td>2</td><td><span class="k">lint:py</span></td><td><span class="k">*.py</span> · <span class="k">pyproject.toml</span> · <span class="k">uv.lock</span></td></tr>
+    <tr><td>3</td><td><span class="k">lint:catalog</span></td><td><span class="k">datasources.yaml</span> · <span class="k">fx-ops-query</span> 的 clickhouse biz 文档</td></tr>
+    <tr><td>4</td><td><span class="k">lint:skills</span></td><td><span class="k">.agents/skills/**</span></td></tr>
+    <tr><td>5</td><td><span class="k">test:py-discovery</span></td><td>Python 路径 + 审计脚本自身</td></tr>
+    <tr><td>6</td><td><span class="k">test:py</span></td><td>Python 路径 + 数据目录路径</td></tr>
+    <tr><td>7</td><td><span class="k">test:trigger-eval</span></td><td>skill 路径 + 策略测试</td></tr>
+    <tr><td>8</td><td><span class="k">test:path-eval</span></td><td>skill 路径 + 打分脚本</td></tr>
+    <tr><td>9</td><td><span class="k">test:core-contracts</span></td><td>skill 路径 + <span class="k">AGENTS.md</span></td></tr>
+    <tr><td>10</td><td><span class="k">verify:fx-ops:gates</span></td><td>skill 路径 + hook 路径</td></tr>
+  </table>
+  <div class="note">
+    <b>一个被真实使用过的证据</b>：<span class="k">agents-verify.mjs</span> 里有一段注释记录了踩过的坑——
+    <b>不能用 <span class="k">git()</span> 包装 <span class="k">git status --porcelain</span></b>，因为它的整体 <span class="k">trim()</span> 会吃掉首行的前导空格，
+    导致 <span class="k">slice(3)</span> 切掉路径首字符而<b>静默跳过该文件的检查</b>。
+    这类细节说明这个入口不是摆设，而是被日常使用和打磨过的。
+  </div>
+</figure>
+
+<figure id="fig5">
+  <h2>⑥ 图 5 · Hook 引擎与多编辑器接入栈（保障线之二）</h2>
+  <p class="sub">
+    这套系统要在 <b>14 类编辑器</b>里跑同一套门禁。做法不是手抄 14 份配置，而是
+    <b>单一真相源 + 生成器</b>；门禁运行时则是一个<b>零依赖的 Node 引擎</b>。
+  </p>
+
+  <h3>5.1 组成：1 引擎 + 20 checker + 6 事件 + 11 库模块</h3>
+  <div class="row" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+    <div class="card nd"><div class="hd"><span class="no">1</span><span class="ct">hook-engine.mjs</span><span class="who">Node</span></div>
+      <div class="cd"><b>做什么</b>：读配置 → 按事件分发 → 聚合 checker 结果 → 决定放行 / 阻断<br><b>用什么</b>：纯 <span class="k">node:*</span> 标准库，零依赖</div></div>
+    <div class="card nd"><div class="hd"><span class="no">2</span><span class="ct">hook-config.json</span><span class="who">契约</span></div>
+      <div class="cd"><b>做什么</b>：声明 20 个 checker 及其订阅事件、是否 failClosed<br><b>地位</b>：Hook 层的<b>唯一真相源</b></div></div>
+    <div class="card nd"><div class="hd"><span class="no">3</span><span class="ct">checkers/ 20 个</span><span class="who">Node</span></div>
+      <div class="cd"><b>做什么</b>：独立校验器，19 个有配套 <span class="k">.test.ts</span><br><b>failClosed 的 5 个</b>失败即<b>阻断执行</b>，其余只告警</div></div>
+    <div class="card nd"><div class="hd"><span class="no">4</span><span class="ct">lib/ 11 个模块</span><span class="who">Node</span></div>
+      <div class="cd"><span class="k">budget-rules</span> · <span class="k">config-generators</span> · <span class="k">detect-tool</span> · <span class="k">hook-config-reconciler</span> · <span class="k">node-test-compat</span> · <span class="k">path-utils</span> · <span class="k">respond</span> · <span class="k">shell</span> · <span class="k">skill-hint</span> · <span class="k">state-finder</span> · <span class="k">sub-skill-names</span></div></div>
+  </div>
+
+  <h3>5.2 六类 Hook 事件与订阅它的 checker</h3>
+  <table class="tl">
+    <tr><th style="width:160px">事件</th><th style="width:150px">触发时机</th><th>订阅的 checker</th></tr>
+    <tr><td><span class="k">session-start</span></td><td>会话开始</td><td><span class="k">session-recover</span></td></tr>
+    <tr><td><span class="k">pre-dispatch</span></td><td>派发子 skill 之前</td><td><span class="k">ctx-valid</span>🔒 · <span class="k">trace-prereq</span> · <span class="k">evidence-index</span>🔒 · <span class="k">dispatch-handoff</span>🔒 · <span class="k">budget</span> · <span class="k">converge-gate</span> · <span class="k">return-format</span> · <span class="k">render-dispatch</span> · <span class="k">apl-context</span> · <span class="k">impact-gate</span></td></tr>
+    <tr><td><span class="k">pre-tool-use</span></td><td>调用工具之前</td><td><span class="k">apl-artifact-write</span>🔒 · <span class="k">query-safety</span>🔒 · <span class="k">app-log-safety</span></td></tr>
+    <tr><td><span class="k">pre-shell</span></td><td>执行 shell 之前</td><td><span class="k">query-safety</span>🔒 · <span class="k">app-log-safety</span></td></tr>
+    <tr><td><span class="k">post-file-write</span></td><td>文件写入之后</td><td><span class="k">apl-artifact-write</span>🔒 · <span class="k">evidence-name</span> · <span class="k">phase-guard</span></td></tr>
+    <tr><td><span class="k">agent-stop</span></td><td>Agent 收尾</td><td><span class="k">evidence-index</span>🔒 · <span class="k">converge-gate</span> · <span class="k">return-format</span> · <span class="k">report-structure</span> · <span class="k">review-write</span> · <span class="k">judge-author</span> · <span class="k">impact-gate</span> · <span class="k">apl-report-gate</span></td></tr>
+  </table>
+  <div class="legendline"><span>🔒 = <b>failClosed</b>：校验失败直接阻断执行。拦在「上下文 / 证据 / 派发 / 查询 / 产物」这 5 个不可妥协的位置，其余交给模型判断。</span></div>
+
+  <h3>5.3 配置生成链路：一处声明，14 处物化</h3>
+  <div class="stack">
+    <div class="card dec"><div class="hd"><span class="no">1</span><span class="ct">真相源</span><span class="who">契约</span></div>
+      <div class="cd"><span class="k">.agents/hooks/hook-config.json</span> —— 声明 checker、事件、AI-Eye 开关（严格布尔 <span class="k">true</span> 才启用）</div></div>
+    <div class="arrow"><span class="lb">三个生成器</span></div>
+    <div class="card nd"><div class="hd"><span class="no">2</span><span class="ct">生成器</span><span class="who">Node</span></div>
+      <div class="cd">
+        <ul>
+          <li><span class="k">scripts/sync-skills.js</span> —— 技能 → 编辑器规则文件同步</li>
+          <li><span class="k">scripts/bootstrap-hooks.mjs</span> —— 引导 Hook 依赖</li>
+          <li><span class="k">scripts/generate-hook-configs.mjs</span> —— 物化所有宿主配置</li>
+        </ul>
+      </div></div>
+    <div class="arrow"><span class="lb">三种模式</span></div>
+    <div class="card nd"><div class="hd"><span class="no">3</span><span class="ct">生成器模式</span><span class="who">Node</span></div>
+      <div class="cd">
+        <ul>
+          <li><span class="k">--dry-run</span>：只打印 <b>WOULD WRITE / WOULD REMOVE</b>，零变更（不会把 unchanged 报成写入）</li>
+          <li>（无参数）：apply —— 同目录临时文件 + <b>rename 原子替换</b>，异常路径也清理临时文件</li>
+          <li><span class="k">--check</span>：零变更，有 drift 则返回非零</li>
+        </ul>
+      </div></div>
+    <div class="arrow"><span class="lb">物化结果</span></div>
+    <div class="card art"><div class="hd"><span class="no">4</span><span class="ct">14 类编辑器接入物</span><span class="who">产物</span></div>
+      <div class="cd">
+        <span class="chip">.claude/hooks.json + langfuse_hook.py</span>
+        <span class="chip">.codex/hooks.json + langfuse_hook.mjs</span>
+        <span class="chip">.cursor/hooks.json + rules/agents.mdc</span>
+        <span class="chip">.opencode/plugins/fx-ops-hooks.ts</span>
+        <span class="chip">.mimocode/plugins/fx-ops-hooks.ts</span>
+        <span class="chip">.pi/extensions/ai-eye.ts</span>
+        <span class="chip">.zcode/config.json</span>
+        <span class="chip">.grok/hooks/ai-eye.json</span>
+        <span class="chip">.codebuddy/hooks.json</span>
+        <span class="chip">.trae/hooks.json</span>
+        <span class="chip">.qoder/hooks.json</span>
+        <span class="chip">.reasonix/settings.json</span>
+        <span class="chip">.kiro/steering/agents.md</span>
+        <span class="chip">.windsurf/instructions.md</span>
+        <span class="chip">.github/copilot-instructions.md + hooks/fx-ops.json</span>
+      </div></div>
+  </div>
+
+  <div class="note">
+    <b>关闭 AI-Eye 时的行为</b>：生成器从 Claude Code / Codex / Cursor / OpenCode / MiMoCode / CodeBuddy / Trae / Qoder 等共享配置里
+    <b>移除 AI-Eye 命令但保留 hook-engine</b>，同时<b>删除只服务 AI-Eye 的 Reasonix / Pi / ZCode / Grok 专用文件</b>，避免宿主加载空壳配置。
+    <span class="k">--check</span> 会把关闭状态下的残留报 <span class="k">UNEXPECTED</span>，把启用状态下的缺失报 <span class="k">MISSING</span>。
+  </div>
+
+  <h3>5.4 AI-Eye 可观测接入矩阵（12 类编辑器 → Langfuse）</h3>
+  <table class="tl">
+    <tr><th style="width:130px">工具</th><th style="width:100px">核验版本</th><th style="width:270px">项目配置</th><th>追踪粒度</th></tr>
+    <tr><td>Claude Code</td><td>2.1.232</td><td><span class="k">.claude/hooks.json</span></td><td>Stop 时解析完整 <b>transcript</b></td></tr>
+    <tr><td>Codex</td><td>0.147.0</td><td><span class="k">.codex/hooks.json</span></td><td>Stop 时解析完整 <b>rollout</b></td></tr>
+    <tr><td>OpenCode</td><td>1.18.16</td><td><span class="k">.opencode/plugins/fx-ops-hooks.ts</span></td><td>session、消息文本、工具前后、stop</td></tr>
+    <tr><td>MiMoCode</td><td>0.1.10</td><td><span class="k">.mimocode/plugins/fx-ops-hooks.ts</span></td><td>session、消息文本、工具前后、stop</td></tr>
+    <tr><td>Reasonix</td><td>1.21.1</td><td><span class="k">.reasonix/settings.json</span></td><td>session、prompt、工具前后/失败、stop</td></tr>
+    <tr><td>Pi</td><td>0.84.2</td><td><span class="k">.pi/extensions/ai-eye.ts</span></td><td>session、prompt、工具前后/失败、assistant</td></tr>
+    <tr><td>ZCode</td><td>桌面版</td><td><span class="k">.zcode/config.json</span></td><td>session、prompt、权限/工具前后/失败、stop</td></tr>
+    <tr><td>CodeBuddy</td><td>2.127.3</td><td><span class="k">.codebuddy/hooks.json</span></td><td>session、prompt、工具前后、stop 原生事件</td></tr>
+    <tr><td>Trae</td><td>1.107.1</td><td><span class="k">.trae/hooks.json</span></td><td>session、prompt、工具前后、stop</td></tr>
+    <tr><td>Qoder</td><td>1.15.1</td><td><span class="k">.qoder/hooks.json</span></td><td>prompt、工具前后/失败、stop</td></tr>
+    <tr><td>Grok</td><td>1.0.0</td><td><span class="k">.grok/hooks/ai-eye.json</span></td><td>session、prompt、工具前后/失败、stop</td></tr>
+    <tr><td>Cursor</td><td>3.16.17</td><td><span class="k">.cursor/hooks.json</span></td><td>session、prompt、shell/MCP/file、assistant、stop</td></tr>
+  </table>
+
+  <div class="row" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-top:12px">
+    <div class="card nd"><div class="hd"><span class="ct">运行结构</span><span class="who">Node</span></div>
+      <div class="cd">所有工具先进入 <span class="k">.agents/hooks/ai-eye-hook.mjs</span>，包装器负责<b>开关、凭据、HTTPS、超时和 fail-open</b>，再选两类适配器：<br>
+      ① Claude / Codex 的 Stop 事件 → 上游 transcript/rollout <b>深度转换器</b><br>
+      ② 其余事件 → <span class="k">ai-eye-event.mjs</span> 通过 Langfuse Public Ingestion API 上报<b>零依赖事件 span</b></div></div>
+    <div class="card nd"><div class="hd"><span class="ct">隐私与去重设计</span><span class="who">Node</span></div>
+      <div class="cd">
+      <b>会话映射</b>：payload 无会话 ID 时，按「工具 + 工作目录 + 宿主父进程」在系统临时目录维护小映射；<span class="k">SessionEnd</span> 后删除，24 小时未更新自动清理；<b>只存随机 ID 与更新时间，不存 prompt / 工具输入输出 / 密钥</b><br>
+      <b>去重</b>：Grok 默认还扫 <span class="k">.cursor/hooks.json</span>，收到 Grok 特有 camelCase payload 时跳过，统一由 <span class="k">.grok/hooks/ai-eye.json</span> 上报一次，防重复 trace</div></div>
+  </div>
+
+  <div class="callout">
+    <b>文档的诚实边界值得单独指出。</b>AI-Eye 文档明确区分「生成配置通过了自动化测试与 <span class="k">--check</span> 一致性检查」与「CI 向真实 Langfuse 发过请求」，
+    并逐条标注哪些工具做了本机端到端验证、哪些只验证了命令与生成配置。比如 MiMoCode 标注「本机 npm shim 缺失，未运行 <span class="k">mimo</span>」。
+    <b>不夸大验证结论</b>——这是可观测接入最容易翻车的地方。
+  </div>
+</figure>
+
+<figure id="fig6">
+  <h2>⑦ 图 6 · 契约与 Schema 栈（保障线之三，系统真正的骨架）</h2>
+  <p class="sub">
+    <span class="k">.agents/contracts/</span> 只有 <b>3 个文件</b>，却管住了数据库表结构、环境映射和证据命名。
+    加上 21 个 JSON Schema，构成「程序 ↔ AI」之间唯一的正式接口。
+  </p>
+
+  <h3>6.1 <span class="k">datasources.yaml</span> —— 数据库契约（391 行 / 10 张表，<b>全部 ClickHouse</b>）</h3>
+  <table class="tl">
+    <tr><th style="width:190px">表名</th><th style="width:130px">时间列</th><th style="width:110px">租户列</th><th style="width:90px">trace 列</th><th>用途 / 业务口径</th></tr>
+    <tr><td><b><span class="k">log_cep_dist</span></b></td><td><span class="k">stamp</span></td><td><span class="k">ei</span> / <span class="k">ea</span></td><td><span class="k">traceId</span></td><td>CEP 网关日志，<b>用户影响主依据</b>（<span class="k">status &gt;= 500</span> 定故障）</td></tr>
+    <tr><td><span class="k">fs_cep_slow_error_dist</span></td><td>—</td><td>—</td><td>—</td><td>CEP 慢 + 错误分布</td></tr>
+    <tr><td><span class="k">log_error_dist</span></td><td>—</td><td>—</td><td>—</td><td>应用错误分布（<b>不能替代用户影响证据</b>）</td></tr>
+    <tr><td><span class="k">paas_oplog_dist</span></td><td><span class="k">_time_second_</span></td><td><span class="k">ei</span> / <span class="k">ea</span></td><td><span class="k">null</span></td><td>PaaS 操作日志；<span class="k">op</span> 为 <span class="k">I/U/D</span>，同一 id 相邻 <span class="k">D+I</span> 是<b>更新候选</b>不是删除后重建</td></tr>
+    <tr><td><span class="k">logger.app_log_dist</span></td><td><span class="k">_time_second_</span></td><td><span class="k">[]</span>（无独立租户列）</td><td><span class="k">traceId</span></td><td>应用日志表（唯一带点号的表名）</td></tr>
+    <tr><td><span class="k">slow_log_dist</span></td><td><span class="k">_time_second_</span></td><td>—</td><td>—</td><td>慢 SQL</td></tr>
+    <tr><td><span class="k">mongo_slow_dist</span></td><td>—</td><td>—</td><td>—</td><td>Mongo 慢查询</td></tr>
+    <tr><td><span class="k">tomcat_access_dist</span></td><td>—</td><td>—</td><td>—</td><td>Tomcat 访问日志</td></tr>
+    <tr><td><span class="k">tomcat_access_slow_dist</span></td><td>—</td><td>—</td><td>—</td><td>Tomcat 慢访问</td></tr>
+    <tr><td><span class="k">biz_log_function_dist</span></td><td><span class="k">_time_second_</span></td><td><span class="k">tenantId</span> / <span class="k">ea</span></td><td>—</td><td>APL 函数执行日志；按 <span class="k">apiName</span> 聚合执行次数 / 失败数 / <span class="k">cost</span> / <span class="k">waitingCost</span></td></tr>
+  </table>
+  <div class="note">
+    <b>最有价值的是每张表的 <span class="k">notes</span> 字段。</b>它把口头知识固化成机器可读的契约——例如
+    「同一时刻 <span class="k">D</span> + <span class="k">I</span> 不是删除后重建，而是更新候选」、
+    「整对象保存可能重写未变化字段」、「<span class="k">logger.app_log_dist</span> 当前 schema 没有独立 <span class="k">ei</span>/<span class="k">ea</span> 列，<span class="k">userId</span> 只作用户标识」。
+    <b>因为表结构是声明的而不是写死的，新增一张日志表不需要改 Python。</b>
+  </div>
+
+  <h3>6.2 21 个 JSON Schema（全部 Draft 2020-12）</h3>
+  <div class="row" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px">
+    <div class="card dec"><div class="hd"><span class="no">15</span><span class="ct">fx-ops</span><span class="who">契约</span></div>
+      <div class="cd">
+        <b>编排状态机</b>：<span class="k">orchestration-state</span> / <span class="k">orchestration-events</span> / <span class="k">orchestration-summary</span><br>
+        <b>AI 决策</b>：<span class="k">ai-decision</span> / <span class="k">ai-decision-delta</span><br>
+        <b>诊断上下文</b>：<span class="k">diagnostic-context</span> / <span class="k">incident-facts</span><br>
+        <b>裁决</b>：<span class="k">verdict-bundle</span><br>
+        <b>报告</b>：<span class="k">report-decision</span> / <span class="k">report-digest</span><br>
+        <b>耗时</b>：<span class="k">rca-timing</span><br>
+        <b>规则</b>：<span class="k">rules/domain-signal-rules</span> / <span class="k">rules/incident-signal-rules</span><br>
+        <b>评测</b>：<span class="k">evals/efficiency/rca-efficiency</span>
+      </div></div>
+    <div class="card dec"><div class="hd"><span class="no">3</span><span class="ct">fx-ops-patrol</span><span class="who">契约</span></div>
+      <div class="cd"><span class="k">patrol-events</span><br><span class="k">patrol-state</span><br><span class="k">patrol-summary</span></div></div>
+    <div class="card dec"><div class="hd"><span class="no">3</span><span class="ct">fx-ops-postmortem</span><span class="who">契约</span></div>
+      <div class="cd"><span class="k">postmortem-events</span><br><span class="k">postmortem-state</span><br><span class="k">postmortem-summary</span></div></div>
+    <div class="card dec"><div class="hd"><span class="no">1</span><span class="ct">fx-ops-udobj</span><span class="who">契约</span></div>
+      <div class="cd"><span class="k">object-change-audit-report</span></div></div>
+  </div>
+  <div class="note">
+    <b>三个 L1 编排器共享同一套 <span class="k">events</span> / <span class="k">state</span> / <span class="k">summary</span> 三元组命名法。</b>
+    这意味着巡检和复盘的产物形状与 fx-ops 对齐——<b>统一编排的收益直接体现在 schema 复用上</b>，而不是三套各写各的。
+    所有 schema 的 <span class="k">$schema</span> 都指向 <span class="k">https://json-schema.org/draft/2020-12/schema</span>（全仓 23 处引用）。
+  </div>
+
+  <h3>6.3 <span class="k">evidence.yaml</span> —— 证据命名契约（44 行，试点 2 条）</h3>
+  <div class="row" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px">
+    <div class="card dec"><div class="hd"><span class="ct">字段约定</span><span class="who">契约</span></div>
+      <div class="cd"><ul>
+        <li><b><span class="k">canonical</span></b> 当前权威文件名（唯一可写名）</li>
+        <li><b><span class="k">python_constant</span></b> <span class="k">evidence_names.py</span> 中登记的常量名</li>
+        <li><b><span class="k">schema</span></b> data 形状说明</li>
+        <li><b><span class="k">producer</span></b> 产出脚本</li>
+        <li><b><span class="k">required_by</span></b> 把该文件名列为允许值的质量门禁</li>
+        <li><b><span class="k">aliases[]</span></b> 历史旧名 + <span class="k">remove_after</span>（兼容窗截止日）</li>
+      </ul></div></div>
+    <div class="card dec"><div class="hd"><span class="ct">当前两条</span><span class="who">契约</span></div>
+      <div class="cd"><ul>
+        <li><b><span class="k">similar_errors</span></b> → <span class="k">QRY-similar-errors.json</span><br>producer <span class="k">gate_query_backend.py</span>；被 <span class="k">QG-SIMILAR-ERRORS</span> / <span class="k">QG-TIMELINE</span> / <span class="k">QG-DEEP-RCA</span> 使用</li>
+        <li><b><span class="k">db_limit_log</span></b> → <span class="k">TRC-db-limit-log.json</span><br>producer <span class="k">collect_trace_phase1_tables.py</span>；被 <span class="k">QG-DB-LIMIT</span> 使用</li>
+      </ul></div></div>
+  </div>
+  <div class="callout">
+    <b>机制亮点：不建生成管线，只建一致性断言。</b><br>
+    契约文件本身不生成任何代码，靠两个断言测试守住漂移——<span class="k">test_evidence_registry.py</span>（pytest，MR CI 硬门禁）与
+    <span class="k">test-effort-tiers-gates.mjs</span>（Evidence Registry 段）。<br>
+    <span class="k">aliases</span> 带 <span class="k">remove_after: "2026-11-30"</span>：窗内旧名允许留在代码里做兼容，<b>到期后旧名必须从活代码清除，否则断言红灯</b>。
+    这是<b>带自动过期机制的兼容窗</b>——比在代码里留个 TODO 强得多。
+  </div>
+
+  <h3>6.4 <span class="k">cloud-registry.md</span> —— 云环境契约（142 行）</h3>
+  <div class="row" style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px">
+    <div class="card ext sm"><div class="hd"><span class="ct">resolve_tenant_cloud</span><span class="who">消费方</span></div><div class="cd">source ID → profile / domain 映射</div></div>
+    <div class="card ext sm"><div class="hd"><span class="ct">fx-ops-monitoring</span><span class="who">消费方</span></div><div class="cd">确定 <span class="k">--profile</span> 查 Prometheus</div></div>
+    <div class="card ext sm"><div class="hd"><span class="ct">fx-ops-tracing</span><span class="who">消费方</span></div><div class="cd">确定链路追踪目标环境</div></div>
+    <div class="card ext sm"><div class="hd"><span class="ct">fx-ops-knowledge</span><span class="who">消费方</span></div><div class="cd">固定 <span class="k">foneshare</span> 主租户知识库</div></div>
+    <div class="card ext sm"><div class="hd"><span class="ct">fetch-config</span><span class="who">消费方</span></div><div class="cd">确定配置中心环境</div></div>
+  </div>
+  <div class="note">
+    列结构：<span class="k">source_id</span> · <span class="k">profile</span> · <span class="k">type</span> · <span class="k">display_name</span> · <span class="k">domain</span> · <span class="k">dash_url</span> · <span class="k">cms_profile</span> · <span class="k">biz_app_log</span>。
+    已登记：纷享-腾讯云（主站）、专属云-双胞胎、专属云-紫光云、纷享-香港 AWS、纷享-华为云、性能测试云、专属云-特变电工、纷享-阿里云、纷享-法兰克福 AWS、纷享-模板云、专属云-海信、专属云-许继电气等。<br>
+    <b>为什么用 Markdown 而不是 YAML？</b>因为这张表的主要消费者是 <b>AI 的上下文</b>而不是程序——Markdown 表格 token 效率更高，人也直接能读。
+    <b>按消费者选格式</b>：<span class="k">datasources.yaml</span> 被脚本读 → YAML；<span class="k">cloud-registry.md</span> 被 AI 读 → Markdown。
+  </div>
+</figure>
+
+<figure id="fig7">
+  <h2>⑧ 图 7 · CI 与工程卫生（保障线之四）</h2>
+  <p class="sub">MR 想合进 <span class="k">main</span>，必须过三个 job；本地则有 git hook 提前拦。</p>
+
+  <h3>7.1 GitLab CI：1 个 stage / 3 个 job，全部 <span class="k">allow_failure: false</span></h3>
+  <div class="row" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px">
+    <div class="card nd"><div class="hd"><span class="no">1</span><span class="ct">check-sensitive-files</span><span class="who">Bash</span></div>
+      <div class="cd"><b>做什么</b>：扫 MR 变更文件，命中敏感文件即<b>阻断 merge</b><br>
+      <b>实现</b>：<span class="k">is_sensitive_path()</span> 逐路径匹配白名单<br>
+      <b>输出</b>：✅ 无敏感文件 / 🚫 Merge blocked</div></div>
+    <div class="card nd"><div class="hd"><span class="no">2</span><span class="ct">fx-ops-gates</span><span class="who">Node</span></div>
+      <div class="cd"><b>做什么</b>：skill 结构与行数预算硬门禁<br>
+      <b>脚本</b>：<span class="k">structure-audit.mjs</span> + <span class="k">complexity-line-gate.mjs</span><br>
+      <b>TMPDIR</b>：<span class="k">$CI_PROJECT_DIR/tmp</span></div></div>
+    <div class="card nd"><div class="hd"><span class="no">3</span><span class="ct">core-skill-contracts</span><span class="who">Node</span></div>
+      <div class="cd"><b>做什么</b>：全量统一验证<br>
+      <b>脚本</b>：<span class="k">pnpm run agents:verify</span>（tsc / ruff / catalog / skill lint / pytest + 发现审计 / trigger+path evals / core contracts / fx-ops gates）<br>
+      <b>前置</b>：<span class="k">pnpm install --frozen-lockfile</span> + <span class="k">ci-setup-python.sh</span></div></div>
+  </div>
+
+  <h3>7.2 关键工程细节（都是踩过坑留下来的）</h3>
+  <table class="tl">
+    <tr><th style="width:150px">配置</th><th style="width:220px">值</th><th>原因</th></tr>
+    <tr><td>runner tag</td><td><span class="k">nvm</span></td><td>用 <b>shell runner</b>，不依赖 Docker image；因此必须有 Node 版复杂度门禁兜底</td></tr>
+    <tr><td>触发条件</td><td><span class="k">merge_request_event</span> 且 target = <span class="k">main</span></td><td>main 直推防护交给 GitLab 服务端分支保护</td></tr>
+    <tr><td><span class="k">GIT_DEPTH</span></td><td><span class="k">1</span></td><td>浅克隆加速</td></tr>
+    <tr><td><b><span class="k">TMPDIR</span></b></td><td><span class="k">$CI_PROJECT_DIR/tmp</span></td><td><b>关键</b>：默认 <span class="k">/tmp</span> 是 runner 的 tmpfs，pytest 的 <span class="k">basetemp</span> 会撑爆它（#308），工具链回退下载也会写坏（#309）</td></tr>
+    <tr><td>before_script</td><td><span class="k">mkdir -p tmp</span> 先建目录</td><td><span class="k">TMPDIR</span> 指向的目录<b>不存在</b>时，<span class="k">tempfile</span> 会<b>静默回落</b>到系统 <span class="k">/tmp</span>，防护失效</td></tr>
+    <tr><td>after_script</td><td><span class="k">rm -rf tmp</span> + 尝试清理 <span class="k">/tmp/pytest-of-*</span></td><td>自清理；<span class="k">/tmp/pytest-of-root</span> 删不动时静默跳过避免日志噪音</td></tr>
+    <tr><td>Node 兜底</td><td><span class="k">.gitlab/ci/install-node-linux.sh</span></td><td>runner 上没有 node 时按需下载</td></tr>
+    <tr><td>uv 兜底</td><td><span class="k">install-uv-linux.sh</span> + <span class="k">ci-setup-python.sh</span></td><td>同上</td></tr>
+    <tr><td>依赖安装</td><td><span class="k">pnpm install --frozen-lockfile</span></td><td>锁文件强一致</td></tr>
+  </table>
+
+  <h3>7.3 本地侧：Git Hooks 与敏感文件红线</h3>
+  <div class="row" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);gap:12px">
+    <div class="card nd"><div class="hd"><span class="ct">.githooks/（需 <span class="k">core.hooksPath</span> 配置）</span><span class="who">Node</span></div>
+      <div class="cd"><ul>
+        <li><b><span class="k">pre-commit</span></b>：① 拦截敏感文件；② 自动修 markdown + ruff</li>
+        <li><b><span class="k">pre-push</span></b>：跑验证入口（与 CI 同一路径）</li>
+        <li><b><span class="k">*.cmd</span></b>：上述两个的 Windows cmd 版本</li>
+      </ul>
+      <div class="cmd">git config core.hooksPath .githooks</div></div></div>
+    <div class="card bad"><div class="hd"><span class="ct">敏感文件扫描类别（CI 与本地共同红线）</span><span class="who">红线</span></div>
+      <div class="cd">
+        <b>MCP 配置</b>：<span class="k">.agents/mcp_config.json</span>、<span class="k">.trae/mcp.json</span>、<span class="k">.cursor/mcp.json</span>、<span class="k">.codebuddy/mcp.json</span>、<span class="k">.opencode/mcp.json</span>、<span class="k">.mcp.json</span>、<span class="k">opencode.json</span>、<span class="k">mcp.json</span><br>
+        <b>云凭据</b>：<span class="k">.aws/credentials</span>、<span class="k">credentials.json</span>、<span class="k">service-account*.json</span>、<span class="k">.secrets</span>、<span class="k">config.toml</span><br>
+        <b>SSH 密钥</b>：<span class="k">.ssh/id_*</span><br>
+        <b>证书</b>：<span class="k">*.pem</span>、<span class="k">*.key</span>、<span class="k">*.p12</span>、<span class="k">*.pfx</span><br>
+        <b>环境变量</b>：<span class="k">.env</span>、<span class="k">.env.*</span>、<span class="k">*.env</span>（含 <span class="k">.env.local</span> / <span class="k">.env.production</span> / <span class="k">.env.staging</span>）<br>
+        <b>宿主本地设置</b>：<span class="k">settings.local.json</span>
+      </div></div>
+  </div>
+
+  <h3>7.4 协作与仓库治理</h3>
+  <table class="tl">
+    <tr><th style="width:170px">项</th><th>配置</th></tr>
+    <tr><td>GitLab 仓库</td><td><span class="k">git.firstshare.cn/devops/bug-finder</span></td></tr>
+    <tr><td>Multica workspace</td><td><span class="k">bug-finder</span>（id <span class="k">a68adb84-0d85-47fd-be51-a733318c5974</span>），配置在 <span class="k">.multica/config.json</span></td></tr>
+    <tr><td>MR 描述要求</td><td>必须含 <span class="k">Closes #N</span> / <span class="k">Related to #N</span></td></tr>
+    <tr><td>分支策略</td><td>禁止直接向 <span class="k">main</span> 提交实现；<b>ff-only</b> 合并（历史上曾有依赖「HEAD 是 merge commit」的 job 因与之冲突而每次误报，<b>已删除</b>）</td></tr>
+    <tr><td>工作区约定</td><td>默认在当前仓库工作区操作，不预先创建 worktree；只有用户明确要求时才建</td></tr>
+    <tr><td>Markdown 规范</td><td>表格分隔符统一 <span class="k">\| --- \|</span>，禁止填充式长横线</td></tr>
+  </table>
+
+  <div class="note">
+    <b>为什么 TMPDIR 这类细节值得单独讲</b>：它暴露了这套系统的一个真实约束——<b>CI runner 是共享的 shell runner，资源比 Docker 环境脆弱</b>。
+    技术栈里所有「零依赖」「不用 Docker」「复杂门禁做 Node 版兜底」的决策，根源都是这个约束。
+  </div>
+</figure>
+
+<figure id="summary">
+  <h2>⑨ 速查表与选型评价</h2>
+  <p class="sub">如果想只看一页，看这里就够了。</p>
+
+  <h3>9.1 技术栈速查</h3>
+  <table class="tl">
+    <tr><th style="width:190px">维度</th><th>结论</th></tr>
+    <tr><td><b>仓库性质</b></td><td>AI Agent 编排仓库（<b>不是</b> Node 应用，<b>不是</b> Python 包）</td></tr>
+    <tr><td><b>语言配比</b></td><td>Markdown 1495 : Python 329 : MJS 116 : TS 67 : JSON 211 : YAML 47 : Shell 9 : JS 6</td></tr>
+    <tr><td><b>Node 版本</b></td><td><span class="k">&gt;=24</span>（<span class="k">.nvmrc</span> = 24）· ESM（<span class="k">"type": "module"</span>）· <span class="k">engine-strict=true</span></td></tr>
+    <tr><td><b>Python 版本</b></td><td><span class="k">&gt;=3.12</span>（<span class="k">.python-version</span> = 3.12）· 构建后端 <span class="k">hatchling</span></td></tr>
+    <tr><td><b>包管理器</b></td><td><span class="k">pnpm</span>（Node，66 KB lock）+ <span class="k">uv</span>（Python，50 KB lock）；<b>禁止 npm / npx</b>，本地二进制写 <span class="k">pnpm exec</span></td></tr>
+    <tr><td><b>Node 运行时依赖</b></td><td><span class="k">proper-lockfile</span> <b>× 1</b></td></tr>
+    <tr><td><b>Python 运行时依赖</b></td><td><span class="k">jsonschema</span> / <span class="k">pyyaml</span> / <span class="k">sqlparse</span> <b>× 3</b></td></tr>
+    <tr><td><b>开发期依赖</b></td><td>Node 7 个（ts / tsx / vitest / playwright / ajv / markdownlint / @types/node）· Python 2 个（ruff / pytest）</td></tr>
+    <tr><td><b>主导标准库</b></td><td>Python：<span class="k">pathlib</span> 237 · <span class="k">json</span> 196 · <span class="k">subprocess</span> 45<br>Node：<span class="k">node:path</span> 142 · <span class="k">node:fs</span> 131 · <span class="k">node:child_process</span> 30</td></tr>
+    <tr><td><b>脚本总数</b></td><td><span class="k">package.json</span> 55 个 script（无 <span class="k">dev</span> / <span class="k">build</span> / <span class="k">start</span>）</td></tr>
+    <tr><td><b>测试规模</b></td><td>pytest <b>133</b> 文件 + Node 系 <b>54</b> 文件（vitest 14 + <span class="k">node:test</span> 40）= <b>187 个测试文件</b></td></tr>
+    <tr><td><b>契约</b></td><td><span class="k">datasources.yaml</span>（10 张 ClickHouse 表）· 21 个 JSON Schema · <span class="k">evidence.yaml</span> · <span class="k">cloud-registry.md</span></td></tr>
+    <tr><td><b>Hook</b></td><td>1 引擎 + 20 checker（<b>5 个 failClosed</b>）+ 6 类事件 + 11 个 lib 模块</td></tr>
+    <tr><td><b>编辑器接入</b></td><td>14 个宿主配置生成物；AI-Eye 覆盖 <b>12 类</b>编辑器</td></tr>
+    <tr><td><b>环境档案</b></td><td><span class="k">fx-ops-profiles.json</span> <b>34</b> 个 profile；cloud-registry <b>14+</b> 云环境</td></tr>
+    <tr><td><b>CI</b></td><td>3 个 job / 1 个 stage，全部 <span class="k">allow_failure: false</span></td></tr>
+    <tr><td><b>统一验证入口</b></td><td><span class="k">pnpm agents:verify</span>（本地 = pre-push = CI）</td></tr>
+    <tr><td><b>数据面</b></td><td>全部 ClickHouse，统一经 IDP Go CLI 访问（Python 不直连）</td></tr>
+    <tr><td><b>一句话</b></td><td><b>零重依赖 + 契约驱动 + 知识密集：真正的复杂度在 1495 个 Markdown 和 21 个 Schema 里，不在代码里。</b></td></tr>
+  </table>
+
+  <h3>9.2 做得好的地方</h3>
+  <table class="tl">
+    <tr><th style="width:200px">决策</th><th>收益</th><th style="width:250px">证据</th></tr>
+    <tr><td><b>运行时依赖压到 4 个</b></td><td>离线 runner 能装、供应链风险低、升级不痛</td><td>Node 1 个 + Python 3 个</td></tr>
+    <tr><td><b>标准库优先</b></td><td>不需要为「读文件、调命令行、拼 JSON」引入任何框架</td><td><span class="k">pathlib</span> 237 / <span class="k">node:fs</span> 131</td></tr>
+    <tr><td><b>按产物形态选语言</b></td><td>采集用 Python（文本处理强）、门禁用 Node（零依赖可跑）、知识用 Markdown（AI 直接读）</td><td>见 2.2 职责边界</td></tr>
+    <tr><td><b>契约前置</b></td><td>表结构和产物形状是声明的，新增表 / 新增技能不用改采集代码</td><td>10 张表 YAML + 21 个 schema</td></tr>
+    <tr><td><b>门禁在最弱环境也能跑</b></td><td>shell runner 上仍能执行结构 / 复杂度硬门禁</td><td>Node 与 Python 双实现读同一份预算文件</td></tr>
+    <tr><td><b>统一验证入口</b></td><td>杜绝「CI 过了本地没过」</td><td><span class="k">scripts/agents-verify.mjs</span> 本地 = pre-push = CI</td></tr>
+    <tr><td><b>按改动路径路由检查</b></td><td>300 个 Python 文件不必每次全跑</td><td><span class="k">pnpm agents:verify:changed</span></td></tr>
+    <tr><td><b>单一真相源 + 生成器</b></td><td>14 个编辑器配置不是手抄 14 份</td><td><span class="k">hook-config.json</span> → 生成器</td></tr>
+    <tr><td><b>兼容窗有自动过期</b></td><td>旧证据名不会永久留在代码里</td><td>alias 带 <span class="k">remove_after</span> 日期，到期断言红灯</td></tr>
+    <tr><td><b>旁路可观测与主链路解耦</b></td><td>AI-Eye 默认关闭、fail-open，不参与诊断决策</td><td>见 5.4</td></tr>
+  </table>
+
+  <h3>9.3 风险点与历史残留</h3>
+  <table class="tl">
+    <tr><th style="width:190px">风险</th><th>表现</th><th style="width:250px">建议</th></tr>
+    <tr><td><b>fx-ops 单点过重</b> 🔴</td><td><b>254</b> 个 Python + <b>42</b> 个 Node + <b>98</b> 个 references，占全仓代码绝大部分；单技能承担全部编排、契约与采集</td><td>structure-audit / complexity-line-gate 已在防，但更彻底的做法是把通用采集库下沉到 <span class="k">.agents/lib/</span></td></tr>
+    <tr><td><b><span class="k">@types/node ^22</span> 落后于 <span class="k">engines.node &gt;= 24</span></b></td><td>Node 24 新增 API 缺类型提示</td><td>升到 <span class="k">@types/node ^24</span></td></tr>
+    <tr><td><b>三套测试运行时并存</b></td><td>pytest + vitest + <span class="k">node:test</span>，认知成本；「这个测试该放哪」需要判断</td><td>现状是刻意分工，把选择规则写进 skill-development 即可</td></tr>
+    <tr><td><b>Markdown 规模难以人工维护</b></td><td>1495 个 md，靠 skill-lint 13 条规则挡语义漂移</td><td>继续把口头规则转成 lint 规则</td></tr>
+    <tr><td><b>CI 只有 1 个 stage / 3 个 job</b></td><td>门禁绝大部分靠 <span class="k">core-skill-contracts</span> 单 job 串行跑；一个 check 挂掉整条重跑</td><td>若耗时成为瓶颈，可按 <span class="k">agents:verify</span> 的步骤拆成 parallel jobs</td></tr>
+    <tr><td><b>Playwright 用于非 UI 场景</b></td><td>抓 token + 校验 HTML 报告布局，增加约 300 MB 浏览器依赖</td><td>两个场景都没有更轻的替代（真实渲染校验无法用静态分析替代）</td></tr>
+  </table>
+
+  <h4 style="font-size:13px;color:#b91c1c;margin:18px 0 6px">已确认的历史残留（不是 bug，但会误导新人）</h4>
+  <table class="tl">
+    <tr><th style="width:250px">残留</th><th>位置</th><th>说明</th></tr>
+    <tr><td><span class="k">python/</span> 目录不存在却被引用</td><td><span class="k">pyproject.toml</span> → <span class="k">pythonpath</span> 与 <span class="k">[tool.hatch.build.targets.wheel] packages</span></td><td>两处都指向不存在的目录。<span class="k">pythonpath</span> 里多余一项无害；<span class="k">packages</span> 说明 hatchling 配置是从模板继承来的</td></tr>
+    <tr><td><span class="k">src/</span> 目录不存在却被引用</td><td><span class="k">tsconfig.json</span> → <span class="k">paths</span>；<span class="k">vitest.config.ts</span> → <span class="k">alias</span></td><td>别名 <span class="k">@/</span> 指向不存在的目录，实际无任何文件用它导入</td></tr>
+    <tr><td>tsconfig 开启 <span class="k">declaration</span> / <span class="k">sourceMap</span> / <span class="k">outDir</span></td><td><span class="k">tsconfig.json</span></td><td>与 <span class="k">noEmit: true</span> 组合无意义，模板残留</td></tr>
+    <tr><td>include 里有不存在的目录</td><td><span class="k">tsconfig.json</span> → <span class="k">agents/**</span>、<span class="k">tools/**</span></td><td>include 不存在的 glob 不报错，但让人误以为有这两个目录</td></tr>
+    <tr><td><span class="k">version</span> 双写 <span class="k">0.1.0</span></td><td><span class="k">package.json</span> + <span class="k">pyproject.toml</span></td><td>不发布版本，但两处需手工同步</td></tr>
+    <tr><td>旧命名的 biz 别名</td><td><span class="k">AGENTS.md</span> 明令禁止</td><td>例如 <span class="k">open-oauth</span> / <span class="k">open-link-app</span> / <span class="k">wechat-proxy</span> / <span class="k">syncdata</span> 等，必须用新名</td></tr>
+  </table>
+  <div class="callout">
+    <b>这些残留的共同特征：从模板继承的配置没有被清理。</b>它们不影响运行，但会污染新人的心智模型。建议在下次结构性重构时一并清除。
+  </div>
+
+  <h3>9.4 结论</h3>
+  <div class="note" style="border-left-color:#6d28d9;background:#faf5ff">
+    <p style="margin:0 0 8px"><b>这套技术栈最反直觉的地方是：它几乎「没有技术」。</b></p>
+    <p style="margin:0 0 8px">没有 web 框架、没有 ORM、没有 HTTP client、没有数据处理库、没有模板引擎、没有前端构建、没有服务端。
+    生产依赖一共 <b>4 个包</b>，其余全是标准库。而这个「极其朴素」的技术栈，支撑了 36 个技能、14 类编辑器接入、34 个环境档案和 10 张日志表的完整诊断体系。</p>
+    <p style="margin:0 0 8px">原因在于它把复杂度放在了<b>别的地方</b>：</p>
+    <ul style="margin:0;padding-left:20px">
+      <li><b>1495 个 Markdown</b> 承载领域知识与排查 SOP（这部分本该是代码或配置）</li>
+      <li><b>21 个 JSON Schema + 4 份契约</b> 承载接口与产物的形状（这部分本该是类型系统或测试）</li>
+      <li><b>20 个 hook checker + 13 条 skill-lint 规则</b> 承载底线约束（这部分本该是 code review 或人的自觉）</li>
+    </ul>
+    <p style="margin:8px 0 0"><b>所以判断这套技术栈的成熟度，不该看它的代码有多少，而该看它的契约和门禁有多密。</b>
+    从「契约漂移能被断言红灯拦住」「口头规则能被 lint 拦住」「兼容窗能自动过期」这三点看，它的工程化程度远高于它的代码规模。</p>
+  </div>
+
+  <p class="meta" style="margin-top:22px">
+    配套文档 <span class="k">BUG-FINDER-TECH-STACK.md</span> · 架构文档 <span class="k">BUG-FINDER-ARCHITECTURE.md</span> · 架构图解 <span class="k">BUG-FINDER-ARCHITECTURE-DIAGRAMS.html</span><br>
+    快照 <span class="k">7e1b8157</span> · 2026-09-17 · 所有数字均来自仓库实际统计，未做估算
+  </p>
+</figure>
+
+</div>
+</body>
+</html>

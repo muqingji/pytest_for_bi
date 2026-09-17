@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import contextmanager
+from datetime import datetime, timezone
 import fcntl
 import json
 from pathlib import Path
@@ -12,6 +13,13 @@ import subprocess
 from typing import Any
 
 from .card_copy import constructed_assets_markdown, stage_card_sections, stage_card_title
+from .test_data_copy import (
+    humanize_unresolved_requirement,
+    is_owner_review,
+    is_test_data_approval_item,
+    render_a22_approval_sections,
+    render_a22_issue_lines,
+)
 from .contracts import content_hash
 from .errors import ContractError, InputError, RetryableAgentError
 from .multica_cli import resolve_multica_binary
@@ -82,6 +90,21 @@ NODE_MULTICA_STATUS = {
     "superseded": "cancelled",
 }
 
+# A run owns its Issue from dispatch until ingest closes it. While the latest
+# run is in this window the Agent runtime is the source of truth for the Issue
+# status (``completed`` still waits for ingest to write ``done``), so the
+# workflow sync must not race it. Outside this window the Issue status <-> node
+# state mapping in ``NODE_MULTICA_STATUS`` is authoritative again, otherwise a
+# card left at ``in_review`` by an earlier round would never return to
+# ``backlog``/``blocked`` when the node really is not started or blocked.
+AGENT_RUN_OWNED_STATUSES = {
+    "queued",
+    "dispatched",
+    "running",
+    "in_progress",
+    "completed",
+}
+
 # Live Multica Issue status -> node state. A "done" Issue keeps the
 # artifact-derived terminal state; an open Issue always reflects the real
 # execution state even when an older Artifact still says otherwise (for
@@ -131,6 +154,44 @@ _LIVE_RUN_TO_NODE_STATE = {
     "cancelled": "cancelled",
 }
 
+NODE_DIRECT_DEPENDENCIES = {
+    "N00": ("INPUT-FREEZE",),
+    "A02": ("N00",),
+    "A03": ("N00",),
+    "A05": ("N00",),
+    "A06": ("A02", "A03", "A05"),
+    "G01": ("A06",),
+    "N24": ("G01",),
+    "A08": ("N24",),
+    "A09": ("A08",),
+    "N04": ("A09",),
+    "G02": ("N04",),
+    "N25": ("G02",),
+    "A11": ("N25",),
+    "N26": ("A11",),
+    "N15": ("N26",),
+    "A14": ("N15", "A22", "N27"),
+    "A15": ("N15", "A22", "N27"),
+    "A22": ("N15",),
+    "A18-BE": ("A14",),
+    "A18-CT": ("A15",),
+    "N27": ("A22",),
+    "N05": ("A18-BE", "A18-CT"),
+    "G03": ("N05",),
+    "N07": ("G03", "A22"),
+    "N08": ("N07",),
+    "N17": ("N07",),
+    "N10": ("N08",),
+    "N18": ("N08", "N17"),
+    "N09": ("N18",),
+    "N20": ("N09",),
+    "N11": ("N20",),
+    "N19": ("N11",),
+    "N12": ("N11", "N19"),
+    "N13": ("N12",),
+    "N23": ("N13",),
+}
+
 SERVER_NODE_DETAILS = {
     "INPUT-FREEZE": "冻结需求、技术方案和 ChangeSet，校验输入完整性与权限边界。",
     "N00": "按触发类型和组织策略确定工作流模板、执行深度与节点路由。",
@@ -155,7 +216,7 @@ SERVER_NODE_DETAILS = {
     "A18-CT": "独立审查契约自动化候选的 Schema、操作和兼容判断。",
     "N27": "校验测试数据计划的安全性、可复现性和能力边界。",
     "N05": "对自动化候选执行格式、lint、编译和安全扫描。",
-    "G03": "N05 通过后自动跳过自动化代码人工审核，进入环境预检与执行。",
+    "G03": "N05 通过后自动关闭，不需要人工审核，进入环境预检与执行。",
     "N07": "检查测试环境、账号、数据和资源是否满足执行条件。",
     "N08": "受控执行自动化测试并收集运行证据。",
     "N17": "核对尚未自动执行的用例并记录缺口；未完成则阻塞，不是人工审批。",
@@ -323,7 +384,12 @@ def _validated_spec(spec: Mapping[str, Any]) -> dict[str, Any]:
 
 def _derive_status(nodes: list[Mapping[str, Any]], actions: list[Mapping[str, Any]]) -> str:
     states = {str(node["state"]) for node in nodes}
-    if states & {"blocked", "failed"}:
+    progressing = bool(states & {"queued", "running"})
+    if "failed" in states:
+        return "blocked"
+    # Auto-return "blocked" (N04 -> A08) must not freeze the whole workflow
+    # while a correction target is already queued or running.
+    if states & {"blocked"} and not progressing:
         return "blocked"
     if any(action.get("status") == "open" for action in actions):
         return "needs_action"
@@ -349,8 +415,16 @@ def _projection_core(value: Mapping[str, Any]) -> dict[str, Any]:
     active_nodes = [
         dict(node)
         for node in nodes
-        if node["state"] in {"running", "waiting_human", "blocked", "failed"}
+        if node["state"] in {"running", "waiting_human"}
     ]
+    if not active_nodes:
+        active_nodes = [dict(node) for node in nodes if node["state"] == "queued"]
+    if not active_nodes:
+        active_nodes = [
+            dict(node)
+            for node in nodes
+            if node["state"] in {"blocked", "failed"}
+        ]
     if not active_nodes and status == "queued":
         active_nodes = [
             dict(node) for node in nodes if node["state"] in {"queued", "not_started"}
@@ -420,33 +494,81 @@ def _issue_mention(value: Mapping[str, Any]) -> str:
 
 
 def _node_issue_mention(node: Mapping[str, Any]) -> str:
-    """Issue mention for a node, falling back to its human action entry."""
+    """Issue mention for a real node or human-action Issue."""
 
     mention = _issue_mention(node)
     if mention:
         return mention
     entry = node.get("human_action_entry")
     if isinstance(entry, Mapping):
-        return _issue_mention(entry)
+            mention = _issue_mention(entry)
+            if mention:
+                return mention
     return ""
+
+
+def _assert_own_mention_only(line: str, node: Mapping[str, Any], *, context: str) -> None:
+    """Reject a node row that carries another node's Issue mention.
+
+    Multica renders ``[QAA-xxx](mention://issue/<id>)`` as a chip that shows the
+    linked Issue status. A ``not_started`` row borrowing an upstream mention
+    (for example A22 while it waits for its data-plan confirmation) therefore
+    displays ``in_review``/``审核中`` as if it were that node's own state. Rows
+    may only link the Issue that belongs to the node they describe; any other
+    node is referenced as plain text.
+    """
+
+    if "mention://" not in line:
+        return
+    own = _node_issue_mention(node)
+    if own and own in line and line.count("mention://") == own.count("mention://"):
+        return
+    node_id = node.get("node_id") or node.get("execution_id")
+    raise ContractError(f"{context} for {node_id} must not carry another node's Issue link")
 
 
 def _upstream_decision_hint(
     node: Mapping[str, Any], all_nodes: list[Mapping[str, Any]]
 ) -> str:
-    """Name the human decision a not-started node is stuck on, if any.
+    """Name a direct upstream decision or blocker holding a node, if any.
 
-    Picks the nearest upstream ``waiting_human`` node by stage ordering so the
-    hint points at the decision that actually gates this node instead of
-    guessing. Returns an empty string when no upstream decision exists.
+    Stage proximity is only a fallback for nodes without an explicit DAG edge.
+    It must never attribute an unrelated waiting node (for example A22) to
+    A18-CT simply because both happen to be near the same stage.
+
+    The hint names the blocking node only. It must not embed that node's Issue
+    mention: Multica renders a mention chip with the linked Issue status, so a
+    ``not_started`` node would look like it carries the upstream card's
+    ``in_review`` status instead of its own state.
     """
 
     node_stage = int(node.get("stage") or 0)
+    node_id = str(node.get("node_id") or node.get("execution_id"))
+    direct_dependencies = NODE_DIRECT_DEPENDENCIES.get(node_id)
+    dependency_closure: set[str] | None = None
+    if direct_dependencies is not None:
+        dependency_closure = set()
+        pending = list(direct_dependencies)
+        while pending:
+            dependency = pending.pop()
+            if dependency in dependency_closure:
+                continue
+            dependency_closure.add(dependency)
+            pending.extend(NODE_DIRECT_DEPENDENCIES.get(dependency, ()))
+    if dependency_closure is None:
+        dependency_closure = {
+            str(candidate.get("node_id") or candidate.get("execution_id"))
+            for candidate in all_nodes
+            if candidate.get("state") == "waiting_human"
+            and int(candidate.get("stage") or 0) < node_stage
+        }
+    blocking_states = {"waiting_human", "blocked", "failed"}
     waiting = [
         candidate
         for candidate in all_nodes
-        if candidate.get("state") == "waiting_human"
-        and int(candidate.get("stage") or 0) < node_stage
+        if candidate.get("state") in blocking_states
+        and str(candidate.get("node_id") or candidate.get("execution_id"))
+        in dependency_closure
     ]
     if not waiting:
         return ""
@@ -464,10 +586,12 @@ def _upstream_decision_hint(
         card_id = str(candidate.get("stage_card_id") or "").strip()
         if card_id and card_id != str(node.get("stage_card_id") or ""):
             note.append(f"上游 {card_id}")
-        mention = _node_issue_mention(candidate)
-        if mention:
-            note.append(mention)
-        detail += " 的决策" + (f"（{' · '.join(note)}）" if note else "")
+        suffix = (
+            "的决策"
+            if candidate.get("state") == "waiting_human"
+            else "的阻塞"
+        )
+        detail += f" {suffix}" + (f"（{' · '.join(note)}）" if note else "")
         decisions.append(detail)
     return "卡在 " + "、".join(decisions)
 
@@ -485,7 +609,7 @@ def _discover_node_issues(
         runner,
         [
             "multica", "issue", "list", "--project", project_id,
-            "--limit", "100", "--output", "json", "--workspace-id", workspace_id,
+            "--limit", "500", "--output", "json", "--workspace-id", workspace_id,
         ],
         None,
         "workflow-center node Issue discovery",
@@ -578,11 +702,11 @@ def _live_node_state_from_issue(
     # terminal label (which also caused sync to force the new Issue ``done``).
     if current_state in {"skipped", "cancelled"}:
         return None, None
-    if current_state == "not_started" and issue_status in {
-        "done", "cancelled", "in_review", ""
+    if current_state == "not_started" and issue_status not in {
+        "todo", "queued", "backlog", "in_progress", "running",
     }:
-        # Artifact evidence is gone. A leftover record Issue must not
-        # resurrect a completed or waiting node in the cockpit.
+        # Artifact evidence says this node has not entered execution. A stale
+        # terminal or blocked record Issue must not resurrect it.
         return None, None
 
     def _from_runs() -> tuple[str | None, str | None]:
@@ -600,6 +724,8 @@ def _live_node_state_from_issue(
     # (correction loop). Bare todo placeholders must not downgrade completed.
     if current_state in {"completed", "failed"}:
         if issue_status in {"done", "cancelled", ""}:
+            return None, None
+        if issue_status == "blocked":
             return None, None
         mapped = _from_runs()
         if mapped[0]:
@@ -620,6 +746,16 @@ def _live_node_state_from_issue(
                 return mapped
         return None, None
 
+    # A correction re-entry reopens a completed node as queued while the
+    # previous Issue is still terminal. Do not freeze the old label.
+    if current_state == "queued" and issue_status in {"done", "cancelled"}:
+        return None, None
+
+    if current_state == "blocked" and issue_status in {"done", "cancelled"}:
+        # Keep the Artifact-backed blocked state. A18-BE/N05 can finish their
+        # Agent run (Issue done) while the review itself failed; hiding that
+        # as 已完成 also drops the stage-card mention.
+        return None, None
     if current_state == "blocked" and issue_status not in {"in_progress", "running", "todo"}:
         return None, None
 
@@ -673,8 +809,27 @@ def _bind_discovered_node_issues(
         if node_id not in discovered:
             continue
         binding = discovered[node_id]
-        node["issue_id"] = binding["id"]
-        node["issue_identifier"] = binding["identifier"]
+        if (
+            str(node.get("state") or "") == "not_started"
+            and str(binding.get("status") or "")
+            not in {"todo", "queued", "backlog", "in_progress", "running"}
+        ):
+            continue
+        if (
+            str(node.get("state") or "") == "waiting_human"
+            and isinstance(node.get("human_action_entry"), Mapping)
+            and node["human_action_entry"].get("issue_id")
+        ):
+            continue
+        if (
+            str(node.get("state") or "") in {"completed", "failed"}
+            and str(binding.get("status") or "") == "blocked"
+        ):
+            continue
+        if node.get("issue_id") != binding["id"]:
+            node["issue_id"] = binding["id"]
+        if node.get("issue_identifier") != binding["identifier"]:
+            node["issue_identifier"] = binding["identifier"]
         live_state, summary = _live_node_state_from_issue(
             current_state=str(node.get("state") or ""),
             issue_status=str(binding.get("status") or ""),
@@ -785,10 +940,18 @@ def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
             )
             approval_items = action.get("approval_items")
             if approval_items:
-                lines.extend([f"#### 审批项（{len(approval_items)}）", ""])
-                for index, approval in enumerate(approval_items, start=1):
-                    lines.extend(_approval_lines(approval, index))
+                if any(is_test_data_approval_item(item) for item in approval_items):
+                    lines.extend(
+                        _render_approval_items(
+                            approval_items, include_operations=True
+                        )
+                    )
                     lines.append("")
+                else:
+                    lines.extend([f"#### 审批项（{len(approval_items)}）", ""])
+                    for index, approval in enumerate(approval_items, start=1):
+                        lines.extend(_approval_lines(approval, index))
+                        lines.append("")
             else:
                 lines.append("- 审批项：请打开审核入口查看具体审批项。")
                 lines.append("")
@@ -818,7 +981,7 @@ def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
             result = str(node.get("result_summary", "-"))
             if str(node["state"]) == "not_started":
                 result = _upstream_decision_hint(node, projection["nodes"]) or result
-            lines.append(
+            row = (
                 "| "
                 + " | ".join(
                     [
@@ -831,6 +994,8 @@ def render_workflow_center_markdown(projection: Mapping[str, Any]) -> str:
                 )
                 + " |"
             )
+            _assert_own_mention_only(row, node, context="Workflow center 节点进度 row")
+            lines.append(row)
     lines.extend(
         [
             "",
@@ -907,8 +1072,16 @@ def _default_runner(command: list[str], stdin: str | None) -> Any:
 def _live_issue_status(
     runner: CommandRunner, issue_id: str, workspace_id: str
 ) -> str:
+    return str(_live_issue(runner, issue_id, workspace_id).get("status") or "").strip()
+
+
+def _live_issue(
+    runner: CommandRunner, issue_id: str, workspace_id: str
+) -> Mapping[str, Any]:
+    """Read one live Issue, returning an empty mapping when it is unavailable."""
+
     try:
-        issue = _run_object(
+        return _run_object(
             runner,
             [
                 "multica", "issue", "get", issue_id,
@@ -916,11 +1089,10 @@ def _live_issue_status(
                 "--workspace-id", workspace_id,
             ],
             None,
-            "stage-card status",
+            "live Issue",
         )
     except (ContractError, RetryableAgentError):
-        return ""
-    return str(issue.get("status") or "").strip()
+        return {}
 
 
 def _run_object(
@@ -955,6 +1127,227 @@ def _metadata_commands(
         ]
         for key, value in metadata.items()
     ]
+
+
+REVIEW_REMINDER_ACTION_KEY = "qa_review_reminder_action_id"
+REVIEW_REMINDER_SEEN_KEY = "qa_review_done_seen_at"
+REVIEW_REMINDER_COUNT_KEY = "qa_review_reminder_count"
+REVIEW_REMINDER_AT_KEY = "qa_review_reminder_at"
+DEFAULT_REVIEW_REMINDER_MINUTES = 30
+DEFAULT_REVIEW_REMINDER_ESCALATION_MINUTES = 120
+MAX_REVIEW_REMINDERS = 2
+_A22_DISPOSITION_VALUES = "confirmed/skip/return/need_evidence"
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _parse_utc(value: Any) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _configured_minutes(value: Any, default: int) -> int:
+    try:
+        configured = int(value)
+    except (TypeError, ValueError):
+        return default
+    return configured if configured >= 0 else default
+
+
+def _review_reminder_schedule(config: Mapping[str, Any]) -> tuple[int, int]:
+    """Grace period before the first nudge, then before the final nudge.
+
+    ``human_review_reminder_minutes=0`` disables reminders entirely; the
+    escalation threshold never fires earlier than the first one.
+    """
+
+    first = _configured_minutes(
+        config.get("human_review_reminder_minutes"), DEFAULT_REVIEW_REMINDER_MINUTES
+    )
+    escalation = _configured_minutes(
+        config.get("human_review_reminder_escalation_minutes"),
+        DEFAULT_REVIEW_REMINDER_ESCALATION_MINUTES,
+    )
+    return first, max(first, escalation)
+
+
+def _review_reminder_level(
+    metadata: Mapping[str, Any], *, now: datetime, first: int, escalation: int
+) -> str:
+    """Which reminder is due for a human card closed without a decision.
+
+    Returns ``first``, ``escalation`` or ``""``. The anchor is stamped when the
+    closed-but-unconfirmed state is first observed, so a slow sync cycle cannot
+    nudge the owner before the configured grace period has really passed.
+    """
+
+    if first <= 0:
+        return ""
+    try:
+        sent = int(str(metadata.get(REVIEW_REMINDER_COUNT_KEY) or "0"))
+    except ValueError:
+        sent = 0
+    if sent >= MAX_REVIEW_REMINDERS:
+        return ""
+    seen = _parse_utc(metadata.get(REVIEW_REMINDER_SEEN_KEY))
+    if seen is None:
+        return ""
+    waited = (now - seen).total_seconds() / 60.0
+    if sent == 0:
+        return "first" if waited >= first else ""
+    return "escalation" if waited >= escalation else ""
+
+
+def _review_reminder_comment(
+    node: Mapping[str, Any],
+    action: Mapping[str, Any],
+    *,
+    level: str,
+    waited_minutes: int,
+) -> str:
+    """Deterministic reminder body: what is missing and how to release it."""
+
+    node_id = str(node.get("node_id") or node.get("execution_id") or "")
+    label = str(node.get("label") or "").strip()
+    title = f"`{node_id}`" + (f" {label}" if label else "")
+    items = [
+        item
+        for item in (node.get("approval_items") or action.get("approval_items") or [])
+        if isinstance(item, Mapping)
+    ]
+    waited = f"已等待 {waited_minutes} 分钟" if waited_minutes else "已超过等待阈值"
+    lines = [
+        f"⏰ {title} 的审核卡已置 `done`，但系统还没有记录到确认（{waited}）。",
+        "",
+        "仅改状态不构成审核：请在本卡评论区逐项写出处置，"
+        "系统会自动形成确认并放行下游，补评论后无需再改状态。",
+    ]
+    if items:
+        lines.extend(["", f"待处置项（{len(items)} 项）："])
+        for item in items[:8]:
+            item_id = str(item.get("id") or "").strip()
+            item_title = str(item.get("human_title") or item.get("title") or "").strip()
+            suffix = f" {item_title}" if item_title else ""
+            if node_id == "A22" and item_id:
+                lines.append(f"- `{item_id}`{suffix} → `{item_id}: {_A22_DISPOSITION_VALUES}`")
+            elif item_id:
+                lines.append(f"- `{item_id}`{suffix}")
+            else:
+                lines.append(f"- {item_title or '见卡片人工操作区'}")
+        if len(items) > 8:
+            lines.append(f"- 其余 {len(items) - 8} 项见卡片「人工操作」区。")
+    else:
+        lines.append("")
+        lines.append("请按卡片「人工操作」区的要求补齐决策依据。")
+    if level == "escalation":
+        lines.extend(
+            [
+                "",
+                "🔴 这是最后一次自动提醒。本项确认前，下游自动化生成、复核与代码检查"
+                "（A14/A15/A18-BE/A18-CT/N05/G03）不会启动。",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def _set_issue_metadata(
+    runner: CommandRunner,
+    issue_id: str,
+    workspace_id: str,
+    metadata: Mapping[str, str],
+) -> None:
+    for command in _metadata_commands(issue_id, metadata, workspace_id):
+        runner(command, None)
+
+
+def _post_issue_comment(
+    runner: CommandRunner, issue_id: str, workspace_id: str, content: str
+) -> None:
+    result = runner(
+        [
+            "multica", "issue", "comment", "add", issue_id,
+            "--content-stdin",
+            "--output", "json",
+            "--workspace-id", workspace_id,
+        ],
+        content,
+    )
+    if isinstance(result, Mapping) and result and not result.get("id"):
+        raise ContractError("Multica review reminder comment was not confirmed")
+
+
+def _sync_review_reminder(
+    runner: CommandRunner,
+    config: Mapping[str, Any],
+    node: Mapping[str, Any],
+    action: Mapping[str, Any],
+    *,
+    issue_id: str,
+    workspace_id: str,
+    live_issue: Mapping[str, Any],
+) -> str:
+    """Nudge an owner who closed a review card without recording the decision.
+
+    A human gate card stays closed (the sync never re-opens it), so the wait is
+    tracked on the card itself: the first observation of "closed, decision still
+    open" stamps an anchor, then one reminder and one escalation comment are
+    posted. Comments never change the card status, so adding the missing
+    dispositions is enough to release the gate.
+    """
+
+    first, escalation = _review_reminder_schedule(config)
+    if first <= 0:
+        return ""
+    action_id = str(action.get("action_id") or "").strip()
+    metadata = live_issue.get("metadata")
+    metadata = metadata if isinstance(metadata, Mapping) else {}
+    now = _utcnow()
+    if str(metadata.get(REVIEW_REMINDER_ACTION_KEY) or "") != action_id:
+        _set_issue_metadata(
+            runner,
+            issue_id,
+            workspace_id,
+            {
+                REVIEW_REMINDER_ACTION_KEY: action_id,
+                REVIEW_REMINDER_SEEN_KEY: now.isoformat(),
+                REVIEW_REMINDER_COUNT_KEY: "0",
+            },
+        )
+        return "armed"
+    level = _review_reminder_level(
+        metadata, now=now, first=first, escalation=escalation
+    )
+    if not level:
+        return ""
+    seen = _parse_utc(metadata.get(REVIEW_REMINDER_SEEN_KEY))
+    waited_minutes = int((now - seen).total_seconds() // 60) if seen else 0
+    _post_issue_comment(
+        runner,
+        issue_id,
+        workspace_id,
+        _review_reminder_comment(
+            node, action, level=level, waited_minutes=waited_minutes
+        ),
+    )
+    try:
+        sent = int(str(metadata.get(REVIEW_REMINDER_COUNT_KEY) or "0")) + 1
+    except ValueError:
+        sent = 1
+    _set_issue_metadata(
+        runner,
+        issue_id,
+        workspace_id,
+        {
+            REVIEW_REMINDER_COUNT_KEY: str(sent),
+            REVIEW_REMINDER_AT_KEY: now.isoformat(),
+        },
+    )
+    return level
 
 
 def _property_command(
@@ -1138,6 +1531,28 @@ def _approval_title(approval: Mapping[str, Any]) -> str:
     return _HUMAN_CATEGORY_LABELS.get(category.lower(), category)
 
 
+def _render_approval_items(
+    items: Sequence[Mapping[str, Any]],
+    *,
+    include_operations: bool = False,
+) -> list[str]:
+    """Render approval items; A22 data gaps always use the two-section card."""
+
+    test_data = [item for item in items if is_test_data_approval_item(item)]
+    others = [item for item in items if not is_test_data_approval_item(item)]
+    lines: list[str] = []
+    if test_data:
+        lines.extend(
+            render_a22_approval_sections(
+                test_data, include_operations=include_operations
+            )
+        )
+    for index, approval in enumerate(others, start=1):
+        lines.extend(_approval_lines(approval, index))
+        lines.append("")
+    return lines
+
+
 def _approval_lines(approval: Mapping[str, Any], index: int) -> list[str]:
     lines = [f"{index}. **{_approval_title(approval)}**（`{approval['id']}`）"]
     problem = str(approval.get("plain_summary") or "").strip()
@@ -1150,6 +1565,9 @@ def _approval_lines(approval: Mapping[str, Any], index: int) -> list[str]:
     category = str(approval.get("category") or "").strip()
     scene = str(approval.get("product_scene") or "").strip()
     confirm_action = str(approval.get("confirm_action") or "").strip()
+    if "confirmed/skip/return/need_evidence" in confirm_action:
+        confirm_action = ""
+    needed = str(approval.get("needed_from_you") or "").strip()
     if category == "用例设计待确认":
         if scene:
             lines.append(f"   - 产品场景：{scene}")
@@ -1157,6 +1575,11 @@ def _approval_lines(approval: Mapping[str, Any], index: int) -> list[str]:
             lines.append(f"   - 设计不确定点：{problem}")
         if confirm_action:
             lines.append(f"   - 请拍板：{confirm_action}")
+    elif category == "test_data_pending_human":
+        humanized = humanize_unresolved_requirement(approval, index - 1)
+        return render_a22_issue_lines(
+            humanized, index, decision=is_owner_review(humanized)
+        )
     else:
         if scene:
             lines.append(f"   - 场景：{scene}")
@@ -1166,11 +1589,18 @@ def _approval_lines(approval: Mapping[str, Any], index: int) -> list[str]:
         recommendation = str(approval.get("recommendation") or "").strip()
         if recommendation:
             lines.append(f"   - 建议修正：{recommendation}")
+        if needed:
+            lines.append(f"   - 你要提供：{needed}")
         if confirm_action:
             lines.append(f"   - 需要确认：{confirm_action}")
     requirement_ids = approval.get("requirement_ids") or []
     if requirement_ids:
         lines.append("   - 涉及需求：" + "、".join(f"`{value}`" for value in requirement_ids))
+    affected_case_ids = approval.get("affected_case_ids") or []
+    if isinstance(affected_case_ids, list) and affected_case_ids:
+        lines.append(
+            "   - 涉及用例：" + "、".join(f"`{item}`" for item in affected_case_ids)
+        )
     return lines
 
 
@@ -1198,6 +1628,21 @@ def _node_action_entry(node: Mapping[str, Any]) -> dict[str, str] | None:
     if status in {"done", "cancelled"}:
         return None
     return {key: str(value) for key, value in entry.items() if value is not None}
+
+
+# 阶段卡的「人工操作」只列本阶段人工 Gate 的事项；节点任务卡自己承载的待审批项
+# 不在阶段卡重复出现。这里声明「阶段卡 -> 由节点卡承载审批项的节点」归属。
+#
+# C5 阶段没有人工 Gate：G03 自动化代码人工审核已按设计退化为 N05 通过后自动关闭
+# （`scripts/sync_eight_card_progress.py::close_g03`），N27/N05 都是确定性校验。
+# 所以 C5 不把它内部节点的待审批项提升成阶段人工项——A22 的测试数据计划确认归
+# A22 节点卡，`card_copy` 已在那里区分「你要处理」与「系统要去造的数据」。
+#
+# 新增阶段卡人工项前先确认它是不是节点卡的事；确属节点卡时在此登记，
+# 并在 `tests/test_workflow_center.py` 补一条回归测试。
+NODE_OWNED_STAGE_APPROVALS: dict[str, frozenset[str]] = {
+    "C5": frozenset({"A22"}),
+}
 
 
 def _render_stage_card_markdown(
@@ -1250,14 +1695,14 @@ def _render_stage_card_markdown(
         line = f"- `{node.get('node_id')}`：{node.get('result_summary', '等待处理')}"
         if human_entries:
             entries = "、".join(
-                _issue_mention(entry)
-                or f"`{str(entry.get('issue_identifier') or entry.get('issue_id'))}`"
+                f"`{str(entry.get('issue_identifier') or entry.get('issue_id'))}`"
                 for entry in sorted(
                     human_entries,
                     key=lambda item: str(item.get("issue_identifier") or item.get("issue_id")),
                 )
             )
             line += f"（处理入口：{entries}，见下方人工操作）"
+        _assert_own_mention_only(line, node, context="Stage card 异常处理 row")
         failures.append(line)
     human_lines: list[str] = []
     seen_approval_ids: set[str] = set()
@@ -1265,6 +1710,13 @@ def _render_stage_card_markdown(
         if node.get("state") != "waiting_human":
             continue
         approval_items = node.get("approval_items") or []
+        node_id = str(node.get("node_id") or "").strip()
+        delegated = bool(node_id) and node_id in NODE_OWNED_STAGE_APPROVALS.get(
+            card_id, frozenset()
+        )
+        delegated_items = list(approval_items) if delegated else []
+        if delegated:
+            approval_items = []
         unique_items = []
         for approval in approval_items:
             approval_id = str(approval.get("id") or "").strip()
@@ -1301,18 +1753,48 @@ def _render_stage_card_markdown(
                     f"- 来源：`{node.get('node_id')}`{label_text} 审查发现 "
                     f"{len(unique_items)} 个问题，需你决策是否授权修正。"
                 )
+            elif unique_items and all(
+                is_test_data_approval_item(item) for item in unique_items
+            ):
+                owner_count = sum(1 for item in unique_items if is_owner_review(item))
+                system_count = len(unique_items) - owner_count
+                summary = (
+                    f"- 来源：`{node.get('node_id')}`{label_text}，共 "
+                    f"{owner_count} 项必须你拍板"
+                )
+                if system_count:
+                    summary += f"，另有 {system_count} 项系统去新建、不用你审。"
+                else:
+                    summary += "。"
+                human_lines.append(summary)
             else:
                 human_lines.append(
                     f"- 来源：`{node.get('node_id')}`{label_text}，共 "
                     f"{len(unique_items)} 个待确认事项，请逐条确认后继续。"
                 )
-            for index, approval in enumerate(unique_items, start=1):
-                human_lines.extend(_approval_lines(approval, index))
-        else:
+            if unique_items and all(
+                is_test_data_approval_item(item) for item in unique_items
+            ):
+                human_lines.extend(
+                    render_a22_approval_sections(
+                        unique_items, include_operations=False
+                    )
+                )
+            else:
+                for index, approval in enumerate(unique_items, start=1):
+                    human_lines.extend(_approval_lines(approval, index))
+        elif not delegated_items:
             human_lines.append(
                 f"- 审核 `{node.get('node_id')}`：{node.get('result_summary', '请完成审核')}"
             )
             human_lines.append("  - 审批项：请打开审核入口查看具体审批项。")
+        if delegated_items:
+            label = str(node.get("label") or "").strip()
+            label_text = f"（{label}）" if label else ""
+            human_lines.append(
+                f"- `{node_id}`{label_text}：{len(delegated_items)} 项待审批项由该节点卡承载，"
+                "本阶段没有人工 Gate，不在阶段卡重复列出。"
+            )
         entry = None
         if isinstance(node.get("human_action_entry"), Mapping):
             entry = _node_action_entry(node)
@@ -1340,7 +1822,8 @@ def _render_stage_card_markdown(
     for node in nodes:
         node_id = str(node.get("node_id") or node.get("execution_id"))
         label = str(node.get("label") or "").strip()
-        state_label = NODE_STATUS_LABELS.get(str(node.get("state")), str(node.get("state")))
+        state = str(node.get("state"))
+        state_label = NODE_STATUS_LABELS.get(state, state)
         line = f"- `{node_id}`"
         if label:
             line += f" {label}"
@@ -1352,6 +1835,13 @@ def _render_stage_card_markdown(
             hint = _upstream_decision_hint(node, all_nodes)
             if hint:
                 line += f" · {hint}"
+        elif str(node.get("state")) in {"blocked", "failed"}:
+            summary = str(node.get("result_summary") or "").strip()
+            if summary in _RESULT_SUMMARY_LABELS:
+                summary = _RESULT_SUMMARY_LABELS[summary]
+            if summary:
+                line += f"：{summary}"
+        _assert_own_mention_only(line, node, context="Stage card 阶段任务 row")
         task_lines.append(line)
     goal = str(copy["goal"])
     background = str(copy["background"])
@@ -1476,10 +1966,19 @@ def _workflow_sync_lock(output_dir: Path):
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
-def _assert_monotonic_projection(output_dir: Path, projection: Mapping[str, Any]) -> None:
+def _assert_monotonic_projection(
+    output_dir: Path, projection: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Keep published revisions monotonic without dead-ending projector upgrades.
+
+    Same-revision hash changes used to raise and freeze the monitor. Under the
+    exclusive sync lock that is a projector/code change, not a lost writer, so
+    bump the revision instead of blocking the workflow.
+    """
+
     state_path = output_dir / "workflow-center-sync-state.json"
     if not state_path.exists():
-        return
+        return dict(projection)
     state = _read_object(state_path, "workflow center sync state")
     if state.get("schema_version") != "workflow-center-sync-state/1.0":
         raise ContractError("Workflow center sync state schema_version is invalid")
@@ -1495,7 +1994,10 @@ def _assert_monotonic_projection(output_dir: Path, projection: Mapping[str, Any]
         revision == previous_revision
         and state.get("projection_hash") != projection["projection_hash"]
     ):
-        raise ContractError("Workflow center revision conflicts with another projection")
+        return refresh_projection_aggregates(
+            {**dict(projection), "revision": previous_revision + 1}
+        )
+    return dict(projection)
 
 
 def _sync_multica_workflow_center_unlocked(
@@ -1634,12 +2136,30 @@ def _sync_multica_workflow_center_unlocked(
                 continue
             item_type = "human_action" if issue_id in action_issue_ids else "node_execution"
             status = NODE_MULTICA_STATUS[str(node["state"])]
+            live_issue = _live_issue(active_runner, issue_id, workspace_id)
+            live_status = str(live_issue.get("status") or "").strip()
             if item_type == "human_action":
                 action = next(
                     item for item in projection["actions"]
                     if str(item.get("issue_id")) == issue_id
                 )
                 status = "in_review" if action["status"] == "open" else "done"
+                if live_status in {"done", "cancelled"}:
+                    # The owner already closed this review card. Re-opening it
+                    # would undo their decision; the still-open action stays
+                    # visible on the requirement card until the confirmation
+                    # Artifact is recorded.
+                    status = live_status
+                    if live_status == "done" and action["status"] == "open":
+                        _sync_review_reminder(
+                            active_runner,
+                            config,
+                            node,
+                            action,
+                            issue_id=issue_id,
+                            workspace_id=workspace_id,
+                            live_issue=live_issue,
+                        )
             else:
                 _ensure_issue_project(
                     active_runner, issue_id, internal_project_id, workspace_id
@@ -1681,18 +2201,51 @@ def _sync_multica_workflow_center_unlocked(
             node_state = str(node["state"])
             status = NODE_MULTICA_STATUS[node_state]
             node_id = str(node.get("node_id") or node["execution_id"])
-            if node_id in agent_node_ids and item_type == "node_execution":
-                # The Agent runtime owns open Issue lifecycle
-                # (todo/in_progress/in_review). The workflow sync only writes
-                # terminal statuses so a completed Agent run is never flipped
-                # back to in_review by a stale needs_human Artifact.
-                live_status = _live_issue_status(
-                    active_runner, issue_id, workspace_id
+            live_status = _live_issue_status(
+                active_runner, issue_id, workspace_id
+            )
+            if item_type == "human_action" and live_status in {"done", "cancelled"}:
+                # The owner already closed this review card. Re-opening it would
+                # undo their decision, and the confirmation parsers only accept a
+                # closed Issue (for example A22 dispositions); the still-open
+                # action stays visible on the requirement card until the
+                # confirmation Artifact is recorded.
+                status = live_status
+                action = next(
+                    (
+                        item
+                        for item in projection["actions"]
+                        if str(item.get("issue_id")) == issue_id
+                    ),
+                    None,
                 )
+                if (
+                    live_status == "done"
+                    and isinstance(action, Mapping)
+                    and str(action.get("status")) == "open"
+                ):
+                    _sync_review_reminder(
+                        active_runner,
+                        config,
+                        node,
+                        action,
+                        issue_id=issue_id,
+                        workspace_id=workspace_id,
+                        live_issue=_live_issue(active_runner, issue_id, workspace_id),
+                    )
+            if live_status == "done" and status == "blocked":
+                # Auto-return must not relabel a finished child Issue as blocked.
+                continue
+            if node_id in agent_node_ids and item_type == "node_execution":
+                # The Agent runtime owns the Issue while a run is queued,
+                # running or just finished; ingest closes it afterwards.
                 run_status = _latest_issue_run_status(
                     active_runner, issue_id, workspace_id
                 )
-                if status not in {"done", "cancelled"}:
+                if (
+                    node_state in {"queued", "running"}
+                    or run_status in AGENT_RUN_OWNED_STATUSES
+                ):
                     # Multica may leave the Issue at todo while a run is live.
                     # Align it to in_progress so the linked card matches C4.
                     if (
@@ -1708,16 +2261,13 @@ def _sync_multica_workflow_center_unlocked(
                             workspace_id,
                         )
                     continue
-                # Never close a still-active agent Issue just because an older
-                # Artifact remains completed (A08 correction re-dispatch).
-                if run_status in {
-                    "running",
-                    "in_progress",
-                    "queued",
-                    "dispatched",
-                    "completed",
-                }:
-                    # completed runs are marked done by ingest, not here.
+                if (
+                    live_status in {"done", "cancelled"}
+                    and status not in {"done", "cancelled"}
+                ):
+                    # A closed Agent card stays closed. Reopening it from a stale
+                    # Artifact would undo a human confirmation (A22) or an
+                    # already ingested round.
                     continue
             _ensure_run_issue_state(
                 active_runner, issue_id, run_project_id, status, workspace_id
@@ -1839,7 +2389,10 @@ def sync_multica_workflow_center(
     with _workflow_sync_lock(output_dir):
         spec = _read_object(spec_path, "requirement workflow spec")
         projection = build_workflow_projection(spec)
-        _assert_monotonic_projection(output_dir, projection)
+        projection = _assert_monotonic_projection(output_dir, projection)
+        if int(projection["revision"]) != int(spec.get("revision") or 0):
+            spec = {**spec, "revision": int(projection["revision"])}
+            ArtifactStore(spec_path.parent).write_json(spec_path.name, spec)
         return _sync_multica_workflow_center_unlocked(
             spec_path,
             config_path,

@@ -2,9 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from qa_agents.case_provider import CaseProviderAdapter, CaseProviderCapabilityProbe
+from qa_agents.case_provider import (
+    CaseProviderAdapter,
+    CaseProviderCapabilityProbe,
+    validate_provider_case_mappings,
+)
 from qa_agents.contracts import ArtifactEnvelope, EvidenceRef, Producer
-from qa_agents.errors import SecurityPolicyError
+from qa_agents.errors import ContractError, SecurityPolicyError
 from qa_agents.security import SecurityPolicy
 from qa_agents.storage import ArtifactStore
 
@@ -122,6 +126,25 @@ def test_case_provider_capability_rejects_current_mandatory_upload_contract() ->
     }
 
 
+def test_case_provider_capability_accepts_exact_artifact_only_contract() -> None:
+    commit = "c" * 40
+    result = CaseProviderCapabilityProbe().probe(
+        commit,
+        {"skills/testcase-generate/SKILL.md": "artifact-only generation"},
+        {
+            "schema_version": "qa-agent-provider/1.0",
+            "mode": "artifact_only",
+            "entrypoint": "python -m fs_qa_provider",
+            "input_contract": "case-provider-input/1.0",
+            "output_contract": "case-provider-output/1.0",
+            "side_effects": [],
+        },
+    )
+
+    assert result["status"] == "compatible"
+    assert result["provider_commit"] == commit
+
+
 def test_case_provider_parses_merged_markdown_table() -> None:
     commit = "b" * 40
     markdown = """# 测试用例集
@@ -144,3 +167,65 @@ def test_case_provider_parses_merged_markdown_table() -> None:
     assert result["candidate_count"] == 1
     assert result["source_format"] == "markdown_table"
     assert result["candidates"][0]["steps"] == ["1. 点击查看明细", "2. 等待响应"]
+
+
+def test_provider_cases_require_a_bijective_test_case_ir_mapping() -> None:
+    draft = {
+        "candidates": [
+            {"id": "FS-001"},
+            {"id": "FS-002"},
+        ]
+    }
+    design = {
+        "parent_cases": [{"id": "CASE-001"}, {"id": "CASE-002"}],
+        "provider_case_mappings": [
+            {"provider_case_id": "FS-001", "test_case_ir_id": "CASE-001"},
+            {"provider_case_id": "FS-002", "test_case_ir_id": "CASE-002"},
+        ],
+    }
+
+    validate_provider_case_mappings(draft, design)
+
+    design["provider_case_mappings"][1]["test_case_ir_id"] = "CASE-001"
+    with pytest.raises(ContractError, match="multiple Provider Cases"):
+        validate_provider_case_mappings(draft, design)
+
+
+def test_provider_mapping_rejects_an_omitted_provider_case() -> None:
+    with pytest.raises(ContractError, match="every Provider Case exactly once"):
+        validate_provider_case_mappings(
+            {"candidates": [{"id": "FS-001"}, {"id": "FS-002"}]},
+            {
+                "parent_cases": [{"id": "CASE-001"}],
+                "provider_case_mappings": [
+                    {"provider_case_id": "FS-001", "test_case_ir_id": "CASE-001"}
+                ],
+            },
+        )
+
+
+def test_case_provider_rejects_a_candidate_without_executable_content() -> None:
+    with pytest.raises(ContractError, match="expected must be a valid list"):
+        CaseProviderAdapter().adapt(
+            {
+                "metadata": {
+                    "mode": "artifact_only",
+                    "provider_commit": "d" * 40,
+                    "output_contract": "case-provider-output/1.0",
+                    "side_effects": [],
+                },
+                "candidates": [
+                    {
+                        "id": "FS-001",
+                        "feature": "查看明细",
+                        "title": "验证查看明细",
+                        "priority": "P1",
+                        "case_type": "功能测试",
+                        "preconditions": [],
+                        "steps": ["打开明细"],
+                        "expected": [],
+                        "source_refs": ["REQ-1"],
+                    }
+                ],
+            }
+        )

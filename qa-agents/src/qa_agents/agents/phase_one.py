@@ -12,6 +12,7 @@ import re
 from typing import Any
 
 from .base import AgentOutput, BaseAgent
+from ..case_provider import complete_provider_parent_case, source_ref_ids
 from ..contracts import ArtifactStatus, EvidenceRef
 
 
@@ -456,11 +457,48 @@ class TestDesignerAgent(BaseAgent):
         layers = list(strategy.get("required_layers", [])) or ["backend"]
         intents: list[dict[str, Any]] = []
         cases: list[dict[str, Any]] = []
-        for index, requirement in enumerate(requirements, 1):
-            intent_id = f"INTENT-{index:03d}"
-            case_id = f"CASE-{index:03d}"
+        provider_mappings: list[dict[str, str]] = []
+        provider_candidates = inputs.get("case_provider_draft", {}).get("candidates", [])
+        if not isinstance(provider_candidates, list):
+            provider_candidates = []
+        for index, candidate in enumerate(provider_candidates, 1):
+            if not isinstance(candidate, Mapping):
+                continue
+            completed = complete_provider_parent_case(
+                candidate,
+                index=index,
+                risk=risk,
+                priority=priority,
+                required_layers=layers,
+            )
+            if completed is None:
+                continue
+            intent, case, mapping = completed
+            intents.append(intent)
+            cases.append(case)
+            provider_mappings.append(mapping)
+        covered_requirement_ids: set[str] = set()
+        for case in cases:
+            covered_requirement_ids.update(source_ref_ids(case.get("source_refs", [])))
+        supplemental_index = 0
+        for requirement in requirements:
+            requirement_id = str(requirement.get("id") or "")
+            if requirement_id and requirement_id in covered_requirement_ids:
+                continue
+            supplemental_index += 1
+            intent_id = f"INTENT-{supplemental_index:03d}"
+            case_id = f"CASE-{supplemental_index:03d}"
             source_refs = deepcopy(requirement.get("source_refs", []))
+            if not isinstance(source_refs, list):
+                source_refs = []
+            if requirement_id and requirement_id not in source_ref_ids(source_refs):
+                source_refs = [requirement_id, *source_refs]
             statement = str(requirement.get("summary", ""))
+            source_ref = (
+                f"{source_refs[0]['id']}:{source_refs[0]['location']}"
+                if source_refs and isinstance(source_refs[0], Mapping)
+                else (str(source_refs[0]) if source_refs else "missing")
+            )
             intents.append(
                 {
                     "id": intent_id,
@@ -482,7 +520,11 @@ class TestDesignerAgent(BaseAgent):
                     "priority": priority,
                     "source_refs": source_refs,
                     "preconditions": ["准备满足需求定义的测试环境和测试数据"],
-                    "test_data": {},
+                    "test_data": {
+                        "requirement_id": requirement_id,
+                        "obligation": "g01_n24_uncovered",
+                        "summary": statement,
+                    },
                     "steps": ["按照需求描述执行场景"],
                     "expected": [
                         {
@@ -492,7 +534,7 @@ class TestDesignerAgent(BaseAgent):
                                 "type": "human_review",
                                 "observation_point": "structured_manual_result",
                                 "matcher": "manual_confirmation",
-                                "source_ref": f"{source_refs[0]['id']}:{source_refs[0]['location']}" if source_refs else "missing",
+                                "source_ref": source_ref,
                             },
                         }
                     ],
@@ -504,6 +546,26 @@ class TestDesignerAgent(BaseAgent):
                     "automation_candidate": False,
                 }
             )
+            if requirement_id:
+                covered_requirement_ids.add(requirement_id)
+        coverage_matrix = []
+        for requirement in requirements:
+            requirement_id = str(requirement.get("id") or "")
+            coverage_matrix.append(
+                {
+                    "requirement_id": requirement_id,
+                    "case_ids": [
+                        str(case.get("id"))
+                        for case in cases
+                        if requirement_id in source_ref_ids(case.get("source_refs", []))
+                    ]
+                    or [
+                        str(case.get("id"))
+                        for case in cases
+                        if case.get("test_data", {}).get("requirement_id") == requirement_id
+                    ],
+                }
+            )
         return AgentOutput(
             payload={
                 "schema_version": "test-design-ir/1.0",
@@ -512,13 +574,11 @@ class TestDesignerAgent(BaseAgent):
                 "provider_candidate_count": int(
                     inputs.get("case_provider_draft", {}).get("candidate_count", 0)
                 ),
+                "provider_case_mappings": provider_mappings,
                 "provider_status": inputs.get("case_provider_draft", {}).get(
                     "provider_status", "compatible"
                 ),
-                "coverage_matrix": [
-                    {"requirement_id": req["id"], "case_ids": [f"CASE-{index:03d}"]}
-                    for index, req in enumerate(requirements, 1)
-                ],
+                "coverage_matrix": coverage_matrix,
             },
             status=ArtifactStatus.COMPLETED_WITH_GAPS,
             assumptions=[

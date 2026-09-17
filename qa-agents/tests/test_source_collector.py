@@ -148,3 +148,96 @@ def test_declared_blob_mismatch_is_rejected(tmp_path: Path) -> None:
 def test_collector_rejects_unsafe_repository_paths(path: str) -> None:
     with pytest.raises(SecurityPolicyError):
         ReadOnlyGitCollector._safe_repo_path(path)
+
+
+def test_collector_rejects_unreviewed_fs_qa_knowledge_commit(tmp_path: Path) -> None:
+    docs = tmp_path / "docs"
+    business = tmp_path / "business"
+    provider = tmp_path / "provider"
+    init_repo(docs)
+    init_repo(business)
+    init_repo(provider)
+
+    story = docs / "stories" / "story-1"
+    (story / "product").mkdir(parents=True)
+    (story / "dev").mkdir()
+    (story / "product" / "prd.md").write_text("# Requirement\n- 返回明确错误码\n", encoding="utf-8")
+    (story / "dev" / "tech.md").write_text("# Design\n- API\n", encoding="utf-8")
+    git(docs, "add", ".")
+    git(docs, "commit", "-qm", "documents")
+    docs_commit = git(docs, "rev-parse", "HEAD")
+
+    source = business / "Service.java"
+    source.write_text("class Service {}\n", encoding="utf-8")
+    git(business, "add", "Service.java")
+    git(business, "commit", "-qm", "base")
+    base = git(business, "rev-parse", "HEAD")
+    source.write_text("class Service { int code = 403; }\n", encoding="utf-8")
+    git(business, "commit", "-qam", "change")
+    head = git(business, "rev-parse", "HEAD")
+
+    (provider / "skills" / "requirement-analyze").mkdir(parents=True)
+    (provider / "skills" / "testcase-generate").mkdir(parents=True)
+    (provider / "qa-agent-provider.json").write_text(
+        (
+            '{"schema_version":"qa-agent-provider/1.0","mode":"artifact_only",'
+            '"entrypoint":"provider-command generate --artifact-only",'
+            '"input_contract":"case-provider-input/1.0",'
+            '"output_contract":"case-provider-output/1.0","side_effects":[]}'
+        ),
+        encoding="utf-8",
+    )
+    (provider / "skills" / "requirement-analyze" / "SKILL.md").write_text(
+        "# Requirement Analyze\n", encoding="utf-8"
+    )
+    (provider / "skills" / "testcase-generate" / "SKILL.md").write_text(
+        "artifact-only generation\n", encoding="utf-8"
+    )
+    git(provider, "add", ".")
+    git(provider, "commit", "-qm", "provider")
+    provider_commit = git(provider, "rev-parse", "HEAD")
+
+    registry = RepositoryRegistry(
+        [
+            {"id": "docs", "url": str(docs), "access_class": "document_source_read_only"},
+            {"id": "business", "url": str(business), "access_class": "business_source_read_only"},
+            {
+                "id": "fs-qa-knowledge",
+                "url": str(provider),
+                "access_class": "case_capability_provider_read_only",
+            },
+        ]
+    )
+    snapshot = {
+        "document_source": {"repository": str(docs), "commit": docs_commit},
+        "implementation_source": {
+            "repository": str(business),
+            "repository_id": "business",
+            "comparison": {"mode": "first_parent", "base": base, "head": head},
+            "change_summary": {"changed_paths": ["Service.java"]},
+        },
+        "reference_sources": [
+            {
+                "repository_id": "fs-qa-knowledge",
+                "repository": str(provider),
+                "commit": provider_commit,
+                "access_class": "case_capability_provider_read_only",
+            }
+        ],
+    }
+    workflow_input = {
+        "requirement_scope": {
+            "story_path": "stories/story-1",
+            "requirement_file": "product/prd.md",
+            "technical_design_files": ["dev/tech.md"],
+            "heading": "Requirement",
+        }
+    }
+
+    material = ReadOnlyGitCollector(registry).collect(snapshot, workflow_input)
+    capability = material["case_provider_capability"]
+    assert capability["status"] == "incompatible"
+    assert capability["reviewed_commit_pinned"] is False
+    assert "unreviewed_provider_commit" in {
+        item["code"] for item in capability["blockers"]
+    }

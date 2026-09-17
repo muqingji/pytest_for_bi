@@ -15,7 +15,11 @@ from qa_agents.contracts import (
     content_hash,
 )
 from qa_agents.errors import ContractError
-from qa_agents.case_compiler import apply_approved_split_correction
+from qa_agents.case_compiler import (
+    N25_COMPILER_VERSION,
+    apply_approved_split_correction,
+    compile_cases,
+)
 from qa_agents.stage_two_nodes import (
     run_n15_after_n26,
     run_n25_after_g02,
@@ -413,6 +417,46 @@ def test_n25_compiles_layered_children_after_g02_approval(tmp_path: Path) -> Non
     assert payload["child_count"] == 3
     child_ids = {item["id"] for item in payload["compiled_cases"]}
     assert child_ids == {"CASE-001-BACKEND", "CASE-001-CONTRACT", "CASE-002-E2E"}
+
+
+def test_n25_splits_legacy_multi_layer_responsibilities() -> None:
+    parents = [
+        {
+            "id": "CASE-SPLIT",
+            "required_layers": ["backend", "contract"],
+            "expected": [
+                {"id": "E1", "description": "entry contract"},
+                {"id": "E2", "description": "backend behavior"},
+                {"id": "E3", "description": "response shape"},
+                {"id": "E4", "description": "regression baseline"},
+            ],
+        },
+        {
+            "id": "CASE-E2E",
+            "required_layers": ["backend", "contract", "e2e"],
+            "expected": [
+                {"id": "E-SEMANTIC", "description": "web semantics"},
+                {"id": "E-NO-REWRITE", "description": "payload is not rewritten"},
+            ],
+        },
+    ]
+
+    children = compile_cases(parents, strategy={})
+
+    split = [child for child in children if child["parent_case_id"] == "CASE-SPLIT"]
+    assert [child["layer"] for child in split] == ["backend", "contract"]
+    assert [item["id"] for item in split[0]["expected"]] == ["E1", "E3"]
+    assert [item["id"] for item in split[1]["expected"]] == ["E2", "E4"]
+    assert all(item["layers"] == [child["layer"]] for child in split for item in child["expected"])
+
+    multilingual = [
+        child for child in children if child["parent_case_id"] == "CASE-E2E"
+    ]
+    assert [item["id"] for item in multilingual[0]["expected"]] == ["E-NO-REWRITE"]
+    assert [item["id"] for item in multilingual[1]["expected"]] == ["E-NO-REWRITE"]
+    assert [item["id"] for item in multilingual[2]["expected"]] == ["E-SEMANTIC"]
+    assert not any(child["expected"] == parents[1]["expected"] for child in multilingual)
+    assert len({child["layer_responsibility"] for child in multilingual}) == 3
 
 
 def test_n25_rejects_non_approved_g02_outcome(tmp_path: Path) -> None:

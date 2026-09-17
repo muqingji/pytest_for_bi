@@ -85,38 +85,56 @@ def _n04_issues(cases: list[Mapping[str, Any]]) -> list[dict[str, Any]]:
     return result
 
 
+def _claimed_fix_ids(design_payload: Mapping[str, Any]) -> set[str]:
+    resolutions = design_payload.get("correction_resolutions")
+    if not isinstance(resolutions, list):
+        return set()
+    return {
+        str(item.get("feedback_id") or "").strip()
+        for item in resolutions
+        if isinstance(item, Mapping)
+        and item.get("disposition") == "fixed"
+        and str(item.get("feedback_id") or "").strip()
+    }
+
+
 def _unverified_fix_issues(
     design_payload: Mapping[str, Any],
     review_issues: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
-    """A09 blocking issues on cases the previous A08 correction claimed fixed.
+    """A09 blocking issues the previous A08 correction claimed to have fixed.
 
-    The previous correction round declared ``fixed`` for affected cases, yet
-    the A09 re-review still reports blocking issues on the same cases. The
-    automatic fix loop must stop and route to human instead of guessing again,
-    so the fix agent can never hand in a partial fix and resubmit.
+    Match by feedback_id / issue id, not case_id. A new finding on a previously
+    touched case is still an automatic A08 return; only the same issue coming
+    back after a ``fixed`` claim must stop the loop.
     """
 
-    resolutions = design_payload.get("correction_resolutions")
-    if not isinstance(resolutions, list):
-        return []
-    claimed_case_ids = {
-        str(case_id)
-        for resolution in resolutions
-        if isinstance(resolution, Mapping)
-        and resolution.get("disposition") == "fixed"
-        for case_id in resolution.get("affected_case_ids", [])
-        if isinstance(resolution.get("affected_case_ids"), list)
-    }
-    if not claimed_case_ids:
+    claimed_ids = _claimed_fix_ids(design_payload)
+    if not claimed_ids:
         return []
     return [
         dict(issue)
         for issue in review_issues
         if isinstance(issue, Mapping)
         and str(issue.get("origin")) == "A09"
-        and str(issue.get("case_id") or "") in claimed_case_ids
+        and str(issue.get("id") or "").strip() in claimed_ids
     ]
+
+
+def _historical_packet_issue_is_applicable(
+    review_bundle: Mapping[str, Any], issue: Mapping[str, Any]
+) -> bool:
+    allowed_inputs = review_bundle.get("allowed_inputs")
+    frozen_evidence = (
+        allowed_inputs.get("frozen_evidence", {})
+        if isinstance(allowed_inputs, Mapping)
+        else {}
+    )
+    if not isinstance(frozen_evidence, Mapping):
+        frozen_evidence = {}
+    if "historical_behavior_packet" in frozen_evidence:
+        return True
+    return str(issue.get("issue_code", "")) != "HISTORICAL_BEHAVIOR_PACKET_MISSING"
 
 
 def run_n04_after_a09(
@@ -177,6 +195,8 @@ def run_n04_after_a09(
     for item in review["payload"].get("issues", []):
         if not isinstance(item, Mapping):
             raise ContractError("N04 A09 issue is invalid")
+        if not _historical_packet_issue_is_applicable(review_bundle, item):
+            continue
         issues.append({**dict(item), "origin": "A09"})
 
     blocking_issues = [
@@ -188,12 +208,12 @@ def run_n04_after_a09(
     if valid:
         next_node = "G02"
         reason_code = "test_case_ir_valid"
-    elif correction_attempt >= max_correction_attempts:
-        next_node = "human"
-        reason_code = "test_case_ir_correction_budget_exhausted"
     elif unverified_fix_issues:
         next_node = "human"
         reason_code = "test_case_ir_fix_unverified"
+    elif correction_attempt > max_correction_attempts:
+        next_node = "human"
+        reason_code = "test_case_ir_correction_budget_exhausted"
     else:
         route_order = ("A06/G01", "A07", "A08", "human")
         next_node = next((route for route in route_order if routes[route]), "A08")

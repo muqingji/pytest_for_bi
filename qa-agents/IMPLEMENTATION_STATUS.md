@@ -37,7 +37,7 @@
 | 需求工作流中心 | 已实现并真实同步 | 一需求一稳定父卡、一触发一 Run；QAA-1 展示 35 个节点、5/35 和唯一 G01 人工事项。QAA-1=`in_review`、内部 Run QAA-27=`in_progress`、人工 Gate QAA-32=`in_review`；Run 与 Gate 使用不同状态映射，避免 Multica stage 自动推进误把 Gate 置为 done。Projection 内容寻址并同步状态、正文、Autopilot 审计、metadata、自定义属性、节点分类及历史 Run 结论 |
 | Multica 生产编排 | 部分实现 | 已创建并实跑一需求一 Autopilot `8f26a3bf...`；失效 Claude Runtime 的首次运行 401 被保留，切换在线 Codex Runtime 后连续两次完成只读对账。Stage 1→A06→G01 和旧试点 Stage 2/质量尾链均有真实证据；原生事件触发器及外部系统 Adapter 仍待接入 |
 | 结构化模型 Runtime | 已实现契约，默认关闭 | 固定 Provider/模型/Prompt、无工具、无留存、凭证和输出契约检查；待 Multica 生产绑定 |
-| fs-qa-knowledge Provider | 消费端完成，上游阻塞 | 冻结版本缺少 capability manifest，且强制 `upload2fs`；状态为 `incompatible`，禁止进入 A08 |
+| fs-qa-knowledge Provider | 消费端已接，上游仍阻塞 | 已评审 commit `64cf10c3d2e030285f7f634a4cc5c61539546713` 仍无 `qa-agent-provider.json` 且强制 `upload2fs`；状态 `incompatible`。A08 一一映射/补义务/IR 补全、G02 `provider_case_id` 和影子对比已落地；禁止生产启用。历史试点仍冻在 `1ca888b645bd1c346b6d708a9a583af58d299fc8` |
 | A13/A15/A16/A17-*/A18-* 自动化链路 | 已实现本地参考 Profile | 前端 Playwright、契约、E2E 与六个非功能专项的 artifact-only 生成和独立审查 Profile；共享生成/审查引擎 + 版本化 Profile，策略按层路由候选根目录与框架白名单；N05/G03 多 Manifest 汇合 |
 | A01 歧义路由建议 Profile | 已实现 | N00 注册 5 个确定性模板，仅未知模式/触发不匹配时调用 A01 建议，N00 校验后生效；建议不能自行创建或执行流程 |
 | N07/N16 环境与数据门禁 | 已实现 | 确定性节点 + 15 项测试：N07 环境指纹、8 类检查、指纹节流、失败即 blocked 路由 N16；N16 幂等键/无状态变化拒绝/未覆盖失败项拒绝/补偿清理；CLI 与 Makefile 命令就绪 |

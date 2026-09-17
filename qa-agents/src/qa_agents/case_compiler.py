@@ -10,6 +10,14 @@ from .contracts import content_hash
 
 
 VALID_LAYERS = {"frontend", "backend", "contract", "e2e", "non_functional"}
+N25_COMPILER_VERSION = "n25-compiler/1.2.0"
+LAYER_RESPONSIBILITIES = {
+    "backend": "验证服务端返回的业务载荷与错误数据，不重复用户界面或契约文档检查。",
+    "contract": "验证接口契约、字段结构、跨入口错误结构一致性和兼容形状。",
+    "e2e": "验证 Web 与移动端用户可见行为、多语言语义和真实入口链路。",
+    "frontend": "验证用户界面状态、交互反馈和展示语义。",
+    "non_functional": "验证非功能属性，不扩展业务预期。",
+}
 
 
 def project_capability_atoms(
@@ -211,12 +219,16 @@ def compile_cases(
         layers = list(parent.get("required_layers", default_layers))
         if not layers:
             raise ContractError(f"Case {parent_id} has no required test layers")
-        for layer in sorted(set(layers)):
+        required_layers = sorted(set(layers))
+        implicit_layers = _implicit_expected_layers(
+            parent.get("expected", []), required_layers, parent_id
+        )
+        for layer in required_layers:
             if layer not in VALID_LAYERS:
                 raise ContractError(f"Case {parent_id} has unsupported layer {layer}")
             child = deepcopy(dict(parent))
             child["expected"] = _narrow_expected_for_layer(
-                parent.get("expected", []), layer, parent_id
+                parent.get("expected", []), layer, parent_id, implicit_layers
             )
             child_id = f"{parent_id}-{layer.upper()}"
             if child_id in seen_ids:
@@ -225,6 +237,7 @@ def compile_cases(
             child["id"] = child_id
             child["parent_case_id"] = parent_id
             child["layer"] = layer
+            child["layer_responsibility"] = LAYER_RESPONSIBILITIES[layer]
             if parent.get("expected") and not child["expected"]:
                 raise ContractError(
                     f"Case {parent_id} layer {layer} has no expectations after narrowing"
@@ -235,14 +248,17 @@ def compile_cases(
 
 
 def _narrow_expected_for_layer(
-    expected: list[Any], layer: str, parent_id: str
+    expected: list[Any],
+    layer: str,
+    parent_id: str,
+    implicit_layers: Mapping[str, list[str]] | None = None,
 ) -> list[dict[str, Any]]:
     """Keep only expectations whose explicit layers include the child layer.
 
     N25 may only copy or narrow execution responsibility. When A08 annotates
-    ``expected[].layers``, each layer child keeps exactly those expectations;
-    an expectation without a ``layers`` annotation stays in every child
-    (backward-compatible default), so no business expectation is silently dropped.
+    ``expected[].layers``, each layer child keeps exactly those expectations.
+    Legacy expectations without an annotation receive deterministic layer
+    responsibilities, so multi-layer children do not duplicate the full parent.
     """
 
     narrowed: list[dict[str, Any]] = []
@@ -251,7 +267,11 @@ def _narrow_expected_for_layer(
             continue
         annotated = item.get("layers")
         if annotated is None:
-            narrowed.append(deepcopy(dict(item)))
+            copied = deepcopy(dict(item))
+            assigned = implicit_layers or {}
+            if layer in assigned.get(str(item.get("id", "")), [layer]):
+                copied["layers"] = [layer]
+                narrowed.append(copied)
             continue
         if not isinstance(annotated, list) or not annotated:
             raise ContractError(
@@ -260,3 +280,54 @@ def _narrow_expected_for_layer(
         if layer in {str(value) for value in annotated}:
             narrowed.append(deepcopy(dict(item)))
     return narrowed
+
+
+def _implicit_expected_layers(
+    expected: list[Any], layers: list[str], parent_id: str
+) -> dict[str, list[str]]:
+    if len(layers) <= 1:
+        return {
+            str(item.get("id", "")): list(layers)
+            for item in expected
+            if isinstance(item, Mapping) and item.get("layers") is None
+        }
+
+    assignments: dict[str, list[str]] = {}
+    assignable: list[str] = []
+    rotation = 0
+    for item in expected:
+        if not isinstance(item, Mapping) or item.get("layers") is not None:
+            continue
+        expected_id = str(item.get("id", ""))
+        oracle = item.get("oracle", {})
+        evidence = " ".join(
+            str(value)
+            for value in (
+                item.get("id"),
+                item.get("description"),
+                oracle.get("observation_point", "") if isinstance(oracle, Mapping) else "",
+            )
+        ).lower()
+        if "e2e" in layers and any(
+            marker in evidence
+            for marker in ("web", "mobile", "user_visible", "semantic")
+        ):
+            assignments[expected_id] = ["e2e"]
+            continue
+        assignments[expected_id] = [layers[rotation % len(layers)]]
+        rotation += 1
+        assignable.append(expected_id)
+
+    used_layers = {
+        layer for assigned in assignments.values() for layer in assigned
+    }
+    for layer in (layer for layer in layers if layer not in used_layers):
+        if not assignable:
+            for assigned in assignments.values():
+                if layer not in assigned:
+                    assigned.append(layer)
+            continue
+        expected_id = assignable.pop(0)
+        if layer not in assignments[expected_id]:
+            assignments[expected_id].append(layer)
+    return assignments

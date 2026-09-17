@@ -12,7 +12,7 @@ from contextlib import contextmanager
 from pathlib import Path
 import shutil
 import subprocess
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence
 from datetime import datetime, timezone
 
 from qa_agents.autopilot import (
@@ -53,6 +53,11 @@ from qa_agents.quality_pipeline import (
     run_server_quality_tail,
 )
 from qa_agents.test_data import record_constructed_test_data, validate_test_data_plan
+from qa_agents.test_data_copy import (
+    humanize_unresolved_requirement,
+    is_owner_review,
+    unresolved_requirement_id,
+)
 from qa_agents.human_correction import (
     open_multica_human_correction,
     prepare_human_correction_request,
@@ -75,8 +80,10 @@ from qa_agents.multica import (
 )
 from qa_agents.multica_cli import resolve_multica_binary
 from qa_agents.reporting import render_scope_review_markdown
+from qa_agents.requirement_case_renderer import render_review_cards
 from qa_agents.risk import run_risk_strategy_after_g01
 from qa_agents.security import SecurityPolicy
+from qa_agents.case_compiler import N25_COMPILER_VERSION
 from qa_agents.stage_two_nodes import (
     run_n15_after_n26,
     run_n25_after_g02,
@@ -138,12 +145,21 @@ def _load_dispatch_authorization(path: Path | None, run_id: str) -> None:
     _DISPATCH_AUTHORIZATION = authorization
 
 
+def _is_dispatch_authorized(run_id: str, node_id: str) -> bool:
+    if _DISPATCH_AUTHORIZATION is None:
+        return True
+    if _DISPATCH_AUTHORIZATION.get("workflow_run_id") != run_id:
+        return False
+    allowed = _DISPATCH_AUTHORIZATION.get("allowed_nodes", [])
+    return isinstance(allowed, list) and node_id in allowed
+
+
 def _assert_dispatch_authorized(run_id: str, node_id: str) -> None:
     if _DISPATCH_AUTHORIZATION is None:
         return
     if _DISPATCH_AUTHORIZATION.get("workflow_run_id") != run_id:
         raise ContractError("Dispatch authorization run changed during sync")
-    if node_id not in _DISPATCH_AUTHORIZATION.get("allowed_nodes", []):
+    if not _is_dispatch_authorized(run_id, node_id):
         raise ContractError(f"Dispatch of {node_id} was not authorized by the monitor plan")
 
 
@@ -284,6 +300,20 @@ def _latest_approved_g01(
             request = _read(request_path)
             if request.get("request_hash") == decision.get("request_hash"):
                 return request, decision, decision_path
+        else:
+            current_request_path = review_dir / "g01-review-request.json"
+            if current_request_path.exists():
+                current_request = _read(current_request_path)
+                if (
+                    current_request.get("workflow_run_id")
+                    == decision.get("workflow_run_id")
+                    and current_request.get("request_hash")
+                    == decision.get("request_hash")
+                ):
+                    ArtifactStore(decision_path.parent).write_json(
+                        request_path.name, current_request
+                    )
+                    return current_request, decision, decision_path
         reconstructed = _reconstruct_request_for_decision(
             decision, artifact_paths, policy, review_dir, prior_decisions
         )
@@ -311,18 +341,6 @@ def ensure_n24_test_strategy(
     alignment_path = auto_dir / "artifacts" / "a06-alignment-result.json"
     if not alignment_path.exists():
         return None
-    workflow_input_path = _config_path(config, "n24_workflow_input", repo_root)
-    source_snapshot_path = _config_path(config, "n24_source_snapshot", repo_root)
-    risk_policy_path = _config_path(config, "n24_risk_policy", repo_root)
-    g01_policy_path = _config_path(config, "g01_policy", repo_root)
-    if not (
-        workflow_input_path
-        and source_snapshot_path
-        and risk_policy_path
-        and g01_policy_path
-    ):
-        return None
-    policy = _read(g01_policy_path)
     artifact_paths = {
         "a02": auto_dir / "artifacts" / "a02-requirement-analysis.json",
         "a03": auto_dir / "artifacts" / "a03-technical-testability-analysis.json",
@@ -330,9 +348,13 @@ def ensure_n24_test_strategy(
     }
     if not all(path.exists() for path in artifact_paths.values()):
         return None
+    policy = _read(_required_policy_path(config, "g01_policy", repo_root))
     binding = _latest_approved_g01(review_dir, artifact_paths, policy)
     if not binding:
         return None
+    workflow_input_path = _required_config_path(config, "n24_workflow_input", repo_root)
+    source_snapshot_path = _required_config_path(config, "n24_source_snapshot", repo_root)
+    risk_policy_path = _required_policy_path(config, "n24_risk_policy", repo_root)
     request, decision, _decision_path = binding
     source_snapshot = _read(source_snapshot_path)
     SecurityPolicy().validate_snapshot(source_snapshot)
@@ -406,6 +428,105 @@ def prepare_reconcile_spec(
     recovery_path = current_spec_path.parent / "recovery-base-spec.json"
     ArtifactStore(recovery_path.parent).write_json(recovery_path.name, base)
     return recovery_path
+
+
+def _bind_g01_gate_issue(spec_path: Path, gate_state: dict[str, Any]) -> None:
+    issue_id = str(gate_state.get("issue_id", "")).strip()
+    if not issue_id or gate_state.get("issue_binding") != "gate_issue":
+        return
+    spec = _read(spec_path)
+    changed = False
+    for node in spec.get("nodes", []):
+        if not isinstance(node, dict) or node.get("node_id") != "G01":
+            continue
+        issue_identifier = str(gate_state.get("issue_identifier", "")).strip()
+        if not issue_identifier:
+            issue = _multica("issue", "get", issue_id)
+            issue_identifier = str(issue.get("identifier", ""))
+        if node.get("issue_id") != issue_id:
+            node["issue_id"] = issue_id
+            changed = True
+        if issue_identifier and node.get("issue_identifier") != issue_identifier:
+            node["issue_identifier"] = issue_identifier
+            changed = True
+    if changed:
+        ArtifactStore(spec_path.parent).write_json(spec_path.name, spec)
+
+
+def _bind_dispatched_node_issues(
+    spec_path: Path, results: list[dict[str, Any] | None]
+) -> None:
+    bindings: dict[str, dict[str, str]] = {}
+    for result in results:
+        if not isinstance(result, dict):
+            continue
+        issue_id = str(result.get("issue_id", "")).strip()
+        node_id = str(result.get("node_id", "")).strip()
+        action = str(result.get("action", ""))
+        if (
+            not issue_id
+            or node_id not in {"A06", "A08", "A09", "A11", "A14", "A15", "A18-BE", "A18-CT", "A22"}
+            or action
+            not in {
+                "dispatched",
+                "redispatched",
+                "already_dispatched",
+                "g02_correction_dispatched",
+            }
+        ):
+            continue
+        bindings[node_id] = {
+            "issue_id": issue_id,
+            "issue_identifier": str(result.get("issue_identifier", "")),
+        }
+    if not bindings:
+        return
+    spec = _read(spec_path)
+    changed = False
+    for node in spec.get("nodes", []):
+        if not isinstance(node, dict):
+            continue
+        binding = bindings.get(str(node.get("node_id", "")))
+        if not binding:
+            continue
+        if node.get("issue_id") != binding["issue_id"]:
+            node["issue_id"] = binding["issue_id"]
+            changed = True
+        identifier = binding["issue_identifier"]
+        if identifier and node.get("issue_identifier") != identifier:
+            node["issue_identifier"] = identifier
+            changed = True
+    if changed:
+        ArtifactStore(spec_path.parent).write_json(spec_path.name, spec)
+
+
+def _reset_stage_bound_g01_state(review_dir: Path, stage_issue_id: str) -> bool:
+    if not stage_issue_id or (review_dir / "g01-review-decision.json").exists():
+        return False
+    state_path = review_dir / "g01-workflow-state.json"
+    if not state_path.exists():
+        return False
+    state = _read(state_path)
+    if str(state.get("issue_id", "")) != stage_issue_id:
+        return False
+    reset = {
+        "schema_version": "workflow-gate-state/1.0",
+        "gate_id": "G01",
+        "workflow_run_id": str(state.get("workflow_run_id", "")),
+        "source_snapshot_id": str(state.get("source_snapshot_id", "")),
+        "request_hash": str(state.get("request_hash", "")),
+        "adapter_policy_hash": str(state.get("adapter_policy_hash", "")),
+        "state": "prepared",
+        "issue_id": None,
+        "issue_identifier": "",
+        "issue_binding": "gate_issue",
+        "observed_multica_status": None,
+        "processed_event_id": None,
+        "next_node": None,
+    }
+    reset["state_hash"] = content_hash(reset)
+    ArtifactStore(review_dir).write_json(state_path.name, reset)
+    return True
 
 
 def ensure_g01_scope_review(
@@ -784,6 +905,17 @@ def _latest_completed(runs: list[dict[str, Any]]) -> dict[str, Any] | None:
     )
 
 
+def _issue_has_active_run(issue_id: str) -> bool:
+    runs = _multica("issue", "runs", issue_id)
+    if not isinstance(runs, list):
+        raise RuntimeError("multica issue runs returned invalid data")
+    return any(
+        str(run.get("status", "")) in {"queued", "running", "pending"}
+        for run in runs
+        if isinstance(run, dict)
+    )
+
+
 _DETERMINISTIC_PRODUCER_RUNTIMES = frozenset(
     {
         "human-recovery",
@@ -955,7 +1087,7 @@ def _ingest_issue(
             raw_output = comment_output
     output_dir.mkdir(parents=True, exist_ok=True)
     model_provider, model_snapshot = _run_model_metadata(run)
-    return ingest_multica_output(
+    artifact = ingest_multica_output(
         bundle_path,
         raw_output,
         output_dir,
@@ -966,6 +1098,12 @@ def _ingest_issue(
         model_snapshot=model_snapshot,
         prompt_version=str(_read(bundle_path).get("profile_version", "1.0.0")),
     )
+    if str(artifact.get("status") or "") == "blocked_input":
+        artifact_id = str(artifact.get("artifact_id") or "")
+        if artifact_id:
+            (output_dir / "artifacts" / f"{artifact_id}.json").unlink(missing_ok=True)
+        raise ContractError(f"{node_id} returned blocked_input and cannot be accepted")
+    return artifact
 
 
 def _comment_artifact_output(
@@ -1006,6 +1144,100 @@ def _comment_artifact_output(
     return str(candidates[-1]["content"])
 
 
+_QA_AGENTS_ROOT = Path(__file__).resolve().parents[1]
+_DEFAULT_NODE_INSTRUCTION_FILES = {
+    "A08": {
+        "1.1.0": "multica/agent-instructions/a08-v1.1.1.md",
+        "1.2.1": "multica/agent-instructions/a08-v1.2.1.md",
+        "1.3.0": "multica/agent-instructions/a08-v1.3.0.md",
+        "1.4.0": "multica/agent-instructions/a08-v1.4.0.md",
+    },
+    "A09": {
+        "1.1.1": "multica/agent-instructions/a09-v1.1.1.md",
+    },
+    "A11": {
+        "1.1.0": "multica/agent-instructions/a11-v1.0.0.md",
+    },
+    "A14": {
+        "1.0.0": "multica/agent-instructions/a14-v1.0.0.md",
+    },
+    "A15": {
+        "1.0.0": "multica/agent-instructions/a15-v1.0.0.md",
+    },
+    "A22": {
+        "1.0.0": "multica/agent-instructions/a22-v1.0.0.md",
+    },
+    "A18-BE": {
+        "1.0.0": "multica/agent-instructions/a18-be-v1.0.0.md",
+    },
+    "A18-CT": {
+        "1.0.0": "multica/agent-instructions/a18-ct-v1.0.0.md",
+    },
+}
+
+
+def _node_instruction_path(
+    config: Mapping[str, Any],
+    node_id: str,
+    profile_version: str,
+    repo_root: Path,
+) -> Path | None:
+    mapping = config.get("node_instruction_files")
+    raw = None
+    if isinstance(mapping, Mapping) and isinstance(mapping.get(node_id), Mapping):
+        raw = mapping[node_id].get(str(profile_version))
+    if raw:
+        instruction_path = Path(str(raw))
+        if not instruction_path.is_absolute():
+            instruction_path = repo_root / instruction_path
+        return instruction_path
+    default = _DEFAULT_NODE_INSTRUCTION_FILES.get(node_id, {}).get(str(profile_version))
+    if not default:
+        return None
+    return _QA_AGENTS_ROOT / default
+
+
+def _bind_issue_bundle(inputs_dir: Path, issue_id: str, input_path: Path) -> None:
+    """Record which input bundle a dispatched Issue must be ingested against."""
+
+    if not issue_id:
+        return
+    bundles = _load_issue_bundles(inputs_dir)
+    bundles[str(issue_id)] = str(Path(input_path).resolve())
+    _save_issue_bundles(inputs_dir, bundles)
+
+
+def _failed_ingest_issue_ids(
+    failures: Mapping[str, Any] | None, node_id: str
+) -> set[str]:
+    records = (failures or {}).get(node_id, [])
+    return {
+        str(item.get("issue_id", ""))
+        for item in records
+        if isinstance(item, Mapping) and item.get("issue_id")
+    }
+
+
+def _resolve_ingest_bundle_path(
+    *,
+    issue_id: str,
+    node_id: str,
+    issue_bundles: Mapping[str, Any],
+    node_input_files: Mapping[str, Any],
+    artifact_root: Path,
+) -> Path | None:
+    recorded = issue_bundles.get(str(issue_id))
+    if recorded:
+        return Path(str(recorded))
+    bundle_relative = node_input_files.get(node_id)
+    if isinstance(bundle_relative, list) and bundle_relative:
+        return Path(str(bundle_relative[0]))
+    candidate = artifact_root / "inputs" / f"{node_id.lower()}-input.json"
+    if candidate.exists():
+        return candidate
+    return None
+
+
 def _ensure_agent_instruction(
     config: dict[str, Any],
     node_id: str,
@@ -1020,22 +1252,24 @@ def _ensure_agent_instruction(
     hosted instructions would reject.
     """
 
-    mapping = config.get("node_instruction_files")
-    if not isinstance(mapping, Mapping) or not isinstance(mapping.get(node_id), Mapping):
+    instruction_path = _node_instruction_path(config, node_id, profile_version, repo_root)
+    if instruction_path is None:
         return None
-    instruction_map = mapping[node_id]
-    raw = instruction_map.get(str(profile_version))
-    if not raw:
-        return None
-    instruction_path = Path(str(raw))
-    if not instruction_path.is_absolute():
-        instruction_path = repo_root / instruction_path
     if not instruction_path.exists():
         raise RuntimeError(f"missing instruction file: {instruction_path}")
     agent_id = str(config.get("node_agents", {}).get(node_id, ""))
     if not agent_id:
         raise RuntimeError(f"no node_agents binding for {node_id}")
-    current = _multica("agent", "get", agent_id)
+    try:
+        current = _multica("agent", "get", agent_id)
+    except Exception as error:
+        # A stale or mistyped binding otherwise surfaces as a bare Multica 404
+        # ("The requested resource was not found"), which the monitor reports
+        # once per tick with no hint that the config, not the workflow, is wrong.
+        raise RuntimeError(
+            f"{node_id} node_agents binding {agent_id} is not visible in this "
+            f"workspace; fix workflow-config.json node_agents.{node_id}: {error}"
+        ) from error
     if not isinstance(current, dict):
         raise RuntimeError(f"multica agent get returned invalid data for {node_id}")
     hosted = str(current.get("instructions", ""))
@@ -1059,6 +1293,8 @@ def _node_issues_by_id(
         title = str(issue.get("title", ""))
         if not title.startswith(prefix):
             continue
+        if str(issue.get("status", "")) == "cancelled":
+            continue
         node_id = title[len(prefix):].split(" ", 1)[0]
         if node_id:
             by_node.setdefault(node_id, []).append(issue)
@@ -1073,6 +1309,33 @@ def _issue_running(issue: dict[str, Any]) -> bool:
     }
 
 
+def _open_issue_viable(issue: Mapping[str, Any], failed_issue_ids: set[str]) -> bool:
+    """Running Issues that already failed ingest must not block redispatch."""
+
+    if str(issue.get("id", "")) in failed_issue_ids:
+        return False
+    return _issue_running(issue)
+
+
+def _agent_dispatch_issues(
+    issues: Sequence[Mapping[str, Any]] | None,
+) -> list[Mapping[str, Any]]:
+    """Drop record-card Issues when deciding whether an Agent is in flight.
+
+    Deterministic record cards use priority=medium. They must not consume the
+    Agent rerun budget or look like an in-progress A18-BE/A18-CT run.
+    """
+
+    if not issues:
+        return []
+    return [
+        issue
+        for issue in issues
+        if isinstance(issue, Mapping)
+        and str(issue.get("priority") or "") != "medium"
+    ]
+
+
 def _rerun_budget_available(
     config: dict[str, Any],
     node_id: str,
@@ -1085,6 +1348,23 @@ def _rerun_budget_available(
         1 for issue in issues if not _issue_running(issue)
     )
     return completed_attempts <= budget
+
+
+def _correction_rerun_budget_available(
+    config: Mapping[str, Any],
+    bound_issue_ids: list[str],
+    failed_issue_ids: set[str],
+) -> bool:
+    """Whether one correction hash may create another Issue after failed ingest.
+
+    First-pass A08 Issues and earlier correction rounds that bound a different
+    Artifact hash must not consume this budget, or a single failed ingest on
+    the current hash can never recover.
+    """
+
+    budget = int(config.get("agent_rerun_budget", 1))
+    failed_bound = len({item for item in bound_issue_ids if item in failed_issue_ids})
+    return failed_bound <= budget
 
 
 def _load_ingest_failures(artifact_root: Path) -> dict[str, list[dict[str, Any]]]:
@@ -1126,11 +1406,14 @@ def _cancel_duplicate_node_issues(
     node_id: str,
     *,
     keep_issue_id: str,
+    keep_bundle_path: Path,
+    issue_bundles: Mapping[str, str],
 ) -> None:
     """Cancel leftover Agent Issues after a completed run is ingested.
 
     Ingest failure used to re-dispatch A11 while the first Issue stayed
-    blocked. The stage card then showed the dead card as running.
+    blocked. Only Issues bound to the same input bundle are duplicates; a
+    correction Round bound to a new Artifact must keep running.
     """
 
     for other in issues:
@@ -1141,6 +1424,18 @@ def _cancel_duplicate_node_issues(
             continue
         other_node = title[len(prefix):].split(" ", 1)[0]
         if other_node != node_id or str(other.get("id", "")) == keep_issue_id:
+            continue
+        recorded = issue_bundles.get(str(other.get("id", "")))
+        if not recorded:
+            continue
+        other_bundle = Path(str(recorded))
+        if not other_bundle.is_absolute():
+            other_bundle = Path.cwd() / other_bundle
+        try:
+            same_bundle = other_bundle.resolve() == keep_bundle_path.resolve()
+        except OSError:
+            same_bundle = False
+        if not same_bundle:
             continue
         if _issue_running(other):
             _multica("issue", "status", str(other["id"]), "cancelled")
@@ -1160,6 +1455,7 @@ def _mark_issue_blocked(issue: dict[str, Any]) -> None:
     if status in {"blocked", "done", "cancelled"}:
         return
     _multica("issue", "status", str(issue.get("id", "")), "blocked")
+    issue["status"] = "blocked"
 
 
 def _load_issue_bundles(inputs_dir: Path) -> dict[str, str]:
@@ -1170,6 +1466,105 @@ def _load_issue_bundles(inputs_dir: Path) -> dict[str, str]:
         return {}
     value = _read(path)
     return value if isinstance(value, dict) else {}
+
+
+def _issue_id_for_input_path(
+    inputs_dir: Path,
+    input_path: Path,
+    *,
+    failed_issue_ids: set[str] | None = None,
+) -> str | None:
+    """Return a live Issue already dispatched for this exact input bundle path.
+
+    Failed ingest records stay in ``.issue-bundles.json`` at the front of the
+    map. Returning those IDs makes the caller treat the bundle as unbound and
+    create a duplicate Issue on every tick.
+    """
+
+    failed = failed_issue_ids or set()
+    try:
+        target = str(input_path.resolve())
+    except OSError:
+        target = str(input_path)
+    for issue_id, raw in _load_issue_bundles(inputs_dir).items():
+        if str(issue_id) in failed:
+            continue
+        path = Path(str(raw))
+        try:
+            resolved = str(path.resolve())
+        except OSError:
+            resolved = str(path)
+        if resolved == target:
+            return str(issue_id)
+    return None
+
+
+def _correction_bundle_previous_hash(path: Path) -> str:
+    try:
+        bundle = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ""
+    if not isinstance(bundle, dict):
+        return ""
+    feedback = bundle.get("allowed_inputs", {})
+    if isinstance(feedback, dict):
+        feedback = feedback.get("correction_feedback", {})
+    previous = ""
+    if isinstance(feedback, dict):
+        previous = str(feedback.get("previous_artifact_hash") or "").strip()
+    if previous:
+        return previous
+    for item in bundle.get("upstream_artifacts", []) or []:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("artifact_id") or "") == "a08-test-design-ir":
+            return str(item.get("artifact_hash") or "").strip()
+    return ""
+
+
+def _bound_correction_issue_ids(
+    inputs_dir: Path,
+    prefix: str,
+    *,
+    artifact_hash: str = "",
+) -> list[str]:
+    """Return every Issue bound to this correction prefix and Artifact hash."""
+
+    matched: list[str] = []
+    for issue_id, raw in _load_issue_bundles(inputs_dir).items():
+        normalized = str(raw).replace("\\", "/")
+        if prefix not in normalized:
+            continue
+        if not artifact_hash:
+            matched.append(str(issue_id))
+            continue
+        previous = _correction_bundle_previous_hash(Path(str(raw)))
+        if previous == artifact_hash:
+            matched.append(str(issue_id))
+    return matched
+
+
+def _bound_correction_issue_id(
+    inputs_dir: Path,
+    prefix: str,
+    *,
+    artifact_hash: str = "",
+    failed_issue_ids: set[str] | None = None,
+) -> str | None:
+    """Return a live Issue already dispatched for this correction prefix.
+
+    When ``artifact_hash`` is set, only a bundle that still binds that A08
+    Artifact counts, so a finished correction round cannot block the next one.
+    Failed ingest IDs are skipped so a later live binding can be reused.
+    """
+
+    failed = failed_issue_ids or set()
+    for issue_id in _bound_correction_issue_ids(
+        inputs_dir, prefix, artifact_hash=artifact_hash
+    ):
+        if issue_id not in failed:
+            return issue_id
+    return None
 
 
 def _save_issue_bundles(inputs_dir: Path, bundles: dict[str, str]) -> None:
@@ -1195,9 +1590,22 @@ def _artifact_bundle_path(
         for sub in sorted(inputs_dir.glob(f"{prefix}-correction-*"))
         if sub.is_dir()
     )
+    for recorded in _load_issue_bundles(inputs_dir).values():
+        recorded_path = Path(str(recorded))
+        if not recorded_path.is_absolute():
+            recorded_path = inputs_dir / recorded_path
+        candidates.append(recorded_path)
+    seen: set[Path] = set()
     for candidate in candidates:
-        if candidate.exists() and str(_read(candidate).get("bundle_hash", "")) == target_hash:
-            return candidate
+        try:
+            resolved = candidate.resolve()
+        except OSError:
+            resolved = candidate
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if resolved.exists() and str(_read(resolved).get("bundle_hash", "")) == target_hash:
+            return resolved
     return None
 
 
@@ -1452,23 +1860,35 @@ def ensure_a08_dispatch(
     issues_by_node: dict[str, dict[str, Any]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Auto-dispatch the A08 test-design Agent once G01 and N24 are accepted."""
 
     if (auto_dir / "artifacts" / "a08-test-design-ir.json").exists():
         return None
     existing_issues = issues_by_node.get("A08", [])
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, "A08")
+
+    def _a08_open_and_viable(issue: dict[str, Any]) -> bool:
+        if str(issue.get("id", "")) in failed_issue_ids:
+            return False
+        return _issue_running(issue)
+
     if existing_issues:
-        if any(_issue_running(issue) for issue in existing_issues):
+        if any(_a08_open_and_viable(issue) for issue in existing_issues):
+            active_issue = next(
+                issue for issue in existing_issues if _a08_open_and_viable(issue)
+            )
+            existing_bundle = inputs_dir / "a08-input.json"
+            if apply and existing_bundle.exists():
+                _bind_issue_bundle(
+                    inputs_dir, str(active_issue.get("id", "")), existing_bundle
+                )
             return {
                 "node_id": "A08",
                 "action": "already_dispatched",
-                "issue_id": str(
-                    next(
-                        (issue.get("id") for issue in existing_issues if _issue_running(issue)),
-                        existing_issues[-1].get("id", ""),
-                    )
-                ),
+                "issue_id": str(active_issue.get("id", "")),
+                "issue_identifier": str(active_issue.get("identifier", "")),
             }
         if not _rerun_budget_available(config, "A08", existing_issues):
             return {
@@ -1479,9 +1899,7 @@ def ensure_a08_dispatch(
     n24_path = auto_dir / "artifacts" / "n24-test-strategy.json"
     if not n24_path.exists():
         return None
-    policy_path = _config_path(config, "g01_policy", repo_root)
-    if not policy_path:
-        return None
+    policy_path = _required_policy_path(config, "g01_policy", repo_root)
     artifact_paths = {
         "a02": auto_dir / "artifacts" / "a02-requirement-analysis.json",
         "a03": auto_dir / "artifacts" / "a03-technical-testability-analysis.json",
@@ -1504,6 +1922,13 @@ def ensure_a08_dispatch(
             candidate = repo_root / candidate
         if candidate.exists():
             prior_paths.append(candidate)
+    configured_provider_output = _config_path(
+        config, "case_provider_output", repo_root
+    )
+    provider_output_path = (
+        configured_provider_output
+        or inputs_dir / "case-provider-output.json"
+    )
     inputs_dir.mkdir(parents=True, exist_ok=True)
     bundle = prepare_multica_test_design_input(
         artifact_paths["a02"],
@@ -1515,7 +1940,19 @@ def ensure_a08_dispatch(
         policy_path,
         inputs_dir,
         prior_test_rules_paths=prior_paths,
+        case_provider_output_path=(
+            provider_output_path if provider_output_path.exists() else None
+        ),
     )
+    if bool(config.get("case_provider_required", False)) and not provider_output_path.exists():
+        return {
+            "node_id": "A08",
+            "action": "case_provider_blocked",
+            "input": str(inputs_dir / "case-provider-input.json"),
+            "expected_output": str(provider_output_path),
+            "bundle_hash": str(bundle.get("bundle_hash", "")),
+            "reason": "case_provider_required is enabled but no artifact-only Provider output exists",
+        }
     result = {
         "node_id": "A08",
         "action": "would_dispatch" if not apply else "dispatch_ready",
@@ -1526,7 +1963,9 @@ def ensure_a08_dispatch(
     }
     if not apply:
         return result
-    _ensure_agent_instruction(config, "A08", "1.1.0", repo_root)
+    instruction = _ensure_agent_instruction(config, "A08", "1.1.0", repo_root)
+    if instruction is None:
+        raise RuntimeError("A08 first-pass instruction file is not configured")
     created = _create_node_issue(
         config=config,
         run_id=run_id,
@@ -1534,6 +1973,7 @@ def ensure_a08_dispatch(
         label="测试设计",
         input_path=inputs_dir / "a08-input.json",
     )
+    _bind_issue_bundle(inputs_dir, str(created["issue_id"]), inputs_dir / "a08-input.json")
     result.update(created)
     return result
 
@@ -1547,6 +1987,7 @@ def ensure_a08_correction_dispatch(
     issues_by_node: dict[str, list[dict[str, Any]]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Auto-dispatch a targeted A08 correction when N04 routes back to A08."""
 
@@ -1572,7 +2013,7 @@ def ensure_a08_correction_dispatch(
     max_attempts = n04_payload.get("max_correction_attempts")
     if not isinstance(attempt, int) or not isinstance(max_attempts, int):
         return None
-    if attempt >= max_attempts:
+    if attempt > max_attempts:
         return {
             "node_id": "A08",
             "action": "correction_budget_exhausted",
@@ -1584,7 +2025,12 @@ def ensure_a08_correction_dispatch(
     if str(n04_payload.get("test_design_artifact_hash", "")) != current_hash:
         return None
     existing_issues = issues_by_node.get("A08", [])
-    running = [issue for issue in existing_issues if _issue_running(issue)]
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, "A08")
+    running = [
+        issue
+        for issue in existing_issues
+        if _open_issue_viable(issue, failed_issue_ids)
+    ]
     if running:
         return {
             "node_id": "A08",
@@ -1592,11 +2038,45 @@ def ensure_a08_correction_dispatch(
             "issue_id": str(running[0].get("id", "")),
             "mode": "correction",
         }
+    bound_ids = _bound_correction_issue_ids(
+        inputs_dir, "a08-correction-", artifact_hash=current_hash
+    )
+    issues_by_id = {
+        str(issue.get("id", "")): issue for issue in existing_issues
+    }
+    live_bound = next(
+        (
+            issue_id
+            for issue_id in bound_ids
+            if issue_id not in failed_issue_ids
+            and (
+                issue_id not in issues_by_id
+                or _open_issue_viable(issues_by_id[issue_id], failed_issue_ids)
+            )
+        ),
+        None,
+    )
+    if live_bound:
+        return {
+            "node_id": "A08",
+            "action": "already_dispatched",
+            "issue_id": live_bound,
+            "mode": "correction",
+        }
+    if bound_ids and not _correction_rerun_budget_available(
+        config, bound_ids, failed_issue_ids
+    ):
+        return {
+            "node_id": "A08",
+            "action": "rerun_budget_exhausted",
+            "mode": "correction",
+            "attempts": len(bound_ids),
+        }
     correction_issues = [
         issue
         for issue in existing_issues
         if "修正" in str(issue.get("title", ""))
-        and _issue_running(issue)
+        and _open_issue_viable(issue, failed_issue_ids)
     ]
     if correction_issues:
         return {
@@ -1604,9 +2084,13 @@ def ensure_a08_correction_dispatch(
             "action": "awaiting_ingest",
             "attempts": len(correction_issues),
         }
-    a08_bundle_path = inputs_dir / "a08-input.json"
-    if not a08_bundle_path.exists():
-        return None
+    a08_payload = _read(a08_path).get("payload", {})
+    a08_bundle_path = _artifact_bundle_path(a08_payload, inputs_dir, "A08")
+    if a08_bundle_path is None:
+        fallback = inputs_dir / "a08-input.json"
+        if not fallback.exists():
+            raise RuntimeError("A08 correction cannot resolve the current A08 input bundle")
+        a08_bundle_path = fallback
     correction_dir = inputs_dir / f"a08-correction-{attempt}"
     correction_dir.mkdir(parents=True, exist_ok=True)
     bundle = prepare_multica_test_design_correction_input(
@@ -1627,6 +2111,20 @@ def ensure_a08_correction_dispatch(
     }
     if not apply:
         return result
+    if not _is_dispatch_authorized(run_id, "A08"):
+        result["action"] = "awaiting_authorization"
+        return result
+    bound_id = _issue_id_for_input_path(
+        inputs_dir,
+        correction_dir / "a08-input.json",
+        failed_issue_ids=failed_issue_ids,
+    )
+    if bound_id:
+        bound_issue = issues_by_id.get(bound_id)
+        if bound_issue is None or _open_issue_viable(bound_issue, failed_issue_ids):
+            result["action"] = "already_dispatched"
+            result["issue_id"] = bound_id
+            return result
     _ensure_agent_instruction(config, "A08", "1.2.1", repo_root)
     created = _create_node_issue(
         config=config,
@@ -1639,6 +2137,8 @@ def ensure_a08_correction_dispatch(
     bundles[str(created["issue_id"])] = str((correction_dir / "a08-input.json").resolve())
     _save_issue_bundles(inputs_dir, bundles)
     result.update(created)
+    if bound_ids:
+        result["attempt"] = len(bound_ids) + 1
     return result
 
 
@@ -1651,20 +2151,26 @@ def ensure_a09_dispatch(
     issues_by_node: dict[str, dict[str, Any]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Auto-dispatch the A09 Oracle review Agent once A08 is accepted."""
 
     if (auto_dir / "artifacts" / "a09-oracle-coverage-review.json").exists():
         return None
     existing_issues = issues_by_node.get("A09", [])
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, "A09")
     if existing_issues:
-        if any(_issue_running(issue) for issue in existing_issues):
+        if any(_open_issue_viable(issue, failed_issue_ids) for issue in existing_issues):
             return {
                 "node_id": "A09",
                 "action": "already_dispatched",
                 "issue_id": str(
                     next(
-                        (issue.get("id") for issue in existing_issues if _issue_running(issue)),
+                        (
+                            issue.get("id")
+                            for issue in existing_issues
+                            if _open_issue_viable(issue, failed_issue_ids)
+                        ),
                         existing_issues[-1].get("id", ""),
                     )
                 ),
@@ -1676,12 +2182,16 @@ def ensure_a09_dispatch(
                 "attempts": len(existing_issues),
             }
     a08_path = auto_dir / "artifacts" / "a08-test-design-ir.json"
-    a08_bundle_path = inputs_dir / "a08-input.json"
-    if not a08_path.exists() or not a08_bundle_path.exists():
+    if not a08_path.exists():
         return None
-    oracle_rules_path = _config_path(config, "oracle_rule_library", repo_root)
-    if not oracle_rules_path:
-        return None
+    a08_payload = _read(a08_path).get("payload", {})
+    a08_bundle_path = _artifact_bundle_path(a08_payload, inputs_dir, "A08")
+    if a08_bundle_path is None:
+        fallback = inputs_dir / "a08-input.json"
+        if not fallback.exists():
+            raise RuntimeError("A09 cannot resolve the A08 input bundle")
+        a08_bundle_path = fallback
+    oracle_rules_path = _required_policy_path(config, "oracle_rule_library", repo_root)
     inputs_dir.mkdir(parents=True, exist_ok=True)
     bundle = prepare_multica_oracle_review_input(
         a08_path, a08_bundle_path, oracle_rules_path, inputs_dir
@@ -1694,6 +2204,7 @@ def ensure_a09_dispatch(
     }
     if not apply:
         return result
+    _ensure_agent_instruction(config, "A09", "1.1.1", repo_root)
     created = _create_node_issue(
         config=config,
         run_id=run_id,
@@ -1701,6 +2212,7 @@ def ensure_a09_dispatch(
         label="Oracle 与覆盖审查",
         input_path=inputs_dir / "a09-input.json",
     )
+    _bind_issue_bundle(inputs_dir, str(created["issue_id"]), inputs_dir / "a09-input.json")
     result.update(created)
     return result
 
@@ -1714,6 +2226,7 @@ def ensure_a09_correction_dispatch(
     issues_by_node: dict[str, list[dict[str, Any]]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Auto-dispatch an A09 re-review once a corrected A08 design is ingested."""
 
@@ -1749,7 +2262,7 @@ def ensure_a09_correction_dispatch(
     a08_bundle_path = _artifact_bundle_path(a08_payload, inputs_dir, "A08")
     a09_bundle_path = _artifact_bundle_path(a09_payload, inputs_dir, "A09")
     if a08_bundle_path is None or a09_bundle_path is None:
-        return None
+        raise RuntimeError("A09 correction cannot resolve the current A08/A09 input bundles")
     a09_binds_current = any(
         str(item.get("artifact_id", "")) == "a08-test-design-ir"
         and str(item.get("artifact_hash", "")) == current_a08_hash
@@ -1758,7 +2271,12 @@ def ensure_a09_correction_dispatch(
     if a09_binds_current:
         return None
     existing_issues = issues_by_node.get("A09", [])
-    running = [issue for issue in existing_issues if _issue_running(issue)]
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, "A09")
+    running = [
+        issue
+        for issue in existing_issues
+        if _open_issue_viable(issue, failed_issue_ids)
+    ]
     if running:
         return {
             "node_id": "A09",
@@ -1770,7 +2288,7 @@ def ensure_a09_correction_dispatch(
         issue
         for issue in existing_issues
         if "修正" in str(issue.get("title", ""))
-        and _issue_running(issue)
+        and _open_issue_viable(issue, failed_issue_ids)
     ]
     if correction_issues:
         return {
@@ -1778,9 +2296,7 @@ def ensure_a09_correction_dispatch(
             "action": "awaiting_ingest",
             "attempts": len(correction_issues),
         }
-    oracle_rules_path = _config_path(config, "oracle_rule_library", repo_root)
-    if not oracle_rules_path:
-        return None
+    oracle_rules_path = _required_policy_path(config, "oracle_rule_library", repo_root)
     correction_dir = inputs_dir / f"a09-correction-{n04_payload.get('correction_attempt')}"
     correction_dir.mkdir(parents=True, exist_ok=True)
     bundle = prepare_multica_oracle_review_input(
@@ -1798,6 +2314,18 @@ def ensure_a09_correction_dispatch(
     }
     if not apply:
         return result
+    if not _is_dispatch_authorized(run_id, "A09"):
+        result["action"] = "awaiting_authorization"
+        return result
+    bound_id = _issue_id_for_input_path(
+        inputs_dir,
+        correction_dir / "a09-input.json",
+        failed_issue_ids=failed_issue_ids,
+    )
+    if bound_id:
+        result["action"] = "already_dispatched"
+        result["issue_id"] = bound_id
+        return result
     created = _create_node_issue(
         config=config,
         run_id=run_id,
@@ -1812,7 +2340,12 @@ def ensure_a09_correction_dispatch(
     return result
 
 
-def ensure_n04_validation(auto_dir: Path, inputs_dir: Path) -> dict[str, Any] | None:
+def ensure_n04_validation(
+    auto_dir: Path,
+    inputs_dir: Path,
+    *,
+    max_correction_attempts: int = 2,
+) -> dict[str, Any] | None:
     """Run deterministic N04 once A08 and A09 Artifacts are accepted.
 
     Re-runs with an incremented correction attempt after a corrected A08
@@ -1830,7 +2363,7 @@ def ensure_n04_validation(auto_dir: Path, inputs_dir: Path) -> dict[str, Any] | 
     current_a09_hash = str(_read(a09_path).get("artifact_hash", ""))
     a09_bundle_path = _artifact_bundle_path(a09_payload, inputs_dir, "A09")
     if a09_bundle_path is None:
-        return None
+        raise RuntimeError("N04 cannot resolve the A09 input bundle for the current review")
     a09_binds_current = any(
         str(item.get("artifact_id", "")) == "a08-test-design-ir"
         and str(item.get("artifact_hash", "")) == current_a08_hash
@@ -1845,18 +2378,25 @@ def ensure_n04_validation(auto_dir: Path, inputs_dir: Path) -> dict[str, Any] | 
         if (
             str(existing.get("test_design_artifact_hash", "")) == current_a08_hash
             and str(existing.get("oracle_review_artifact_hash", "")) == current_a09_hash
+            and existing.get("max_correction_attempts") == max_correction_attempts
         ):
             return None
         previous_attempt = existing.get("correction_attempt")
         if not isinstance(previous_attempt, int):
-            return None
-        correction_attempt = previous_attempt + 1
+            previous_attempt = 0
+        previous_design_hash = str(existing.get("test_design_artifact_hash", ""))
+        correction_attempt = (
+            previous_attempt
+            if previous_design_hash == current_a08_hash
+            else previous_attempt + 1
+        )
     artifact = run_n04_after_a09(
         a08_path,
         a09_path,
         a09_bundle_path,
         auto_dir,
         correction_attempt=correction_attempt,
+        max_correction_attempts=max_correction_attempts,
     )
     payload = artifact.get("payload", {})
     return {
@@ -1930,6 +2470,7 @@ def _dispatch_human_recovery(
     policy_path: Path,
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """Dispatch the A08 v1.3.0 recovery once a directed human decision is final."""
 
@@ -1940,10 +2481,12 @@ def _dispatch_human_recovery(
     decision_path = correction_dir / "human-correction-decision.json"
     if not request_path.exists() or not decision_path.exists():
         return {"node_id": "A08", "action": "recovery_missing_decision"}
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, "A08")
     in_flight = [
         issue
         for issue in issues_by_node.get("A08", [])
-        if "修正" in str(issue.get("title", "")) and _issue_running(issue)
+        if "修正" in str(issue.get("title", ""))
+        and _open_issue_viable(issue, failed_issue_ids)
     ]
     if in_flight:
         return {
@@ -2012,15 +2555,13 @@ def ensure_human_correction_dispatch(
     issues_by_node: dict[str, list[dict[str, Any]]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Open or advance the human-directed Test Case IR correction once N04 routes to human."""
 
     a08_path = auto_dir / "artifacts" / "a08-test-design-ir.json"
     a09_path = auto_dir / "artifacts" / "a09-oracle-coverage-review.json"
     n04_path = auto_dir / "artifacts" / "n04-test-case-ir-validation.json"
-    policy_path = _config_path(config, "human_correction_policy", repo_root)
-    if policy_path is None:
-        return None
     if not all(path.exists() for path in (a08_path, a09_path, n04_path)):
         return None
     n04_payload = _read(n04_path).get("payload", {})
@@ -2030,6 +2571,7 @@ def ensure_human_correction_dispatch(
         return None
     if n04_payload.get("g02_status") != "not_started":
         return None
+    policy_path = _required_policy_path(config, "human_correction_policy", repo_root)
     correction_dir = artifact_root / "human-correction"
     correction_dir.mkdir(parents=True, exist_ok=True)
     request_path = correction_dir / "human-correction-request.json"
@@ -2092,6 +2634,7 @@ def ensure_human_correction_dispatch(
             correction_dir,
             policy_path,
             apply=apply,
+            ingest_failures=ingest_failures,
         )
 
     if not apply:
@@ -2148,6 +2691,7 @@ def ensure_human_correction_dispatch(
             repo_root,
             issues_by_node,
             apply=apply,
+            ingest_failures=ingest_failures,
         )
         if fresh is None:
             fresh = {"node_id": "HUMAN", "action": "no_route"}
@@ -2177,6 +2721,7 @@ def ensure_human_correction_dispatch(
         correction_dir,
         policy_path,
         apply=apply,
+        ingest_failures=ingest_failures,
     )
 
 
@@ -2206,7 +2751,12 @@ def _inject_human_action_entry(spec_path: Path, artifact_root: Path) -> None:
                 pass
     changed = False
     for node in spec.get("nodes", []):
-        if not isinstance(node, dict) or node.get("state") != "waiting_human":
+        if not isinstance(node, dict):
+            continue
+        if node.get("state") != "waiting_human" or not issue_id:
+            if "human_action_entry" in node:
+                del node["human_action_entry"]
+                changed = True
             continue
         if issue_id:
             node["human_action_entry"] = {
@@ -2214,9 +2764,6 @@ def _inject_human_action_entry(spec_path: Path, artifact_root: Path) -> None:
                 "issue_identifier": identifier,
                 "status": status,
             }
-            changed = True
-        elif "human_action_entry" in node:
-            del node["human_action_entry"]
             changed = True
     if changed:
         ArtifactStore(spec_path.parent).write_json(spec_path.name, spec)
@@ -2351,6 +2898,44 @@ def _g02_review_returned_with_corrected_a08(
     return str(n04_payload.get("test_design_artifact_hash", "")) != a08_hash
 
 
+def _g02_policy_path_for_run(
+    config: dict[str, Any], review_dir: Path, repo_root: Path
+) -> Path:
+    source_path = _required_policy_path(config, "g02_policy", repo_root)
+    workflow_project_id = str(config.get("workflow_project_id") or "").strip()
+    if not workflow_project_id:
+        return source_path
+
+    policy = _read(source_path)
+    multica = policy.get("multica")
+    review_project_ids = multica.get("review_project_ids") if isinstance(multica, dict) else None
+    if not isinstance(review_project_ids, list):
+        raise RuntimeError("G02 policy multica.review_project_ids must be a list")
+    if workflow_project_id in review_project_ids:
+        return source_path
+
+    run_policy = dict(policy)
+    run_policy["multica"] = dict(multica)
+    run_policy["multica"]["review_project_ids"] = [
+        *review_project_ids,
+        workflow_project_id,
+    ]
+    target = review_dir / "g02-review-policy.json"
+    if target.exists():
+        if _read(target) == run_policy:
+            return target
+        state_path = review_dir / "g02-workflow-state.json"
+        if state_path.exists():
+            state = _read(state_path)
+            if state.get("issue_id") or state.get("state") != "prepared":
+                raise RuntimeError("Cannot replace a bound G02 run policy")
+
+    target.write_text(
+        json.dumps(run_policy, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    return target
+
+
 def ensure_g02_review(
     config: dict[str, Any],
     auto_dir: Path,
@@ -2366,9 +2951,6 @@ def ensure_g02_review(
     creating a separate review Issue. Marking C3 done is then the G02 decision.
     """
 
-    policy_path = _config_path(config, "g02_policy", repo_root)
-    if not policy_path:
-        return None
     n04_path = auto_dir / "artifacts" / "n04-test-case-ir-validation.json"
     if not n04_path.exists():
         return None
@@ -2381,6 +2963,7 @@ def ensure_g02_review(
         return None
     review_dir.mkdir(parents=True, exist_ok=True)
     archived = _archive_stale_g02_round(review_dir, n04_path)
+    policy_path = _g02_policy_path_for_run(config, review_dir, repo_root)
     request = prepare_test_case_review_request(
         a08_path, a09_path, n04_path, policy_path, review_dir
     )
@@ -2399,6 +2982,7 @@ def ensure_g02_review(
         result["artifact"] = published
     except Exception as error:
         result["artifact_error"] = str(error)
+        raise
     if not apply:
         return result
     request_path = review_dir / "g02-review-request.json"
@@ -2430,6 +3014,7 @@ def ensure_g02_review(
                 result["returned_artifact"] = returned
     except Exception as error:
         result["error"] = str(error)
+        raise
     return result
 
 
@@ -2443,6 +3028,7 @@ def ensure_g02_correction_dispatch(
     issues_by_node: dict[str, list[dict[str, Any]]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Dispatch the A08 v1.4.0 correction once the G02 reviewer requests changes.
 
@@ -2489,10 +3075,12 @@ def ensure_g02_correction_dispatch(
                 "action": "g02_correction_dispatched",
                 "issue_id": str(marker.get("issue_id", "")),
             }
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, "A08")
     in_flight = [
         issue
         for issue in issues_by_node.get("A08", [])
-        if "审核意见" in str(issue.get("title", "")) and _issue_running(issue)
+        if "审核意见" in str(issue.get("title", ""))
+        and _open_issue_viable(issue, failed_issue_ids)
     ]
     if in_flight:
         return {
@@ -2549,7 +3137,73 @@ def ensure_g02_correction_dispatch(
     return result
 
 
-def ensure_n25_compilation(auto_dir: Path, g02_dir: Path) -> dict[str, Any] | None:
+def _n25_requires_compiler_migration(auto_dir: Path, existing: dict[str, Any]) -> bool:
+    version = str(existing.get("payload", {}).get("compile_rule_version", ""))
+    a11_path = auto_dir / "artifacts" / "a11-split-coverage-review.json"
+    if not a11_path.exists():
+        return False
+    try:
+        a11 = _read(a11_path)
+    except (OSError, json.JSONDecodeError):
+        return False
+    payload = a11.get("payload", {})
+    if not isinstance(payload, dict) or payload.get("approved") is not False:
+        return False
+    rejected_n25 = any(
+        isinstance(item, dict)
+        and item.get("route_to") == "N25"
+        and item.get("severity") in {"error", "blocking"}
+        for item in payload.get("issues", [])
+    )
+    if not rejected_n25:
+        return False
+    bundle_path = _artifact_bundle_path(
+        payload, auto_dir.parent / "inputs", "A11"
+    )
+    bound_n25_hash = ""
+    if bundle_path is not None:
+        try:
+            bound_n25_hash = str(next(
+                item.get("artifact_hash")
+                for item in _read(bundle_path).get("upstream_artifacts", [])
+                if isinstance(item, dict)
+                and item.get("artifact_id") == "n25-compiled-test-cases"
+            ))
+        except (OSError, json.JSONDecodeError, StopIteration):
+            bound_n25_hash = ""
+    return (
+        bound_n25_hash != str(existing.get("artifact_hash", ""))
+        or version < N25_COMPILER_VERSION
+    )
+
+
+def _archive_rejected_n25_round(
+    auto_dir: Path, n25_path: Path, existing: dict[str, Any]
+) -> Path:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    archive = auto_dir / "archive" / f"n25-rejection-{stamp}"
+    archive.mkdir(parents=True)
+    n25_record = n25_path.with_name(f"{n25_path.name}.record.md")
+    shutil.move(str(n25_path), str(archive / n25_path.name))
+    if n25_record.exists():
+        shutil.move(str(n25_record), str(archive / n25_record.name))
+    a11_path = auto_dir / "artifacts" / "a11-split-coverage-review.json"
+    if a11_path.exists():
+        shutil.move(str(a11_path), str(archive / a11_path.name))
+    ArtifactStore(auto_dir).write_json(
+        ".n25-rejection-pending.json",
+        {
+            "schema_version": "n25-rejection-pending/1.0",
+            "archived_n25_hash": str(existing.get("artifact_hash", "")),
+            "archive": str(archive),
+        },
+    )
+    return archive
+
+
+def ensure_n25_compilation(
+    auto_dir: Path, g02_dir: Path, *, apply: bool = True
+) -> dict[str, Any] | None:
     """Run deterministic N25 once G02 approval is published.
 
     N25 compiles the approved parent Test Case IR into layered child cases
@@ -2558,9 +3212,19 @@ def ensure_n25_compilation(auto_dir: Path, g02_dir: Path) -> dict[str, Any] | No
     on the same sync pass.
     """
 
+    archive: Path | None = None
     target = auto_dir / "artifacts" / "n25-compiled-test-cases.json"
-    if target.exists():
-        return None
+    target_exists = target.exists()
+    if target_exists:
+        existing = _read(target)
+        if not _n25_requires_compiler_migration(auto_dir, existing):
+            return None
+        if not apply:
+            return {
+                "node_id": "N25",
+                "action": "would_recompile",
+                "reason": "A11 rejected a legacy full-duplicate split",
+            }
     outcome_path = g02_dir / "g02-review-outcome.json"
     request_path = g02_dir / "g02-review-request.json"
     a08_path = auto_dir / "artifacts" / "a08-test-design-ir.json"
@@ -2569,11 +3233,14 @@ def ensure_n25_compilation(auto_dir: Path, g02_dir: Path) -> dict[str, Any] | No
     outcome = _read(outcome_path)
     if outcome.get("decision") != "approved" or outcome.get("next_node") != "N25":
         return None
+    if target_exists:
+        archive = _archive_rejected_n25_round(auto_dir, target, existing)
     artifact = run_n25_after_g02(a08_path, request_path, outcome_path, output_dir=auto_dir)
     payload = artifact.get("payload", {})
     return {
         "node_id": "N25",
-        "action": "compiled",
+        "action": "recompiled_after_a11_rejection" if archive else "compiled",
+        "archive": str(archive) if archive else None,
         "artifact_id": artifact.get("artifact_id"),
         "artifact_hash": artifact.get("artifact_hash"),
         "parent_count": payload.get("parent_count"),
@@ -2590,6 +3257,7 @@ def ensure_a11_dispatch(
     issues_by_node: dict[str, list[dict[str, Any]]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Auto-dispatch the A11 split-coverage review Agent once N25 is accepted."""
 
@@ -2600,14 +3268,19 @@ def ensure_a11_dispatch(
     if not n25_path.exists() or not a08_path.exists():
         return None
     existing_issues = issues_by_node.get("A11", [])
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, "A11")
     if existing_issues:
-        if any(_issue_running(issue) for issue in existing_issues):
+        if any(_open_issue_viable(issue, failed_issue_ids) for issue in existing_issues):
             return {
                 "node_id": "A11",
                 "action": "already_dispatched",
                 "issue_id": str(
                     next(
-                        (issue.get("id") for issue in existing_issues if _issue_running(issue)),
+                        (
+                            issue.get("id")
+                            for issue in existing_issues
+                            if _open_issue_viable(issue, failed_issue_ids)
+                        ),
                         existing_issues[-1].get("id", ""),
                     )
                 ),
@@ -2618,38 +3291,81 @@ def ensure_a11_dispatch(
             if str(issue.get("status", "")) == "blocked"
         ]
         if blocked:
-            # A completed A11 run that failed ingest must be consumed, not
-            # replaced. A second Issue made C4 show "运行中" on a dead card.
-            return {
-                "node_id": "A11",
-                "action": "awaiting_ingest",
-                "issue_id": str(blocked[-1].get("id", "")),
-            }
+            candidate = blocked[-1]
+            candidate_id = str(candidate.get("id", ""))
+            if apply and candidate_id in failed_issue_ids and _rerun_budget_available(
+                config, "A11", existing_issues
+            ):
+                if _issue_has_active_run(candidate_id):
+                    candidate["status"] = "queued"
+                    return {
+                        "node_id": "A11",
+                        "action": "already_dispatched",
+                        "issue_id": candidate_id,
+                    }
+                _assert_dispatch_authorized(run_id, "A11")
+                _ensure_agent_instruction(config, "A11", "1.1.0", repo_root)
+                _multica("issue", "rerun", candidate_id)
+                candidate["status"] = "queued"
+                return {
+                    "node_id": "A11",
+                    "action": "redispatched",
+                    "issue_id": candidate_id,
+                }
+            rejection_marker = auto_dir / ".n25-rejection-pending.json"
+            if rejection_marker.exists():
+                if not apply:
+                    return {
+                        "node_id": "A11",
+                        "action": "would_close_stale_rejection",
+                        "issue_id": candidate_id,
+                    }
+                for issue in blocked:
+                    issue_id = str(issue.get("id", ""))
+                    if not issue_id:
+                        continue
+                    _multica("issue", "status", issue_id, "done")
+                    issue["status"] = "done"
+            else:
+                # An externally blocked run without a local failure record must be
+                # consumed by its owner instead of being silently replaced.
+                return {
+                    "node_id": "A11",
+                    "action": "awaiting_ingest",
+                    "issue_id": candidate_id,
+                }
         if not _rerun_budget_available(config, "A11", existing_issues):
             return {
                 "node_id": "A11",
                 "action": "rerun_budget_exhausted",
                 "attempts": len(existing_issues),
             }
-    oracle_path = _config_path(config, "oracle_rule_library", repo_root)
-    if not oracle_path:
-        return None
+    oracle_path = _required_policy_path(config, "oracle_rule_library", repo_root)
     a08_payload = _read(a08_path).get("payload", {})
     a08_bundle_path = _artifact_bundle_path(a08_payload, inputs_dir, "A08")
     if a08_bundle_path is None:
-        return None
+        raise RuntimeError("A11 cannot resolve the A08 input bundle")
     inputs_dir.mkdir(parents=True, exist_ok=True)
+    review_dir = inputs_dir
+    if existing_issues:
+        prior_attempts = [
+            int(match.group(1))
+            for path in inputs_dir.glob("a11-correction-*")
+            if (match := re.search(r"a11-correction-(\d+)$", path.name))
+        ]
+        review_dir = inputs_dir / f"a11-correction-{max(prior_attempts, default=0) + 1}"
+        review_dir.mkdir(parents=True, exist_ok=True)
     bundle = prepare_multica_split_review_input(
         a08_path,
         a08_bundle_path,
         n25_path,
         oracle_path,
-        inputs_dir,
+        review_dir,
     )
     result = {
         "node_id": "A11",
         "action": "would_dispatch" if not apply else "dispatch_ready",
-        "input": str(inputs_dir / "a11-input.json"),
+        "input": str(review_dir / "a11-input.json"),
         "bundle_hash": str(bundle.get("bundle_hash", "")),
     }
     if not apply:
@@ -2660,11 +3376,12 @@ def ensure_a11_dispatch(
         run_id=run_id,
         node_id="A11",
         label="拆分覆盖审查",
-        input_path=inputs_dir / "a11-input.json",
+        input_path=review_dir / "a11-input.json",
     )
     bundles = _load_issue_bundles(inputs_dir)
-    bundles[str(created["issue_id"])] = str((inputs_dir / "a11-input.json").resolve())
+    bundles[str(created["issue_id"])] = str((review_dir / "a11-input.json").resolve())
     _save_issue_bundles(inputs_dir, bundles)
+    (auto_dir / ".n25-rejection-pending.json").unlink(missing_ok=True)
     result.update(created)
     return result
 
@@ -2689,7 +3406,7 @@ def ensure_n26_selection(
         return None
     a11_bundle_path = _artifact_bundle_path(a11_payload, inputs_dir, "A11")
     if a11_bundle_path is None:
-        return None
+        raise RuntimeError("N26 cannot resolve the A11 input bundle for the current review")
     target = auto_dir / "artifacts" / "n26-test-selection.json"
     if target.exists():
         existing = _read(target)
@@ -2708,7 +3425,7 @@ def ensure_n26_selection(
             and existing_a11_hash == a11.get("artifact_hash")
         ):
             return None
-    selection_policy_path = _config_path(config, "selection_policy", repo_root)
+    selection_policy_path = _required_policy_path(config, "selection_policy", repo_root)
     artifact = run_n26_after_a11(
         n25_path,
         a11_path,
@@ -2780,6 +3497,12 @@ def _dispatch_c5_gate(
     config: dict[str, Any],
     node_id: str,
     issues_by_node: dict[str, list[dict[str, Any]]],
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
+    *,
+    run_id: str = "",
+    input_path: Path | None = None,
+    repo_root: Path | None = None,
+    apply: bool = False,
 ) -> dict[str, Any] | None:
     """Pre-dispatch gate: never regenerate an input bundle while a node attempt
     is in flight or the rerun budget is exhausted.
@@ -2791,10 +3514,14 @@ def _dispatch_c5_gate(
     the helper's own checks but runs *before* the bundle is (re)written.
     """
 
-    existing = issues_by_node.get(node_id, [])
+    existing = _agent_dispatch_issues(issues_by_node.get(node_id, []))
     if not existing:
         return None
-    running = next((issue for issue in existing if _issue_running(issue)), None)
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, node_id)
+    running = next(
+        (issue for issue in existing if _open_issue_viable(issue, failed_issue_ids)),
+        None,
+    )
     if running is not None:
         return {
             "node_id": node_id,
@@ -2803,6 +3530,41 @@ def _dispatch_c5_gate(
             "issue_identifier": str(running.get("identifier", "")),
         }
     if not _rerun_budget_available(config, node_id, existing):
+        if input_path is not None and input_path.exists() and repo_root is not None:
+            failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, node_id)
+            rerun = next(
+                (
+                    issue
+                    for issue in reversed(existing)
+                    if str(issue.get("status", "")) == "blocked"
+                    and str(issue.get("id", "")) not in failed_issue_ids
+                ),
+                None,
+            )
+            if rerun is not None:
+                issue_id = str(rerun.get("id", ""))
+                bundles = _load_issue_bundles(input_path.parent)
+                recorded = bundles.get(issue_id)
+                if recorded and Path(recorded).resolve() == input_path.resolve():
+                    if apply:
+                        _assert_dispatch_authorized(run_id, node_id)
+                        _ensure_agent_instruction(config, node_id, "1.0.0", repo_root)
+                        if _issue_has_active_run(issue_id):
+                            rerun["status"] = "queued"
+                            return {
+                                "node_id": node_id,
+                                "action": "already_dispatched",
+                                "issue_id": issue_id,
+                                "issue_identifier": str(rerun.get("identifier", "")),
+                            }
+                        _multica("issue", "rerun", issue_id)
+                        rerun["status"] = "queued"
+                    return {
+                        "node_id": node_id,
+                        "action": "redispatched" if apply else "would_redispatch",
+                        "issue_id": issue_id,
+                        "issue_identifier": str(rerun.get("identifier", "")),
+                    }
         return {
             "node_id": node_id,
             "action": "rerun_budget_exhausted",
@@ -2821,18 +3583,24 @@ def _dispatch_c5_agent(
     *,
     repo_root: Path,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Shared idempotent dispatch for C5 Multica Agent nodes."""
 
-    existing_issues = issues_by_node.get(node_id, [])
+    existing_issues = _agent_dispatch_issues(issues_by_node.get(node_id, []))
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, node_id)
     if existing_issues:
-        if any(_issue_running(issue) for issue in existing_issues):
+        if any(_open_issue_viable(issue, failed_issue_ids) for issue in existing_issues):
             return {
                 "node_id": node_id,
                 "action": "already_dispatched",
                 "issue_id": str(
                     next(
-                        (issue.get("id") for issue in existing_issues if _issue_running(issue)),
+                        (
+                            issue.get("id")
+                            for issue in existing_issues
+                            if _open_issue_viable(issue, failed_issue_ids)
+                        ),
                         existing_issues[-1].get("id", ""),
                     )
                 ),
@@ -2843,12 +3611,19 @@ def _dispatch_c5_agent(
                 "action": "rerun_budget_exhausted",
                 "attempts": len(existing_issues),
             }
+    bundle_hash = str(_read(input_path).get("bundle_hash", ""))
+    if not bundle_hash:
+        raise RuntimeError(f"{node_id} dispatch input is missing bundle_hash")
     result = {
         "node_id": node_id,
         "action": "would_dispatch" if not apply else "dispatch_ready",
         "input": str(input_path),
+        "bundle_hash": bundle_hash,
     }
     if not apply:
+        return result
+    if not _is_dispatch_authorized(run_id, node_id):
+        result["action"] = "deferred_authorization"
         return result
     _ensure_agent_instruction(config, node_id, "1.0.0", repo_root)
     created = _create_node_issue(
@@ -2866,13 +3641,27 @@ def _dispatch_c5_agent(
 
 
 def _test_data_plan_valid(n27_path: Path) -> bool:
-    """Whether N27 accepted the A22 plan (false when the file is absent)."""
+    """Whether N27 accepted the A22 plan without pending human decisions."""
 
     try:
         payload = _read(n27_path).get("payload", {})
     except (OSError, json.JSONDecodeError):
         return False
-    return isinstance(payload, Mapping) and payload.get("valid") is True
+    if not (isinstance(payload, Mapping) and payload.get("valid") is True):
+        return False
+    if payload.get("pending_human") is not True:
+        return True
+    confirmation_path = n27_path.with_name("a22-human-confirmation.json")
+    a22_path = n27_path.with_name("a22-test-data-plan.json")
+    try:
+        confirmation = _read(confirmation_path)
+        a22 = _read(a22_path)
+    except (OSError, json.JSONDecodeError):
+        return False
+    return str(confirmation.get("status", "")) in {
+        ArtifactStatus.COMPLETED.value,
+        ArtifactStatus.COMPLETED_WITH_GAPS.value,
+    } and _confirmation_binds(confirmation, a22)
 
 
 def _layer_cases_exist(compiled_path: Path, layer: str) -> bool:
@@ -2901,6 +3690,7 @@ def ensure_a14_dispatch(
     issues_by_node: dict[str, list[dict[str, Any]]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Auto-dispatch A14 after N15/N25 and a valid N27 data plan are accepted."""
 
@@ -2911,17 +3701,24 @@ def ensure_a14_dispatch(
     n15_path = auto_dir / "artifacts" / "n15-execution-plan.json"
     if not n25_path.exists() or not n15_path.exists():
         return None
-    policy_path = _config_path(config, "automation_target_policy", repo_root)
-    if not policy_path:
-        return None
     if not _layer_cases_exist(n25_path, "backend"):
         return None
+    policy_path = _required_policy_path(config, "automation_target_policy", repo_root)
     a22_path = auto_dir / "artifacts" / "a22-test-data-plan.json"
     n27_path = auto_dir / "artifacts" / "n27-test-data-plan-validation.json"
     data_ready = _test_data_plan_valid(n27_path)
     if not data_ready or not a22_path.exists():
         return None
-    gate = _dispatch_c5_gate(config, "A14", issues_by_node)
+    gate = _dispatch_c5_gate(
+        config,
+        "A14",
+        issues_by_node,
+        ingest_failures=ingest_failures,
+        run_id=run_id,
+        input_path=inputs_dir / "a14-input.json",
+        repo_root=repo_root,
+        apply=apply,
+    )
     if gate is not None:
         return gate
     inputs_dir.mkdir(parents=True, exist_ok=True)
@@ -2944,7 +3741,157 @@ def ensure_a14_dispatch(
         issues_by_node,
         repo_root=repo_root,
         apply=apply,
+        ingest_failures=ingest_failures,
     )
+
+
+def _payload_auto_returns_to(payload: Mapping[str, Any], target: str) -> bool:
+    next_node = str(payload.get("next_node") or "").strip()
+    if next_node == target:
+        return True
+    if next_node in {"human", "G01", "G02", "G03"}:
+        return False
+    issues = payload.get("issues")
+    if not isinstance(issues, list):
+        return False
+    routes = {
+        str(item.get("route_to") or "").strip()
+        for item in issues
+        if isinstance(item, Mapping)
+    }
+    routes.discard("")
+    return target in routes and "human" not in routes
+
+
+def _a14_auto_return_pending(auto_dir: Path) -> bool:
+    """Whether A18-BE or N05 still binds the current A14 generation."""
+
+    a14_path = auto_dir / "artifacts" / "a14-backend-automation-generation.json"
+    if not a14_path.exists():
+        return False
+    a14 = _read(a14_path)
+    a14_payload = a14.get("payload")
+    if not isinstance(a14_payload, Mapping) or not isinstance(
+        a14_payload.get("manifest"), Mapping
+    ):
+        return False
+    current_hash = content_hash(a14_payload)
+    blocking = {
+        ArtifactStatus.NEEDS_HUMAN.value,
+        ArtifactStatus.BLOCKED.value,
+        ArtifactStatus.BLOCKED_INPUT.value,
+    }
+    a18_path = auto_dir / "artifacts" / "a18-be-backend-automation-review.json"
+    if a18_path.exists():
+        review = _read(a18_path)
+        payload = review.get("payload") if isinstance(review.get("payload"), Mapping) else {}
+        if (
+            str(review.get("status") or "") in blocking
+            and _payload_auto_returns_to(payload, "A14")
+        ):
+            bound = str(payload.get("generation_hash") or "").strip()
+            if not bound or bound == current_hash:
+                return True
+    n05_path = auto_dir / "artifacts" / "n05-automation-code-check.json"
+    if not n05_path.exists():
+        return False
+    n05 = _read(n05_path)
+    payload = n05.get("payload") if isinstance(n05.get("payload"), Mapping) else {}
+    if str(n05.get("status") or "") not in blocking:
+        return False
+    repair_routes = payload.get("repair_routes")
+    routes_to_a14 = _payload_auto_returns_to(payload, "A14") or (
+        isinstance(repair_routes, list) and "A14" in repair_routes
+    )
+    if not routes_to_a14:
+        return False
+    hashes: list[str] = []
+    bindings = payload.get("input_bindings")
+    if isinstance(bindings, list):
+        hashes = [
+            str(item.get("generation_hash") or "").strip()
+            for item in bindings
+            if isinstance(item, Mapping)
+        ]
+        hashes = [item for item in hashes if item]
+    if not hashes:
+        fallback = str(payload.get("generation_hash") or "").strip()
+        if fallback:
+            hashes = [fallback]
+    return not hashes or current_hash in hashes
+
+
+def ensure_a14_correction_dispatch(
+    config: dict[str, Any],
+    run_id: str,
+    auto_dir: Path,
+    inputs_dir: Path,
+    repo_root: Path,
+    issues_by_node: dict[str, list[dict[str, Any]]],
+    *,
+    apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
+) -> dict[str, Any] | None:
+    """Auto-dispatch an A14 regeneration when A18-BE or N05 routes back to A14."""
+
+    if not _a14_auto_return_pending(auto_dir):
+        return None
+    n25_path = auto_dir / "artifacts" / "n25-compiled-test-cases.json"
+    n15_path = auto_dir / "artifacts" / "n15-execution-plan.json"
+    a22_path = auto_dir / "artifacts" / "a22-test-data-plan.json"
+    n27_path = auto_dir / "artifacts" / "n27-test-data-plan-validation.json"
+    if not n25_path.exists() or not n15_path.exists():
+        return None
+    if not _layer_cases_exist(n25_path, "backend"):
+        return None
+    if not a22_path.exists() or not _test_data_plan_valid(n27_path):
+        return None
+    existing_issues = _agent_dispatch_issues(issues_by_node.get("A14", []))
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, "A14")
+    running = [
+        issue
+        for issue in existing_issues
+        if _open_issue_viable(issue, failed_issue_ids)
+    ]
+    if running:
+        return {
+            "node_id": "A14",
+            "action": "already_dispatched",
+            "issue_id": str(running[0].get("id", "")),
+            "mode": "correction",
+        }
+    attempt = len(existing_issues) or 1
+    policy_path = _required_policy_path(config, "automation_target_policy", repo_root)
+    correction_dir = inputs_dir / f"a14-correction-{attempt}"
+    correction_dir.mkdir(parents=True, exist_ok=True)
+    bundle = prepare_multica_automation_generation_input(
+        n25_path,
+        n15_path,
+        policy_path,
+        correction_dir,
+        profile_id="A14",
+        test_data_plan_path=a22_path,
+        test_data_validation_path=n27_path,
+        regeneration_round=attempt,
+    )
+    result = _dispatch_c5_agent(
+        config,
+        run_id,
+        "A14",
+        "服务端自动化生成修正",
+        correction_dir / "a14-input.json",
+        issues_by_node,
+        repo_root=repo_root,
+        apply=apply,
+        ingest_failures=ingest_failures,
+    )
+    if result is None:
+        return None
+    result["mode"] = "correction"
+    result["correction_attempt"] = attempt
+    result["bundle_hash"] = str(bundle.get("bundle_hash", result.get("bundle_hash", "")))
+    return result
+
 
 
 def ensure_a15_dispatch(
@@ -2956,25 +3903,82 @@ def ensure_a15_dispatch(
     issues_by_node: dict[str, list[dict[str, Any]]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Auto-dispatch the A15 contract automation Agent once N15/N25 are accepted."""
 
     target = auto_dir / "artifacts" / "a15-contract-automation-generation.json"
+    a22_path = auto_dir / "artifacts" / "a22-test-data-plan.json"
+    n27_path = auto_dir / "artifacts" / "n27-test-data-plan-validation.json"
+    data_ready = a22_path.exists() and _test_data_plan_valid(n27_path)
     if target.exists():
-        return None
+        generation = _read(target)
+        payload = generation.get("payload")
+        manifest = payload.get("manifest") if isinstance(payload, Mapping) else None
+        if not isinstance(manifest, Mapping):
+            # A15 is allowed to conclude "not applicable": the contract then
+            # requires every frozen Case to be rejected and the manifest to be
+            # absent. There is nothing to bind to the data plan and nothing to
+            # regenerate, so the node is already terminal (``not_applicable``
+            # maps to the terminal ``skipped`` state). Archiving it as a
+            # premature generation re-dispatched A15 on every sync pass, and the
+            # missing-manifest dereference turned that into a reported node error
+            # on every tick.
+            return None
+        bindings = manifest.get("input_bindings", {})
+        binds_data_plan = (
+            data_ready
+            and isinstance(bindings, Mapping)
+            and str(bindings.get("test_data_plan_hash", ""))
+            == str(_read(a22_path).get("artifact_hash", ""))
+            and str(bindings.get("test_data_validation_hash", ""))
+            == str(_read(n27_path).get("artifact_hash", ""))
+        )
+        if binds_data_plan:
+            return None
+        if not apply:
+            return {
+                "node_id": "A15",
+                "action": "premature_generation_detected",
+            }
+        archive_dir = auto_dir.parent / (
+            f"premature-a15-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}"
+        )
+        archive_dir.mkdir(parents=True, exist_ok=False)
+        for path in (
+            target,
+            auto_dir / "artifacts" / "a18-ct-contract-automation-review.json",
+        ):
+            if path.exists():
+                path.rename(archive_dir / path.name)
+            record = path.with_name(f"{path.name}.record.md")
+            if record.exists():
+                record.rename(archive_dir / record.name)
+        if not data_ready:
+            return {
+                "node_id": "A15",
+                "action": "premature_generation_archived",
+                "archive": str(archive_dir),
+            }
     n25_path = auto_dir / "artifacts" / "n25-compiled-test-cases.json"
     n15_path = auto_dir / "artifacts" / "n15-execution-plan.json"
     if not n25_path.exists() or not n15_path.exists():
         return None
-    policy_path = _config_path(config, "automation_target_policy", repo_root)
-    if not policy_path:
-        return None
     if not _layer_cases_exist(n25_path, "contract"):
         return None
-    n27_path = auto_dir / "artifacts" / "n27-test-data-plan-validation.json"
-    if n27_path.exists() and not _test_data_plan_valid(n27_path):
+    policy_path = _required_policy_path(config, "automation_target_policy", repo_root)
+    if not data_ready:
         return None
-    gate = _dispatch_c5_gate(config, "A15", issues_by_node)
+    gate = _dispatch_c5_gate(
+        config,
+        "A15",
+        issues_by_node,
+        ingest_failures=ingest_failures,
+        run_id=run_id,
+        input_path=inputs_dir / "a15-input.json",
+        repo_root=repo_root,
+        apply=apply,
+    )
     if gate is not None:
         return gate
     inputs_dir.mkdir(parents=True, exist_ok=True)
@@ -2984,6 +3988,8 @@ def ensure_a15_dispatch(
         policy_path,
         inputs_dir,
         profile_id="A15",
+        test_data_plan_path=a22_path,
+        test_data_validation_path=n27_path,
         regeneration_round=len(issues_by_node.get("A15", [])),
     )
     return _dispatch_c5_agent(
@@ -2995,6 +4001,7 @@ def ensure_a15_dispatch(
         issues_by_node,
         repo_root=repo_root,
         apply=apply,
+        ingest_failures=ingest_failures,
     )
 
 
@@ -3007,6 +4014,7 @@ def ensure_a22_dispatch(
     issues_by_node: dict[str, list[dict[str, Any]]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Auto-dispatch the A22 test-data plan Agent once N15/N25 are accepted."""
 
@@ -3017,12 +4025,19 @@ def ensure_a22_dispatch(
     n15_path = auto_dir / "artifacts" / "n15-execution-plan.json"
     if not n25_path.exists() or not n15_path.exists():
         return None
-    policy_path = _config_path(config, "test_data_policy", repo_root)
-    if not policy_path:
-        return None
-    catalog_path = _config_path(config, "capability_catalog", repo_root)
-    sources_path = _config_path(config, "knowledge_sources", repo_root)
-    gate = _dispatch_c5_gate(config, "A22", issues_by_node)
+    policy_path = _required_policy_path(config, "test_data_policy", repo_root)
+    catalog_path = _policy_path(config, "capability_catalog", repo_root)
+    sources_path = _policy_path(config, "knowledge_sources", repo_root)
+    gate = _dispatch_c5_gate(
+        config,
+        "A22",
+        issues_by_node,
+        ingest_failures=ingest_failures,
+        run_id=run_id,
+        input_path=inputs_dir / "a22-input.json",
+        repo_root=repo_root,
+        apply=apply,
+    )
     if gate is not None:
         return gate
     inputs_dir.mkdir(parents=True, exist_ok=True)
@@ -3071,6 +4086,7 @@ def ensure_a22_dispatch(
         issues_by_node,
         repo_root=repo_root,
         apply=apply,
+        ingest_failures=ingest_failures,
     )
 
 
@@ -3083,6 +4099,7 @@ def ensure_a22_correction_dispatch(
     issues_by_node: dict[str, list[dict[str, Any]]],
     *,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Dispatch an A22 plan revision once N27 rejects the plan.
 
@@ -3105,10 +4122,12 @@ def ensure_a22_correction_dispatch(
     if not previous_input_path.exists():
         return None
 
+    failed_issue_ids = _failed_ingest_issue_ids(ingest_failures, "A22")
     in_flight = [
         issue
         for issue in issues_by_node.get("A22", [])
-        if "修正" in str(issue.get("title", "")) and _issue_running(issue)
+        if "修正" in str(issue.get("title", ""))
+        and _open_issue_viable(issue, failed_issue_ids)
     ]
     if in_flight:
         return {
@@ -3256,6 +4275,7 @@ def ensure_a18_dispatch(
     *,
     reviewer: str,
     apply: bool,
+    ingest_failures: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any] | None:
     """Auto-dispatch the A18-BE / A18-CT reviewer once its generation is ingested."""
 
@@ -3295,7 +4315,7 @@ def ensure_a18_dispatch(
     # 在途/预算 gate 必须先于 bundle 重建与 stale 清理：复核输入 bundle 的
     # 哈希会被 run 冻结绑定，若在途时重写文件，run 完成后摄入时哈希不匹配
     # 会永久 in_progress/blocked。gate 返回非 None 时不得改动任何状态。
-    gate = _dispatch_c5_gate(config, reviewer, issues_by_node)
+    gate = _dispatch_c5_gate(config, reviewer, issues_by_node, ingest_failures=ingest_failures)
     if gate is not None:
         return gate
     if target.exists():
@@ -3305,10 +4325,10 @@ def ensure_a18_dispatch(
             record.unlink()
     bundle_path = _artifact_bundle_path(generation_payload, inputs_dir, generator)
     if bundle_path is None:
-        return None
-    policy_path = _config_path(config, "automation_target_policy", repo_root)
-    if not policy_path:
-        return None
+        raise RuntimeError(
+            f"{reviewer} cannot resolve the {generator} input bundle"
+        )
+    policy_path = _required_policy_path(config, "automation_target_policy", repo_root)
     inputs_dir.mkdir(parents=True, exist_ok=True)
     bundle = prepare_multica_automation_review_input(
         generation_path,
@@ -3328,6 +4348,7 @@ def ensure_a18_dispatch(
         issues_by_node,
         repo_root=repo_root,
         apply=apply,
+        ingest_failures=ingest_failures,
     )
 
 
@@ -3422,9 +4443,7 @@ def ensure_n27_validation(
     a22_payload = a22.get("payload", {})
     if not isinstance(a22_payload, Mapping):
         return None
-    policy_path = _config_path(config, "test_data_policy", repo_root)
-    if not policy_path:
-        return None
+    policy_path = _required_policy_path(config, "test_data_policy", repo_root)
     target = auto_dir / "artifacts" / "n27-test-data-plan-validation.json"
     if target.exists():
         existing = _read(target)
@@ -3545,6 +4564,80 @@ def _review_binds_generation(review: Mapping[str, Any], generation_payload: Mapp
     return str(review_payload.get("generation_hash", "")) == content_hash(generation_payload)
 
 
+def _expected_c5_generations_ready(auto_dir: Path) -> bool:
+    n25_path = auto_dir / "artifacts" / "n25-compiled-test-cases.json"
+    try:
+        compiled = _read(n25_path)
+    except (OSError, json.JSONDecodeError):
+        return False
+    payload = compiled.get("payload", {})
+    cases = (
+        payload.get("compiled_cases", payload.get("child_cases", []))
+        if isinstance(payload, Mapping)
+        else []
+    )
+    layers = {
+        str(item.get("layer", ""))
+        for item in cases
+        if isinstance(item, Mapping)
+    }
+    expected_artifacts = {
+        "backend": C5_GENERATION_ARTIFACTS["A14"],
+        "contract": C5_GENERATION_ARTIFACTS["A15"],
+    }
+    return all(
+        (auto_dir / "artifacts" / f"{expected_artifacts[layer]}.json").exists()
+        for layer in layers
+        if layer in expected_artifacts
+    )
+
+
+_C5_REVIEW_BLOCKING_STATUSES = {
+    ArtifactStatus.NEEDS_HUMAN.value,
+    ArtifactStatus.BLOCKED.value,
+    ArtifactStatus.BLOCKED_INPUT.value,
+    ArtifactStatus.FAILED_FATAL.value,
+    ArtifactStatus.FAILED_RETRYABLE.value,
+    ArtifactStatus.INCONCLUSIVE.value,
+}
+_C5_REVIEW_SKIP_STATUSES = {
+    ArtifactStatus.NOT_APPLICABLE.value,
+    ArtifactStatus.SKIPPED_BY_POLICY.value,
+}
+
+
+def _expected_c5_reviews_ready(auto_dir: Path) -> bool:
+    """Whether every generated C5 branch has a terminal, bound A18 review.
+
+    N05/G03 must not run while A18-BE/A18-CT is missing or blocked; otherwise
+    C5 looks like it moved on after an independent review failure.
+    """
+
+    for generator_id, artifact_id in C5_GENERATION_ARTIFACTS.items():
+        path = auto_dir / "artifacts" / f"{artifact_id}.json"
+        if not path.exists():
+            continue
+        generation = _read(path)
+        if str(generation.get("status") or "") in _C5_REVIEW_SKIP_STATUSES:
+            continue
+        payload = generation.get("payload", {})
+        if not isinstance(payload, Mapping) or not isinstance(
+            payload.get("manifest"), Mapping
+        ):
+            continue
+        reviewer = C5_GENERATION_REVIEWER[generator_id]
+        review_path = auto_dir / "artifacts" / f"{C5_REVIEW_ARTIFACTS[reviewer]}.json"
+        if not review_path.exists():
+            return False
+        review = _read(review_path)
+        status = str(review.get("status") or "")
+        if status in _C5_REVIEW_BLOCKING_STATUSES or status in _C5_REVIEW_SKIP_STATUSES:
+            return False
+        if not _review_binds_generation(review, payload):
+            return False
+    return True
+
+
 def ensure_n05_aggregation(
     config: dict[str, Any],
     auto_dir: Path,
@@ -3552,6 +4645,10 @@ def ensure_n05_aggregation(
 ) -> dict[str, Any] | None:
     """Run deterministic N05 by aggregating A14/A15 generation and A18 reviews."""
 
+    if not _expected_c5_generations_ready(auto_dir):
+        return None
+    if not _expected_c5_reviews_ready(auto_dir):
+        return None
     generation_branches: list[dict[str, Any]] = []
     generations: list[dict[str, Any]] = []
     reviews: dict[str, dict[str, Any]] = {}
@@ -3656,9 +4753,7 @@ def ensure_n05_aggregation(
             "passed": False,
             "fatal": False,
         }
-    policy_path = _config_path(config, "automation_target_policy", repo_root)
-    if not policy_path:
-        return None
+    policy_path = _required_policy_path(config, "automation_target_policy", repo_root)
     policy = AutomationPolicy.from_file(policy_path)
     target = auto_dir / "artifacts" / "n05-automation-code-check.json"
     if target.exists():
@@ -3884,11 +4979,10 @@ def ensure_g03_review(
     to continue.
     """
 
-    policy_path = _config_path(config, "g03_policy", repo_root)
-    if not policy_path:
-        return None
     n05_path = auto_dir / "artifacts" / "n05-automation-code-check.json"
     if not n05_path.exists():
+        return None
+    if not _expected_c5_reviews_ready(auto_dir):
         return None
     n05 = _read(n05_path)
     n05_payload = n05.get("payload", {})
@@ -4002,27 +5096,72 @@ def ensure_g03_review(
         "artifact_hash": envelope.artifact_hash,
     }
 
+_DEFAULT_POLICY_FILES = {
+    "oracle_rule_library": "policies/oracle-rule-library.json",
+    "g01_policy": "policies/g01-review-policy.json",
+    "g01_adapter_policy": "policies/g01-multica-policy.json",
+    "g02_policy": "policies/g02-review-policy.json",
+    "g03_policy": "policies/g03-review-policy.json",
+    "human_correction_policy": "policies/human-correction-policy.json",
+    "selection_policy": "policies/selection-policy.json",
+    "automation_target_policy": "policies/automation-target-policy.json",
+    "test_data_policy": "policies/test-data-policy.json",
+    "execution_policy": "policies/execution-policy.json",
+    "quality_policy": "policies/quality-policy.json",
+    "n24_risk_policy": "policies/risk-policy.json",
+    "capability_catalog": "knowledge/bi-data-capability-catalog.json",
+    "knowledge_sources": "knowledge/bi-knowledge-sources.json",
+}
+
+
+def _qa_agents_roots(repo_root: Path) -> tuple[Path, ...]:
+    roots: list[Path] = []
+    for candidate in (repo_root / "qa-agents", repo_root, _QA_AGENTS_ROOT):
+        if candidate not in roots:
+            roots.append(candidate)
+    return tuple(roots)
+
+
 def _policy_path(config: dict[str, Any], key: str, repo_root: Path) -> Path | None:
-    """Resolve a policy path from config, falling back to the repo policies dir."""
+    """Resolve a bundled policy, even when the run config omits the key."""
 
     configured = _config_path(config, key, repo_root)
     if configured is not None:
         return configured
-    # Policy files use hyphenated names (execution-policy.json) while config
-    # keys are underscore-separated (execution_policy). Try both spellings so
-    # a run config that omits the key still resolves the bundled default.
-    # Also accept either repo layout (repo-root/qa-agents/policies or a bare
-    # qa-agents root) because tests and deployments pass different roots.
-    candidates = (
-        repo_root / "qa-agents" / "policies" / f"{key}.json",
-        repo_root / "qa-agents" / "policies" / f"{key.replace('_', '-')}.json",
-        repo_root / "policies" / f"{key}.json",
-        repo_root / "policies" / f"{key.replace('_', '-')}.json",
-    )
+    relative = _DEFAULT_POLICY_FILES.get(key)
+    candidates: list[Path] = []
+    hyphen = f"{key.replace('_', '-')}.json"
+    for root in _qa_agents_roots(repo_root):
+        if relative:
+            candidates.append(root / relative)
+        candidates.extend(
+            (
+                root / "policies" / f"{key}.json",
+                root / "policies" / hyphen,
+            )
+        )
+    seen: set[Path] = set()
     for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
         if candidate.exists():
             return candidate
     return None
+
+
+def _required_policy_path(config: dict[str, Any], key: str, repo_root: Path) -> Path:
+    path = _policy_path(config, key, repo_root)
+    if path is None:
+        raise RuntimeError(f"missing required policy: {key}")
+    return path
+
+
+def _required_config_path(config: dict[str, Any], key: str, repo_root: Path) -> Path:
+    path = _config_path(config, key, repo_root)
+    if path is None:
+        raise RuntimeError(f"missing required config path: {key}")
+    return path
 
 
 
@@ -4099,6 +5238,7 @@ def _c5_terminal(auto_dir: Path) -> bool:
         "a14-backend-automation-generation",
         "a15-contract-automation-generation",
         "a18-be-backend-automation-review",
+        "a18-ct-contract-automation-review",
         "n27-test-data-plan-validation",
         "n05-automation-code-check",
         "g03-automation-code-review",
@@ -4166,13 +5306,14 @@ def ensure_a22_human_confirmation(
         return None
     payload = a22.get("payload", {})
     unresolved = payload.get("unresolved_requirements", [])
-    dispositions = _parse_a22_dispositions(done_issues[0], unresolved)
+    dispositions, missing = _a22_disposition_review(done_issues[0], unresolved)
     if dispositions is None:
         return {
             "node_id": "A22",
             "action": "review_pending",
             "issue_id": str(done_issues[0].get("id", "")),
             "issue_identifier": str(done_issues[0].get("identifier", "")),
+            "missing_dispositions": missing,
             "reason": (
                 "A22 审核卡已置 done，但缺少覆盖全部未决数据需求的逐项处置评论"
                 "（格式：UR-xx: confirmed/skip/return/need_evidence），未形成确认"
@@ -4184,6 +5325,7 @@ def ensure_a22_human_confirmation(
             "action": "review_pending",
             "issue_id": str(done_issues[0].get("id", "")),
             "issue_identifier": str(done_issues[0].get("identifier", "")),
+            "missing_dispositions": [],
             "reason": (
                 "A22 审核存在 return 处置，测试数据计划需修正后重新确认"
             ),
@@ -4291,6 +5433,11 @@ _A22_DISPOSITION_ALIASES = {
 
 
 
+# Review ids appear in reviewer prose (``UR-02``) and in A22 plans as written
+# by the agent (``UR-DISC-01``). Both must round-trip unchanged.
+_UR_ID_PATTERN = re.compile(r"UR-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*")
+
+
 def _unresolved_requirement_id(item: Mapping[str, Any], index: int) -> str:
     """Resolve the review identifier for an unresolved data requirement.
 
@@ -4299,6 +5446,10 @@ def _unresolved_requirement_id(item: Mapping[str, Any], index: int) -> str:
     / ``case_id`` with no id-like field. Falling back to a stable 1-based
     ``UR-NN`` index keeps the review gate usable instead of permanently
     returning an empty id list that can never match a disposition comment.
+    Declared non-numeric ids (``UR-DISC-01``) are kept as written: renumbering
+    them to ``UR-NN`` would make the card show an id that means something else
+    than the one the agent asked about, and would silently match a disposition
+    the owner wrote for a previous plan revision.
     """
 
     raw = str(
@@ -4307,9 +5458,9 @@ def _unresolved_requirement_id(item: Mapping[str, Any], index: int) -> str:
         or item.get("id")
         or ""
     ).strip()
-    if raw:
-        return raw
-    return f"UR-{index + 1:02d}"
+    if _UR_ID_PATTERN.fullmatch(raw):
+        return raw.upper()
+    return unresolved_requirement_id(item, index)
 
 
 def _parse_a22_dispositions(
@@ -4324,54 +5475,180 @@ def _parse_a22_dispositions(
     ``done`` status can never be mistaken for a human review.
     """
 
-    required_ids = [
-        _unresolved_requirement_id(item, index)
+    return _a22_disposition_review(issue, unresolved)[0]
+
+
+def _a22_disposition_review(
+    issue: Mapping[str, Any],
+    unresolved: list[Any],
+) -> tuple[list[dict[str, str]] | None, list[str]]:
+    """Return (complete dispositions, owner requirements still lacking one).
+
+    System-classified requirements are confirmed by default; only the ones the
+    owner alone can answer keep the gate closed, and their ids feed the review
+    card so a half-finished review says which ``UR-xx`` is still missing.
+    """
+
+    required_items = [
+        (item, _unresolved_requirement_id(item, index))
         for index, item in enumerate(unresolved)
         if isinstance(item, Mapping)
     ]
-    required_ids = [value for value in required_ids if value]
+    required_ids = [value for _item, value in required_items if value]
     if not required_ids:
-        return None
+        return None, []
+    owner_ids = {
+        requirement_id
+        for item, requirement_id in required_items
+        if requirement_id and is_owner_review(item)
+    }
+    dispositions = _a22_comment_dispositions(issue, required_ids)
+    for requirement_id in required_ids:
+        if requirement_id not in dispositions and requirement_id not in owner_ids:
+            dispositions[requirement_id] = "confirmed"
+    missing = [
+        requirement_id
+        for requirement_id in required_ids
+        if requirement_id in owner_ids and requirement_id not in dispositions
+    ]
+    if missing or set(dispositions) != set(required_ids):
+        return None, missing
+    return (
+        [
+            {
+                "requirement_id": requirement_id,
+                "disposition": dispositions[requirement_id],
+            }
+            for requirement_id in required_ids
+        ],
+        [],
+    )
+
+
+def _a22_comment_dispositions(
+    issue: Mapping[str, Any],
+    required_ids: list[str],
+) -> dict[str, str]:
+    """Read explicit ``UR-xx`` dispositions out of the review Issue comments."""
+
     try:
         comments = _multica("issue", "comment", "list", str(issue.get("id", "")))
     except Exception:
-        return None
+        comments = []
     if not isinstance(comments, list):
-        return None
-    dispositions: dict[str, dict[str, str]] = {}
+        comments = []
+    required = set(required_ids)
+    dispositions: dict[str, str] = {}
     for comment in comments:
         if not isinstance(comment, Mapping):
+            continue
+        # Agent output is not a review: A22 posts its whole plan JSON as one
+        # comment, and any alias word inside it must never approve the gate.
+        if str(comment.get("author_type") or "").strip() == "agent":
             continue
         content = str(comment.get("content", "") or "")
         if not content.strip():
             continue
         for requirement_id, disposition in _parse_disposition_lines(content).items():
-            if requirement_id in required_ids:
-                dispositions[requirement_id] = {
-                    "requirement_id": requirement_id,
-                    "disposition": disposition,
-                }
-    if set(dispositions) != set(required_ids):
-        return None
-    return [dispositions[requirement_id] for requirement_id in required_ids]
+            if requirement_id in required:
+                dispositions[requirement_id] = disposition
+    return dispositions
+
+
+# Reviewers write these by hand: list numbering (``1.``), Markdown backticks,
+# full-width colons and trailing prose are all normal, so the requirement id is
+# matched anywhere on the line and the alias may carry a short tail
+# (``UR-06 跳过就行``). The alias must still *start* a token, so a line that
+# merely asks or hesitates about ``UR-02`` never becomes a silent approval.
+# Handing over the material itself also answers the requirement: the card says
+# "请提供：... 写下名称或 ID", so a line that carries an object id (``BI_...``,
+# escaped as ``BI\_...`` inside the owner's Markdown code span) is the materials
+# the owner was asked for, and is recorded as ``confirmed``.
+_MATERIAL_ID_PATTERN = re.compile(r"BI\\?_[0-9A-Za-z]{6,}")
+_DISPOSITION_LINE_NOISE = re.compile(
+    r"^\s*(?:[-*•>]|\d+\s*[.、)）])?\s*[`\"'「『【]*\s*"
+)
+_DISPOSITION_TOKEN = re.compile(r"[A-Za-z_\u4e00-\u9fa5]+")
+_A22_DISPOSITION_TAILS = ("就行", "即可", "吧", "了", "的")
 
 
 def _parse_disposition_lines(content: str) -> dict[str, str]:
-    """Extract ``UR-xx: disposition`` lines from a review comment."""
+    """Extract ``UR-xx`` dispositions from a free-form review comment."""
 
     parsed: dict[str, str] = {}
-    for line in content.splitlines():
-        match = re.match(
-            r"^\s*(UR-\d+)\s*[:：]?\s*([A-Za-z_\u4e00-\u9fa5]+)",
-            line,
-        )
-        if not match:
+    for raw_line in content.splitlines():
+        line = _DISPOSITION_LINE_NOISE.sub("", raw_line)
+        matches = list(_UR_ID_PATTERN.finditer(line))
+        if not matches:
             continue
-        requirement_id, raw = match.group(1), match.group(2).lower()
-        disposition = _A22_DISPOSITION_ALIASES.get(raw)
-        if disposition is not None:
-            parsed[requirement_id] = disposition
+        for index, match in enumerate(matches):
+            end = matches[index + 1].start() if index + 1 < len(matches) else len(line)
+            disposition = _disposition_on_line(line[match.start() : end])
+            if disposition is not None:
+                parsed.setdefault(match.group(0), disposition)
     return parsed
+
+
+def _disposition_on_line(line: str) -> str | None:
+    """Return the disposition the reviewer wrote for one ``UR-xx`` segment.
+
+    Either the alias word or the requested material itself (see
+    ``_MATERIAL_ID_PATTERN``) counts; anything else stays undisposed so the
+    card can name the requirement instead of silently approving it.
+    """
+
+    for match in _DISPOSITION_TOKEN.finditer(line):
+        token = match.group(0).lower()
+        alias = _A22_DISPOSITION_ALIASES.get(token)
+        if alias is None:
+            for tail in _A22_DISPOSITION_TAILS:
+                if token.endswith(tail):
+                    alias = _A22_DISPOSITION_ALIASES.get(token[: -len(tail)])
+                    if alias is not None:
+                        break
+        if alias is not None:
+            return alias
+    if _MATERIAL_ID_PATTERN.search(line):
+        return "confirmed"
+    return None
+
+
+def settle_a22_human_review(
+    config: dict[str, Any],
+    run_id: str,
+    auto_dir: Path,
+    issues_by_node: dict[str, list[dict[str, Any]]],
+    *,
+    apply: bool,
+) -> dict[str, Any]:
+    """Consume the owner's A22 review before refreshing the A22 review card.
+
+    Order is the whole point: the confirmation must read the Issue while a
+    ``done`` status is still visible. The waiting-card refresh rewrites a
+    ``done`` card back to ``in_review`` (and mutates the shared issue dict), so
+    running it first meant the confirmation could never observe ``done`` and an
+    approved plan stayed ``needs_human`` forever — the whole C5 stage stalled
+    with the remaining nodes never dispatched.
+    """
+
+    confirmation = ensure_a22_human_confirmation(run_id, auto_dir, issues_by_node)
+    pending: list[str] = []
+    if (
+        isinstance(confirmation, Mapping)
+        and str(confirmation.get("action") or "") == "review_pending"
+    ):
+        raw_pending = confirmation.get("missing_dispositions")
+        if isinstance(raw_pending, list):
+            pending = [str(item) for item in raw_pending if str(item).strip()]
+    waiting_card = _refresh_a22_waiting_card(
+        config,
+        run_id,
+        auto_dir,
+        issues_by_node,
+        apply=apply,
+        pending_dispositions=pending,
+    )
+    return {"confirmation": confirmation, "waiting_card": waiting_card}
 
 
 def _refresh_a22_waiting_card(
@@ -4381,6 +5658,7 @@ def _refresh_a22_waiting_card(
     issues_by_node: dict[str, list[dict[str, Any]]],
     *,
     apply: bool,
+    pending_dispositions: Sequence[str] | None = None,
 ) -> dict[str, Any] | None:
     """Render unresolved A22 data requirements onto the review card.
 
@@ -4388,6 +5666,11 @@ def _refresh_a22_waiting_card(
     Before any confirmation can be recorded, the card must show every
     unresolved requirement so the owner reviews the actual questions instead of
     approving an invisible checklist.
+
+    When the owner already set the card to ``done`` but the review comment did
+    not dispose of every owner requirement, ``pending_dispositions`` names the
+    missing ``UR-xx`` on the card: bouncing the card back to review without
+    saying what was not recognised leaves the owner guessing.
     """
 
     a22_path = auto_dir / "artifacts" / "a22-test-data-plan.json"
@@ -4409,7 +5692,17 @@ def _refresh_a22_waiting_card(
     if not issues:
         return None
     issue = issues[-1]
-    if str(issue.get("status", "")).strip() in {"done", "cancelled", "blocked"}:
+    issue_status = str(issue.get("status", "")).strip()
+    confirmation_path = auto_dir / "artifacts" / "a22-human-confirmation.json"
+    confirmation_exists = False
+    if confirmation_path.exists():
+        try:
+            confirmation_exists = _confirmation_binds(_read(confirmation_path), a22)
+        except (OSError, json.JSONDecodeError):
+            confirmation_exists = False
+    if issue_status in {"cancelled", "blocked"}:
+        return None
+    if issue_status == "done" and confirmation_exists:
         return None
     bundle_path = auto_dir.parent / "inputs" / "a22-input.json"
     description = node_issue_description(
@@ -4418,15 +5711,32 @@ def _refresh_a22_waiting_card(
         input_name=bundle_path.name,
         approval_issues=approval_items,
     )
+    pending = [str(item) for item in (pending_dispositions or []) if str(item).strip()]
+    if pending:
+        description += "\n".join(
+            [
+                "",
+                "## 还没识别到的处置",
+                "",
+                "本卡已置 done，但下面这些项在评论里没有写清处置，所以流程没有放行。",
+                "每条单独一行写 `UR-xx: confirmed`（有材料/认可）或 `UR-xx: skip`（这轮不测），"
+                "再置 **done**。",
+                "",
+                *(f"- `{requirement_id}`" for requirement_id in pending),
+                "",
+            ]
+        )
     result = {
         "node_id": "A22",
         "action": "waiting_card_refreshed" if apply else "waiting_card_ready",
         "issue_id": str(issue.get("id", "")),
         "issue_identifier": str(issue.get("identifier", "")),
         "approval_count": len(approval_items),
+        "pending_dispositions": pending,
     }
     if not apply:
         return result
+    issue["status"] = "in_review"
     description_path = bundle_path.with_name(f"{bundle_path.name}.card.md")
     description_path.write_text(description, encoding="utf-8")
     _multica(
@@ -4449,21 +5759,52 @@ def _refresh_a22_waiting_card(
 def _unresolved_requirement_item(
     item: Mapping[str, Any],
     index: int = 0,
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Project an unresolved data requirement onto the approval card block."""
 
+    humanized = humanize_unresolved_requirement(item, index)
     requirement_id = _unresolved_requirement_id(item, index)
-    requirement = str(item.get("requirement") or item.get("summary") or requirement_id)
-    case_match = re.search(r"\bTC-[A-Z0-9-]+\b", requirement)
+    affected_cases = [
+        str(value)
+        for value in item.get("affected_cases", [])
+        if isinstance(item.get("affected_cases"), list) and str(value).strip()
+    ]
+    case_source = str(
+        item.get("requirement")
+        or item.get("summary")
+        or item.get("message")
+        or item.get("detail")
+        or ""
+    )
+    case_match = re.search(r"\bTC-[A-Z0-9-]+\b", case_source)
+    plain_summary = str(humanized.get("plain_summary") or "未决数据需求")
     return {
         "id": requirement_id,
-        "title": "未决数据需求",
-        "human_title": "未决数据需求",
-        "summary": requirement,
+        "title": str(humanized.get("human_title") or "未决数据需求"),
+        "human_title": str(humanized.get("human_title") or "未决数据需求"),
+        "summary": plain_summary,
+        "plain_summary": plain_summary,
         "category": "test_data_pending_human",
-        "case_id": case_match.group(0) if case_match else "",
-        "recommendation": str(item.get("recommendation") or ""),
-        "severity": str(item.get("severity") or ""),
+        "case_id": str(
+            item.get("case_id") or (case_match.group(0) if case_match else "")
+        ),
+        "affected_case_ids": affected_cases or list(humanized.get("affected_case_ids") or []),
+        "recommendation": str(humanized.get("recommendation") or ""),
+        "product_scene": str(humanized.get("product_scene") or ""),
+        "needed_from_you": str(humanized.get("needed_from_you") or ""),
+        "provide_from_you": str(humanized.get("provide_from_you") or ""),
+        "severity": str(item.get("severity") or item.get("risk") or "blocking"),
+        "source_refs": [
+            str(value)
+            for value in item.get("source_refs", [])
+            if isinstance(item.get("source_refs"), list) and str(value).strip()
+        ],
+        "confirm_action": str(humanized.get("confirm_action") or ""),
+        "reason_code": str(humanized.get("reason_code") or ""),
+        "data_to_build": str(humanized.get("data_to_build") or ""),
+        "review_kind": str(humanized.get("review_kind") or ""),
+        "why_human": str(humanized.get("why_human") or ""),
+        "affected_case_titles": humanized.get("affected_case_titles") or {},
     }
 
 
@@ -4626,14 +5967,10 @@ def ensure_n08_execution(
     generation_path = auto_dir / "artifacts" / "a14-backend-automation-generation.json"
     review_path = auto_dir / "artifacts" / "a18-be-backend-automation-review.json"
     code_check_path = auto_dir / "artifacts" / "n05-automation-code-check.json"
-    automation_policy = _policy_path(config, "automation_target_policy", repo_root)
-    execution_policy = _policy_path(config, "execution_policy", repo_root)
-    if (
-        not all(path.exists() for path in (generation_path, review_path, code_check_path))
-        or automation_policy is None
-        or execution_policy is None
-    ):
+    if not all(path.exists() for path in (generation_path, review_path, code_check_path)):
         return None
+    automation_policy = _required_policy_path(config, "automation_target_policy", repo_root)
+    execution_policy = _required_policy_path(config, "execution_policy", repo_root)
     if target.exists():
         existing_bindings = _read(target).get("payload", {}).get("input_bindings", {})
         current_bindings = {
@@ -4695,19 +6032,15 @@ def ensure_quality_tail(
     plan_path = auto_dir / "artifacts" / "n15-execution-plan.json"
     compiled_path = auto_dir / "artifacts" / "n25-compiled-test-cases.json"
     precheck_path = auto_dir / "artifacts" / "n07-environment-precheck.json"
-    quality_policy = _policy_path(config, "quality_policy", repo_root)
+    quality_policy = _required_policy_path(config, "quality_policy", repo_root)
     n18_path = auto_dir / "artifacts" / "n18-quality-signals.json"
     if (
         n18_path.exists()
         and not n17_unfinished
-        and quality_policy is not None
         and not quality_tail_needs_refresh(auto_dir, quality_policy, n08_path)
     ):
         return None
-    if (
-        not all(path.exists() for path in (plan_path, compiled_path, precheck_path))
-        or quality_policy is None
-    ):
+    if not all(path.exists() for path in (plan_path, compiled_path, precheck_path)):
         if n17_unfinished:
             return {
                 "node_id": "QUALITY_TAIL",
@@ -4984,7 +6317,14 @@ def ensure_node_record_issues(
     agent_nodes = {
         str(node_id) for node_id in (config.get("node_agents") or {}).keys()
     }
+    review_record_nodes = {"A18-BE", "A18-CT"}
     gate_nodes = {"G01", "G02", "G03"}
+    blocking_record_statuses = {
+        ArtifactStatus.NEEDS_HUMAN.value,
+        ArtifactStatus.BLOCKED.value,
+        ArtifactStatus.BLOCKED_INPUT.value,
+        ArtifactStatus.FAILED_FATAL.value,
+    }
     created: list[dict[str, Any]] = []
     for path in sorted((auto_dir / "artifacts").glob("*.json")):
         try:
@@ -4994,8 +6334,18 @@ def ensure_node_record_issues(
         if str(artifact.get("schema_version", "")) != "artifact-envelope/1.0":
             continue
         node_id = ARTIFACT_NODE_MAP.get(str(artifact.get("artifact_id", "")))
-        if not node_id or node_id in agent_nodes or node_id in gate_nodes:
+        if not node_id or node_id in gate_nodes:
             continue
+        if node_id in agent_nodes:
+            if node_id not in review_record_nodes:
+                continue
+            if str(artifact.get("status") or "") not in blocking_record_statuses:
+                continue
+            if any(
+                isinstance(issue, Mapping) and issue.get("id")
+                for issue in issues_by_node.get(node_id, [])
+            ):
+                continue
         label = _NODE_LABELS.get(node_id, node_id)
         record = _ensure_node_record_issue(
             config,
@@ -5014,9 +6364,86 @@ def ensure_node_record_issues(
                     "identifier": str(record.get("issue_identifier", "")),
                     "title": f"[{run_id}] {node_id} {label}",
                     "status": str(record.get("status", "done")),
+                    "priority": "medium",
                 }
             )
     return created
+
+
+def ensure_a08_case_echo_card(
+    auto_dir: Path,
+    issues_by_node: dict[str, list[dict[str, Any]]],
+    *,
+    apply: bool,
+) -> dict[str, Any] | None:
+    """Echo generated parent cases on the A08 execution Issue itself."""
+
+    artifact_path = auto_dir / "artifacts" / "a08-test-design-ir.json"
+    if not artifact_path.exists():
+        return None
+    artifact = _read(artifact_path)
+    payload = artifact.get("payload")
+    if not isinstance(payload, dict):
+        return None
+    cases = payload.get("parent_cases")
+    if not isinstance(cases, list) or not cases:
+        return None
+    issues = sorted(
+        (
+            issue
+            for issue in issues_by_node.get("A08", [])
+            if isinstance(issue, dict) and issue.get("id")
+        ),
+        key=lambda issue: str(issue.get("created_at", "")),
+        reverse=True,
+    )
+    issue = issues[0] if issues else None
+    if issue is None:
+        return None
+    artifact_hash = str(artifact.get("artifact_hash", ""))
+    description = "\n".join(
+        [
+            node_issue_description("A08", "测试设计", input_name="a08-input.json"),
+            "",
+            "## 生成用例回显",
+            "",
+            "- Artifact：`a08-test-design-ir`",
+            f"- Artifact Hash：`{artifact_hash}`",
+            f"- 父用例数：`{len(cases)}`",
+            "",
+            render_review_cards(cases).rstrip(),
+            "",
+        ]
+    )
+    description_path = artifact_path.with_name("a08-test-design-ir.case-card.md")
+    description_path.write_text(description, encoding="utf-8")
+    if not apply:
+        return {
+            "node_id": "A08",
+            "action": "case_echo_ready",
+            "issue_id": str(issue["id"]),
+            "case_count": len(cases),
+            "artifact_hash": artifact_hash,
+        }
+    live = _multica("issue", "get", str(issue["id"]))
+    live_description = str(live.get("description", "")) if isinstance(live, dict) else ""
+    if artifact_hash and artifact_hash not in live_description:
+        _multica(
+            "issue",
+            "update",
+            str(issue["id"]),
+            "--description-file",
+            description_path.name,
+            cwd=description_path.parent,
+        )
+    return {
+        "node_id": "A08",
+        "action": "case_echo_synced",
+        "issue_id": str(issue["id"]),
+        "issue_identifier": str(issue.get("identifier", "")),
+        "case_count": len(cases),
+        "artifact_hash": artifact_hash,
+    }
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -5088,14 +6515,15 @@ def _run_sync_once(args: argparse.Namespace) -> int:
         node_id = title[len(prefix):].split(" ", 1)[0]
         if node_id not in node_agents:
             continue
-        bundle_path = issue_bundles.get(str(issue.get("id", "")))
+        bundle_path = _resolve_ingest_bundle_path(
+            issue_id=str(issue.get("id", "")),
+            node_id=node_id,
+            issue_bundles=issue_bundles,
+            node_input_files=node_input_files,
+            artifact_root=artifact_root,
+        )
         if bundle_path is None:
-            bundle_relative = node_input_files.get(node_id)
-            if not isinstance(bundle_relative, list) or not bundle_relative:
-                continue
-            bundle_path = Path(str(bundle_relative[0]))
-        else:
-            bundle_path = Path(bundle_path)
+            continue
         if not bundle_path.is_absolute():
             bundle_path = repo_root / bundle_path
         if not bundle_path.exists():
@@ -5149,6 +6577,8 @@ def _run_sync_once(args: argparse.Namespace) -> int:
                         prefix,
                         node_id,
                         keep_issue_id=str(issue["id"]),
+                        keep_bundle_path=bundle_path,
+                        issue_bundles=issue_bundles,
                     )
                 except Exception as error:
                     errors.append(
@@ -5178,6 +6608,8 @@ def _run_sync_once(args: argparse.Namespace) -> int:
                         prefix,
                         node_id,
                         keep_issue_id=str(issue["id"]),
+                        keep_bundle_path=bundle_path,
+                        issue_bundles=issue_bundles,
                     )
         except Exception as error:  # keep other nodes progressing
             errors.append({"node_id": node_id, "error": str(error)})
@@ -5205,11 +6637,8 @@ def _run_sync_once(args: argparse.Namespace) -> int:
     g01_transition = None
     g01_published = None
     n24_result = None
-    g01_policy = config.get("g01_policy")
-    if g01_policy:
-        policy_path = Path(str(g01_policy))
-        if not policy_path.is_absolute():
-            policy_path = repo_root / policy_path
+    policy_path = _policy_path(config, "g01_policy", repo_root)
+    if policy_path:
         # G01 must be synced before N24/A08 in the same pass. Previously N24 ran
         # first, so a freshly approved C2 could not unlock C3 until the next
         # watch tick — and a dead watch left C3 stuck forever.
@@ -5218,30 +6647,39 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             policy_path,
             output_dir=artifact_root / "g01-auto",
         )
-        adapter_value = config.get("g01_adapter_policy")
-        if args.apply and g01_result and g01_result["status"] == "needs_human" and adapter_value:
-            adapter_path = Path(str(adapter_value))
-            if not adapter_path.is_absolute():
-                adapter_path = repo_root / adapter_path
-            c2 = next(
-                (
-                    card for card in spec.get("stage_cards", [])
-                    if isinstance(card, dict) and card.get("stage_card_id") == "C2"
-                ),
-                None,
-            )
-            if not c2 or not c2.get("issue_id"):
-                errors.append({"node_id": "G01", "error": "C2 stage card binding is missing"})
+        adapter_path = _policy_path(config, "g01_adapter_policy", repo_root)
+        if args.apply and g01_result and g01_result["status"] == "needs_human" and adapter_path:
+            c2_stage_issue_id = ""
+            for card in spec.get("stage_cards", []):
+                if isinstance(card, dict) and card.get("stage_card_id") == "C2":
+                    c2_stage_issue_id = str(card.get("issue_id", ""))
+                    break
+            g01_node = None
+            for node in spec.get("nodes", []):
+                if isinstance(node, dict) and node.get("node_id") == "G01":
+                    g01_node = node
+                    break
+            if g01_node is None:
+                errors.append({"node_id": "G01", "error": "G01 node binding is missing"})
             else:
                 review_dir = artifact_root / "g01-auto"
                 try:
-                    open_multica_scope_review(
+                    _reset_stage_bound_g01_state(review_dir, c2_stage_issue_id)
+                    gate_state = open_multica_scope_review(
                         review_dir / "g01-review-request.json",
                         policy_path,
                         adapter_path,
                         review_dir,
-                        issue_id=str(c2["issue_id"]),
+                        issue_id=(
+                            str(g01_node.get("issue_id", "")).strip()
+                            or None
+                        ),
                     )
+                    if str(gate_state.get("issue_id", "")) == c2_stage_issue_id:
+                        raise ValueError(
+                            "legacy G01 review is bound to the C2 stage card; migrate it to a dedicated G01 issue"
+                        )
+                    _bind_g01_gate_issue(spec_path, gate_state)
                     g01_transition = sync_multica_scope_review(
                         review_dir / "g01-review-request.json",
                         policy_path,
@@ -5284,6 +6722,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
         )
     a08_result = None
     a08_correction_result = None
+    a08_case_echo_result = None
     a09_result = None
     a09_correction_result = None
     n04_result = None
@@ -5298,6 +6737,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A08", "error": str(error)})
@@ -5319,6 +6759,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A09", "error": str(error)})
@@ -5332,6 +6773,16 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             }
         )
     try:
+        n04_result = ensure_n04_validation(
+            auto_dir,
+            artifact_root / "inputs",
+            max_correction_attempts=int(
+                config.get("max_correction_attempts", 2)
+            ),
+        )
+    except Exception as error:
+        errors.append({"node_id": "N04", "error": str(error)})
+    try:
         a08_correction_result = ensure_a08_correction_dispatch(
             config,
             run_id,
@@ -5340,6 +6791,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A08", "error": f"correction: {error}"})
@@ -5361,6 +6813,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A09", "error": f"correction: {error}"})
@@ -5373,10 +6826,6 @@ def _run_sync_once(args: argparse.Namespace) -> int:
                 "status": "todo",
             }
         )
-    try:
-        n04_result = ensure_n04_validation(auto_dir, artifact_root / "inputs")
-    except Exception as error:
-        errors.append({"node_id": "N04", "error": str(error)})
     human_correction_result = None
     try:
         human_correction_result = ensure_human_correction_dispatch(
@@ -5388,6 +6837,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "HUMAN", "error": str(error)})
@@ -5421,6 +6871,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "G02", "error": f"correction: {error}"})
@@ -5431,7 +6882,9 @@ def _run_sync_once(args: argparse.Namespace) -> int:
     n15_result = None
     node_records: list[dict[str, Any]] = []
     try:
-        n25_result = ensure_n25_compilation(auto_dir, artifact_root / "g02-auto")
+        n25_result = ensure_n25_compilation(
+            auto_dir, artifact_root / "g02-auto", apply=args.apply
+        )
     except Exception as error:
         errors.append({"node_id": "N25", "error": str(error)})
     try:
@@ -5443,6 +6896,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A11", "error": str(error)})
@@ -5483,6 +6937,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A14", "error": str(error)})
@@ -5504,6 +6959,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A15", "error": str(error)})
@@ -5525,6 +6981,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A22", "error": str(error)})
@@ -5547,6 +7004,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             issues_by_node,
             reviewer="A18-BE",
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A18-BE", "error": str(error)})
@@ -5576,6 +7034,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             issues_by_node,
             reviewer="A18-CT",
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A18-CT", "error": str(error)})
@@ -5601,6 +7060,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
             repo_root,
             issues_by_node,
             apply=args.apply,
+            ingest_failures=ingest_failures,
         )
     except Exception as error:
         errors.append({"node_id": "A22", "error": f"correction: {error}"})
@@ -5617,32 +7077,52 @@ def _run_sync_once(args: argparse.Namespace) -> int:
         n05_result = ensure_n05_aggregation(config, auto_dir, repo_root)
     except Exception as error:
         errors.append({"node_id": "N05", "error": str(error)})
+    a14_correction_result = None
+    try:
+        a14_correction_result = ensure_a14_correction_dispatch(
+            config,
+            run_id,
+            auto_dir,
+            artifact_root / "inputs",
+            repo_root,
+            issues_by_node,
+            apply=args.apply,
+            ingest_failures=ingest_failures,
+        )
+    except Exception as error:
+        errors.append({"node_id": "A14", "error": f"correction: {error}"})
+    if a14_correction_result and a14_correction_result.get("action") == "dispatched":
+        issues_by_node.setdefault("A14", []).append(
+            {
+                "id": a14_correction_result["issue_id"],
+                "identifier": a14_correction_result.get("issue_identifier", ""),
+                "title": f"[{run_id}] A14 服务端自动化生成修正",
+                "status": "todo",
+            }
+        )
     try:
         g03_result = ensure_g03_review(
             config, auto_dir, artifact_root / "g03-auto", repo_root, apply=args.apply
         )
     except Exception as error:
         errors.append({"node_id": "G03", "error": str(error)})
+    a22_waiting_card_result = None
     a22_confirmation_result = None
     n07_result = None
     n08_result = None
     quality_tail_result = None
     try:
-        a22_waiting_card_result = _refresh_a22_waiting_card(
+        a22_review_result = settle_a22_human_review(
             config,
             run_id,
             auto_dir,
             issues_by_node,
             apply=args.apply,
         )
+        a22_confirmation_result = a22_review_result.get("confirmation")
+        a22_waiting_card_result = a22_review_result.get("waiting_card")
     except Exception as error:
-        errors.append({"node_id": "A22", "error": f"waiting card: {error}"})
-    try:
-        a22_confirmation_result = ensure_a22_human_confirmation(
-            run_id, auto_dir, issues_by_node
-        )
-    except Exception as error:
-        errors.append({"node_id": "A22", "error": f"human confirmation: {error}"})
+        errors.append({"node_id": "A22", "error": f"human review: {error}"})
     try:
         n07_result = ensure_n07_precheck(
             config, run_id, auto_dir, artifact_root / "inputs", repo_root
@@ -5694,6 +7174,33 @@ def _run_sync_once(args: argparse.Namespace) -> int:
     except Exception as error:
         errors.append({"node_id": "RECORD", "error": str(error)})
 
+    try:
+        a08_case_echo_result = ensure_a08_case_echo_card(
+            auto_dir,
+            issues_by_node,
+            apply=args.apply,
+        )
+    except Exception as error:
+        errors.append({"node_id": "A08", "error": f"case echo: {error}"})
+
+    _bind_dispatched_node_issues(
+        spec_path,
+        [
+            a06_result,
+            a08_result,
+            a08_correction_result,
+            a09_result,
+            a09_correction_result,
+            a11_result,
+            a14_result,
+            a14_correction_result,
+            a15_result,
+            a22_result,
+            a18_be_result,
+            a18_ct_result,
+            a22_correction_result,
+        ],
+    )
     reconcile_out = current_dir
     sync_out = args.sync_output or (artifact_root / "sync-auto")
     reconcile_spec_path = prepare_reconcile_spec(
@@ -5727,6 +7234,7 @@ def _run_sync_once(args: argparse.Namespace) -> int:
         "g01_published": g01_published,
         "n24": n24_result,
         "a08": a08_result,
+        "a08_case_echo": a08_case_echo_result,
         "a08_correction": a08_correction_result,
         "a09": a09_result,
         "a09_correction": a09_correction_result,
@@ -5739,8 +7247,10 @@ def _run_sync_once(args: argparse.Namespace) -> int:
         "n26": n26_result,
         "n15": n15_result,
         "a14": a14_result,
+        "a14_correction": a14_correction_result,
         "a15": a15_result,
         "a22": a22_result,
+        "a22_waiting_card": a22_waiting_card_result,
         "a18_be": a18_be_result,
         "a18_ct": a18_ct_result,
         "n27": n27_result,
@@ -5760,9 +7270,57 @@ def _run_sync_once(args: argparse.Namespace) -> int:
     return 0 if not errors else 2
 
 
+def handoff_missing_config_to_monitor(
+    missing_config: Path,
+    repo_root: Path,
+    registry_path: Path,
+    sync_script: Path,
+) -> dict[str, Any]:
+    """Keep the old LaunchAgent alive after a deleted run config.
+
+    The installed plist still points at a retired --config path. When that file
+    is gone, discover and scan the registry instead of dying on ENOENT.
+    """
+
+    if os.environ.get("QA_WORKFLOW_MONITOR_HANDOFF") == "1":
+        raise FileNotFoundError(str(missing_config))
+    os.environ["QA_WORKFLOW_MONITOR_HANDOFF"] = "1"
+    try:
+        from qa_agents.workflow_monitor import discover_workflows, monitor_once
+
+        discovery = discover_workflows(registry_path, repo_root)
+        value = monitor_once(registry_path, repo_root, sync_script)
+        value["discovery"] = discovery
+        value["handoff"] = {
+            "reason": "legacy_config_missing",
+            "config": str(missing_config),
+        }
+        return value
+    finally:
+        os.environ.pop("QA_WORKFLOW_MONITOR_HANDOFF", None)
+
+
 def main() -> int:
     parser = _build_parser()
     args = parser.parse_args()
+    if not args.config.exists():
+        repo_root = Path(__file__).resolve().parents[2]
+        registry_path = Path(
+            os.environ.get("QA_ACTIVE_WORKFLOW_REGISTRY")
+            or repo_root / "generated/active-workflows.json"
+        )
+        try:
+            value = handoff_missing_config_to_monitor(
+                args.config,
+                repo_root,
+                registry_path,
+                Path(__file__).resolve(),
+            )
+        except Exception as error:
+            print(json.dumps({"fatal": str(error)}, ensure_ascii=False))
+            return 2
+        print(json.dumps(value, ensure_ascii=False))
+        return 0
     lock_path = args.artifact_root / ".sync-eight-card.lock"
     if not args.watch:
         try:

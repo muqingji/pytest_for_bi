@@ -37,7 +37,15 @@ def write_valid_gate_artifacts(root: Path) -> tuple[Path, Path, Path]:
         **common,
         artifact_id="a08-test-design-ir",
         producer=Producer(component_id="A08", runtime="multica"),
-        payload={"parent_cases": [{"id": "CASE-001"}]},
+        payload={
+            "parent_cases": [{"id": "CASE-001"}],
+            "provider_case_mappings": [
+                {
+                    "provider_case_id": "FS-20260910-001",
+                    "test_case_ir_id": "CASE-001",
+                }
+            ],
+        },
         status=ArtifactStatus.COMPLETED,
     )
     review = ArtifactEnvelope(
@@ -152,6 +160,12 @@ def test_prepare_g02_is_content_addressed_and_idempotent(tmp_path: Path) -> None
     assert first["multica_control"]["assignee_member_id"] == MEMBER_ID
     assert first["review_summary"]["n04_valid"] is True
     assert [item["case_id"] for item in first["review_items"]] == ["CASE-001"]
+    assert first["review_items"][0]["provider_case_id"] == "FS-20260910-001"
+    assert first["provider_case_mappings"] == [
+        {"provider_case_id": "FS-20260910-001", "test_case_ir_id": "CASE-001"}
+    ]
+    assert first["review_summary"]["provider_case_count"] == 1
+    assert first["review_summary"]["provider_case_mapping_complete"] is True
     assert first["decision_items"] == []
     assert first["skipped_scenarios"] == []
     assert first["review_summary"]["decision_count"] == 0

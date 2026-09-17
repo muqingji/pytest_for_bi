@@ -12,7 +12,11 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from .case_compiler import apply_approved_split_correction, compile_cases
+from .case_compiler import (
+    N25_COMPILER_VERSION,
+    apply_approved_split_correction,
+    compile_cases,
+)
 from .contracts import (
     ArtifactEnvelope,
     ArtifactStatus,
@@ -154,7 +158,7 @@ def run_n25_after_g02(
         "review_parent_cases": parent_cases if correction else None,
         "parent_count": len(parent_cases),
         "child_count": len(child_cases),
-        "compile_rule_version": "n25-compiler/1.0",
+        "compile_rule_version": N25_COMPILER_VERSION,
         "split_correction_hash": correction.get("correction_hash") if correction else None,
         "split_correction_approval": correction.get("approval") if correction else None,
     }

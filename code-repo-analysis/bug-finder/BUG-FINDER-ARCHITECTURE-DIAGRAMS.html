@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>bug-finder · 完整图解（流程 / 架构 / 时序）</title>
+<style>
+:root{
+  --ink:#0f172a;--body:#334155;--muted:#64748b;--line:#e2e8f0;--soft:#f8fafc;
+  --ai:#6d28d9;--ai-bg:#f5f3ff;
+  --py:#0f766e;--py-bg:#ecfdf5;
+  --nd:#b45309;--nd-bg:#fffbeb;
+  --ext:#475569;--ext-bg:#f1f5f9;
+  --art:#1d4ed8;--art-bg:#eff6ff;
+  --dec:#c2410c;--dec-bg:#fff7ed;
+  --bad:#b91c1c;--bad-bg:#fef2f2;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:#eef2f7;color:var(--body);-webkit-font-smoothing:antialiased;
+  font:14px/1.65 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",Segoe UI,sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:26px 18px 80px}
+h1{font-size:23px;margin:0 0 8px;color:var(--ink)}
+h2{font-size:19.5px;margin:0 0 4px;color:var(--ink)}
+h3{font-size:14.5px;margin:20px 0 8px;color:#334155}
+p{margin:0 0 10px}
+.meta{font-size:12.5px;color:var(--muted);margin:0 0 18px}
+.k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;background:#f1f5f9;border:1px solid var(--line);border-radius:4px;padding:0 4px;color:var(--ink);white-space:nowrap}
+nav.toc{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px;margin-bottom:22px;font-size:13px}
+nav.toc a{color:#1d4ed8;text-decoration:none;margin-right:16px;white-space:nowrap;line-height:2}
+figure{margin:0 0 34px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px 22px 26px;box-shadow:0 1px 3px rgba(15,23,42,.05)}
+figcaption{font-size:12.5px;color:var(--muted);margin:0 0 18px}
+figcaption b{color:var(--ink)}
+.canvas{position:relative}
+.card{background:#fff;border:1px solid var(--line);border-left:4px solid #94a3b8;border-radius:10px;
+  padding:11px 14px;box-shadow:0 1px 2px rgba(15,23,42,.05);margin:0}
+.card .hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+.card .no{display:inline-flex;width:22px;height:22px;border-radius:50%;background:#0f172a;color:#fff;
+  font-size:12px;font-weight:700;align-items:center;justify-content:center;flex:none}
+.card .ct{font-size:13.5px;font-weight:700;color:var(--ink)}
+.card .who{margin-left:auto;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid currentColor;flex:none;color:#475569}
+.card .cd{font-size:12.5px;line-height:1.65}
+.card .cd ul{margin:6px 0 0;padding-left:18px}
+.card .cd li{margin:2px 0}
+.card .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:4px 16px;margin-top:8px}
+.card .io{font-size:11.5px;color:var(--muted);line-height:1.6}
+.card .io b{color:#475569;font-weight:600}
+.card.ai{border-left-color:var(--ai);background:linear-gradient(180deg,#fff,var(--ai-bg))}
+.card.ai .who{color:var(--ai)}
+.card.py{border-left-color:var(--py);background:linear-gradient(180deg,#fff,var(--py-bg))}
+.card.py .who{color:var(--py)}
+.card.nd{border-left-color:var(--nd);background:linear-gradient(180deg,#fff,var(--nd-bg))}
+.card.nd .who{color:var(--nd)}
+.card.ext{border-left-color:var(--ext);background:linear-gradient(180deg,#fff,var(--ext-bg))}
+.card.ext .who{color:var(--ext)}
+.card.art{border-left-color:var(--art);background:linear-gradient(180deg,#fff,var(--art-bg))}
+.card.art .who{color:var(--art)}
+.card.user{border-left-color:#0f172a;background:linear-gradient(180deg,#fff,#f8fafc)}
+.card.user .who{color:#0f172a}
+.card.dec{border-left-color:var(--dec);background:linear-gradient(180deg,#fff,var(--dec-bg))}
+.card.dec .no{background:var(--dec)}
+.card.dec .who{color:var(--dec)}
+.card.bad{border-left-color:var(--bad);background:linear-gradient(180deg,#fff,var(--bad-bg))}
+.card.bad .who{color:var(--bad)}
+.card.ghost{border-style:dashed;border-left-style:solid;background:#fcfcfd}
+.card.sm{padding:9px 12px}
+.card.sm .ct{font-size:12.5px}
+.card.sm .cd{font-size:11.8px}
+.arrow{position:relative;height:32px}
+.arrow::before{content:"";position:absolute;left:50%;top:0;height:23px;width:2px;background:#cbd5e1;transform:translateX(-1px)}
+.arrow::after{content:"";position:absolute;left:50%;top:21px;transform:translateX(-50%);
+  border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid #94a3b8}
+.arrow.tall{height:52px}
+.arrow.tall::before{height:43px}
+.arrow.tall::after{top:41px}
+.arrow .lb{position:absolute;left:50%;top:1px;transform:translateX(12px);font-size:11.5px;background:#fff;
+  border:1px solid var(--line);border-radius:6px;padding:0 7px;color:#475569;white-space:nowrap}
+.qrow{display:grid;grid-template-columns:1.52fr 76px 1fr;gap:10px;align-items:center}
+.har{position:relative;height:2px;background:#cbd5e1;border-radius:2px}
+.har::after{content:"";position:absolute;right:-2px;top:-4px;border-top:5px solid transparent;border-bottom:5px solid transparent;border-left:8px solid #94a3b8}
+.har .lb{position:absolute;left:50%;top:-23px;transform:translateX(-50%);font-size:11px;background:#fff;
+  border:1px solid var(--line);border-radius:6px;padding:0 6px;color:#475569;white-space:nowrap;line-height:1.6}
+.branch{position:relative;padding-top:2px}
+.branch .rail{position:absolute;top:0;height:2px;background:#cbd5e1}
+.branch .cols{display:grid;gap:16px;padding-top:2px}
+.branch .cols.c2{grid-template-columns:1fr 1fr}
+.branch .cols.c3{grid-template-columns:repeat(3,1fr)}
+.branch .cols.c4{grid-template-columns:repeat(4,1fr)}
+.down{position:relative;height:22px}
+.down::before{content:"";position:absolute;left:50%;top:0;height:13px;width:2px;background:#cbd5e1;transform:translateX(-1px)}
+.down::after{content:"";position:absolute;left:50%;top:11px;transform:translateX(-50%);
+  border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #94a3b8}
+.lbl{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;border:1px solid var(--line);background:#fff;color:#475569;white-space:nowrap}
+.lbl.yes{border-color:#86efac;background:#f0fdf4;color:#15803d}
+.lbl.no{border-color:#fecaca;background:#fef2f2;color:#b91c1c}
+.lbl.mid{border-color:#fdba74;background:#fff7ed;color:#c2410c}
+.seq{position:relative;padding-left:38px}
+.seq .rail{position:absolute;left:15px;top:6px;bottom:6px;width:2px;background:#e2e8f0}
+.seq .step{position:relative;margin-bottom:12px}
+.seq .step::before{content:"";position:absolute;left:-31px;top:16px;width:11px;height:11px;border-radius:50%;
+  background:#fff;border:2px solid #94a3b8}
+.seq .step:nth-child(odd)::before{border-color:#6d28d9}
+.flowline{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.who-flow{display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);border-radius:7px;padding:1px 7px;color:#475569}
+.who-flow b{color:var(--ink)}
+.tl{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px}
+.tl th,.tl td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+.tl th{background:#f8fafc;color:#475569;font-weight:600;font-size:12px}
+.tl td b{color:var(--ink)}
+.tl code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;background:#f8fafc;border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.layers{display:grid;gap:10px}
+.layer{border:1px solid var(--line);border-radius:12px;background:var(--soft);padding:12px 14px 14px}
+.layer .lt{font-size:12px;font-weight:700;color:#475569;letter-spacing:.3px;margin-bottom:9px}
+.layer .row{display:grid;gap:10px}
+.layer .row.c5{grid-template-columns:repeat(5,1fr)}
+.layer .row.c4{grid-template-columns:repeat(4,1fr)}
+.layer .row.c3{grid-template-columns:repeat(3,1fr)}
+.layer .row.c2{grid-template-columns:repeat(2,1fr)}
+.chip{display:inline-block;padding:1px 7px;margin:2px 3px 2px 0;border-radius:6px;background:#fff;border:1px solid var(--line);font-size:11px;color:#475569;white-space:nowrap}
+.datarow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
+.dl{border:1px dashed #cbd5e1;border-radius:9px;padding:6px 10px;font-size:11.5px;color:#475569;background:#fff}
+.dl.down-flow{border-color:#fdba74;color:#c2410c}
+.dl.up-flow{border-color:#86efac;color:#15803d}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px}
+.lg{display:flex;align-items:center;gap:7px;font-size:12px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 11px;color:#475569}
+.dot{width:10px;height:10px;border-radius:3px;flex:none}
+.cmd{display:block;margin-top:7px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11.5px;background:#f8fafc;border:1px solid var(--line);border-radius:7px;padding:7px 10px;
+  white-space:pre-wrap;word-break:break-all;color:#0f172a;line-height:1.7}
+.note{font-size:12.5px;background:#f8fafc;border:1px solid var(--line);border-left:3px solid #94a3b8;border-radius:8px;padding:10px 14px;margin-top:14px}
+.note b{color:var(--ink)}
+.callout{font-size:12.5px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px 16px;margin:14px 0}
+.callout b{color:#c2410c}
+.stack{display:grid;gap:0}
+figure .sub{font-size:12.5px;color:var(--muted);margin:0 0 14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>bug-finder 完整图解</h1>
+<p class="meta">
+  代码快照 <span class="k">7e1b8157</span> · 2026-09-17 · 37 个 Skill · 3 个 L1 编排器 · 31 个公开 capability · 单文件离线可用
+</p>
+
+<nav class="toc">
+  <a href="#howto">① 怎么看这些图</a>
+  <a href="#fig1">② 分流决策树</a>
+  <a href="#fig2">③ 故障 RCA 详解</a>
+  <a href="#fig3">④ 巡检详解</a>
+  <a href="#fig4">⑤ 复盘详解</a>
+  <a href="#fig5">⑥ 系统架构</a>
+  <a href="#fig6">⑦ 真实例子时序</a>
+  <a href="#glossary">⑧ 术语表</a>
+</nav>
+
+<figure id="howto">
+  <h2>① 怎么看这些图</h2>
+  <p class="sub">先花 1 分钟看懂颜色和符号，后面每一张图都能自己读下来。</p>
+
+  <h3>颜色 = 这件事由谁做</h3>
+  <div class="legend">
+    <div class="lg"><span class="dot" style="background:#6d28d9"></span>紫色 · AI（主控或子 agent）负责判断与编排</div>
+    <div class="lg"><span class="dot" style="background:#0f766e"></span>绿色 · Python 程序负责查数据、算事实</div>
+    <div class="lg"><span class="dot" style="background:#b45309"></span>黄色 · Node 程序负责记账与校验</div>
+    <div class="lg"><span class="dot" style="background:#475569"></span>灰色 · 外部系统 / 用户</div>
+    <div class="lg"><span class="dot" style="background:#1d4ed8"></span>蓝色 · 产出的文件（证据、报告）</div>
+    <div class="lg"><span class="dot" style="background:#c2410c"></span>橙色 <b>？</b> · 一个判断（要多选一走）</div>
+    <div class="lg"><span class="dot" style="background:#b91c1c"></span>红色 · 失败 / 阻断 / 不能下结论</div>
+  </div>
+
+  <h3>一句话总纲（整套系统的设计原则）</h3>
+  <div class="callout">
+    <b>程序只负责“查”和“算”，AI 只负责“想”和“写”。</b>
+    Python / Node 不会自己决定查什么、也不会写报告正文；AI 不会自己去连数据库。
+    两边靠落盘的文件交接：程序写<b>事实</b>（facts），AI 写<b>决定</b>（decision），最后由 AI 写<b>给读者看的报告</b>。
+  </div>
+
+  <h3>符号约定</h3>
+  <table class="tl">
+    <tr><th style="width:150px">你看到</th><th>含义</th></tr>
+    <tr><td>圆角矩形卡片</td><td>一个执行步骤。卡片里有「做什么 / 输入 / 输出」，右上角标明谁执行</td></tr>
+    <tr><td>橙色「？」卡片</td><td>一个判断点，会有多条出边</td></tr>
+    <tr><td>箭头旁的小标签</td><td>走这条分支的条件（是 / 否 / 命中某个信号）</td></tr>
+    <tr><td>虚线卡片</td><td>补充说明、边界约定，不是执行步骤</td></tr>
+    <tr><td>红色卡片</td><td>异常分支：失败、阻断、证据不足时只能给出的降级结论</td></tr>
+  </table>
+
+  <h3>三个入口的分工（先记住这三句）</h3>
+  <table class="tl">
+    <tr><th style="width:190px">入口</th><th>解决什么问题</th><th style="width:230px">不解决什么</th></tr>
+    <tr><td><b>fx-ops</b><br>单点故障 RCA</td><td>“这个请求为什么失败 / 为什么慢”，追到机制级根因</td><td>不做主动巡检、不做影响面统计</td></tr>
+    <tr><td><b>fx-ops-patrol</b><br>主动巡检</td><td>“现在整体健康吗”，没人报障时先发现风险</td><td>不做单条请求的完整根因</td></tr>
+    <tr><td><b>fx-ops-postmortem</b><br>影响评估 / 复盘</td><td>“影响了哪些企业、多长时间、要不要复盘”</td><td>不做实时定位；根因未确认时不猜根因</td></tr>
+  </table>
+</figure>
+
+<figure id="fig1">
+  <h2>② 图 1 · 分流决策树：你那句话会被送到哪里</h2>
+  <p class="sub">这是每次对话的 30 秒分诊。从上往下依次判断，命中一条就走那条链路，都不命中才落到 fx-ops 兜底。</p>
+
+  <div class="canvas stack">
+    <div class="card user">
+      <div class="hd"><span class="no">0</span><span class="ct">用户说了一句话</span><span class="who">用户</span></div>
+      <div class="cd">例如：“<span class="k">FSA-ea.uid-01ABCD/160d4d43…</span> 这个单子保存报错，弹了‘系统出现异常’”“帮我巡检一下线上”“这次故障影响了哪些企业”“查一下这个租户最近的订单量”</div>
+    </div>
+
+    <div class="arrow"><span class="lb">开始分诊</span></div>
+
+    <div class="qrow">
+      <div class="card dec">
+        <div class="hd"><span class="no">？</span><span class="ct">问题 1：消息里有没有“硬线索”？</span><span class="who">AI 分诊</span></div>
+        <div class="cd">判据：traceId、reqId、CEP 错误码（如 <span class="k">1-9f0e07</span> / <span class="k">s311030117</span>）、报错截图、明确的“报错 / 失败 / 超时 / 慢”<br><span class="lbl yes">是</span> 命中任一 → 这是<b>真实故障</b>，必须走根因排查</div>
+      </div>
+      <div class="har"><span class="lb">是</span></div>
+      <div class="card ai">
+        <div class="hd"><span class="ct">加载 fx-ops（只加载它）</span><span class="who">AI 主控</span></div>
+        <div class="cd">先采集证据，再决定要不要派业务域 skill。<b>禁止</b>跳过分诊直接进业务 skill，也禁止为错误码去全仓库搜源码。</div>
+      </div>
+    </div>
+
+    <div class="arrow"><span class="lb">否</span></div>
+
+    <div class="qrow">
+      <div class="card dec">
+        <div class="hd"><span class="no">？</span><span class="ct">问题 2：是不是在问“现在整体健康吗”？</span><span class="who">AI 分诊</span></div>
+        <div class="cd">触发词：巡检 / 晨检 / 值班交接检查 / 健康度 / 有没有风险 / 有没有异常 / 某单项指标（MQ 积压、Pod 重启、线程池、GC、容量）</div>
+      </div>
+      <div class="har"><span class="lb">是</span></div>
+      <div class="card ai">
+        <div class="hd"><span class="ct">加载 fx-ops-patrol</span><span class="who">AI 主控</span></div>
+        <div class="cd">不经过 fx-ops，直接由巡检编排器跑广度扫描（详见 图 3）。</div>
+      </div>
+    </div>
+
+    <div class="arrow"><span class="lb">否</span></div>
+
+    <div class="qrow">
+      <div class="card dec">
+        <div class="hd"><span class="no">？</span><span class="ct">问题 3：是不是在问“影响面 / 复盘”？</span><span class="who">AI 分诊</span></div>
+        <div class="cd">触发词：复盘 / 影响范围 / 影响了哪些企业 / 影响时长 / 客户影响 / 索赔 / 有没有提 bug / 是否被攻击</div>
+      </div>
+      <div class="har"><span class="lb">是</span></div>
+      <div class="card ai">
+        <div class="hd"><span class="ct">加载 fx-ops-postmortem</span><span class="who">AI 主控</span></div>
+        <div class="cd">默认只做影响评估（impact_only），不猜根因（详见 图 4）。</div>
+      </div>
+    </div>
+
+    <div class="arrow"><span class="lb">否</span></div>
+
+    <div class="qrow">
+      <div class="card dec">
+        <div class="hd"><span class="no">？</span><span class="ct">问题 4：是不是“只要一个动作”，且没有问为什么？</span><span class="who">AI 分诊</span></div>
+        <div class="cd">例如：查一条 SQL / 看 CPU 曲线 / 查对象字段 / 拉 CMS 配置 / 查负责人 / 查告警 / 分析某企业怎么用系统 / 只导客户端日志。<br><span class="lbl no">关键</span> 一旦同时问“为什么失败 / 超时”，就退回问题 1 走 fx-ops。</div>
+      </div>
+      <div class="har"><span class="lb">是</span></div>
+      <div class="card ext">
+        <div class="hd"><span class="ct">直达对应能力 skill</span><span class="who">AI 主控</span></div>
+        <div class="cd">query / monitoring / object / fetch-config / knowledge / oncall / scenario / bfe(client_logs)…<br>不做根因推断，不选 playbook。</div>
+      </div>
+    </div>
+
+    <div class="arrow tall"><span class="lb">都不命中</span></div>
+
+    <div class="card ai">
+      <div class="hd"><span class="no">5</span><span class="ct">兜底：交给 fx-ops 做“错误聚合 + 变更排查”</span><span class="who">AI 主控</span></div>
+      <div class="cd">只说了“系统好像有问题”“有点慢”这类模糊主诉时的默认路径：先查最近错误分布与最近的发布/配置变更，再决定往哪个机制方向深挖。</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>两条特殊分支（不受上面顺序影响）：</b><br>
+    ① 一次给了 <b>≥2 条可用 traceId</b> → 仍走 fx-ops，但先按 CEP 错误做分类，再“一条 trace 派一个瘦身子 agent”，不会把整套流程重复跑 N 遍；<br>
+    ② 消息里既有 <b>Grafana 链接</b>又有报错/traceId → 仍先走 fx-ops，派监控能力时把 <span class="k">grafana_url</span> 一起交过去。
+  </div>
+</figure>
+
+<figure id="fig2">
+  <h2>③ 图 2 · 故障 RCA 详解（fx-ops 内部怎么走）</h2>
+  <p class="sub">这是最常走的一条链路。全程 12 步。真正的岔路口只有两个：第 4 步（决定继续挖还是收工）和第 9 步（决定证据够不够出结论）。</p>
+
+  <div class="canvas stack">
+    <div class="card ai">
+      <div class="hd"><span class="no">1</span><span class="ct">归一化上下文</span><span class="who">AI 主控</span></div>
+      <div class="cd">把用户那句人话整理成结构化字段，后面所有查询都用它。</div>
+      <div class="grid">
+        <div class="io"><b>输入</b>：用户描述、截图、traceId、时间点</div>
+        <div class="io"><b>输出</b>：环境(env)、租户、时间窗、渠道、应用上下文 → 写成 HND 交接文件</div>
+        <div class="io"><b>为什么</b>：长上下文不塞进 prompt，子技能只拿一个文件引用</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card ai">
+      <div class="hd"><span class="no">2</span><span class="ct">分配证据目录 evidence_dir</span><span class="who">AI 主控</span></div>
+      <div class="cd">本次诊断的所有文件都落在这里，路径必须是绝对路径，后面所有引用都指向它。</div>
+      <div class="grid">
+        <div class="io"><b>输出</b>：<span class="k">output/evidence/&lt;日期-Issue&gt;/</span></div>
+        <div class="io"><b>意义</b>：证据可追溯、可审计，防止“结论没有出处”</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card py">
+      <div class="hd"><span class="no">3</span><span class="ct">第一枪：scout 快速侦察（<span class="k">fast_rca</span>）</span><span class="who">Python 采集器</span></div>
+      <div class="cd">不是把所有表都查一遍，而是按症状选一条 lane 先打最便宜的一枪。</div>
+      <div class="grid">
+        <div class="io"><b>error / default lane</b>：用户没说“慢”，或主诉是报错 → 第一波只查网关 CEP + 应用错误日志</div>
+        <div class="io"><b>latency lane</b>：用户明确说慢/超时 → 第一波并行查 CEP、错误、CEP 慢体、Tomcat、Mongo、SQL 慢表；<b>没有 traceId 时</b>先在 10 分钟窄窗的慢请求里抽 1 条代表 trace</div>
+        <div class="io"><b>输出</b>：<span class="k">DIA-verdict-bundle.json</span>（含 H1–H4 候选假设各自 supported / contradicted）</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card py">
+      <div class="hd"><span class="no">4</span><span class="ct">第二枪：机械判定 <span class="k">auto_effort</span>（第一个岔路口）</span><span class="who">Python 采集器</span></div>
+      <div class="cd">只看第 3 步那份 bundle 做四分派，不写报告、不做解释。这一步把“要不要继续深挖”变成可复现的规则。</div>
+    </div>
+
+    <div class="branch">
+      <div class="rail" style="left:12.5%;right:12.5%"></div>
+      <div class="cols c4">
+        <div>
+          <div class="down"></div>
+          <div class="card py sm">
+            <div class="hd"><span class="ct">stay_low · 就地收工</span></div>
+            <div class="cd"><b>条件</b>：一个假设成立且竞争假设已有真实反证，或已定位到代码位置/具名异常类/SQL 指纹。<br><b>接下来</b>：直接出三段短报告（结论 / 证据 / 处置），不再扩窗。</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card py sm">
+            <div class="hd"><span class="ct">escalate_medium · 补证据</span></div>
+            <div class="cd"><b>条件</b>：多个假设都成立、或信号模糊（只有通用报错、没有异常类/SQL 指纹）、或命中了业务域关键词但现场没堆栈。<br><b>接下来</b>：复用同一证据目录，跑完整 playbook。</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card py sm">
+            <div class="hd"><span class="ct">skip_to_high · 全量深挖</span></div>
+            <div class="cd"><b>条件</b>：用户要完整复盘 / 七章报告 / HTML。<br><b>接下来</b>：跳过 scout 直接全量，并加强并行首包与报告门禁。</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card bad sm">
+            <div class="hd"><span class="ct">stop_locked · 停下</span></div>
+            <div class="cd"><b>条件</b>：用户锁定了 low 档，但证据不足以收敛。<br><b>接下来</b>：不再偷偷升档，直接在报告里写明“需要升档才能继续”。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow tall"><span class="lb">走 escalate / skip 分支时继续</span></div>
+
+    <div class="card py">
+      <div class="hd"><span class="no">5</span><span class="ct">执行固定采集 DAG（<span class="k">playbook_collect</span>）</span><span class="who">Python 采集器</span></div>
+      <div class="cd">按预设 playbook（<span class="k">trace-anchor-v1</span>）的 Phase 0–N 逐段采集，AI 决定跑到第几阶段。</div>
+      <div class="grid">
+        <div class="io"><b>每一步都记录</b>：状态 ok / empty / skipped / error / timeout、耗时、行数、产物文件</div>
+        <div class="io"><b>空结果也是证据</b>：区分“查了但没有”与“还没查”；exit=0 但没有产物 = 失败</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card ai">
+      <div class="hd"><span class="no">6</span><span class="ct">派发子技能（并行取证）</span><span class="who">AI 主控 → 子 agent</span></div>
+      <div class="cd">按需要把活分给专业能力，每个子技能是一个独立的子 agent，只回抛结构化结果，不接管全局路由。</div>
+      <div class="grid">
+        <div class="io"><b>常见派发</b>：链路追踪(tracing)、数据核验(query)、指标(monitoring)、业务域 skill、APL 函数、负责人/历史故障(knowledge)、跨仓代码定位(code-search)</div>
+        <div class="io"><b>交接方式</b>：只给 <span class="k">handoff_ref</span> + <span class="k">evidence_index_ref</span>，不把整份日志拷给每个子 agent</div>
+        <div class="io"><b>回抛格式</b>：status / findings / evidence_files / confidence / route_hint</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card py">
+      <div class="hd"><span class="no">7</span><span class="ct">把新证据投影成事实（<span class="k">incident_refresh</span>）</span><span class="who">Python 采集器</span></div>
+      <div class="cd">读取目录里的证据文件，提取锚点、错误、慢请求、域信号、证据缺口、质量冲突，写成唯一的事实接口。</div>
+      <div class="grid">
+        <div class="io"><b>输出</b>：<span class="k">DIA-incident-facts.json</span>（带 schema 版本与证据快照）</div>
+        <div class="io"><b>注意</b>：facts 里只有事实，<b>不含</b> AI 的推断和结论</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card ai">
+      <div class="hd"><span class="no">8</span><span class="ct">写调度决定 <span class="k">CTX-ai-decision.json</span></span><span class="who">AI 主控 → Node 账本</span></div>
+      <div class="cd">AI 读 facts 后决定：选哪个假设、还要补哪些证据、是否收敛。Node 只做记录与校验（schema、预算、证据快照是否对得上），不替 AI 做语义决定。</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card dec">
+      <div class="hd"><span class="no">？</span><span class="ct">9. 收敛门禁：证据够不够支撑结论？</span><span class="who">AI 判断</span></div>
+      <div class="cd">不够 → 回到第 6 步继续补采（有预算上限）；够 → 进入报告阶段。<b>证据不足时只能写“高概率 / 部分结论”，不能声称“已定位”。</b></div>
+    </div>
+
+    <div class="arrow"><span class="lb">证据充分</span></div>
+
+    <div class="card py">
+      <div class="hd"><span class="no">10</span><span class="ct">报告前置门禁（<span class="k">pre_report_gate</span>）</span><span class="who">Python 采集器</span></div>
+      <div class="cd">先陈述“关于这个结论，我还缺哪些证据”，缺的补采，补不了的显式标成缺口，然后才允许写报告。</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card ai">
+      <div class="hd"><span class="no">11</span><span class="ct">写读者事实源 <span class="k">RPT-report-decision.json</span> 并校验</span><span class="who">AI 主控 + Node 校验器</span></div>
+      <div class="cd">读者能看到的正文只允许消费这一份文件。校验器会检查：有没有症状 claim 和根因 claim、claim 编号是否唯一、证据引用路径是否合法、机制结论是否只有状态/计数、<span class="k">final</span> 结论不能是假设。</div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card art">
+      <div class="hd"><span class="no">12</span><span class="ct">交付</span><span class="who">AI 主控</span></div>
+      <div class="cd">按档位出三段短报告 / 完整报告；用户明确要求才生成 HTML。收尾可询问是否用 <span class="k">fx-ops-share</span> 生成外发链接。若用户接着问影响面，转到图 4 的复盘链路。</div>
+    </div>
+  </div>
+</figure>
+
+<figure id="fig3">
+  <h2>④ 图 3 · 巡检详解（fx-ops-patrol 内部怎么走）</h2>
+  <p class="sub">巡检是“没人报障时主动找风险”。它的结论只有红黄绿三种颜色，颜色由程序判定，AI 不能改。</p>
+
+  <div class="canvas stack">
+    <div class="card dec">
+      <div class="hd"><span class="no">？</span><span class="ct">1. 先定档位：用户这句话要多广多快？</span><span class="who">AI 判断</span></div>
+      <div class="cd">不指定时默认 <span class="k">auto</span>：先只跑核心 7 项，发现需要基线的候选信号才补一次，不自动扩成全量。</div>
+    </div>
+
+    <div class="branch">
+      <div class="rail" style="left:12.5%;right:12.5%"></div>
+      <div class="cols c4">
+        <div>
+          <div class="down"></div>
+          <div class="card py sm">
+            <div class="hd"><span class="ct">low · 核心脉搏</span></div>
+            <div class="cd"><b>触发</b>：“好着没”“快看下”<br><b>覆盖</b>：告警、告警风暴、Pod 异常、CEP 5xx、错误日志、MQ 积压、Tomcat 线程 共 7 项<br><b>耗时</b>：10~15 秒</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card py sm">
+            <div class="hd"><span class="ct">medium · 标准体检</span></div>
+            <div class="cd"><b>触发</b>：“巡检一下”“值班交接”<br><b>覆盖</b>：14 项（7 项 + 流量环比、容器容量、聚合积压、JVM GC、Node、Redis、慢 SQL）<br><b>耗时</b>：30~45 秒</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card py sm">
+            <div class="hd"><span class="ct">high · 全量大盘</span></div>
+            <div class="cd"><b>触发</b>：“晨检完整大盘”“容量规划审计”<br><b>覆盖</b>：全部 23 项 + 1d/7d/14d 历史基线 + 慢调用/锁等待/配置差异<br><b>耗时</b>：90~120 秒</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card py sm">
+            <div class="hd"><span class="ct">auto · 有界阶梯</span></div>
+            <div class="cd"><b>触发</b>：不指定档位<br><b>行为</b>：先 7 项 NOW；有基线候选只做一次定向补证，健康场景不升级</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow tall"></div>
+
+    <div class="card py">
+      <div class="hd"><span class="no">2</span><span class="ct">采集（能力 ID <span class="k">patrol_fetch</span>）</span><span class="who">Python 采集器</span></div>
+      <div class="cd">按 23 项 check 注册表并行采集，写入证据目录与 manifest，输出压缩摘要给 AI。</div>
+      <div class="grid">
+        <div class="io"><b>产物目录</b>：<span class="k">output/patrol/&lt;时间戳&gt;-&lt;env&gt;/</span>，内含 evidence（NOW/OLD/NRM/CTX/ERR）、judgement、manifest、state</div>
+        <div class="io"><b>硬约束</b>：执行完必须断言产物存在；exit=0 但没有产物 = 失败</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card py">
+      <div class="hd"><span class="no">3</span><span class="ct">判定（能力 ID <span class="k">judge</span>）</span><span class="who">Python 采集器</span></div>
+      <div class="cd">按阈值 + 服务等级（L0/L1/L2）算出红/黄/绿，并给出证据文件路径。<b>AI 只能解释和合并，不能改颜色。</b></div>
+      <div class="grid">
+        <div class="io"><b>语义</b>：只有“采集完整 + 确认无数据行”才算有效空结果；查询失败、字段缺失不能伪装成空</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="branch">
+      <div class="rail" style="left:16.6%;right:16.6%"></div>
+      <div class="cols c3">
+        <div>
+          <div class="down"></div>
+          <div class="card py sm">
+            <div class="hd"><span class="ct">绿灯</span></div>
+            <div class="cd">写摘要说明覆盖了什么、健康度如何，结束。全绿也要给证据目录，不能只说“正常”。</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card py sm">
+            <div class="hd"><span class="ct">黄灯</span></div>
+            <div class="cd">列出需要值班关注的 Top 5（趋势 + 观察建议），不展开全部。</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card ai sm">
+            <div class="hd"><span class="ct">红灯 → 深挖</span></div>
+            <div class="cd">进入下一步。同 app、窗口重叠、同类型的红灯会合并成一个深挖组。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow tall"><span class="lb">红灯</span></div>
+
+    <div class="card ai">
+      <div class="hd"><span class="no">4</span><span class="ct">红灯 L1 初步分析（不替代完整 RCA）</span><span class="who">AI 主控 + Python 采集器</span></div>
+      <div class="cd">对红灯做“最小闭环”：用 <span class="k">playbook_collect</span> + <span class="k">incident_refresh</span> 拿到样例链路证据，再给初步判断。</div>
+      <div class="grid">
+        <div class="io"><b>预算</b>：每个红灯最多 3 轮查询；同一验证项试探最多 5 轮，超出就记录“查询预算耗尽”</div>
+        <div class="io"><b>产出字段</b>：信号类型、模式、初步分析、证据引用、置信度、根因状态、升级条件</div>
+        <div class="io"><b>例外</b>：资源类（CPU/内存）和告警类红灯走各自通道，不强行套请求链路闭环</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card dec">
+      <div class="hd"><span class="no">？</span><span class="ct">5. 是否发现 S1/S2 级故障？</span><span class="who">AI 判断</span></div>
+      <div class="cd">S1/S2 = 多服务级联、核心链路不可用、多租户大面积受影响。</div>
+    </div>
+
+    <div class="branch">
+      <div class="rail" style="left:25%;right:25%"></div>
+      <div class="cols c2">
+        <div>
+          <div class="down"></div>
+          <div class="card ai sm">
+            <div class="hd"><span class="ct">是 → 建议转 fx-ops</span></div>
+            <div class="cd">在摘要里明确写“建议使用 fx-ops 进行深入诊断”，把线索交出去。巡检自己不产出完整根因。</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card ai sm">
+            <div class="hd"><span class="ct">否 → 给出初步结论</span></div>
+            <div class="cd">输出该红灯的模式与初步分析、置信度、以及“什么条件下需要升级继续查”。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow tall"></div>
+
+    <div class="card art">
+      <div class="hd"><span class="no">6</span><span class="ct">交付</span><span class="who">AI 主控</span></div>
+      <div class="cd">默认输出 Markdown 巡检摘要 + <span class="k">PAT-patrol-data.json</span> + <span class="k">JDG-judgement-result.json</span> 与证据目录路径；只有明确要求才生成 HTML。</div>
+      <div class="grid">
+        <div class="io"><b>另有专项</b>：某环境节点要不要缩容/扩容/均衡 → 走“节点饱和度与容量评估”专项 playbook，产出六章 HTML，不经过上面的采集与判定管线</div>
+        <div class="io"><b>人工审计</b>：原 reviewer 技能已移除，只有用户明确要求审计时才由人工执行</div>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<figure id="fig4">
+  <h2>⑤ 图 4 · 复盘详解（fx-ops-postmortem 内部怎么走）</h2>
+  <p class="sub">复盘默认只回答“影响了谁、多长时间”，不去猜根因。根因没确认却要完整复盘时，它会拒绝并转回 fx-ops。</p>
+
+  <div class="canvas stack">
+    <div class="card py">
+      <div class="hd"><span class="no">1</span><span class="ct">上下文门禁（能力 <span class="k">validate</span>）</span><span class="who">Python 采集器</span></div>
+      <div class="cd">必须能确定：环境（不能是 pending）、明确的时间窗（绝对时间且开始早于结束）、受影响的应用范围。</div>
+      <div class="grid">
+        <div class="io"><b>缺根因上下文</b>：不阻塞影响评估，报告里写明“未提供根因上下文，本阶段不推断根因”</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card dec">
+      <div class="hd"><span class="no">？</span><span class="ct">2. 用户要的是影响面，还是完整复盘？</span><span class="who">AI 判断</span></div>
+      <div class="cd">“影响了哪些企业 / 影响时长” → 影响评估（默认）；明确说“完整复盘 / 七章报告 / 改进措施” → 完整复盘。</div>
+    </div>
+
+    <div class="branch">
+      <div class="rail" style="left:25%;right:25%"></div>
+      <div class="cols c2">
+        <div>
+          <div class="down"></div>
+          <div class="card py">
+            <div class="hd"><span class="ct">影响评估 impact_only（默认）</span><span class="who">Python + AI</span></div>
+            <div class="cd">只跑 5 个 collector：网关影响、租户级别、负责人、影响门禁、汇总组装。</div>
+            <div class="grid">
+              <div class="io"><b>产出</b>：15~20 行 Markdown 影响通报 + <span class="k">IMP-impact-assessment.json</span></div>
+              <div class="io"><b>SLO</b>：10~20 秒量级，用于故障第 1 分钟定级</div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card dec">
+            <div class="hd"><span class="no">？</span><span class="ct">有没有“已收敛的根因结论”？</span><span class="who">AI 判断</span></div>
+            <div class="cd">指上游（如 fx-ops）已经给出的、有证据支撑的根因摘要。</div>
+          </div>
+          <div class="branch">
+            <div class="rail" style="left:25%;right:25%"></div>
+            <div class="cols c2">
+              <div>
+                <div class="down"></div>
+                <div class="card bad sm">
+                  <div class="hd"><span class="ct">没有 → 阻断</span></div>
+                  <div class="cd">状态置为 <span class="k">blocked</span>，转回 fx-ops 做 RCA。禁止复盘自己“综合”一个根因出来。</div>
+                </div>
+              </div>
+              <div>
+                <div class="down"></div>
+                <div class="card py sm">
+                  <div class="hd"><span class="ct">有 → 完整复盘 full</span></div>
+                  <div class="cd">15 个 collector 全跑：网关、错误、变更、告警、Tomcat、RPC、运行时、K8s、数据库、MQ、SLO、租户、负责人、影响门禁、汇总。按 wave 与资源配额并发。</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow tall"></div>
+
+    <div class="card dec">
+      <div class="hd"><span class="no">？</span><span class="ct">3. 有没有提到“攻击 / 渗透 / 扫描”？</span><span class="who">AI 判断</span></div>
+      <div class="cd">这类描述会让报告额外单列一节安全评估，结论必须分三档，且和故障结论分开写。</div>
+    </div>
+
+    <div class="branch">
+      <div class="rail" style="left:16.6%;right:16.6%"></div>
+      <div class="cols c3">
+        <div>
+          <div class="down"></div>
+          <div class="card ext sm">
+            <div class="hd"><span class="ct">confirmed 已确认</span></div>
+            <div class="cd">必须有安全平台告警，或请求级证据（来源 IP / UA / 路径 / 参数）能对应到目标服务与时间窗。</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card ext sm">
+            <div class="hd"><span class="ct">suspected 疑似</span></div>
+            <div class="cd">有集中爆发、高频探测、异常 UA 等模式，但缺少安全平台或链路闭环证据 → 只能写“疑似”。</div>
+          </div>
+        </div>
+        <div>
+          <div class="down"></div>
+          <div class="card bad sm">
+            <div class="hd"><span class="ct">unconfirmed 未确认</span></div>
+            <div class="cd">只有 CEP 5xx、错误量、流量变化 → 必须明确写“未确认渗透攻击”，并列出还需补什么证据。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow tall"></div>
+
+    <div class="card py">
+      <div class="hd"><span class="no">4</span><span class="ct">影响面主依据（唯一的“官方口径”）</span><span class="who">Python 采集器</span></div>
+      <div class="cd">受影响企业、接口/服务范围、错误时段与持续时间，<b>必须</b>来自网关日志 <span class="k">log_cep_dist</span> 且 <span class="k">status ≥ 500</span>。</div>
+      <div class="grid">
+        <div class="io"><b>后台错误日志 <span class="k">log_error_dist</span></b>：只能作为应用异常/根因佐证，<b>不能</b>代替客户感知影响面</div>
+        <div class="io"><b>为什么</b>：客户是在网关上被打断的，后台错误量不等于客户受影响量</div>
+      </div>
+    </div>
+
+    <div class="arrow"></div>
+
+    <div class="card art">
+      <div class="hd"><span class="no">5</span><span class="ct">交付</span><span class="who">AI 主控</span></div>
+      <div class="cd">输出 <span class="k">PMR-postmortem-report.json</span>（报告事实源）+ <span class="k">IMP-impact-assessment.json</span> + Markdown 摘要；SVIP / VIP 企业影响必须醒目标注。只有明确要求才生成 HTML。</div>
+      <div class="grid">
+        <div class="io"><b>证据复用</b>：只有身份、环境、窗口、指纹、伴随文件集合与哈希全部一致时才复用已落盘证据，并在报告里记录“复用了哪些”</div>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<figure id="fig5">
+  <h2>⑥ 图 5 · 系统架构图（谁调用谁、数据往哪流）</h2>
+  <p class="sub">从上到下是“人 → AI → 编排器 → 技能 → 程序 → 外部系统”；每一层之间都标了<b>下行指令</b>和<b>上行结果</b>两个方向。</p>
+
+  <div class="canvas layers">
+    <div class="layer" style="background:#fff">
+      <div class="lt">L0 · 用户与编辑器</div>
+      <div class="row c1">
+        <div class="card user">
+          <div class="hd"><span class="ct">你在 Claude Code / Codex / Cursor 里说一句话</span><span class="who">人</span></div>
+          <div class="cd">可以是一句抱怨（“订单保存报错了”），也可以是一条指令（“巡检一下”“查这个租户的订单量”）。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="datarow">
+      <div class="dl down-flow">↓ 下行：自然语言诉求 + 截图 / traceId</div>
+      <div class="dl up-flow">↑ 上行：人话结论 + 证据文件路径</div>
+    </div>
+
+    <div class="layer" style="background:#fff">
+      <div class="lt">L1 · 主会话 AI（路由层，不亲自查数据）</div>
+      <div class="row c1">
+        <div class="card ai">
+          <div class="hd"><span class="ct">读取 AGENTS.md，只选一个首跳入口</span><span class="who">AI 主控</span></div>
+          <div class="cd">它做三件事：分诊（图 1）、归一化上下文、决定下一步派谁。它<b>不</b>直接连数据库，<b>不</b>自己写 SQL。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="datarow">
+      <div class="dl down-flow">↓ 下行：加载其中一个编排器（fx-ops / patrol / postmortem）</div>
+      <div class="dl up-flow">↑ 上行：编排器回抛结构化结果（status / findings / 证据 / 置信度）</div>
+    </div>
+
+    <div class="layer">
+      <div class="lt">L2 · 三个 L1 编排器（各自管自己那一摊，互不替代）</div>
+      <div class="row c3">
+        <div class="card ai">
+          <div class="hd"><span class="ct">fx-ops</span><span class="who">RCA 编排</span></div>
+          <div class="cd">单点故障根因。<b>唯一</b>可以做跨域调度的编排器：另外两个遇到跨域根因时回抛给它。</div>
+        </div>
+        <div class="card ai">
+          <div class="hd"><span class="ct">fx-ops-patrol</span><span class="who">巡检编排</span></div>
+          <div class="cd">广度扫描 + 红黄绿判定 + 红灯 L1 初步分析。不产出完整根因。</div>
+        </div>
+        <div class="card ai">
+          <div class="hd"><span class="ct">fx-ops-postmortem</span><span class="who">影响评估编排</span></div>
+          <div class="cd">默认只算影响面；完整复盘需要上游已确认的根因，否则阻断。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="datarow">
+      <div class="dl down-flow">↓ 下行：以子 agent 方式派活，只传交接文件引用，不传整份日志</div>
+      <div class="dl up-flow">↑ 上行：只回抛 status / findings / evidence_files / confidence / route_hint</div>
+    </div>
+
+    <div class="layer">
+      <div class="lt">L3 · 技能层（37 个 skill 按职责分五类，普通 skill 没有全局调度权）</div>
+      <div class="row c5">
+        <div class="card">
+          <div class="hd"><span class="ct">域子 skill（15）</span></div>
+          <div class="cd"><span class="chip">sfa</span><span class="chip">fmcg</span><span class="chip">oa</span><span class="chip">plat</span><span class="chip">bi</span><span class="chip">workflow</span><span class="chip">metadata</span><span class="chip">udobj</span><span class="chip">eservice</span><span class="chip">erp-sync</span><span class="chip">er</span><span class="chip">bfe</span><span class="chip">sms</span><span class="chip">mq</span><span class="chip">ai-agent</span></div>
+          <div class="cd">做<b>业务归类</b>和本领域取证。可以调用基础能力，但不能跨域互相调度。</div>
+        </div>
+        <div class="card">
+          <div class="hd"><span class="ct">基础能力（7）</span></div>
+          <div class="cd"><span class="chip">tracing</span><span class="chip">monitoring</span><span class="chip">query</span><span class="chip">object</span><span class="chip">knowledge</span><span class="chip">timeline</span><span class="chip">apl</span></div>
+          <div class="cd">真正的“取证主力”：链路、指标、数据、对象、知识、时间线、函数。</div>
+        </div>
+        <div class="card">
+          <div class="hd"><span class="ct">专项分析（5）</span></div>
+          <div class="cd"><span class="chip">oncall</span><span class="chip">pyroscope</span><span class="chip">scenario</span><span class="chip">resource-recommend</span><span class="chip">team-alert-rca</span></div>
+          <div class="cd">告警平台、火焰图、企业场景、K8s 资源建议、按团队批量告警分析。</div>
+        </div>
+        <div class="card">
+          <div class="hd"><span class="ct">工具（4）</span></div>
+          <div class="cd"><span class="chip">code-search</span><span class="chip">fetch-config</span><span class="chip">share</span><span class="chip">k8s-app</span></div>
+          <div class="cd">单一动作。注意：<b>k8s-app 是全系统唯一能“改东西”的 skill</b>（发布/回滚/重启），且必须先出计划、记录回滚点、经过确认。</div>
+        </div>
+        <div class="card">
+          <div class="hd"><span class="ct">知识 · 维护（3）</span></div>
+          <div class="cd"><span class="chip">workcircle-knowledge-triage</span><span class="chip">tapd-bug-distill</span><span class="chip">archive</span></div>
+          <div class="cd">产品规则咨询、把历史缺陷蒸馏成排查经验、归档过期方案。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="datarow">
+      <div class="dl down-flow">↓ 下行：调用命令行能力（<span class="k">fx_ops_cli.py run &lt;能力&gt; -- …</span>）或 <span class="k">fx-ops idp …</span></div>
+      <div class="dl up-flow">↑ 上行：返回紧凑 JSON（默认单行），原文落盘，不进对话</div>
+    </div>
+
+    <div class="layer">
+      <div class="lt">L4 · 采集与执行层（确定性程序：只查、只算、只校验）</div>
+      <div class="row c4">
+        <div class="card py">
+          <div class="hd"><span class="ct">fx-ops 取证 CLI（31 个能力）</span><span class="who">Python</span></div>
+          <div class="cd">scout（fast_rca）、固定 DAG（playbook_collect）、事实投影（incident_refresh）、机械判定（auto_effort）、报告前置门禁（pre_report_gate）、代码定位。</div>
+        </div>
+        <div class="card py">
+          <div class="hd"><span class="ct">巡检采集与判定</span><span class="who">Python</span></div>
+          <div class="cd">patrol_fetch（23 项 check 注册表、窗口、阈值、服务等级）+ judge（红黄绿判定）。</div>
+        </div>
+        <div class="card py">
+          <div class="hd"><span class="ct">复盘采集</span><span class="who">Python</span></div>
+          <div class="cd">postmortem_fetch：15 个 collector，按 wave 与资源配额并发（全局 4 / ClickHouse 2 / Prometheus 2）。</div>
+        </div>
+        <div class="card nd">
+          <div class="hd"><span class="ct">编排账本与校验</span><span class="who">Node</span></div>
+          <div class="cd">记录 AI 的决定、校验 schema 与证据快照一致性、校验报告与 HTML；用文件锁保证多个进程不会同时改同一份证据。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="datarow">
+      <div class="dl down-flow">↓ 下行：只读查询 / 只读 API（除 k8s-app 外全部只读）</div>
+      <div class="dl up-flow">↑ 上行：原始数据行、指标、对象定义</div>
+    </div>
+
+    <div class="layer">
+      <div class="lt">L5 · 外部系统（真正的数据来源）</div>
+      <div class="row c1">
+        <div class="card ext">
+          <div class="cd">
+            <span class="chip">fx-ops / IDP CLI</span><span class="chip">ClickHouse biz-app-log（网关/错误/慢SQL/Tomcat/RPC 日志）</span><span class="chip">Prometheus</span><span class="chip">Grafana</span><span class="chip">CRM 对象 API</span><span class="chip">CMS 配置中心</span><span class="chip">fs-oncall 告警平台</span><span class="chip">K8s / fs-k8s-cli</span><span class="chip">Sourcebot 代码搜索</span><span class="chip">TAPD / GitLab</span><span class="chip">AI-Eye（可选旁路观测，默认关闭）</span>
+          </div>
+          <div class="cd" style="margin-top:6px">没有这些系统时，只能跑本地的契约测试，做不了真实诊断。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="datarow">
+      <div class="dl down-flow">↓ 所有层都往同一个地方写：证据与事实总线</div>
+      <div class="dl up-flow">↑ AI 只从总线读事实，再从总线拿证据写报告</div>
+    </div>
+
+    <div class="layer" style="background:#fff;border-style:dashed">
+      <div class="lt">贯穿层 · 证据与事实总线 + 质量门禁（不属于某一层，而是所有层共用）</div>
+      <div class="row c2">
+        <div class="card art">
+          <div class="hd"><span class="ct">证据与事实总线</span><span class="who">落盘产物</span></div>
+          <div class="cd">每次诊断一个绝对路径证据目录，里面的文件名带语义前缀（<span class="k">TRC-</span> 链路、<span class="k">QRY-</span> 查询、<span class="k">DIA-</span> 诊断事实、<span class="k">PAT-</span>/<span class="k">JDG-</span> 巡检、<span class="k">EVID-</span>/<span class="k">IMP-</span>/<span class="k">PMR-</span> 复盘、<span class="k">ERR-</span> 失败）。<br>关键三份文件：<span class="k">DIA-incident-facts.json</span>（程序写的事实）、<span class="k">CTX-ai-decision.json</span>（AI 写的决定）、<span class="k">RPT-report-decision.json</span>（AI 写的读者事实源）。三份文件用哈希绑定，对不上就拒绝使用旧结论。</div>
+        </div>
+        <div class="card nd">
+          <div class="hd"><span class="ct">质量门禁（贯穿全链路）</span><span class="who">自动检查</span></div>
+          <div class="cd">hook 引擎 + 20 个 checker（证据命名、证据索引、预算、查询安全、收敛门禁、判定归属、阶段守卫、报告结构、回抛格式…）；skill 文档 lint 约 20 条规则；报告语义与布局校验；复杂度预算；CI 三个 job。<br>作用：把“文档里写的约定”变成会失败的检查，防止悄悄跑偏。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<figure id="fig6">
+  <h2>⑦ 图 6 · 真实例子：一条 traceId 的 14 步（含 fast 与 deep 两条走法）</h2>
+  <p class="sub">例子：你在 IDE 里粘贴了一条 traceId 并说“这个单子保存报错”。下面是系统内部实际发生的事。</p>
+
+  <div class="canvas">
+    <div class="seq">
+      <div class="rail"></div>
+
+      <div class="step card user">
+        <div class="hd"><span class="no">1</span><span class="ct">你粘贴 traceId + 一句报错描述</span><span class="who">你 → AI 主控</span></div>
+        <div class="cd">“<span class="k">FSA-ea.uid-01ABC…/160d4d43…</span> 保存报错，弹了系统异常”</div>
+      </div>
+
+      <div class="step card ai">
+        <div class="hd"><span class="no">2</span><span class="ct">命中硬规则，只加载 fx-ops</span><span class="who">AI 主控</span></div>
+        <div class="cd">30 秒分诊：有 traceId → 先取证，不派业务域 skill；同时把 traceId 解析成“环境 + 租户 + 时间点 + 服务”。</div>
+      </div>
+
+      <div class="step card ai">
+        <div class="hd"><span class="no">3</span><span class="ct">分配证据目录，准备第一枪</span><span class="who">AI 主控</span></div>
+        <div class="cd">例如 <span class="k">output/evidence/20260917-issue2415/</span>。</div>
+      </div>
+
+      <div class="step card py">
+        <div class="hd"><span class="no">4</span><span class="ct">执行 scout（第一枪）</span><span class="who">AI 主控 → Python 采集器</span></div>
+        <div class="cd">近似命令：<code class="cmd">uv run --no-sync python scripts/fx_ops_cli.py run fast_rca -- \
+  --trace-id 'FSA-ea.uid-01ABC…/160d4d43…' --at '2026-09-17 10:01:14' \
+  --evidence-dir &lt;绝对路径&gt; --profile foneshare --json</code></div>
+      </div>
+
+      <div class="step card ext">
+        <div class="hd"><span class="no">5</span><span class="ct">真正去查日志</span><span class="who">Python 采集器 → 外部系统</span></div>
+        <div class="cd">按 lane 决定查什么：默认先查网关日志与应用错误日志；如果用户说是“慢”，则同时并行查慢请求与慢 SQL 类日志。全部只读。</div>
+      </div>
+
+      <div class="step card art">
+        <div class="hd"><span class="no">6</span><span class="ct">证据落盘</span><span class="who">Python 采集器 → 证据目录</span></div>
+        <div class="cd">写出一批 <span class="k">TRC-*.json</span>，以及关键产物 <span class="k">DIA-verdict-bundle.json</span>（里面是候选假设的成立/被否证据）。</div>
+      </div>
+
+      <div class="step card py">
+        <div class="hd"><span class="no">7</span><span class="ct">机械判定，返回一个决定</span><span class="who">Python 采集器 → AI 主控</span></div>
+        <div class="cd">stdout 里给出 <span class="k">auto_decision</span>，只会是四种之一（stay_low / escalate_medium / skip_to_high / stop_locked）。</div>
+      </div>
+
+      <div class="step card ai">
+        <div class="hd"><span class="no">8</span><span class="ct">分支 A：stay_low → 直接出结论</span><span class="who">AI 主控 → 你</span></div>
+        <div class="cd">只读 bundle 和它明确引用的 3~5 个证据文件，输出三段：<b>结论</b>（根因/等级/影响/首要动作）、<b>证据</b>（文件指针 + 数字）、<b>处置</b>（1~3 条动作与验证方法）。全程通常 1 分钟内。</div>
+      </div>
+
+      <div class="step card ai">
+        <div class="hd"><span class="no">9</span><span class="ct">分支 B：escalate_medium → 继续深挖</span><span class="who">AI 主控 → Python 采集器</span></div>
+        <div class="cd">复用同一个证据目录，按选择的阶段跑固定采集 DAG：<span class="k">playbook_collect --through-phase N</span>，把缺失的链路/依赖/慢表证据补齐。</div>
+      </div>
+
+      <div class="step card ai">
+        <div class="hd"><span class="no">10</span><span class="ct">派专业子技能并行取证</span><span class="who">AI 主控 → 子 agent</span></div>
+        <div class="cd">例如同时派：链路追踪（拆 StopWatch 分段耗时）、数据核验（确认那笔单据的真实状态）、指标（看是否有资源/流量异常）、业务域 skill（核对该业务规则）、代码定位（若怀疑代码缺陷）。每个子 agent 只拿到一个交接文件引用。</div>
+      </div>
+
+      <div class="step card py">
+        <div class="hd"><span class="no">11</span><span class="ct">把新证据再投影成事实</span><span class="who">AI 主控 → Python 采集器</span></div>
+        <div class="cd">执行 <span class="k">incident_refresh</span>，刷新 <span class="k">DIA-incident-facts.json</span>（新增/合并/标注缺口）。</div>
+      </div>
+
+      <div class="step card nd">
+        <div class="hd"><span class="no">12</span><span class="ct">记下决定并校验一致性</span><span class="who">AI 主控 → Node 账本</span></div>
+        <div class="cd">写 <span class="k">CTX-ai-decision.json</span>，Node 校验 schema、预算、以及“这份决定是不是基于最新的证据快照”——对不上就拒绝，防止拿旧结论回答新问题。</div>
+      </div>
+
+      <div class="step card nd">
+        <div class="hd"><span class="no">13</span><span class="ct">写报告事实源并通过校验</span><span class="who">AI 主控 + Node 校验器</span></div>
+        <div class="cd">先跑 <span class="k">pre_report_gate</span> 确认“证据缺口已声明”，再写 <span class="k">RPT-report-decision.json</span> 并跑校验（必须有症状+根因 claim、证据路径合法、不能把假设写成定论）。</div>
+      </div>
+
+      <div class="step card art">
+        <div class="hd"><span class="no">14</span><span class="ct">交付并收尾</span><span class="who">AI 主控 → 你</span></div>
+        <div class="cd">给出结论与证据指路；需要完整报告或 HTML 时按你的要求生成；可询问是否生成外发分享链接。若你接着问“影响了哪些企业”，则转到复盘链路（图 4）重新做影响门禁。</div>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<figure id="glossary">
+  <h2>⑧ 术语表（图里出现的词，都在这）</h2>
+  <table class="tl">
+    <tr><th style="width:210px">术语</th><th>通俗解释</th></tr>
+    <tr><td><b>L1 / L2 / L3 分层</b></td><td>L1 是三个编排器（负责想和派活），L2 是各种技能（负责专业取证），L3 是结论与行动（负责对外结论、升级、沉淀）</td></tr>
+    <tr><td><b>编排器（orchestrator）</b></td><td>一个负责“决定下一步做什么”的 AI 角色，本项目有三个：单点故障、巡检、复盘</td></tr>
+    <tr><td><b>skill</b></td><td>一份写给 AI 看的技能说明书（SKILL.md）+ 配套脚本与参考资料，规定这个领域怎么查、产出什么</td></tr>
+    <tr><td><b>capability（能力）</b></td><td>程序里一个可以被命令行调用的功能编号，例如 <code>fast_rca</code>、<code>judge</code>、<code>postmortem_fetch</code></td></tr>
+    <tr><td><b>subagent（子 agent）</b></td><td>为一次取证单独开的一个 AI 会话，有自己的上下文，做完只回抛结构化结果</td></tr>
+    <tr><td><b>handoff / HND</b></td><td>交接文件：把本次诊断的上下文写给下一个执行者看，避免把整份日志复制来复制去</td></tr>
+    <tr><td><b>evidence_dir（证据目录）</b></td><td>本次诊断的专属文件夹（绝对路径），所有查询结果和中间产物都落在里面，结论必须能指回它</td></tr>
+    <tr><td><b>facts（事实）</b></td><td>程序从证据里算出来的确定性结论，例如“哪个异常类出现多少次”“有没有慢 SQL 指纹”，不含 AI 的推测</td></tr>
+    <tr><td><b>decision（决定）</b></td><td>AI 写下的调度决定：选哪个假设、还查什么、是否收敛。Node 只负责记录和校验，不替 AI 决策</td></tr>
+    <tr><td><b>RPT / PMR / PAT / IMP</b></td><td>四类结果文件的前缀：故障报告事实源、复盘报告、巡检数据、影响评估</td></tr>
+    <tr><td><b>snapshot（快照）</b></td><td>给证据算的哈希。作用是确认“这份决定是基于这份证据做的”，防止结论与证据错配</td></tr>
+    <tr><td><b>effort（档位）</b></td><td>花多少时间取证：auto 自动阶梯 / low 极速 / medium 标准 / high 全量</td></tr>
+    <tr><td><b>lane（泳道）</b></td><td>scout 第一枪按症状走的采集路径，主要是“报错型”和“慢型”两条</td></tr>
+    <tr><td><b>scout（侦察）</b></td><td>最便宜的第一枪，用来判断有没有决定性证据，再决定要不要深入</td></tr>
+    <tr><td><b>playbook</b></td><td>预先写好的排查剧本：哪些阶段、每阶段查什么、产出什么文件</td></tr>
+    <tr><td><b>DAG / Phase 0–N</b></td><td>剧本里的任务依赖图，按阶段执行；每个任务记录成功/空/跳过/失败/超时</td></tr>
+    <tr><td><b>空结果协议</b></td><td>“查了但没有”是有效证据；“没查”“查询失败”不算。三者必须能区分，否则会得出错误结论</td></tr>
+    <tr><td><b>judge（判定）</b></td><td>巡检里由程序算红黄绿的那一步，AI 不能改颜色</td></tr>
+    <tr><td><b>L0 / L1 / L2 服务等级</b></td><td>按业务重要性给服务分级，决定告警阈值和深挖优先级</td></tr>
+    <tr><td><b>impact gate（影响门禁）</b></td><td>复盘里判断“影响面证据是否已闭合”的关卡；没闭合就继续补影响证据</td></tr>
+    <tr><td><b>security_assessment</b></td><td>安全事件单独一节：已确认 / 疑似 / 未确认，且必须写明还缺什么证据</td></tr>
+    <tr><td><b>blocked / partial / unknown</b></td><td>三种“说不清”的状态：被阻断做不下去、只拿到部分证据、完全没证据（都优于编一个结论）</td></tr>
+    <tr><td><b>claim（结论条目）</b></td><td>报告里的一个可核查断言（如“症状是 X”“根因是 Y”），必须挂上证据引用</td></tr>
+    <tr><td><b>SLO</b></td><td>目标耗时，例如单条 trace 的极速档典型 1 分钟内出结论</td></tr>
+    <tr><td><b>checker / hook 引擎</b></td><td>在 AI 每次动作后自动跑的检查器，用来拦住违规操作（乱引用证据、超预算、格式不对等）</td></tr>
+    <tr><td><b>skill-lint</b></td><td>针对技能文档的规则检查，例如禁止引用兄弟技能的内部路径</td></tr>
+    <tr><td><b>SOP / playbook 沉淀</b></td><td>把一次真实故障的排查过程和根因写成可复用经验，下次直接查</td></tr>
+  </table>
+</figure>
+
+<footer style="font-size:12.5px;color:#64748b;text-align:center;margin-top:6px">
+  依据 bug-finder 仓库快照 <span class="k">7e1b8157</span>（2026-09-16，main 分支）整理 · 本页自包含、无外部依赖，可离线打开 ·
+  想导出 PDF：浏览器 <span class="k">Cmd + P</span> → 方向选横向 → 缩放选“适应页面”
+</footer>
+
+</div>
+</body>
+</html>

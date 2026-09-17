@@ -158,6 +158,14 @@ def _request_core(
         }
     )
     cases = design.get("payload", {}).get("parent_cases", [])
+    provider_mappings = design.get("payload", {}).get("provider_case_mappings", [])
+    provider_case_by_ir = {
+        str(item.get("test_case_ir_id")): str(item.get("provider_case_id"))
+        for item in provider_mappings
+        if isinstance(item, Mapping)
+        and item.get("test_case_ir_id")
+        and item.get("provider_case_id")
+    }
     issues = n04_payload.get("issues", [])
     warnings = [
         dict(item)
@@ -175,6 +183,9 @@ def _request_core(
             if isinstance(ref, str)
         ]
         item.update(humanize_review_item(item))
+        provider_case_id = provider_case_by_ir.get(str(case.get("id") or ""))
+        if provider_case_id:
+            item["provider_case_id"] = provider_case_id
         review_items.append(item)
     skipped_scenarios = [
         dict(item)
@@ -205,7 +216,20 @@ def _request_core(
             "warning_count": len(warnings),
             "warnings": warnings,
             "decision_count": len(decision_items),
+            "provider_case_count": len(provider_case_by_ir),
+            "provider_case_mapping_complete": (
+                isinstance(provider_mappings, list)
+                and len(provider_case_by_ir) == len(provider_mappings)
+                and set(provider_case_by_ir) <= {
+                    str(case.get("id") or "")
+                    for case in cases
+                    if isinstance(case, Mapping)
+                }
+            ),
         },
+        "provider_case_mappings": list(provider_mappings)
+        if isinstance(provider_mappings, list)
+        else [],
         "review_items": review_items,
         "skipped_scenarios": skipped_scenarios,
         "decision_items": decision_items,

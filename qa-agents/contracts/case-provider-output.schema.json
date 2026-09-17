@@ -6,14 +6,25 @@
   "properties": {
     "metadata": {
       "type": "object",
-      "required": ["mode", "provider_commit", "output_contract", "side_effects"],
+      "required": [
+        "mode",
+        "provider_commit",
+        "output_contract",
+        "side_effects",
+        "workflow_run_id",
+        "source_snapshot_id",
+        "input_bundle_hash"
+      ],
       "properties": {
         "mode": {"const": "artifact_only"},
         "provider_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
         "output_contract": {"const": "case-provider-output/1.0"},
         "side_effects": {"type": "array", "maxItems": 0},
+        "workflow_run_id": {"type": "string", "minLength": 1},
+        "source_snapshot_id": {"type": "string", "minLength": 1},
+        "input_bundle_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
         "source_format": {"enum": ["json", "markdown_table"]},
-        "source_refs": {"type": "array"}
+        "source_refs": {"type": "array", "minItems": 1}
       },
       "additionalProperties": true
     },
@@ -31,7 +42,18 @@
           "steps",
           "expected",
           "source_refs"
-        ]
+        ],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "feature": {"type": "string", "minLength": 1},
+          "title": {"type": "string", "minLength": 1},
+          "priority": {"enum": ["P0", "P1", "P2"]},
+          "case_type": {"type": "string", "minLength": 1},
+          "preconditions": {"type": "array"},
+          "steps": {"type": "array", "minItems": 1},
+          "expected": {"type": "array", "minItems": 1},
+          "source_refs": {"type": "array", "minItems": 1}
+        }
       }
     }
   },

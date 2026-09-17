@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "provider-case-mapping/1.0",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["provider_case_id", "test_case_ir_id"],
+    "properties": {
+      "provider_case_id": {"type": "string", "minLength": 1},
+      "test_case_ir_id": {"type": "string", "minLength": 1}
+    },
+    "additionalProperties": false
+  }
+}

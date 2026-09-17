@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>服务端需求自动化测试</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --line: #d8dee6;
+      --text: #17212b;
+      --muted: #62707d;
+      --blue: #1668b3;
+      --blue-bg: #eaf3fb;
+      --green: #22704a;
+      --green-bg: #edf7f1;
+      --orange: #b96b09;
+      --orange-bg: #fff5e6;
+      --purple: #6a45b5;
+      --purple-bg: #f3effd;
+      --red: #bd2f4a;
+      --red-bg: #fdf0f3;
+      --dark: #1d2b3a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      color: var(--text);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    .page { max-width: 1480px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: end;
+      padding: 22px 26px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    .subtitle { margin: 0; max-width: 900px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .date { flex: none; color: var(--muted); font-size: 12px; text-align: right; }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(150px, 1fr));
+      gap: 8px;
+      margin: 14px 0;
+    }
+    .architecture div {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .architecture b { display: block; margin-bottom: 3px; font-size: 13px; }
+
+    .runtime-flow {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+    .runtime-flow h2 { margin: 0 0 6px; font-size: 18px; }
+    .runtime-flow > p { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .lifecycle {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(145px, 1fr));
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .lifecycle-step {
+      position: relative;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .lifecycle-step::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -12px;
+      transform: translateY(-50%);
+      color: #8b98a5;
+      font-size: 12px;
+    }
+    .lifecycle-step:last-child::after { content: none; }
+    .lifecycle-step b { display: block; margin-bottom: 4px; font-size: 12.5px; }
+    .branch {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(200px, 1fr));
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+    .branch div {
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .branch b { display: block; margin-bottom: 4px; }
+    .branch .agent { background: var(--blue-bg); color: var(--blue); }
+    .branch .deterministic { background: var(--green-bg); color: var(--green); }
+    .branch .human { background: var(--orange-bg); color: var(--orange); }
+    .task-dag {
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+    .task-dag svg {
+      display: block;
+      width: 4520px;
+      height: 950px;
+      max-width: none;
+    }
+    .dag-title { font-size: 20px; font-weight: 700; fill: var(--text); }
+    .dag-subtitle { font-size: 13px; fill: var(--muted); }
+    .dag-lane { fill: #f6f8fa; stroke: #e2e7ec; rx: 12; }
+    .dag-lane-title { font-size: 13px; font-weight: 700; fill: #52606d; }
+    .dag-edge { fill: none; stroke: #7c8b99; stroke-width: 1.8; marker-end: url(#dag-arrow); }
+    .dag-loop { fill: none; stroke: #bd2f4a; stroke-width: 1.8; stroke-dasharray: 6 5; marker-end: url(#dag-arrow-red); }
+    .dag-label { font-size: 11px; fill: #62707d; }
+    .dag-label-red { font-size: 11px; fill: #bd2f4a; font-weight: 700; }
+    .dag-box { stroke-width: 1.4; rx: 9; }
+    .dag-box-title { font-size: 13px; font-weight: 700; }
+    .dag-text { font-size: 11px; fill: #4c5967; }
+    .dag-agent rect { fill: var(--blue-bg); stroke: #88b9df; }
+    .dag-agent .dag-box-title { fill: var(--blue); }
+    .dag-deterministic rect { fill: var(--green-bg); stroke: #83ccab; }
+    .dag-deterministic .dag-box-title { fill: var(--green); }
+    .dag-human rect { fill: var(--orange-bg); stroke: #e2ac64; }
+    .dag-human .dag-box-title { fill: var(--orange); }
+    .dag-decision rect { fill: var(--purple-bg); stroke: #bba9e9; }
+    .dag-decision .dag-box-title { fill: var(--purple); }
+    .dag-risk rect { fill: var(--red-bg); stroke: #e9a3b3; }
+    .dag-risk .dag-box-title { fill: var(--red); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(240px, 1fr));
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+    .stage {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 0;
+    }
+    .stage-head {
+      padding: 9px 11px;
+      border-radius: 8px;
+      background: var(--dark);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .stage-head span { display: block; margin-top: 3px; font-weight: 400; font-size: 11px; opacity: .82; }
+    .node {
+      position: relative;
+      padding: 10px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    .node::after {
+      content: "↓";
+      position: absolute;
+      left: 50%;
+      bottom: -16px;
+      transform: translateX(-50%);
+      color: #8b98a5;
+      font-size: 12px;
+    }
+    .node:last-child::after { content: none; }
+    .node b { display: block; margin-bottom: 3px; font-size: 13px; }
+    .agent { border-color: #b9d8f1; background: var(--blue-bg); }
+    .agent b { color: var(--blue); }
+    .deterministic { border-color: #b9dfd0; background: var(--green-bg); }
+    .deterministic b { color: var(--green); }
+    .human { border-color: #f0c58b; background: var(--orange-bg); }
+    .human b { color: var(--orange); }
+    .decision { border-color: #cfc2f0; background: var(--purple-bg); }
+    .decision b { color: var(--purple); }
+    .risk { border-color: #efb3c2; background: var(--red-bg); }
+    .risk b { color: var(--red); }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      margin-top: 6px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.78);
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .loops {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(240px, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .loop-card {
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .loop-card h3 { margin: 0 0 7px; font-size: 14px; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      font-size: 12px;
+    }
+    .legend span { padding: 4px 8px; border-radius: 6px; }
+
+    footer {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid #e5c46b;
+      border-radius: 10px;
+      background: #fff9e8;
+      color: #62500f;
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    @media (max-width: 1100px) {
+      .flow, .loops { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+      .architecture { grid-template-columns: repeat(3, minmax(150px, 1fr)); }
+      .lifecycle { grid-template-columns: repeat(3, minmax(140px, 1fr)); }
+      .lifecycle-step::after { content: none; }
+      header { display: block; }
+      .date { margin-top: 10px; text-align: left; }
+    }
+    @media (max-width: 680px) {
+      body { padding: 12px; }
+      .flow, .loops, .architecture { grid-template-columns: 1fr; }
+      .lifecycle, .branch { grid-template-columns: 1fr; }
+      .task-dag { margin: 0 -12px; padding: 0 12px; }
+    }
+    @media print {
+      body { padding: 0; background: #fff; }
+      header, .flow, .loop-card, .legend, footer { break-inside: avoid; }
+      .node::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <div>
+      <h1>服务端需求自动化测试</h1>
+      <p class="subtitle">
+        核心思路：输入先冻结，Agent 只输出结构化 Artifact，确定性程序负责校验与执行，
+        人工只在 G01/G02/G03 签核；C1-C8 是用户视图，真实调度事实来自内容寻址 Artifact。
+      </p>
+    </div>
+    <div class="date">更新：2026-09-15<br>来源：QA_AGENT_ALL_IN_ONE.md</div>
+  </header>
+
+  <section class="architecture" aria-label="系统分层">
+    <div><b>Multica 控制面</b>父卡、阶段卡、Agent Run、评论、附件</div>
+    <div><b>统一监听编排</b>注册表、扫描锁、分发授权、准确性熔断</div>
+    <div><b>Agent Runtime</b>Profile、Prompt、Skill、模型与工具边界</div>
+    <div><b>确定性质量运行时</b>路由、校验、编译、执行、聚合、准出</div>
+    <div><b>契约策略知识</b>Schema、策略、能力目录、Provider、Oracle</div>
+    <div><b>审计存储</b>Artifact hash、事件链、执行证据、决策回执</div>
+  </section>
+
+  <section class="runtime-flow" aria-label="每个节点的运转流程">
+    <h2>节点运转流程</h2>
+    <p>
+      每个节点都遵循同一条调度与验收链路。区别只在中间执行体：Agent 节点由模型输出候选 Artifact，
+      确定性节点由本地程序计算，人工 Gate 由白名单成员提交结构化评论。阶段卡只做展示，不能反向驱动调度。
+    </p>
+
+    <div class="lifecycle">
+      <div class="lifecycle-step"><b>1. 事件唤醒</b>monitor 扫描评论、Issue、Run、Artifact 与注册表变化</div>
+      <div class="lifecycle-step"><b>2. 状态对账</b>读取 Spec、上游 Artifact、策略和 DAG，确认当前节点</div>
+      <div class="lifecycle-step"><b>3. 计划授权</b>Planner 生成节点计划，Supervisor 校验并写入计划哈希</div>
+      <div class="lifecycle-step"><b>4. 分发执行</b>创建 Agent Issue 或运行确定性程序；单 Run 加锁串行</div>
+      <div class="lifecycle-step"><b>5. 输出校验</b>校验 Schema、语义、来源、附件、模型、工具轨迹和哈希</div>
+      <div class="lifecycle-step"><b>6. 推进投影</b>入库 Artifact → 更新 Spec → 刷新 C1-C8 → 派发下一步</div>
+    </div>
+
+    <div class="branch">
+      <div class="agent"><b>Agent 节点</b>下载冻结输入 → 生成结构化候选 → 附件/评论交付 → ingest-multica 校验 → 合法则入库</div>
+      <div class="deterministic"><b>确定性节点</b>读取上游 Artifact → 执行规则/编译/执行/聚合 → 直接输出 Artifact 或 blocked</div>
+      <div class="human"><b>人工 Gate</b>生成请求卡 → 白名单成员评论 → 校验 request/policy hash → 输出决策 Artifact</div>
+    </div>
+
+    <div class="task-dag" aria-label="多分支任务流转链路图" role="img">
+      <svg viewBox="0 0 4520 950" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="dag-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#7c8b99"></path>
+          </marker>
+          <marker id="dag-arrow-red" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#bd2f4a"></path>
+          </marker>
+        </defs>
+
+        <text class="dag-title" x="25" y="34">多分支任务流转链路</text>
+        <text class="dag-subtitle" x="25" y="58">蓝色 = Agent，绿色 = 确定性节点，橙色 = 人工 Gate，紫色 = 策略分流，红色虚线 = 回流 / 修复 / 阻断</text>
+
+        <g class="dag-deterministic dag-box" transform="translate(25,390)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">业务触发</text>
+          <text class="dag-text" x="12" y="45">新需求 / 变更 / 回归</text>
+          <text class="dag-text" x="12" y="61">创建独立 Run</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(190,390)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">INPUT-FREEZE</text>
+          <text class="dag-text" x="12" y="45">需求 / 方案 / commit</text>
+          <text class="dag-text" x="12" y="61">契约 / 策略 / 知识</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(355,390)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N00 路由</text>
+          <text class="dag-text" x="12" y="45">5 个模板 + L1/L2/L3</text>
+          <text class="dag-text" x="12" y="61">必要时问 A01</text>
+        </g>
+
+        <g class="dag-agent dag-box" transform="translate(530,105)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A02 需求分析</text>
+          <text class="dag-text" x="12" y="45">事实 / 规则 / 边界</text>
+          <text class="dag-text" x="12" y="61">开放问题</text>
+        </g>
+        <g class="dag-agent dag-box" transform="translate(530,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A03 技术分析</text>
+          <text class="dag-text" x="12" y="45">接口 / 数据 / 可测性</text>
+          <text class="dag-text" x="12" y="61">技术证据</text>
+        </g>
+        <g class="dag-agent dag-box" transform="translate(530,495)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A05 变更分析</text>
+          <text class="dag-text" x="12" y="45">ChangeSet / 服务路径</text>
+          <text class="dag-text" x="12" y="61">接口影响</text>
+        </g>
+        <g class="dag-agent dag-box" transform="translate(715,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A06 对齐</text>
+          <text class="dag-text" x="12" y="45">需求 vs 方案 vs 实现</text>
+          <text class="dag-text" x="12" y="61">输出待确认问题</text>
+        </g>
+
+        <g class="dag-human dag-box" transform="translate(880,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">G01 范围签核</text>
+          <text class="dag-text" x="12" y="45">白名单人工评论</text>
+          <text class="dag-text" x="12" y="61">确认口径 / 责任</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(1045,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N24 风险策略</text>
+          <text class="dag-text" x="12" y="45">规则优先</text>
+          <text class="dag-text" x="12" y="61">未知项才问 A07</text>
+        </g>
+
+        <g class="dag-agent dag-box" transform="translate(1210,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A08 测试设计</text>
+          <text class="dag-text" x="12" y="45">Test Intent</text>
+          <text class="dag-text" x="12" y="61">Test Case IR</text>
+        </g>
+        <g class="dag-agent dag-box" transform="translate(1375,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A09 独立审查</text>
+          <text class="dag-text" x="12" y="45">Oracle / 覆盖义务</text>
+          <text class="dag-text" x="12" y="61">来源 / 缺口</text>
+        </g>
+        <g class="dag-decision dag-box" transform="translate(1540,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N04 IR 门禁</text>
+          <text class="dag-text" x="12" y="45">契约 / 反馈闭环</text>
+          <text class="dag-text" x="12" y="61">自动预算控制</text>
+        </g>
+        <g class="dag-risk dag-box" transform="translate(1540,520)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A08 定向修正</text>
+          <text class="dag-text" x="12" y="45">只修当前反馈</text>
+          <text class="dag-text" x="12" y="61">再经 A09 / N04</text>
+        </g>
+        <g class="dag-risk dag-box" transform="translate(1540,710)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">人工恢复</text>
+          <text class="dag-text" x="12" y="45">预算耗尽</text>
+          <text class="dag-text" x="12" y="61">授权后重进链路</text>
+        </g>
+        <g class="dag-human dag-box" transform="translate(1705,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">G02 Case 审核</text>
+          <text class="dag-text" x="12" y="45">Case / Oracle / 数据</text>
+          <text class="dag-text" x="12" y="61">层责任 / Provider</text>
+        </g>
+
+        <g class="dag-deterministic dag-box" transform="translate(1870,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N25 Case 编译</text>
+          <text class="dag-text" x="12" y="45">父子关系</text>
+          <text class="dag-text" x="12" y="61">层责任 / 继承</text>
+        </g>
+        <g class="dag-agent dag-box" transform="translate(2035,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A11 拆分审查</text>
+          <text class="dag-text" x="12" y="45">漏测 / 重复</text>
+          <text class="dag-text" x="12" y="61">跨层责任</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(2200,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N26 测试选择</text>
+          <text class="dag-text" x="12" y="45">强制 / 跳过 / 置信</text>
+          <text class="dag-text" x="12" y="61">A12 只能建议扩大</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(2365,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N15 执行计划</text>
+          <text class="dag-text" x="12" y="45">generate / run</text>
+          <text class="dag-text" x="12" y="61">manual / skip</text>
+        </g>
+
+        <g class="dag-agent dag-box" transform="translate(2540,105)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A14 / A15</text>
+          <text class="dag-text" x="12" y="45">服务端 / 契约候选</text>
+          <text class="dag-text" x="12" y="61">artifact-only</text>
+        </g>
+        <g class="dag-agent dag-box" transform="translate(2540,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A22 数据规划</text>
+          <text class="dag-text" x="12" y="45">资源 / 数据意图</text>
+          <text class="dag-text" x="12" y="61">歧义保持 unresolved</text>
+        </g>
+        <g class="dag-agent dag-box" transform="translate(2710,105)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">A18-BE / CT</text>
+          <text class="dag-text" x="12" y="45">独立复核候选</text>
+          <text class="dag-text" x="12" y="61">代码 / 契约 / 权限</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(2710,300)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N28 / N27</text>
+          <text class="dag-text" x="12" y="45">资源 DAG</text>
+          <text class="dag-text" x="12" y="61">namespace / cleanup</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(2880,195)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N05 汇合检查</text>
+          <text class="dag-text" x="12" y="45">语法 / 哈希 / 命令</text>
+          <text class="dag-text" x="12" y="61">路径 / 凭证 / 权限</text>
+        </g>
+        <g class="dag-human dag-box" transform="translate(3045,195)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">G03 候选审核</text>
+          <text class="dag-text" x="12" y="45">人工确认候选</text>
+          <text class="dag-text" x="12" y="61">全部不适用可跳过</text>
+        </g>
+
+        <g class="dag-deterministic dag-box" transform="translate(3210,195)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N07 环境预检</text>
+          <text class="dag-text" x="12" y="45">部署 / 账号 / Flag</text>
+          <text class="dag-text" x="12" y="61">租户 / 数据 / 锁</text>
+        </g>
+        <g class="dag-risk dag-box" transform="translate(3210,470)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N16 环境修复</text>
+          <text class="dag-text" x="12" y="45">幂等 / 覆盖失败项</text>
+          <text class="dag-text" x="12" y="61">补偿 / 修复后重检</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(3380,195)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N08 受控执行</text>
+          <text class="dag-text" x="12" y="45">setup / readiness / test</text>
+          <text class="dag-text" x="12" y="61">cleanup / 证据 / 脱敏</text>
+        </g>
+
+        <g class="dag-risk dag-box" transform="translate(3545,60)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N10 重试预算</text>
+          <text class="dag-text" x="12" y="45">仅基础设施失败</text>
+          <text class="dag-text" x="12" y="61">业务失败不可重试</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(3545,195)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N17 结果收口</text>
+          <text class="dag-text" x="12" y="45">未执行用例</text>
+          <text class="dag-text" x="12" y="61">人工结果汇合</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(3545,330)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N09 证据聚类</text>
+          <text class="dag-text" x="12" y="45">标准化执行证据</text>
+          <text class="dag-text" x="12" y="61">失败指纹 / 根因</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(3710,60)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N18 质量信号</text>
+          <text class="dag-text" x="12" y="45">覆盖 / Flaky / 隔离</text>
+          <text class="dag-text" x="12" y="61">运行风险信号</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(3710,330)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N20 缺陷去重</text>
+          <text class="dag-text" x="12" y="45">create / link</text>
+          <text class="dag-text" x="12" y="61">reopen / needs_human</text>
+        </g>
+        <g class="dag-decision dag-box" transform="translate(3875,195)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N11 准出判定</text>
+          <text class="dag-text" x="12" y="45">passed / blocked</text>
+          <text class="dag-text" x="12" y="61">inconclusive</text>
+        </g>
+        <g class="dag-risk dag-box" transform="translate(3875,520)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N19 豁免审计</text>
+          <text class="dag-text" x="12" y="45">申请 / 理由 / 责任人</text>
+          <text class="dag-text" x="12" y="61">授权与期限留痕</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(4040,195)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N12 质量报告</text>
+          <text class="dag-text" x="12" y="45">JSON / Markdown</text>
+          <text class="dag-text" x="12" y="61">HTML / 证据索引</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(4205,195)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N13 反馈入口</text>
+          <text class="dag-text" x="12" y="45">报告反馈归档</text>
+          <text class="dag-text" x="12" y="61">进入评估集</text>
+        </g>
+        <g class="dag-deterministic dag-box" transform="translate(4370,195)">
+          <rect class="dag-box" width="145" height="78"></rect>
+          <text class="dag-box-title" x="12" y="24">N23 上线后审计</text>
+          <text class="dag-text" x="12" y="45">验证授权 / 范围</text>
+          <text class="dag-text" x="12" y="61">时间与结论留痕</text>
+        </g>
+
+        <path class="dag-edge" d="M170,429 H190"></path>
+        <path class="dag-edge" d="M335,429 H355"></path>
+        <path class="dag-edge" d="M500,429 C520,429 510,144 530,144"></path>
+        <path class="dag-edge" d="M500,429 H530"></path>
+        <path class="dag-edge" d="M500,429 C520,429 510,534 530,534"></path>
+        <path class="dag-edge" d="M675,144 C700,144 690,339 715,339"></path>
+        <path class="dag-edge" d="M675,339 H715"></path>
+        <path class="dag-edge" d="M675,534 C700,534 690,339 715,339"></path>
+        <path class="dag-edge" d="M860,339 H880"></path>
+        <path class="dag-edge" d="M1025,339 H1045"></path>
+        <path class="dag-edge" d="M1190,339 H1210"></path>
+        <path class="dag-edge" d="M1355,339 H1375"></path>
+        <path class="dag-edge" d="M1520,339 H1540"></path>
+        <path class="dag-edge" d="M1685,339 H1705"></path>
+        <text class="dag-label" x="1688" y="326">valid</text>
+        <path class="dag-loop" d="M1612,378 V520"></path>
+        <text class="dag-label-red" x="1622" y="455">invalid</text>
+        <path class="dag-loop" d="M1540,559 C1200,559 1180,410 1210,378"></path>
+        <text class="dag-label-red" x="1300" y="548">修正后回 A08</text>
+        <path class="dag-loop" d="M1540,749 C1160,749 1140,410 1210,378"></path>
+        <text class="dag-label-red" x="1280" y="738">人工恢复</text>
+        <path class="dag-loop" d="M1777,378 C1777,640 1230,640 1230,378"></path>
+        <text class="dag-label-red" x="1440" y="632">G02 returned → A08 v1.4.0</text>
+        <path class="dag-edge" d="M1850,339 H1870"></path>
+        <path class="dag-edge" d="M2015,339 H2035"></path>
+        <path class="dag-edge" d="M2180,339 H2200"></path>
+        <path class="dag-edge" d="M2345,339 H2365"></path>
+        <path class="dag-edge" d="M2510,339 C2530,339 2520,144 2540,144"></path>
+        <path class="dag-edge" d="M2510,339 H2540"></path>
+        <path class="dag-edge" d="M2685,144 H2710"></path>
+        <path class="dag-edge" d="M2685,339 H2710"></path>
+        <path class="dag-edge" d="M2855,144 C2880,144 2870,234 2880,234"></path>
+        <path class="dag-edge" d="M2855,339 C2880,339 2870,234 2880,234"></path>
+        <path class="dag-edge" d="M3025,234 H3045"></path>
+        <path class="dag-edge" d="M3190,234 H3210"></path>
+        <path class="dag-loop" d="M3282,273 V470"></path>
+        <text class="dag-label-red" x="3292" y="380">预检失败</text>
+        <path class="dag-loop" d="M3210,509 C3170,509 3170,310 3210,273"></path>
+        <text class="dag-label-red" x="3120" y="500">修复后重检</text>
+        <path class="dag-edge" d="M3355,234 H3380"></path>
+        <path class="dag-edge" d="M3525,234 C3540,234 3530,99 3545,99"></path>
+        <path class="dag-edge" d="M3525,234 H3545"></path>
+        <path class="dag-edge" d="M3525,234 C3540,234 3530,369 3545,369"></path>
+        <text class="dag-label" x="3532" y="180">基础设施失败</text>
+        <text class="dag-label" x="3532" y="310">业务失败 / 证据</text>
+        <path class="dag-edge" d="M3690,99 H3710"></path>
+        <path class="dag-edge" d="M3690,234 C3710,234 3700,120 3710,120"></path>
+        <path class="dag-edge" d="M3690,369 H3710"></path>
+        <path class="dag-edge" d="M3855,120 C3880,120 3870,234 3875,234"></path>
+        <path class="dag-edge" d="M3855,369 C3880,369 3870,250 3875,250"></path>
+        <path class="dag-loop" d="M3947,273 V520"></path>
+        <text class="dag-label-red" x="3957" y="410">豁免</text>
+        <path class="dag-loop" d="M3875,559 C3980,559 3990,300 4020,273"></path>
+        <text class="dag-label-red" x="3940" y="590">审计后回报告</text>
+        <path class="dag-edge" d="M4020,234 H4040"></path>
+        <path class="dag-edge" d="M4185,234 H4205"></path>
+        <path class="dag-edge" d="M4350,234 H4370"></path>
+      </svg>
+    </div>
+  </section>
+
+  <section class="flow" aria-label="C1 到 C8 主流程">
+    <article class="stage">
+      <div class="stage-head">C1 需求分析与变更对齐<span>先固定事实，再让 Agent 判断</span></div>
+      <div class="node deterministic"><b>INPUT-FREEZE</b>需求、方案、仓库 commit、契约、策略、知识快照全部冻结<span class="badge">source_snapshot_id</span></div>
+      <div class="node deterministic"><b>N00 模板路由</b>5 个确定性模板 + L1/L2/L3 深度；无法判定才问 A01</div>
+      <div class="node agent"><b>A02 / A03 / A05</b>需求事实、技术可测性、服务端变更分析并行展开</div>
+      <div class="node agent"><b>A06 对齐分析</b>找需求、方案和实现的偏差、缺口与冲突</div>
+    </article>
+
+    <article class="stage">
+      <div class="stage-head">C2 范围确认与测试策略<span>人工先冻结业务口径</span></div>
+      <div class="node human"><b>G01 范围与口径签核</b>白名单人工逐项评论；Issue 状态不是审批<span class="badge">g01-comment-table/1.0</span></div>
+      <div class="node deterministic"><b>N24 风险与策略</b>规则优先确定风险等级、必测层和测试深度</div>
+      <div class="node agent"><b>A07 兜底建议</b>仅未知项触发，不能覆盖规则</div>
+    </article>
+
+    <article class="stage">
+      <div class="stage-head">C3 测试设计与审核<span>生成与审查分离</span></div>
+      <div class="node agent"><b>A08 测试设计</b>生成 Test Intent / Test Case IR，支持定向修正</div>
+      <div class="node agent"><b>A09 独立审查</b>复核 Oracle、覆盖义务、来源和缺口</div>
+      <div class="node decision"><b>N04 IR 门禁</b>失败回流 A08；自动预算耗尽转人工恢复</div>
+      <div class="node human"><b>G02 Case 审核</b>approved 才进 N25；returned 触发 A08 v1.4.0</div>
+    </article>
+
+    <article class="stage">
+      <div class="stage-head">C4 Case 编译与执行计划<span>框架无关模型进入执行策略</span></div>
+      <div class="node deterministic"><b>N25 父子 Case 编译</b>父子关系、层责任、期望继承和哈希绑定</div>
+      <div class="node agent"><b>A11 拆分审查</b>检查跨层责任、遗漏和过度拆分</div>
+      <div class="node deterministic"><b>N26 测试选择</b>策略强制/跳过/置信度；A12 只能建议扩大</div>
+      <div class="node deterministic"><b>N15 Execution Plan</b>generate / update / run / manual / skip</div>
+    </article>
+
+    <article class="stage">
+      <div class="stage-head">C5 自动化与测试数据准备<span>先候选，后审查，不直接写业务仓</span></div>
+      <div class="node agent"><b>A14 / A15</b>服务端与契约自动化 artifact-only 候选</div>
+      <div class="node agent"><b>A22 测试数据规划</b>从 Case 语义推断资源与数据意图</div>
+      <div class="node deterministic"><b>N28 / N27</b>资源 DAG、namespace、setup-cleanup、Secret 校验</div>
+      <div class="node agent"><b>A18-BE / A18-CT</b>独立审查代码、契约、Oracle 与权限</div>
+      <div class="node deterministic"><b>N05 + G03</b>候选确定性检查后人工审核；全部不适用可跳过 G03</div>
+    </article>
+
+    <article class="stage">
+      <div class="stage-head">C6 环境预检与执行<span>参考 Runner，非生产隔离</span></div>
+      <div class="node deterministic"><b>N07 环境预检</b>部署、依赖、账号、Flag、租户、namespace、资源锁</div>
+      <div class="node deterministic"><b>N16 环境修复</b>幂等键、期望态、补偿和失败覆盖检查</div>
+      <div class="node deterministic"><b>N08 受控执行</b>无 shell、最小环境、超时、并行、日志脱敏</div>
+      <div class="node decision"><b>N10 / N17</b>基础设施失败重试；未执行与人工结果收口</div>
+    </article>
+
+    <article class="stage">
+      <div class="stage-head">C7 证据归一与准出判定<span>证据不足不能伪装通过</span></div>
+      <div class="node deterministic"><b>N18 质量信号</b>覆盖、失败、Flaky、隔离和风险信号</div>
+      <div class="node deterministic"><b>N09 失败聚类</b>证据标准化、失败指纹、根因聚类</div>
+      <div class="node deterministic"><b>N20 缺陷去重</b>跨运行 create / link / reopen / needs_human</div>
+      <div class="node decision"><b>N11 准出判定</b>passed / blocked / inconclusive；豁免走 N19</div>
+    </article>
+
+    <article class="stage">
+      <div class="stage-head">C8 报告与关闭<span>留下可回放、可反馈、可追责的记录</span></div>
+      <div class="node deterministic"><b>N12 质量报告</b>JSON、Markdown、HTML 与证据索引</div>
+      <div class="node deterministic"><b>N13 反馈入口</b>人工反馈进入评估与修正闭环</div>
+      <div class="node deterministic"><b>N23 上线后审计</b>验证授权、范围、时间和结论留痕</div>
+    </article>
+  </section>
+
+  <section class="loops" aria-label="关键闭环">
+    <article class="loop-card">
+      <h3>测试设计修正闭环</h3>
+      A08 → A09 → N04：契约失败自动定向修正；预算耗尽进入人工恢复；G02 退回后走
+      A08 v1.4.0，再经 A09 / N04 复审。每一轮反馈 ID 精确绑定，旧问题不能冒充新修正。
+    </article>
+    <article class="loop-card">
+      <h3>Agent 输出摄入闭环</h3>
+      Issue / Run / 附件 / 评论 → 任务与工具轨迹审计 → Schema 与语义校验 → 上游哈希校验 →
+      Artifact 入库 → 投影 C1-C8。非法输出拒收，不能靠改卡片状态放行。
+    </article>
+    <article class="loop-card">
+      <h3>人工反馈评估闭环</h3>
+      人工修正保存原始输出、修正结果和错误类型，进入独立 Oracle 评估集；用于 Prompt、
+      Profile、策略和知识版本回归，指标恶化时停止灰度并回滚。
+    </article>
+  </section>
+
+  <section class="legend" aria-label="图例">
+    <span class="agent">Agent：模型判断 / 候选</span>
+    <span class="deterministic">确定性节点：程序校验 / 执行</span>
+    <span class="human">人工 Gate：签核与决策</span>
+    <span class="decision">策略决策：分流 / 回流 / 收口</span>
+    <span class="risk">风险边界：blocked / inconclusive</span>
+  </section>
+
+  <footer>
+    <b>分享时的边界说明：</b>当前是可审计参考实现，已真实打通 Multica 测试设计链和部分执行链；
+    生产隔离 Runner、TAPD/MR/发布/通知 Adapter、A16 E2E、生产模型灰度和完整语义评估仍未完成。
+    `completed_with_gaps`、本地提交或人工批准都不能解释为生产发布放行。
+  </footer>
+</main>
+</body>
+</html>

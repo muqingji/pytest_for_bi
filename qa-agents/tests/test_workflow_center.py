@@ -1,11 +1,16 @@
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
+from qa_agents import workflow_center
+from qa_agents.autopilot import SERVER_NODE_DEFINITIONS, SERVER_STAGE_CARD_DEFINITIONS
 from qa_agents.errors import ContractError
 from qa_agents.storage import ArtifactStore
 from qa_agents.workflow_center import (
+    _assert_own_mention_only,
+    _bind_discovered_node_issues,
     _render_stage_card_markdown,
     _stage_cards,
     build_workflow_projection,
@@ -304,6 +309,63 @@ def test_g02_review_items_render_on_cockpit_and_stage_card() -> None:
     assert "审批项：请打开审核入口查看具体审批项。" not in stage_markdown
 
 
+
+def test_a22_cockpit_uses_locked_two_section_format() -> None:
+    spec = workflow_spec()
+    approval_items = [
+        {
+            "id": "UR-02",
+            "requirement_id": "UR-02",
+            "title": "历史场景缺老图",
+            "category": "test_data_pending_human",
+            "human_title": "历史场景缺老图",
+            "reason_code": "historical_pre_change_assets_missing",
+            "review_kind": "owner",
+            "product_scene": "要证明改前就能看的图，改后还能看。",
+            "data_to_build": "变更前就存在的统计图。",
+            "plain_summary": "这只能用改前就存在的图。",
+            "why_human": "系统造不出来，只有你知道 112 里有没有这些材料。",
+            "needed_from_you": "没有改前老图，就只能这轮不测历史兼容。",
+            "provide_from_you": "若 112 有改前就存在的图，写下名称或 ID。",
+            "confirm_action": "有老图就 confirmed。没有就 skip。",
+            "summary": "这只能用改前就存在的图。",
+            "affected_case_ids": ["TC-BE-HIST"],
+        },
+        {
+            "id": "UR-01",
+            "requirement_id": "UR-01",
+            "title": "确认新建统计图",
+            "category": "test_data_pending_human",
+            "human_title": "确认新建统计图",
+            "reason_code": "stat_chart_integrity_probes_missing",
+            "review_kind": "system",
+            "product_scene": "查看明细要在真实统计图上测。",
+            "data_to_build": "自定义维度统计图。",
+            "plain_summary": "112 没有现成测试图，本应新建。",
+            "why_human": "系统缺造数能力或验真步骤，不该问你要不要建。",
+            "needed_from_you": "不需要你审。这是系统自己该去造的数据，不是产品口径。",
+            "confirm_action": "不用回评论。系统默认按新建继续。",
+            "summary": "112 没有现成测试图，本应新建。",
+            "affected_case_ids": ["TC-BE-CHART"],
+        },
+    ]
+    spec["actions"][0]["approval_items"] = approval_items
+    spec["actions"][0]["item_count"] = 1
+    spec["actions"][0]["gate_id"] = "A22"
+    spec["actions"][0]["title"] = "112 测试数据规划"
+    markdown = render_workflow_center_markdown(build_workflow_projection(spec))
+    assert "## 你需要处理" in markdown
+    assert "## 系统要去造的数据（不用你审）" in markdown
+    assert "要测什么：" in markdown
+    assert "要造什么：" in markdown
+    assert "产品场景：" not in markdown
+    owner, system = markdown.split("## 系统要去造的数据（不用你审）", 1)
+    assert "请拍板：" in owner
+    assert "处置评论：`UR-02: confirmed/skip/return/need_evidence`" in owner
+    assert "请拍板：" not in system.split("操作选项：", 1)[0]
+    assert "处置评论：" not in system.split("操作选项：", 1)[0]
+
+
 def test_human_action_without_approval_items_renders_fallback_hint() -> None:
     projection = build_workflow_projection(workflow_spec())
     markdown = render_workflow_center_markdown(projection)
@@ -421,10 +483,11 @@ def test_stage_card_exception_section_points_to_human_entry() -> None:
     markdown = _render_stage_card_markdown("C3", "测试设计与审核", [blocked, waiting])
     assert "A09" in markdown
     assert "发现 2 个阻塞问题需人工定向修正" in markdown
-    assert (
-        "处理入口：[QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)，"
-        "见下方人工操作" in markdown
-    )
+    a09_line = next(line for line in markdown.splitlines() if line.startswith("- `A09`："))
+    # The blocked node names the entry point as plain text: an Issue mention
+    # would render with the waiting node's status on the blocked node's row.
+    assert a09_line.endswith("（处理入口：`QAA-325`，见下方人工操作）")
+    assert "mention://" not in a09_line
     assert (
         "操作：打开 [QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)"
         "（人工修正 Issue，状态 in_review）：" in markdown
@@ -456,6 +519,8 @@ def test_stage_card_renders_stage_tasks_with_clickable_issue_links() -> None:
             "state": "not_started",
             "stage_card_id": "C2",
             "stage_card_title": "范围确认与测试策略",
+            "stage_issue_id": "issue-c2",
+            "stage_issue_identifier": "QAA-C2",
         },
         {
             "node_id": "N04",
@@ -474,10 +539,52 @@ def test_stage_card_renders_stage_tasks_with_clickable_issue_links() -> None:
     assert "## 阶段任务" in markdown
     assert "- `A08` 测试设计 · 已完成 · [QAA-A08](mention://issue/issue-a08-execution)" in markdown
     assert "- `N24` 风险与测试策略 · 未开始" in markdown
+    assert "[QAA-C2](mention://issue/issue-c2)" not in markdown
     assert (
         "- `N04` Test Case IR 校验 · 等待人工 · "
         "[QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)" in markdown
     )
+
+
+def test_discovered_issue_refreshes_missing_identifier(tmp_path: Path) -> None:
+    projection = {
+        "workflow_run_id": "run-1",
+        "nodes": [
+            {
+                "node_id": "A08",
+                "execution_id": "A08-run-1",
+                "state": "queued",
+                "issue_id": "issue-a08",
+                "issue_identifier": None,
+            }
+        ],
+    }
+    config = {
+        "discover_node_issues": True,
+        "internal_project_id": "internal-project",
+        "workspace_id": "workspace",
+    }
+
+    def runner(command, stdin=None):
+        if command[:3] != ["multica", "issue", "list"]:
+            if command[:3] == ["multica", "issue", "runs"]:
+                return []
+            raise AssertionError(f"unexpected command: {command}")
+        return {
+            "issues": [
+                {
+                    "id": "issue-a08",
+                    "identifier": "QAA-A08",
+                    "title": "[run-1] A08 测试设计",
+                    "status": "in_progress",
+                    "created_at": "2026-09-15T00:00:00Z",
+                }
+            ]
+        }
+
+    enriched = _bind_discovered_node_issues(projection, config, runner)
+    assert enriched["nodes"][0]["issue_id"] == "issue-a08"
+    assert enriched["nodes"][0]["issue_identifier"] == "QAA-A08"
 
 
 def test_stage_card_marks_not_started_node_with_blocking_decision() -> None:
@@ -503,10 +610,13 @@ def test_stage_card_marks_not_started_node_with_blocking_decision() -> None:
         "state": "not_started",
     }
     markdown = _render_stage_card_markdown("C3", "测试设计与审核", [g02, n04])
-    assert (
+    g02_line = next(line for line in markdown.splitlines() if "`G02`" in line)
+    assert g02_line == (
         "- `G02` Test Case IR 人工审核 · 未开始 · 卡在 `N04` Test Case IR 校验 的决策"
-        "（[QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)）" in markdown
     )
+    # The blocker mention would render with the blocker's own status chip, so a
+    # not-started node must never carry the upstream Issue link.
+    assert "QAA-325" not in g02_line
 
 
 def test_stage_card_marks_cross_card_upstream_decision() -> None:
@@ -534,11 +644,358 @@ def test_stage_card_marks_cross_card_upstream_decision() -> None:
     markdown = _render_stage_card_markdown(
         "C4", "用例编译与选择", [n25], all_nodes=[n25, n04]
     )
-    assert (
+    n25_line = next(line for line in markdown.splitlines() if "`N25`" in line)
+    assert n25_line == (
         "- `N25` 父子 Case 编译 · 未开始 · 卡在 `N04` Test Case IR 校验 的决策"
-        "（上游 C3 · [QAA-325](mention://issue/7a6c629c-100b-4a8b-9eb2-1fab1f24635d)）"
-        in markdown
+        "（上游 C3）"
     )
+    assert "QAA-325" not in n25_line
+
+
+def test_stage_card_attributes_contract_review_to_pending_data_gate() -> None:
+    a22 = {
+        "node_id": "A22",
+        "label": "112 测试数据规划",
+        "stage": 15,
+        "stage_card_id": "C5",
+        "state": "waiting_human",
+        "issue_id": "issue-a22",
+        "issue_identifier": "QAA-503",
+    }
+    a18_ct = {
+        "node_id": "A18-CT",
+        "label": "契约自动化独立复核",
+        "stage": 16,
+        "stage_card_id": "C5",
+        "state": "not_started",
+        "result_summary": "等待上游节点",
+    }
+
+    markdown = _render_stage_card_markdown(
+        "C5", "自动化与测试数据准备", [a18_ct], all_nodes=[a18_ct, a22]
+    )
+
+    assert "卡在 `A22` 112 测试数据规划" in markdown
+    assert "`A18-CT` 契约自动化独立复核 · 未开始" in markdown
+
+
+def test_stage_card_attributes_same_stage_generator_to_pending_data_gate() -> None:
+    a22 = {
+        "node_id": "A22",
+        "label": "112 测试数据规划",
+        "stage": 15,
+        "stage_card_id": "C5",
+        "state": "waiting_human",
+        "issue_id": "issue-a22",
+        "issue_identifier": "QAA-539",
+    }
+    a14 = {
+        "node_id": "A14",
+        "label": "服务端自动化生成",
+        "stage": 15,
+        "stage_card_id": "C5",
+        "state": "not_started",
+        "result_summary": "等待上游节点",
+    }
+
+    markdown = _render_stage_card_markdown(
+        "C5", "自动化与测试数据准备", [a14], all_nodes=[a14, a22]
+    )
+
+    a14_line = next(line for line in markdown.splitlines() if "`A14`" in line)
+    assert a14_line == (
+        "- `A14` 服务端自动化生成 · 未开始 · 卡在 `A22` 112 测试数据规划 的决策"
+    )
+    assert "QAA-539" not in a14_line
+
+
+def test_stage_card_rows_show_only_their_own_state_and_issue() -> None:
+    """Regression for the live C5 card: six not-started rows displayed A22's
+    ``in_review`` chip because each row embedded the upstream A22 Issue link."""
+
+    a22 = {
+        "node_id": "A22",
+        "label": "112 测试数据规划",
+        "stage": 15,
+        "stage_card_id": "C5",
+        "state": "waiting_human",
+        "issue_id": "issue-a22",
+        "issue_identifier": "QAA-539",
+    }
+    n27 = {
+        "node_id": "N27",
+        "label": "测试数据计划安全校验",
+        "stage": 16,
+        "stage_card_id": "C5",
+        "state": "completed",
+        "issue_id": "issue-n27",
+        "issue_identifier": "QAA-542",
+    }
+    blocked_labels = [
+        ("A14", "服务端自动化生成"),
+        ("A15", "契约自动化生成"),
+        ("A18-BE", "服务端自动化独立复核"),
+        ("A18-CT", "契约自动化独立复核"),
+        ("N05", "自动化确定性代码检查"),
+        ("G03", "自动化代码审核（自动关闭/不需要人工）"),
+    ]
+    blocked = [
+        {
+            "node_id": node_id,
+            "label": label,
+            "stage": 15,
+            "stage_card_id": "C5",
+            "state": "not_started",
+            "result_summary": "等待上游节点",
+        }
+        for node_id, label in blocked_labels
+    ]
+    nodes = [a22, n27, *blocked]
+
+    markdown = _render_stage_card_markdown(
+        "C5", "自动化与测试数据准备", nodes, all_nodes=nodes
+    )
+
+    rows = _stage_task_rows(markdown)
+    assert set(rows) == {"A22", "N27", *(node_id for node_id, _label in blocked_labels)}
+    assert "`A22` 112 测试数据规划 · 等待人工 · " in rows["A22"]
+    assert rows["A22"].count("QAA-539") == 1
+    assert rows["N27"].count("QAA-542") == 1
+    for node_id, label in blocked_labels:
+        assert rows[node_id] == (
+            f"- `{node_id}` {label} · 未开始 · 卡在 `A22` 112 测试数据规划 的决策"
+        )
+
+
+def test_c5_g03_task_row_does_not_look_like_human_review() -> None:
+    """G03 auto-closes after N05; the C5 task list must not still say 人工审核."""
+
+    labels = {node_id: label for node_id, label, _stage in SERVER_NODE_DEFINITIONS}
+    g03_label = labels["G03"]
+    assert "人工审核" not in g03_label
+    assert "自动关闭" in g03_label
+    assert "不需要人工" in g03_label
+
+    markdown = _render_stage_card_markdown(
+        "C5",
+        "自动化与测试数据准备",
+        [
+            {
+                "node_id": "G03",
+                "label": g03_label,
+                "stage": 18,
+                "stage_card_id": "C5",
+                "state": "not_started",
+            }
+        ],
+    )
+    g03_line = next(line for line in markdown.splitlines() if "`G03`" in line)
+    assert g03_line.startswith("- `G03` ")
+    assert "人工审核" not in g03_line
+    assert "自动关闭" in g03_line
+    assert "不需要人工" in g03_line
+
+
+def test_c5_blocked_a18_be_shows_task_and_holds_downstream() -> None:
+    """A18-BE 阻塞时必须露出自己的任务卡，下游不得假装已推进。"""
+
+    a18 = {
+        "node_id": "A18-BE",
+        "label": "服务端自动化独立复核",
+        "stage": 16,
+        "stage_card_id": "C5",
+        "state": "blocked",
+        "result_summary": "Agent 已完成，产出入库失败或待人工处理",
+        "issue_id": "issue-a18",
+        "issue_identifier": "QAA-451",
+    }
+    n05 = {
+        "node_id": "N05",
+        "label": "自动化确定性代码检查",
+        "stage": 17,
+        "stage_card_id": "C5",
+        "state": "not_started",
+    }
+    g03 = {
+        "node_id": "G03",
+        "label": "自动化代码审核（自动关闭/不需要人工）",
+        "stage": 18,
+        "stage_card_id": "C5",
+        "state": "not_started",
+    }
+    markdown = _render_stage_card_markdown(
+        "C5", "自动化与测试数据准备", [a18, n05, g03], all_nodes=[a18, n05, g03]
+    )
+    rows = _stage_task_rows(markdown)
+    assert "[QAA-451](mention://issue/issue-a18)" in rows["A18-BE"]
+    assert "产出入库失败或待人工处理" in rows["A18-BE"]
+    assert "卡在 `A18-BE` 服务端自动化独立复核 的阻塞" in rows["N05"]
+    assert "卡在 `A18-BE` 服务端自动化独立复核 的阻塞" in rows["G03"]
+
+
+def _stage_task_rows(markdown: str) -> dict[str, str]:
+    section = markdown.split("## 阶段任务", 1)[1].split("## 当前进度", 1)[0]
+    return {
+        line.split("`")[1]: line
+        for line in section.splitlines()
+        if line.startswith("- `")
+    }
+
+
+def _human_operation_section(markdown: str) -> str:
+    return markdown.split("## 人工操作", 1)[1].split("## 验收", 1)[0]
+
+
+def test_c5_stage_card_defers_a22_data_plan_approvals_to_node_card() -> None:
+    """C5 has no human gate, so A22's data-plan items stay on the A22 node card.
+
+    G03 automation-code review was removed as a workflow checkpoint, so a C5
+    card that listed node-level data-plan approvals made a deterministic stage
+    look like it needed the owner's sign-off for work the system must do itself.
+    """
+
+    a22 = {
+        "node_id": "A22",
+        "label": "112 测试数据规划",
+        "stage": 15,
+        "stage_card_id": "C5",
+        "state": "waiting_human",
+        "result_summary": "发现 7 个未决数据需求需人工确认",
+        "issue_id": "issue-a22",
+        "issue_identifier": "QAA-539",
+        "approval_items": [
+            {
+                "id": f"UR-0{index}",
+                "category": "test_data_pending_human",
+                "human_title": "确认新建统计图",
+                "plain_summary": "112 没有现成测试图，本应新建。",
+                "confirm_action": "要新建就 confirmed。",
+            }
+            for index in range(1, 8)
+        ],
+    }
+    n05 = {
+        "node_id": "N05",
+        "label": "自动化确定性代码检查",
+        "stage": 17,
+        "stage_card_id": "C5",
+        "state": "waiting_human",
+        "result_summary": "automation_code_check_failed",
+        "approval_items": [
+            {
+                "id": "N05-1",
+                "category": "automation_code_check",
+                "human_title": "代码检查未通过",
+                "plain_summary": "存在禁用写法。",
+            }
+        ],
+    }
+
+    markdown = _render_stage_card_markdown(
+        "C5", "自动化与测试数据准备", [a22, n05], all_nodes=[a22, n05]
+    )
+
+    human = _human_operation_section(markdown)
+    assert "7 项待审批项由该节点卡承载" in human
+    assert "UR-01" not in human
+    assert "确认新建统计图" not in human
+    assert "N05-1" in human
+    assert "代码检查未通过" in human
+
+
+def test_review_stage_card_keeps_its_own_approval_items() -> None:
+    """C2/C3 carry G01/G02, so their own approval items must still be listed."""
+
+    g01 = {
+        "node_id": "G01",
+        "label": "范围与口径人工审核",
+        "stage": 5,
+        "stage_card_id": "C2",
+        "state": "waiting_human",
+        "result_summary": "待人工确认",
+        "approval_items": [
+            {
+                "id": "G01-1",
+                "category": "待审核用例",
+                "human_title": "确认范围口径",
+                "plain_summary": "范围需要拍板。",
+            }
+        ],
+    }
+
+    markdown = _render_stage_card_markdown(
+        "C2", "范围确认与测试策略", [g01], all_nodes=[g01]
+    )
+
+    human = _human_operation_section(markdown)
+    assert "G01-1" in human
+    assert "确认范围口径" in human
+
+
+def test_stage_card_defers_approvals_of_any_registered_node(monkeypatch) -> None:
+    """The registry is the mechanism: deferral is per registered node, not per category."""
+
+    monkeypatch.setitem(
+        workflow_center.NODE_OWNED_STAGE_APPROVALS, "C7", frozenset({"N09"})
+    )
+    node = {
+        "node_id": "N09",
+        "label": "证据标准化与失败聚类",
+        "stage_card_id": "C7",
+        "state": "waiting_human",
+        "approval_items": [
+            {
+                "id": "N09-1",
+                "category": "证据待确认",
+                "human_title": "确认失败归类",
+                "plain_summary": "失败归属需要拍板。",
+            }
+        ],
+    }
+
+    markdown = _render_stage_card_markdown(
+        "C7", "证据归一与准出", [node], all_nodes=[node]
+    )
+
+    human = _human_operation_section(markdown)
+    assert "N09-1" not in human
+    assert "确认失败归类" not in human
+    assert "1 项待审批项由该节点卡承载" in human
+
+
+def test_node_owned_stage_approvals_follow_the_card_definitions() -> None:
+    """Keep the deferral registry pinned to the owning card definitions.
+
+    ``SERVER_STAGE_CARD_DEFINITIONS`` owns card membership. If A22 ever moves off
+    C5, the deferral would silently stop applying and C5 would list the owner's
+    data-plan approvals again, so that drift must fail here instead.
+    """
+
+    card_nodes = {
+        card_id: set(node_ids)
+        for card_id, _title, node_ids in SERVER_STAGE_CARD_DEFINITIONS
+    }
+    assert "A22" in workflow_center.NODE_OWNED_STAGE_APPROVALS.get("C5", frozenset())
+    for card_id, node_ids in workflow_center.NODE_OWNED_STAGE_APPROVALS.items():
+        assert card_id in card_nodes, f"{card_id} is not a stage card"
+        missing = sorted(node_ids - card_nodes[card_id])
+        assert not missing, f"{missing} do not belong to {card_id}"
+
+
+def test_node_row_rejects_another_nodes_issue_mention() -> None:
+    node = {"node_id": "A14", "state": "not_started"}
+    _assert_own_mention_only(
+        "- `A14` 服务端自动化生成 · 未开始 · 卡在 `A22` 的决策",
+        node,
+        context="Stage card 阶段任务 row",
+    )
+    with pytest.raises(ContractError):
+        _assert_own_mention_only(
+            "- `A14` 服务端自动化生成 · 未开始 · 卡在 `A22` 的决策"
+            "（[QAA-539](mention://issue/issue-a22)）",
+            node,
+            context="Stage card 阶段任务 row",
+        )
 
 
 def test_cockpit_marks_not_started_node_with_blocking_decision() -> None:
@@ -567,10 +1024,10 @@ def test_cockpit_marks_not_started_node_with_blocking_decision() -> None:
     ]
     spec["actions"] = []
     markdown = render_workflow_center_markdown(build_workflow_projection(spec))
-    assert (
-        "卡在 `N04` Test Case IR 校验 的决策"
-        "（[QAA-325](mention://issue/issue-n04)）" in markdown
-    )
+    g02_row = next(line for line in markdown.splitlines() if "卡在 `N04`" in line)
+    assert "`N04` Test Case IR 校验 的决策" in g02_row
+    # N04's own Issue link belongs to the N04 row, never to the blocked G02 row.
+    assert "QAA-325" not in g02_row
     assert "等待上游节点" not in markdown
 
 
@@ -578,6 +1035,7 @@ def test_cockpit_marks_not_started_node_with_blocking_decision() -> None:
     ("node_states", "action_status", "expected"),
     [
         (["completed", "blocked"], "open", "blocked"),
+        (["queued", "blocked"], "completed", "queued"),
         (["completed", "waiting_human"], "open", "needs_action"),
         (["completed", "running"], "completed", "running"),
         (["completed", "not_started"], "completed", "queued"),
@@ -613,6 +1071,7 @@ def test_projection_rejects_duplicate_execution_identity() -> None:
 class FakeMultica:
     def __init__(self, issues: dict[str, dict] | None = None) -> None:
         self.calls: list[tuple[list[str], str | None]] = []
+        self.comments: list[dict] = []
         self.issues = dict(issues or {})
 
     def __call__(self, command: list[str], stdin: str | None) -> dict:
@@ -634,7 +1093,15 @@ class FakeMultica:
                 result["status"] = command[command.index("--status") + 1]
             return result
         if command[1:4] == ["issue", "metadata", "set"]:
+            issue = self.issues.setdefault(command[4], {"id": command[4]})
+            metadata = issue.setdefault("metadata", {})
+            metadata[command[command.index("--key") + 1]] = command[
+                command.index("--value") + 1
+            ]
             return {"ok": True}
+        if command[1:4] == ["issue", "comment", "add"]:
+            self.comments.append({"issue_id": command[4], "content": stdin})
+            return {"id": f"comment-{len(self.comments)}"}
         if command[1:4] == ["issue", "property", "set"]:
             return []
         raise AssertionError(f"Unexpected command: {command}")
@@ -1050,7 +1517,300 @@ def test_sync_live_issue_state_overrides_stale_artifact_state(tmp_path: Path) ->
     assert a15_updates[0][a15_updates[0].index("--status") + 1] == "done"
 
 
-def test_sync_rejects_conflicting_projection_at_same_revision(tmp_path: Path) -> None:
+def c5_agent_spec() -> dict:
+    """C5 spec with two Agent nodes whose cards exist from an earlier round."""
+
+    spec = workflow_spec()
+    spec["nodes"] = [
+        {
+            "execution_id": "A14-1",
+            "node_id": "A14",
+            "label": "服务端自动化生成",
+            "stage": 15,
+            "state": "not_started",
+            "completion": "0/1",
+            "result_summary": "等待上游节点",
+            "stage_card_id": "C5",
+            "stage_card_title": "自动化与测试数据准备",
+            "issue_id": "issue-a14",
+            "issue_identifier": "QAA-401",
+            "stage_issue_id": "issue-c5",
+            "stage_issue_identifier": "QAA-C5",
+        },
+        {
+            "execution_id": "A15-1",
+            "node_id": "A15",
+            "label": "契约自动化生成",
+            "stage": 15,
+            "state": "not_started",
+            "completion": "0/1",
+            "result_summary": "等待上游节点",
+            "stage_card_id": "C5",
+            "stage_card_title": "自动化与测试数据准备",
+            "issue_id": "issue-a15",
+            "issue_identifier": "QAA-402",
+            "stage_issue_id": "issue-c5",
+            "stage_issue_identifier": "QAA-C5",
+        },
+    ]
+    spec["actions"] = []
+    return spec
+
+
+def _c5_issue(identifier: str, title: str, status: str) -> dict:
+    return {
+        "id": f"issue-{identifier.lower()}",
+        "identifier": identifier,
+        "title": f"[REQ-101-r003] {title}",
+        "created_at": "2026-08-18T00:00:00Z",
+        "status": status,
+        "project_id": INTERNAL_PROJECT_ID,
+    }
+
+
+def _c5_sync(tmp_path: Path, multica: FakeMultica) -> dict:
+    store = ArtifactStore(tmp_path / "input")
+    spec_path = store.write_json("workflow.json", c5_agent_spec())
+    config = workflow_config()
+    config["node_agents"] = {"A14": "agent-a14", "A15": "agent-a15"}
+    config_path = store.write_json("config.json", config)
+    sync_multica_workflow_center(
+        spec_path, config_path, tmp_path / "output", runner=multica
+    )
+    return json.loads(
+        (tmp_path / "output" / "workflow-projection.json").read_text(encoding="utf-8")
+    )
+
+
+def _status_writes(multica: FakeMultica) -> dict[str, str]:
+    return {
+        command[3]: command[command.index("--status") + 1]
+        for command, _stdin in multica.calls
+        if command[1:3] == ["issue", "update"] and "--status" in command
+    }
+
+
+def test_sync_clears_stale_agent_card_status_when_no_run_owns_it(tmp_path: Path) -> None:
+    """A C5 Agent card left at ``in_review`` by an earlier round must follow the
+    projection again instead of showing 审核中 forever."""
+
+    multica = FakeMultica(
+        issues={
+            "issue-a14": _c5_issue("A14", "A14 服务端自动化生成", "in_review"),
+            "issue-a15": _c5_issue("A15", "A15 契约自动化生成", "in_review"),
+        }
+    )
+
+    projection = _c5_sync(tmp_path, multica)
+
+    assert {node["node_id"]: node["state"] for node in projection["nodes"]} == {
+        "A14": "not_started",
+        "A15": "not_started",
+    }
+    statuses = _status_writes(multica)
+    assert statuses["issue-a14"] == "backlog"
+    assert statuses["issue-a15"] == "backlog"
+
+
+def test_sync_does_not_reopen_a_closed_agent_card(tmp_path: Path) -> None:
+    """A closed Agent card (human confirmation or ingested run) must stay
+    closed: a stale Artifact state may not flip it back to ``in_review``."""
+
+    multica = FakeMultica(
+        issues={
+            "issue-a14": _c5_issue("A14", "A14 服务端自动化生成", "done"),
+            "issue-a15": _c5_issue("A15", "A15 契约自动化生成", "done"),
+        }
+    )
+
+    _c5_sync(tmp_path, multica)
+
+    statuses = _status_writes(multica)
+    assert "issue-a14" not in statuses
+    assert "issue-a15" not in statuses
+
+
+@pytest.mark.parametrize("with_stage_cards", [True, False])
+def test_sync_keeps_human_closed_review_card_closed(
+    tmp_path: Path, with_stage_cards: bool
+) -> None:
+    """A review card the owner already closed must stay closed.
+
+    The A22 data-plan confirmation is only parsed from a ``done`` Issue, so
+    flipping the card back to ``in_review`` because the action is still open
+    would undo the human decision and stall the confirmation.
+    """
+
+    human_issue = a22_human_card_issue()
+    spec = a22_human_card_spec(with_stage_cards=with_stage_cards)
+    multica = FakeMultica(issues={"issue-a22": human_issue})
+    store = ArtifactStore(tmp_path / "input")
+    spec_path = store.write_json("workflow.json", spec)
+    config_path = store.write_json("config.json", workflow_config())
+
+    result = sync_multica_workflow_center(
+        spec_path, config_path, tmp_path / "output", runner=multica
+    )
+
+    writes = [
+        command[command.index("--status") + 1]
+        for command, _stdin in multica.calls
+        if command[1:3] == ["issue", "update"]
+        and command[3] == "issue-a22"
+        and "--status" in command
+    ]
+    assert writes == ["done"]
+    assert result["overall_status"] == "needs_action"
+
+
+def a22_human_card_issue(status: str = "done") -> dict:
+    return {
+        "id": "issue-a22",
+        "identifier": "QAA-539",
+        "title": "[REQ-101-r003] A22 112 测试数据规划",
+        "created_at": "2026-09-15T00:00:00Z",
+        "status": status,
+        "project_id": INTERNAL_PROJECT_ID,
+    }
+
+
+def a22_human_card_spec(*, with_stage_cards: bool) -> dict:
+    node = {
+        "execution_id": "A22-1",
+        "node_id": "A22",
+        "label": "112 测试数据规划",
+        "stage": 15,
+        "state": "waiting_human",
+        "completion": "1/1",
+        "result_summary": "needs_human",
+        "issue_id": "issue-a22",
+        "issue_identifier": "QAA-539",
+        "approval_items": [
+            {
+                "id": "UR-01",
+                "human_title": "图表完整性探针缺失",
+                "summary": "统计图缺少已验证的完整性探针",
+            },
+            {
+                "id": "UR-02",
+                "human_title": "变更前资产缺失",
+                "summary": "缺少变更前的统计图与拼表配置资产",
+            },
+        ],
+    }
+    if with_stage_cards:
+        node.update(
+            {
+                "stage_card_id": "C5",
+                "stage_card_title": "自动化与测试数据准备",
+                "stage_issue_id": "issue-c5",
+                "stage_issue_identifier": "QAA-C5",
+            }
+        )
+    spec = workflow_spec()
+    spec["nodes"] = [node]
+    spec["actions"] = [
+        {
+            "action_id": "A22-REQ-101-r003",
+            "gate_id": "A22",
+            "title": "A22 处理",
+            "status": "open",
+            "owner_member_id": "member-qa",
+            "item_count": 7,
+            "summary": "7 个未决数据需求",
+            "issue_id": "issue-a22",
+            "issue_identifier": "QAA-539",
+        }
+    ]
+    return spec
+
+
+@pytest.mark.parametrize(
+    ("sent", "minutes", "expected"),
+    [
+        (0, 10, ""),
+        (0, 30, "first"),
+        (1, 40, ""),
+        (1, 120, "escalation"),
+        (2, 10_000, ""),
+    ],
+)
+def test_review_reminder_schedule(sent: int, minutes: int, expected: str) -> None:
+    seen = datetime(2026, 9, 16, tzinfo=timezone.utc)
+    metadata = {
+        workflow_center.REVIEW_REMINDER_SEEN_KEY: seen.isoformat(),
+        workflow_center.REVIEW_REMINDER_COUNT_KEY: str(sent),
+    }
+    level = workflow_center._review_reminder_level(
+        metadata, now=seen + timedelta(minutes=minutes), first=30, escalation=120
+    )
+    assert level == expected
+    assert (
+        workflow_center._review_reminder_level(
+            metadata, now=seen + timedelta(days=7), first=0, escalation=0
+        )
+        == ""
+    )
+
+
+def test_sync_reminds_owner_who_closed_a_review_card_without_decision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reminders go out as comments: two nudges, then silence, and the card is
+    never re-opened (so the owner can just add the missing dispositions)."""
+
+    clock = {"now": datetime(2026, 9, 16, 0, 0, tzinfo=timezone.utc)}
+    monkeypatch.setattr(workflow_center, "_utcnow", lambda: clock["now"])
+
+    multica = FakeMultica(issues={"issue-a22": a22_human_card_issue()})
+    store = ArtifactStore(tmp_path / "input")
+    spec_path = store.write_json("workflow.json", a22_human_card_spec(with_stage_cards=True))
+    config = workflow_config()
+    config["human_review_reminder_minutes"] = 30
+    config["human_review_reminder_escalation_minutes"] = 120
+    config_path = store.write_json("config.json", config)
+
+    def sync_once() -> None:
+        sync_multica_workflow_center(
+            spec_path, config_path, tmp_path / "output", runner=multica
+        )
+
+    sync_once()
+    assert multica.comments == []
+    assert (
+        multica.issues["issue-a22"]["metadata"][
+            workflow_center.REVIEW_REMINDER_SEEN_KEY
+        ]
+        == clock["now"].isoformat()
+    )
+
+    clock["now"] += timedelta(minutes=40)
+    sync_once()
+    assert len(multica.comments) == 1
+    first = multica.comments[0]["content"]
+    assert "已置 `done`" in first
+    assert "已等待 40 分钟" in first
+    assert "`UR-01: confirmed/skip/return/need_evidence`" in first
+
+    clock["now"] += timedelta(minutes=90)
+    sync_once()
+    assert len(multica.comments) == 2
+    assert "这是最后一次自动提醒" in multica.comments[1]["content"]
+
+    clock["now"] += timedelta(minutes=600)
+    sync_once()
+    assert len(multica.comments) == 2
+    status_writes = [
+        command[command.index("--status") + 1]
+        for command, _stdin in multica.calls
+        if command[1:3] == ["issue", "update"]
+        and command[3] == "issue-a22"
+        and "--status" in command
+    ]
+    assert set(status_writes) == {"done"}
+
+
+def test_sync_bumps_revision_when_same_revision_projection_changes(tmp_path: Path) -> None:
     store = ArtifactStore(tmp_path / "input")
     spec = workflow_spec()
     spec_path = store.write_json("workflow.json", spec)
@@ -1061,10 +1821,17 @@ def test_sync_rejects_conflicting_projection_at_same_revision(tmp_path: Path) ->
     spec["title"] = "同 revision 的冲突标题"
     store.write_json("workflow.json", spec)
 
-    with pytest.raises(ContractError, match="conflicts with another projection"):
-        sync_multica_workflow_center(
-            spec_path, config_path, tmp_path / "output", runner=FakeMultica()
-        )
+    result = sync_multica_workflow_center(
+        spec_path, config_path, tmp_path / "output", runner=FakeMultica()
+    )
+    projection = json.loads(
+        (tmp_path / "output" / "workflow-projection.json").read_text(encoding="utf-8")
+    )
+    persisted = json.loads(spec_path.read_text(encoding="utf-8"))
+    assert result["overall_status"] == "needs_action"
+    assert projection["revision"] == 2
+    assert projection["title"] == "同 revision 的冲突标题"
+    assert persisted["revision"] == 2
 
 
 def test_sync_accepts_newer_projection_revision(tmp_path: Path) -> None:
@@ -1236,6 +2003,24 @@ def test_live_blocked_with_completed_run_explains_ingest_failure() -> None:
     assert "入库失败" in (summary or "")
 
 
+def test_live_blocked_issue_does_not_downgrade_completed_artifact() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            raise AssertionError("a blocked correction Issue must not query runs")
+
+    state, summary = _live_node_state_from_issue(
+        current_state="completed",
+        issue_status="blocked",
+        runner=Runner(),
+        issue_id="issue-a08-failed-ingest",
+        workspace_id="ws",
+    )
+    assert state is None
+    assert summary is None
+
+
 def test_bind_discovered_replaces_stale_waiting_summary() -> None:
     from qa_agents.workflow_center import _bind_discovered_node_issues
 
@@ -1314,6 +2099,231 @@ def test_live_completed_with_active_correction_run_upgrades_to_running() -> None
         workspace_id="ws",
     )
     assert state == "running"
+    assert summary is None
+
+
+def test_bind_discovered_prefers_explicit_human_action_for_waiting_node() -> None:
+    from qa_agents.workflow_center import _bind_discovered_node_issues
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            if command[:3] == ["multica", "issue", "list"]:
+                return {
+                    "issues": [
+                        {
+                            "id": "issue-a09-done",
+                            "identifier": "QAA-478",
+                            "title": "[run-1] A09 Oracle 修正",
+                            "status": "done",
+                            "created_at": "2026-09-10T10:10:13Z",
+                        }
+                    ]
+                }
+            raise AssertionError(command)
+
+    projection = {
+        "schema_version": "requirement-workflow-projection/1.0",
+        "workflow_run_id": "run-1",
+        "nodes": [
+            {
+                "node_id": "A09",
+                "execution_id": "A09-run-1",
+                "state": "waiting_human",
+                "result_summary": "阻塞问题已路由人工处置",
+                "human_action_entry": {
+                    "issue_id": "issue-human",
+                    "issue_identifier": "QAA-483",
+                    "status": "in_review",
+                },
+            }
+        ],
+        "actions": [],
+        "run_history": [],
+        "autopilot": None,
+        "autopilot_runs": [],
+        "workflow_id": "wf",
+        "requirement_id": "req",
+        "workflow_definition_version": "v",
+        "revision": 1,
+        "source_snapshot_id": "snap",
+        "title": "t",
+        "parent_issue": {"id": "p", "identifier": "QAA-1"},
+        "run_issue": None,
+    }
+    config = {
+        "internal_project_id": "proj",
+        "workspace_id": "ws",
+        "discover_node_issues": True,
+    }
+    enriched = _bind_discovered_node_issues(projection, config, Runner())
+    node = enriched["nodes"][0]
+    assert node["state"] == "waiting_human"
+    assert node.get("issue_id") is None
+    assert node["human_action_entry"]["issue_identifier"] == "QAA-483"
+
+
+def test_bind_discovered_skips_failed_ingest_issue_for_completed_node() -> None:
+    from qa_agents.workflow_center import _bind_discovered_node_issues
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            if command[:3] == ["multica", "issue", "list"]:
+                return {
+                    "issues": [
+                        {
+                            "id": "issue-a08-blocked",
+                            "identifier": "QAA-482",
+                            "title": "[run-1] A08 测试设计修正",
+                            "status": "blocked",
+                            "created_at": "2026-09-10T10:46:51Z",
+                        }
+                    ]
+                }
+            raise AssertionError(command)
+
+    projection = {
+        "schema_version": "requirement-workflow-projection/1.0",
+        "workflow_run_id": "run-1",
+        "nodes": [
+            {
+                "node_id": "A08",
+                "execution_id": "A08-run-1",
+                "state": "completed",
+                "result_summary": "completed_with_gaps",
+            }
+        ],
+        "actions": [],
+        "run_history": [],
+        "autopilot": None,
+        "autopilot_runs": [],
+        "workflow_id": "wf",
+        "requirement_id": "req",
+        "workflow_definition_version": "v",
+        "revision": 1,
+        "source_snapshot_id": "snap",
+        "title": "t",
+        "parent_issue": {"id": "p", "identifier": "QAA-1"},
+        "run_issue": None,
+    }
+    config = {
+        "internal_project_id": "proj",
+        "workspace_id": "ws",
+        "discover_node_issues": True,
+    }
+    enriched = _bind_discovered_node_issues(projection, config, Runner())
+    node = enriched["nodes"][0]
+    assert node["state"] == "completed"
+    assert node.get("issue_id") is None
+
+
+def test_live_done_blocked_auto_return_keeps_blocked() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            raise AssertionError("runs should not be queried for a done auto-return Issue")
+
+    state, summary = _live_node_state_from_issue(
+        current_state="blocked",
+        issue_status="done",
+        runner=Runner(),
+        issue_id="issue-a18-done",
+        workspace_id="ws",
+    )
+    assert state is None
+    assert summary is None
+
+
+def test_bind_discovered_keeps_blocked_node_with_done_issue() -> None:
+    from qa_agents.workflow_center import _bind_discovered_node_issues
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            if command[:3] == ["multica", "issue", "list"]:
+                return {
+                    "issues": [
+                        {
+                            "id": "issue-a18",
+                            "identifier": "QAA-451",
+                            "title": "[run-1] A18-BE 服务端自动化独立复核",
+                            "status": "done",
+                            "created_at": "2026-09-10T10:10:13Z",
+                        }
+                    ]
+                }
+            raise AssertionError(command)
+
+    projection = {
+        "schema_version": "requirement-workflow-projection/1.0",
+        "workflow_run_id": "run-1",
+        "nodes": [
+            {
+                "node_id": "A18-BE",
+                "execution_id": "A18-BE-run-1",
+                "state": "blocked",
+                "result_summary": "发现 2 个问题，自动回流 A14 修正",
+                "label": "服务端自动化独立复核",
+            }
+        ],
+        "actions": [],
+        "run_history": [],
+        "autopilot": None,
+        "autopilot_runs": [],
+        "workflow_id": "wf",
+        "requirement_id": "req",
+        "workflow_definition_version": "v",
+        "revision": 1,
+        "source_snapshot_id": "snap",
+        "title": "t",
+        "parent_issue": {"id": "p", "identifier": "QAA-1"},
+        "run_issue": None,
+    }
+    config = {
+        "internal_project_id": "proj",
+        "workspace_id": "ws",
+        "discover_node_issues": True,
+    }
+    enriched = _bind_discovered_node_issues(projection, config, Runner())
+    node = enriched["nodes"][0]
+    assert node["state"] == "blocked"
+    assert node["issue_id"] == "issue-a18"
+    assert node["issue_identifier"] == "QAA-451"
+
+
+def test_live_blocked_record_does_not_resurrect_not_started_node() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            raise AssertionError("runs should not be queried for a stale record Issue")
+
+    state, summary = _live_node_state_from_issue(
+        current_state="not_started",
+        issue_status="blocked",
+        runner=Runner(),
+        issue_id="issue-stale-n05",
+        workspace_id="ws",
+    )
+
+    assert state is None
+    assert summary is None
+
+
+def test_live_done_does_not_freeze_queued_correction_reentry() -> None:
+    from qa_agents.workflow_center import _live_node_state_from_issue
+
+    class Runner:
+        def __call__(self, command, _cwd):
+            raise AssertionError("runs should not be queried for a done previous Issue")
+
+    state, summary = _live_node_state_from_issue(
+        current_state="queued",
+        issue_status="done",
+        runner=Runner(),
+        issue_id="issue-old-a08",
+        workspace_id="ws",
+    )
+    assert state is None
     assert summary is None
 
 

@@ -15,7 +15,10 @@ import subprocess
 import tempfile
 from typing import Any
 
-from .case_provider import CaseProviderCapabilityProbe
+from .case_provider import (
+    CaseProviderCapabilityProbe,
+    apply_reviewed_provider_commit_gate,
+)
 from .contracts import content_hash
 from .errors import InputError, SecurityPolicyError
 
@@ -277,8 +280,11 @@ class ReadOnlyGitCollector:
                         message = str(error)
                         if "does not exist" not in message and "exists on disk" not in message:
                             raise
-                    provider_capability = CaseProviderCapabilityProbe().probe(
-                        provider_commit, skill_documents, manifest
+                    provider_capability = apply_reviewed_provider_commit_gate(
+                        CaseProviderCapabilityProbe().probe(
+                            provider_commit, skill_documents, manifest
+                        ),
+                        repository_id=str(provider_source.get("repository_id", "")),
                     )
                 except InputError as error:
                     provider_capability = {

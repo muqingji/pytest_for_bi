@@ -1,6 +1,32 @@
 {
   "schema_version": "schema-registry/1.0",
   "contracts": {
+    "qa-agent-provider": {
+      "published_versions": ["qa-agent-provider/1.0"],
+      "consumers": {
+        "N01": ["qa-agent-provider/1.0"],
+        "A08": ["qa-agent-provider/1.0"]
+      }
+    },
+    "case-provider-input": {
+      "published_versions": ["case-provider-input/1.0"],
+      "consumers": {
+        "fs-qa-knowledge": ["case-provider-input/1.0"]
+      }
+    },
+    "case-provider-output": {
+      "published_versions": ["case-provider-output/1.0"],
+      "consumers": {
+        "A08": ["case-provider-output/1.0"]
+      }
+    },
+    "provider-case-mapping": {
+      "published_versions": ["provider-case-mapping/1.0"],
+      "consumers": {
+        "A08": ["provider-case-mapping/1.0"],
+        "G02": ["provider-case-mapping/1.0"]
+      }
+    },
     "test-design-ir": {
       "published_versions": ["test-design-ir/1.0", "test-design-ir/1.1"],
       "consumers": {

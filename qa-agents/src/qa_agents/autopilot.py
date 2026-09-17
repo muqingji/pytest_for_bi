@@ -19,10 +19,16 @@ from .contracts import (
     content_hash,
 )
 from .review_copy import g02_approval_items, g02_decision_items_from_request, humanize_review_item
+from .test_data_copy import (
+    humanize_unresolved_requirement,
+    is_owner_review,
+    unresolved_requirement_id,
+)
 from .errors import ContractError, InputError, RetryableAgentError
 from .multica_cli import resolve_multica_binary
 from .security import SecurityPolicy
 from .storage import ArtifactStore
+from .workflow_center import NODE_DIRECT_DEPENDENCIES
 
 
 CommandRunner = Callable[[list[str], str | None], Any]
@@ -44,14 +50,14 @@ SERVER_NODE_DEFINITIONS = (
     ("A11", "拆分覆盖审查", 12),
     ("N26", "测试选择", 13),
     ("N15", "执行计划编译", 14),
+    ("A22", "112 测试数据规划", 15),
+    ("N27", "测试数据计划安全校验", 16),
     ("A14", "服务端自动化生成", 15),
     ("A15", "契约自动化生成", 15),
-    ("A22", "112 测试数据规划", 15),
     ("A18-BE", "服务端自动化独立复核", 16),
     ("A18-CT", "契约自动化独立复核", 16),
-    ("N27", "测试数据计划安全校验", 16),
     ("N05", "自动化确定性代码检查", 17),
-    ("G03", "自动化代码人工审核", 18),
+    ("G03", "自动化代码审核（自动关闭/不需要人工）", 18),
     ("N07", "环境、数据与资源预检", 19),
     ("N08", "受控自动化执行", 20),
     ("N17", "未执行用例收口", 20),
@@ -75,7 +81,7 @@ SERVER_STAGE_CARD_DEFINITIONS = (
     (
         "C5",
         "自动化与测试数据准备",
-        ("A14", "A15", "A22", "A18-BE", "A18-CT", "N27", "N05", "G03"),
+        ("A22", "N27", "A14", "A15", "A18-BE", "A18-CT", "N05", "G03"),
     ),
     ("C6", "环境预检与测试执行", ("N07", "N08", "N17", "N10")),
     ("C7", "证据归一与准出判定", ("N18", "N09", "N20", "N11", "N19")),
@@ -191,6 +197,7 @@ ARTIFACT_STATE_MAP = {
 
 TERMINAL_NODE_STATES = {"completed", "skipped", "cancelled", "superseded"}
 ACTIVE_NODE_STATES = {"queued", "running", "waiting_human", "blocked", "failed"}
+AUTO_RETURN_SKIP_NODES = {"human", "G01", "G02", "G03"}
 
 
 def _artifact_state(artifact: Mapping[str, Any]) -> str:
@@ -211,8 +218,211 @@ def _artifact_state(artifact: Mapping[str, Any]) -> str:
     if (
         isinstance(payload, Mapping) and payload.get("next_node") == "human"
     ) or blocking_questions or "human" in routes or not routes:
+        if str(artifact.get("artifact_id") or "") == "n04-test-case-ir-validation":
+            return "blocked"
         return "waiting_human"
     return "blocked"
+
+
+def _claimed_fix_ids(artifact: Mapping[str, Any] | None) -> set[str]:
+    if not isinstance(artifact, Mapping):
+        return set()
+    payload = artifact.get("payload")
+    if not isinstance(payload, Mapping):
+        return set()
+    resolutions = payload.get("correction_resolutions")
+    if not isinstance(resolutions, list):
+        return set()
+    return {
+        str(item.get("feedback_id") or "").strip()
+        for item in resolutions
+        if isinstance(item, Mapping)
+        and item.get("disposition") == "fixed"
+        and str(item.get("feedback_id") or "").strip()
+    }
+
+
+def _auto_return_target(
+    artifact: Mapping[str, Any],
+    claimed_ids: set[str],
+) -> str:
+    payload = artifact.get("payload")
+    if not isinstance(payload, Mapping):
+        return ""
+    unattempted_routes: list[str] = []
+    issues = payload.get("issues")
+    if isinstance(issues, list):
+        for item in issues:
+            if not isinstance(item, Mapping):
+                continue
+            route = str(item.get("route_to") or "").strip()
+            issue_id = str(item.get("id") or item.get("issue_code") or "").strip()
+            if (
+                route
+                and route not in AUTO_RETURN_SKIP_NODES
+                and (not issue_id or issue_id not in claimed_ids)
+            ):
+                unattempted_routes.append(route)
+    next_node = str(payload.get("next_node") or "").strip()
+    if next_node:
+        if next_node in AUTO_RETURN_SKIP_NODES:
+            return ""
+        attempt = payload.get("correction_attempt")
+        max_attempts = payload.get("max_correction_attempts")
+        budget_exhausted = (
+            isinstance(attempt, int)
+            and isinstance(max_attempts, int)
+            and attempt > max_attempts
+        )
+        if not budget_exhausted:
+            return next_node
+        return ""
+    if unattempted_routes:
+        return unattempted_routes[0]
+    return ""
+
+
+AUTO_RETURN_SOURCE_NODES = {"N04", "A18-BE", "A18-CT", "N05"}
+
+
+def _generation_payload_hash(
+    selected: Mapping[str, Mapping[str, Any]],
+    node_id: str,
+) -> str:
+    artifact = selected.get(node_id)
+    if not isinstance(artifact, Mapping):
+        return ""
+    payload = artifact.get("payload")
+    if not isinstance(payload, Mapping):
+        return ""
+    return content_hash(payload)
+
+
+def _auto_return_still_bound(
+    source_id: str,
+    payload: Mapping[str, Any],
+    target_id: str,
+    target: Mapping[str, Any],
+    selected: Mapping[str, Mapping[str, Any]],
+) -> bool:
+    """Skip reopen when the source already binds a newer generation."""
+
+    if source_id == "N04" and target_id == "A08":
+        bound = str(payload.get("test_design_artifact_hash") or "").strip()
+        current = str(target.get("artifact_hash") or "").strip()
+        return not bound or not current or bound == current
+    current = _generation_payload_hash(selected, target_id)
+    if source_id in {"A18-BE", "A18-CT"}:
+        bound = str(payload.get("generation_hash") or "").strip()
+        return not bound or not current or bound == current
+    if source_id == "N05":
+        hashes: list[str] = []
+        bindings = payload.get("input_bindings")
+        if isinstance(bindings, list):
+            hashes = [
+                str(item.get("generation_hash") or "").strip()
+                for item in bindings
+                if isinstance(item, Mapping)
+            ]
+            hashes = [item for item in hashes if item]
+        if not hashes:
+            fallback = str(payload.get("generation_hash") or "").strip()
+            if fallback:
+                hashes = [fallback]
+        return not hashes or not current or current in hashes
+    return True
+
+
+def _reopen_auto_return_targets(
+    nodes: list[dict[str, Any]],
+    selected: Mapping[str, Mapping[str, Any]],
+) -> None:
+    """Re-queue agent nodes that a blocked decision node auto-returns to.
+
+    N04 `needs_human` with `next_node=A08` (budget remaining) must not freeze
+    A08 as completed. Otherwise the monitor plan never authorizes the
+    correction dispatch and the first N04 failure dead-ends the workflow.
+    New A09 findings that still `route_to=A08` also reopen A08 even when a
+    previous N04 artifact already flipped `next_node=human`.
+    A18-BE / A18-CT / N05 failures that `route_to=A14` or `A15` must reopen
+    the generator the same way; otherwise C5 keeps A14/A15 completed while
+    the review text claims an automatic return.
+    """
+
+    by_id = {str(item.get("node_id")): item for item in nodes}
+    claimed_by_target: dict[str, set[str]] = {}
+    for node in nodes:
+        source_id = str(node.get("node_id") or "")
+        if source_id not in AUTO_RETURN_SOURCE_NODES:
+            continue
+        if node.get("state") not in {"blocked", "waiting_human"}:
+            continue
+        artifact = selected.get(source_id)
+        if not isinstance(artifact, Mapping):
+            continue
+        payload = artifact.get("payload")
+        if not isinstance(payload, Mapping):
+            continue
+        preview = _auto_return_target(artifact, set())
+        if not preview:
+            continue
+        claimed_ids = claimed_by_target.setdefault(
+            preview, _claimed_fix_ids(selected.get(preview))
+        )
+        next_node = _auto_return_target(artifact, claimed_ids)
+        if not next_node:
+            continue
+        target = by_id.get(next_node)
+        if target is None:
+            continue
+        target_state = str(target.get("state") or "")
+        if target_state not in TERMINAL_NODE_STATES | {"queued"}:
+            continue
+        if not _auto_return_still_bound(
+            source_id, payload, next_node, target, selected
+        ):
+            continue
+        if target_state in TERMINAL_NODE_STATES:
+            target["state"] = "queued"
+            target["result_summary"] = (
+                f"{source_id} 校验未通过，等待自动回流修正"
+            )
+        if node.get("state") == "waiting_human":
+            node["state"] = "blocked"
+            node["result_summary"] = _artifact_summary(artifact)
+            node.pop("approval_items", None)
+
+
+def _reopen_stale_review_after_correction(
+    nodes: list[dict[str, Any]],
+    selected: Mapping[str, Mapping[str, Any]],
+) -> None:
+    """Queue A09 after a corrected A08 has been ingested.
+
+    N04 still binds the previous A09 review. Without reopening A09, the old
+    needs_human Artifact keeps the node blocked and the cockpit looks stuck
+    even though the A09 correction Issue is already dispatched.
+    """
+
+    n04 = selected.get("N04")
+    a08 = selected.get("A08")
+    if not isinstance(n04, Mapping) or not isinstance(a08, Mapping):
+        return
+    payload = n04.get("payload")
+    if not isinstance(payload, Mapping) or payload.get("valid") is not False:
+        return
+    current_a08 = str(a08.get("artifact_hash") or "").strip()
+    bound_a08 = str(payload.get("test_design_artifact_hash") or "").strip()
+    if not current_a08 or not bound_a08 or bound_a08 == current_a08:
+        return
+    by_id = {str(item.get("node_id")): item for item in nodes}
+    a09 = by_id.get("A09")
+    if a09 is None:
+        return
+    if str(a09.get("state") or "") not in TERMINAL_NODE_STATES | {"blocked", "failed", "waiting_human"}:
+        return
+    a09["state"] = "queued"
+    a09["result_summary"] = "A08 已修正，等待 A09 复审"
 
 
 def _propagate_human_routed_blocks(
@@ -222,53 +432,31 @@ def _propagate_human_routed_blocks(
     run_id: str,
     actions: list[dict[str, Any]],
 ) -> None:
-    """Route blocked nodes carrying human-routed issues to waiting_human.
+    """Attach exhausted automatic-correction decisions to the A08 owner.
 
     When a decision node (for example N04 after the automatic correction
-    budget is exhausted) routes its issues to ``human``, every other node that
-    surfaced the same issue ids must read as "waiting for human" instead of a
-    dead-end "blocked", and get an approval entry so the human decision is
-    actionable in the workflow center.
+    budget is exhausted) routes to ``human``, that authorization belongs to the
+    Test Case IR owner (A08). A09 is an automated review and N04 is a
+    deterministic validator; neither becomes a human-review Gate.
     """
 
-    routed_issue_ids: set[str] = set()
-    for node in nodes:
-        if node.get("state") != "waiting_human":
-            continue
-        artifact = selected.get(str(node.get("node_id")))
-        if not isinstance(artifact, Mapping):
-            continue
-        payload = artifact.get("payload")
-        if not isinstance(payload, Mapping) or payload.get("next_node") != "human":
-            continue
-        for issue in payload.get("issues", []):
-            if isinstance(issue, Mapping) and issue.get("id"):
-                routed_issue_ids.add(str(issue["id"]))
-    if not routed_issue_ids:
+    n04 = selected.get("N04")
+    if not isinstance(n04, Mapping):
+        return
+    n04_payload = n04.get("payload")
+    if not isinstance(n04_payload, Mapping) or n04_payload.get("next_node") != "human":
         return
     if not owner_id:
         raise ContractError("Autopilot human_owner_member_id is required for actions")
-    for item in nodes:
-        if item.get("state") != "blocked":
-            continue
-        artifact = selected.get(str(item.get("node_id")))
-        if not isinstance(artifact, Mapping):
-            continue
-        payload = artifact.get("payload")
-        if not isinstance(payload, Mapping):
-            continue
-        issue_ids = {
-            str(issue.get("id"))
-            for issue in payload.get("issues", [])
-            if isinstance(issue, Mapping) and issue.get("id")
-        }
-        if not (issue_ids & routed_issue_ids):
-            continue
-        item["state"] = "waiting_human"
-        item["result_summary"] = "阻塞问题已路由人工处置，等待定向修正或终止决策"
-        approval_items = _approval_items(artifact)
-        item["approval_items"] = approval_items
-        actions.append(
+    a08 = next((item for item in nodes if str(item.get("node_id")) == "A08"), None)
+    if a08 is None or a08.get("state") in {"running", "waiting_human"}:
+        return
+    a08["state"] = "waiting_human"
+    a08["result_summary"] = "自动修正预算耗尽，等待测试设计人工授权"
+    approval_items = _approval_items(n04)
+    a08["approval_items"] = approval_items
+    item = a08
+    actions.append(
             {
                 "action_id": f"{item.get('node_id')}-{run_id}",
                 "gate_id": str(item.get("node_id")),
@@ -289,7 +477,22 @@ def _propagate_human_routed_blocks(
 
 
 def _advance_frontier(nodes: Sequence[dict[str, Any]]) -> None:
-    """Queue the earliest unfinished stage after accepted Artifacts are projected."""
+    """Queue dependency-ready nodes at the earliest unfinished stage.
+
+    Stage proximity is a display grouping, not an execution guarantee. A node
+    must never look queued while a direct dependency (for example A22 waiting
+    for its data-plan confirmation) is still unfinished.
+    """
+
+    by_id = {str(item.get("node_id")): item for item in nodes}
+
+    def dependencies_ready(item: Mapping[str, Any]) -> bool:
+        node_id = str(item.get("node_id"))
+        return all(
+            str(dependency) not in by_id
+            or str(by_id[str(dependency)].get("state", "")) in TERMINAL_NODE_STATES
+            for dependency in NODE_DIRECT_DEPENDENCIES.get(node_id, ())
+        )
 
     unfinished = [
         item for item in nodes if str(item.get("state", "")) not in TERMINAL_NODE_STATES
@@ -298,12 +501,76 @@ def _advance_frontier(nodes: Sequence[dict[str, Any]]) -> None:
         return
     frontier_stage = min(int(item["stage"]) for item in unfinished)
     frontier = [item for item in unfinished if int(item["stage"]) == frontier_stage]
+    for item in frontier:
+        if item.get("state") == "queued" and not dependencies_ready(item):
+            item["state"] = "not_started"
+            item["result_summary"] = "等待上游节点"
     if any(str(item.get("state", "")) in ACTIVE_NODE_STATES for item in frontier):
         return
     for item in frontier:
-        if item.get("state") == "not_started":
+        if item.get("state") == "not_started" and dependencies_ready(item):
             item["state"] = "queued"
             item["result_summary"] = "上游节点已完成，等待调度"
+
+
+def _hold_behind_unfinished_dependencies(nodes: Sequence[dict[str, Any]]) -> None:
+    """Don't keep a node completed/skipped/queued while an ancestor is blocked.
+
+    Deterministic writers such as N05/G03 can finish even when A18-BE is still
+    blocked. The cockpit must not look like C5 moved on past that blocker.
+    Existing blocked N05/G03 results are also rewound when A18-BE/A18-CT is the
+    blocker. C3's N04 stays blocked when A09 auto-returns; that is the current
+    gate, not a skipped-ahead node. waiting_human ancestors must not rewind
+    A09 after an A08 correction.
+    Missing upstream nodes are a normal start-of-run gap and must not rewind
+    already ingested completions.
+    """
+
+    by_id = {str(item.get("node_id")): item for item in nodes}
+    blocking_states = {"blocked", "failed"}
+    c5_review_blockers = {"A18-BE", "A18-CT"}
+
+    def has_blocking_ancestor(
+        node_id: str,
+        *,
+        blockers: set[str] | None = None,
+        seen: set[str] | None = None,
+    ) -> bool:
+        seen = seen if seen is not None else set()
+        if node_id in seen:
+            return False
+        seen.add(node_id)
+        for dependency in NODE_DIRECT_DEPENDENCIES.get(node_id, ()):
+            if str(dependency) not in by_id:
+                continue
+            state = str(by_id[str(dependency)].get("state") or "")
+            if state in blocking_states and (
+                blockers is None or str(dependency) in blockers
+            ):
+                return True
+            if has_blocking_ancestor(
+                str(dependency), blockers=blockers, seen=seen
+            ):
+                return True
+        return False
+
+    for item in nodes:
+        state = str(item.get("state") or "")
+        if state in {"running", "waiting_human"}:
+            continue
+        node_id = str(item.get("node_id") or "")
+        if state in {"blocked", "failed"}:
+            # N05/G03 can be blocked from a premature write. C3's N04 must stay
+            # blocked when A09 auto-returns; that is the current gate.
+            if not has_blocking_ancestor(node_id, blockers=c5_review_blockers):
+                continue
+        elif state in TERMINAL_NODE_STATES | {"queued"}:
+            if not has_blocking_ancestor(node_id):
+                continue
+        else:
+            continue
+        item["state"] = "not_started"
+        item["result_summary"] = "等待上游节点"
 
 
 def _read_object(path: Path, label: str) -> dict[str, Any]:
@@ -989,17 +1256,31 @@ def _artifact_summary(artifact: Mapping[str, Any]) -> str:
     if waiting and isinstance(payload, Mapping):
         requirements = payload.get("unresolved_requirements")
         if isinstance(requirements, list) and requirements:
-            codes = [
-                str(item.get("requirement_id") or item.get("reason_code") or "").strip()
-                for item in requirements
-                if isinstance(item, Mapping)
-            ]
-            codes = [code for code in codes if code]
-            if codes:
-                names = "、".join(codes[:4])
-                if len(codes) > 4:
-                    names += f" 等 {len(codes)} 项"
-                return f"发现 {len(codes)} 个未决数据需求需人工确认（{names}）"
+            owner_ids: list[str] = []
+            system_ids: list[str] = []
+            for index, item in enumerate(requirements):
+                if not isinstance(item, Mapping):
+                    continue
+                requirement_id = unresolved_requirement_id(item, index)
+                if not requirement_id:
+                    continue
+                if is_owner_review(item):
+                    owner_ids.append(requirement_id)
+                else:
+                    system_ids.append(requirement_id)
+            if owner_ids or system_ids:
+                parts: list[str] = []
+                if owner_ids:
+                    names = "、".join(owner_ids[:4])
+                    if len(owner_ids) > 4:
+                        names += f" 等 {len(owner_ids)} 项"
+                    parts.append(f"{len(owner_ids)} 项必须你拍板（{names}）")
+                if system_ids:
+                    names = "、".join(system_ids[:4])
+                    if len(system_ids) > 4:
+                        names += f" 等 {len(system_ids)} 项"
+                    parts.append(f"{len(system_ids)} 项系统去新建，不用你审（{names}）")
+                return "发现 " + "；".join(parts)
         issues = payload.get("issues")
         if isinstance(issues, list):
             codes = [
@@ -1012,6 +1293,23 @@ def _artifact_summary(artifact: Mapping[str, Any]) -> str:
                 names = "、".join(codes[:4])
                 if len(codes) > 4:
                     names += f" 等 {len(codes)} 项"
+                next_node = str(payload.get("next_node") or "").strip()
+                routes = {
+                    str(item.get("route_to") or "").strip()
+                    for item in issues
+                    if isinstance(item, Mapping) and str(item.get("route_to") or "").strip()
+                }
+                auto_target = ""
+                if next_node in AUTO_RETURN_SKIP_NODES:
+                    auto_target = ""
+                elif next_node:
+                    auto_target = next_node
+                elif routes and "human" not in routes:
+                    auto_target = sorted(routes)[0]
+                if auto_target:
+                    return (
+                        f"发现 {len(codes)} 个问题，自动回流 {auto_target} 修正（{names}）"
+                    )
                 return f"发现 {len(codes)} 个阻塞问题需人工定向修正（{names}）"
     if status:
         return status
@@ -1057,9 +1355,11 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
         summary: str,
         confirm_action: str = "",
         category: str = "",
+        item_id: str = "",
     ) -> None:
         item_id = str(
-            item.get("issue_id")
+            item_id
+            or item.get("issue_id")
             or item.get("id")
             or item.get("case_id")
             or item.get("requirement_id")
@@ -1084,6 +1384,12 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "human_title": str(item.get("human_title") or "").strip(),
                 "plain_summary": str(item.get("plain_summary") or "").strip(),
                 "case_id": str(item.get("case_id") or "").strip(),
+                "affected_case_ids": [
+                    str(value)
+                    for value in item.get("affected_case_ids", [])
+                    if isinstance(item.get("affected_case_ids"), list)
+                    and str(value).strip()
+                ],
                 "expected_id": str(item.get("expected_id") or "").strip(),
                 "recommendation": str(item.get("recommendation") or "").strip(),
                 "requirement_ids": _requirement_ids_from_item(item),
@@ -1093,6 +1399,11 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
                     if isinstance(item.get("source_refs"), list) and str(value).strip()
                 ],
                 "product_scene": str(item.get("product_scene") or "").strip(),
+                "needed_from_you": str(item.get("needed_from_you") or "").strip(),
+                "provide_from_you": str(item.get("provide_from_you") or "").strip(),
+                "data_to_build": str(item.get("data_to_build") or "").strip(),
+                "review_kind": str(item.get("review_kind") or "").strip(),
+                "why_human": str(item.get("why_human") or "").strip(),
             }
         )
 
@@ -1139,14 +1450,29 @@ def _approval_items(artifact: Mapping[str, Any]) -> list[dict[str, Any]]:
             confirm_action=str(item.get("confirm_action") or "").strip(),
             category=str(item.get("category") or "").strip(),
         )
-    for item in payload.get("unresolved_requirements", []):
+    for index, item in enumerate(payload.get("unresolved_requirements", [])):
         if not isinstance(item, Mapping):
             continue
+        humanized = humanize_unresolved_requirement(item, index)
+        requirement_id = unresolved_requirement_id(item, index)
+        normalized = {
+            **humanized,
+            "requirement_id": requirement_id,
+            "severity": str(item.get("severity") or item.get("risk") or "blocking"),
+            "affected_case_ids": humanized.get("affected_case_ids")
+            or item.get("affected_cases", []),
+        }
         append(
-            item,
-            title="未决数据需求",
-            summary=str(item.get("requirement") or item.get("summary") or item.get("reason_code") or "").strip(),
+            normalized,
+            title=str(humanized.get("human_title") or "未决数据需求"),
+            summary=str(
+                humanized.get("plain_summary")
+                or humanized.get("requirement")
+                or "未决数据需求"
+            ),
+            confirm_action=str(humanized.get("confirm_action") or "").strip(),
             category="test_data_pending_human",
+            item_id=requirement_id,
         )
     for field in ("tasks", "unresolved_items", "questions", "approval_items"):
         for item in payload.get(field, []):
@@ -1283,14 +1609,22 @@ def _refresh_definition_labels(spec: Mapping[str, Any]) -> dict[str, Any]:
     """Keep live spec titles aligned with current node/stage definitions."""
 
     labels = {node_id: label for node_id, label, _stage in SERVER_NODE_DEFINITIONS}
+    node_order = {
+        node_id: index
+        for index, (node_id, _label, _stage) in enumerate(SERVER_NODE_DEFINITIONS)
+    }
     stage_by_node = _stage_card_by_node()
     stage_titles = {
         card_id: title for card_id, title, _nodes in SERVER_STAGE_CARD_DEFINITIONS
     }
+    stage_nodes = {
+        card_id: node_ids for card_id, _title, node_ids in SERVER_STAGE_CARD_DEFINITIONS
+    }
     nodes = []
-    for node in spec.get("nodes") or []:
-        if not isinstance(node, Mapping):
-            continue
+    for node in sorted(
+        (item for item in spec.get("nodes") or [] if isinstance(item, Mapping)),
+        key=lambda item: node_order.get(str(item.get("node_id") or ""), len(node_order)),
+    ):
         item = dict(node)
         node_id = str(item.get("node_id") or "")
         if node_id in labels:
@@ -1307,6 +1641,8 @@ def _refresh_definition_labels(spec: Mapping[str, Any]) -> dict[str, Any]:
         card_id = str(item.get("stage_card_id") or "")
         if card_id in stage_titles:
             item["title"] = stage_titles[card_id]
+        if card_id in stage_nodes:
+            item["node_ids"] = list(stage_nodes[card_id])
         cards.append(item)
     refreshed = dict(spec)
     refreshed["nodes"] = nodes
@@ -1499,9 +1835,22 @@ def reconcile_autopilot(
                             "status": "open",
                             "owner_member_id": owner_id,
                             "item_count": (
-                                len(approval_items)
+                                sum(
+                                    1
+                                    for item in approval_items
+                                    if is_owner_review(item)
+                                )
                                 if approval_items
-                                else _action_count(artifact)
+                                and any(
+                                    str(item.get("category") or "")
+                                    == "test_data_pending_human"
+                                    for item in approval_items
+                                )
+                                else (
+                                    len(approval_items)
+                                    if approval_items
+                                    else _action_count(artifact)
+                                )
                             ),
                             "summary": item["result_summary"],
                             "approval_items": approval_items,
@@ -1521,8 +1870,21 @@ def reconcile_autopilot(
                 item.pop("result_summary", None)
                 item.pop("approval_items", None)
             nodes.append(item)
+        _reopen_auto_return_targets(nodes, selected)
+        _reopen_stale_review_after_correction(nodes, selected)
+        waiting_ids = {
+            str(item.get("node_id"))
+            for item in nodes
+            if item.get("state") == "waiting_human"
+        }
+        actions[:] = [
+            action
+            for action in actions
+            if str(action.get("gate_id")) in waiting_ids
+        ]
         _propagate_human_routed_blocks(nodes, selected, owner_id, run_id, actions)
         _advance_frontier(nodes)
+        _hold_behind_unfinished_dependencies(nodes)
         candidate = {**spec, "nodes": nodes, "actions": actions}
         candidate_core = {key: value for key, value in candidate.items() if key != "revision"}
         changed = candidate_core != previous_core

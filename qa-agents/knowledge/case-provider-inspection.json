@@ -1,0 +1,47 @@
+{
+  "schema_version": "case-provider-inspection/1.0",
+  "provider_id": "fs-qa-knowledge",
+  "repository": "git@git.firstshare.cn:autotest/fs-qa-knowledge.git",
+  "reviewed_commit": "64cf10c3d2e030285f7f634a4cc5c61539546713",
+  "reviewed_ref": "refs/heads/main",
+  "reviewed_at": "2026-09-10",
+  "status": "incompatible",
+  "production_enabled": false,
+  "historical_commits": [
+    {
+      "commit": "1ca888b645bd1c346b6d708a9a583af58d299fc8",
+      "role": "pilot-001 frozen snapshot"
+    }
+  ],
+  "blockers": [
+    {
+      "code": "provider_manifest_missing",
+      "message": "Frozen provider commit has no qa-agent-provider.json manifest"
+    },
+    {
+      "code": "mandatory_external_side_effect_workflow",
+      "message": "Provider workflow mandates conversion or upload side effects"
+    }
+  ],
+  "required_manifest": {
+    "schema_version": "qa-agent-provider/1.0",
+    "mode": "artifact_only",
+    "entrypoint": "provider-command generate --artifact-only",
+    "input_contract": "case-provider-input/1.0",
+    "output_contract": "case-provider-output/1.0",
+    "side_effects": []
+  },
+  "consumer_ready": {
+    "adapter": true,
+    "a08_bijective_mapping": true,
+    "a08_uncovered_obligations": true,
+    "a08_ir_completion": true,
+    "g02_provider_case_id": true,
+    "shadow_comparison": true
+  },
+  "notes": [
+    "QA consumer must not edit fs-qa-knowledge to bypass blockers.",
+    "New commits are fail-closed until this inspection record is updated.",
+    "Provider Cases stay shadow-only until artifact_only, bijection, A09, N04 and G02 pass."
+  ]
+}

@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>服务端需求自动化测试 · Monitor 心跳与审计链</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --line: #d8dee6;
+      --text: #17212b;
+      --muted: #62707d;
+      --blue: #1668b3;
+      --blue-bg: #eaf3fb;
+      --green: #22704a;
+      --green-bg: #edf7f1;
+      --orange: #b96b09;
+      --orange-bg: #fff5e6;
+      --purple: #6a45b5;
+      --purple-bg: #f3effd;
+      --red: #bd2f4a;
+      --red-bg: #fdf0f3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 18px;
+      color: var(--text);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    .page { max-width: 1540px; margin: 0 auto; }
+    header {
+      padding: 17px 21px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+    h1 { margin: 0 0 6px; font-size: 21px; }
+    .subtitle { margin: 0; max-width: 1150px; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+    .diagram {
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      overflow-x: auto;
+    }
+    .diagram svg {
+      display: block;
+      width: 100%;
+      min-width: 1240px;
+      height: auto;
+      max-width: none;
+    }
+    .title { font-size: 19px; font-weight: 700; fill: var(--text); }
+    .subtitle-svg { font-size: 12px; fill: var(--muted); }
+    .lane { fill: #f8fafc; stroke: #dce3ea; stroke-width: 1.4; rx: 14; }
+    .lane-title { font-size: 15px; font-weight: 700; }
+    .lane-desc { font-size: 11.5px; fill: var(--muted); }
+    .box rect { rx: 9; stroke-width: 1.3; }
+    .box-title { font-size: 12.5px; font-weight: 700; }
+    .box-text { font-size: 10.6px; fill: #4c5967; }
+    .step { font-size: 10.5px; font-weight: 700; fill: var(--muted); }
+    .monitor rect { fill: var(--blue-bg); stroke: #88b9df; }
+    .monitor .box-title { fill: var(--blue); }
+    .heartbeat rect { fill: var(--green-bg); stroke: #83ccab; }
+    .heartbeat .box-title { fill: var(--green); }
+    .watchdog rect { fill: var(--orange-bg); stroke: #e9bd75; }
+    .watchdog .box-title { fill: var(--orange); }
+    .audit rect { fill: var(--purple-bg); stroke: #bba9e9; }
+    .audit .box-title { fill: var(--purple); }
+    .risk rect { fill: var(--red-bg); stroke: #e9a3b3; }
+    .risk .box-title { fill: var(--red); }
+    .neutral rect { fill: #f6f8fa; stroke: #a9b7c4; }
+    .neutral .box-title { fill: #52606d; }
+    .edge { fill: none; stroke: #7c8b99; stroke-width: 1.7; marker-end: url(#arrow); }
+    .loop { fill: none; stroke: var(--blue); stroke-width: 1.7; stroke-dasharray: 7 5; marker-end: url(#arrow-blue); }
+    .fail { fill: none; stroke: var(--red); stroke-width: 1.7; stroke-dasharray: 7 5; marker-end: url(#arrow-red); }
+    .hash { fill: none; stroke: var(--purple); stroke-width: 2; marker-end: url(#arrow-purple); }
+    .label { font-size: 10.8px; fill: #62707d; }
+    .label-red { font-size: 10.8px; font-weight: 700; fill: var(--red); }
+    .badge rect { rx: 12; }
+    .badge-text { font-size: 10.8px; font-weight: 700; }
+    .neutral .badge-text { fill: #52606d; }
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(145px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .legend span { padding: 7px 9px; border-radius: 8px; font-size: 11.5px; line-height: 1.45; }
+    .legend .monitor { background: var(--blue-bg); color: var(--blue); }
+    .legend .heartbeat { background: var(--green-bg); color: var(--green); }
+    .legend .watchdog { background: var(--orange-bg); color: var(--orange); }
+    .legend .audit { background: var(--purple-bg); color: var(--purple); }
+    .legend .risk { background: var(--red-bg); color: var(--red); }
+    .legend .neutral { background: #f6f8fa; color: #52606d; border: 1px solid var(--line); }
+    .notes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(230px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .notes article { padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); font-size: 12px; line-height: 1.6; }
+    .notes h2 { margin: 0 0 5px; font-size: 14px; }
+    footer { margin-top: 10px; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: var(--muted); font-size: 12px; line-height: 1.6; }
+    @media (max-width: 900px) { body { padding: 10px; } .legend, .notes { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <h1>Monitor 心跳与审计链</h1>
+    <p class="subtitle">monitor 每 30 秒做一次状态对账和授权派发；每轮结束原子写入审计链和 heartbeat。watchdog 每 60 秒检查 heartbeat，超过 90 秒只产生告警和可选拉起进程，不获得任何调度权限。</p>
+  </header>
+
+  <section class="diagram" aria-label="Monitor 心跳与审计链图" role="img">
+    <svg viewBox="0 0 1500 830" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#7c8b99"></path></marker>
+        <marker id="arrow-blue" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#1668b3"></path></marker>
+        <marker id="arrow-red" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#bd2f4a"></path></marker>
+        <marker id="arrow-purple" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6a45b5"></path></marker>
+      </defs>
+
+      <text class="title" x="25" y="30">Monitor 心跳与审计链</text>
+      <text class="subtitle-svg" x="25" y="52">心跳说明“这轮扫描完成到什么程度”；审计链回答“谁在哪个版本派发了什么、结果是否被篡改”。</text>
+
+      <rect class="lane" x="25" y="78" width="915" height="350"></rect>
+      <text class="lane-title monitor" x="45" y="106">Monitor 扫描主链 · 30s / 轮</text>
+      <text class="lane-desc" x="45" y="126">全局扫描锁保证同一时刻只有一轮；不同 Run 可并行，同一 Run 串行</text>
+
+      <g class="monitor box" transform="translate(45,142)">
+        <rect width="205" height="70"></rect>
+        <text class="step" x="12" y="19">STEP 1</text>
+        <text class="box-title" x="53" y="19">发现 / 注册</text>
+        <text class="box-text" x="12" y="39">读取 active-workflows</text>
+        <text class="box-text" x="12" y="55">校验路径、Run、配置</text>
+      </g>
+      <g class="monitor box" transform="translate(265,142)">
+        <rect width="205" height="70"></rect>
+        <text class="step" x="12" y="19">STEP 2</text>
+        <text class="box-title" x="53" y="19">加锁对账</text>
+        <text class="box-text" x="12" y="39">全局扫描锁 + 单 Run 锁</text>
+        <text class="box-text" x="12" y="55">拉取 Issue / Run / 附件</text>
+      </g>
+      <g class="monitor box" transform="translate(485,142)">
+        <rect width="205" height="70"></rect>
+        <text class="step" x="12" y="19">STEP 3</text>
+        <text class="box-title" x="53" y="19">生成授权</text>
+        <text class="box-text" x="12" y="39">dispatch-authorization</text>
+        <text class="box-text" x="12" y="55">plan_hash + allowed_nodes</text>
+      </g>
+      <g class="monitor box" transform="translate(705,142)">
+        <rect width="205" height="70"></rect>
+        <text class="step" x="12" y="19">STEP 4</text>
+        <text class="box-title" x="53" y="19">影子校验</text>
+        <text class="box-text" x="12" y="39">独立重算计划字段</text>
+        <text class="box-text" x="12" y="55">Spec / Artifact 哈希一致</text>
+      </g>
+      <g class="monitor box" transform="translate(705,235)">
+        <rect width="205" height="70"></rect>
+        <text class="step" x="12" y="19">STEP 5</text>
+        <text class="box-title" x="53" y="19">执行同步</text>
+        <text class="box-text" x="12" y="39">摄入 completed Run</text>
+        <text class="box-text" x="12" y="55">运行确定性 N 节点</text>
+      </g>
+      <g class="monitor box" transform="translate(485,235)">
+        <rect width="205" height="70"></rect>
+        <text class="step" x="12" y="19">STEP 6</text>
+        <text class="box-title" x="53" y="19">收据核验</text>
+        <text class="box-text" x="12" y="39">node / bundle / attempt</text>
+        <text class="box-text" x="12" y="55">查重复、跨 Run、越权</text>
+      </g>
+      <g class="monitor box" transform="translate(265,235)">
+        <rect width="205" height="70"></rect>
+        <text class="step" x="12" y="19">STEP 7</text>
+        <text class="box-title" x="53" y="19">追加审计</text>
+        <text class="box-text" x="12" y="39">previous_event_hash</text>
+        <text class="box-text" x="12" y="55">event_hash + head_hash</text>
+      </g>
+      <g class="monitor box" transform="translate(45,235)">
+        <rect width="205" height="70"></rect>
+        <text class="step" x="12" y="19">STEP 8</text>
+        <text class="box-title" x="53" y="19">原子落盘</text>
+        <text class="box-text" x="12" y="39">registry revision / hash</text>
+        <text class="box-text" x="12" y="55">audit + heartbeat</text>
+      </g>
+
+      <g class="neutral box" transform="translate(45,335)">
+        <rect width="865" height="68"></rect>
+        <text class="box-title" x="14" y="24">每轮同步的状态面</text>
+        <text class="box-text" x="14" y="45">Spec revision · Artifact hashes · Issue projection hash · sync_result_hash · Gate event cursors · C1-C8 投影</text>
+        <text class="box-text" x="14" y="60">这些游标和哈希进入审计事件，用来判断下一轮是否重复处理、是否有输入变化、是否允许继续派发。</text>
+      </g>
+
+      <path class="edge" d="M250,177 H265"></path>
+      <path class="edge" d="M470,177 H485"></path>
+      <path class="edge" d="M690,177 H705"></path>
+      <path class="edge" d="M807,212 V235"></path>
+      <path class="edge" d="M705,270 H690"></path>
+      <path class="edge" d="M485,270 H470"></path>
+      <path class="edge" d="M265,270 H250"></path>
+      <path class="edge" d="M147,270 V335"></path>
+      <path class="loop" d="M45,369 C15,369 15,177 45,177"></path>
+      <text class="label" x="25" y="398">30 秒后进入下一轮</text>
+
+      <rect class="lane" x="975" y="78" width="500" height="350"></rect>
+      <text class="lane-title heartbeat" x="995" y="106">Heartbeat / Watchdog</text>
+      <text class="lane-desc" x="995" y="126">heartbeat 是运行证据；watchdog 不参与业务调度</text>
+
+      <g class="heartbeat box" transform="translate(995,142)">
+        <rect width="220" height="80"></rect>
+        <text class="box-title" x="12" y="22">workflow-monitor-heartbeat</text>
+        <text class="box-text" x="12" y="43">updated_at · registry_revision</text>
+        <text class="box-text" x="12" y="59">active/result/dispatch 统计</text>
+        <text class="box-text" x="12" y="74">duplicate / cross-run / Gate 指标</text>
+      </g>
+      <g class="watchdog box" transform="translate(1250,142)">
+        <rect width="200" height="80"></rect>
+        <text class="box-title" x="12" y="22">Watchdog · 60s</text>
+        <text class="box-text" x="12" y="43">解析 updated_at</text>
+        <text class="box-text" x="12" y="59">计算当前年龄</text>
+        <text class="box-text" x="12" y="74">只读 heartbeat</text>
+      </g>
+      <g class="heartbeat box" transform="translate(1250,252)">
+        <rect width="200" height="56"></rect>
+        <text class="box-title" x="12" y="22">≤ 90s：healthy</text>
+        <text class="box-text" x="12" y="40">清除历史 alert</text>
+      </g>
+      <g class="risk box" transform="translate(995,252)">
+        <rect width="220" height="56"></rect>
+        <text class="box-title" x="12" y="22">> 90s：unhealthy</text>
+        <text class="box-text" x="12" y="40">写入 alert，dispatch_authority=false</text>
+      </g>
+      <g class="neutral box" transform="translate(995,335)">
+        <rect width="455" height="68"></rect>
+        <text class="box-title" x="14" y="24">可选 kickstart 仅拉起 monitor 进程</text>
+        <text class="box-text" x="14" y="45">不会补派 Agent、不会绕过 Gate、不会修改审计链；恢复调度仍要等下一轮完整授权扫描。</text>
+      </g>
+
+      <path class="edge" d="M940,270 H995"></path>
+      <path class="edge" d="M1215,182 H1250"></path>
+      <path class="edge" d="M1350,222 V252"></path>
+      <path class="fail" d="M1250,290 C1235,290 1225,290 1215,290"></path>
+      <path class="edge" d="M1105,308 V335"></path>
+      <path class="edge" d="M1350,308 V335"></path>
+      <text class="label" x="944" y="259">写入</text>
+      <text class="label" x="1218" y="171">读取</text>
+
+      <rect class="lane" x="25" y="462" width="1450" height="292"></rect>
+      <text class="lane-title audit" x="45" y="490">审计链与防篡改校验</text>
+      <text class="lane-desc" x="45" y="510">事件按 previous_event_hash 串成链；每次加载都重算 event_hash 并比对 head_hash</text>
+
+      <g class="audit box" transform="translate(45,528)">
+        <rect width="255" height="102"></rect>
+        <text class="box-title" x="12" y="22">Event N-1</text>
+        <text class="box-text" x="12" y="44">event_id / started_at / finished_at</text>
+        <text class="box-text" x="12" y="61">plan_hash · allowed_nodes · receipts</text>
+        <text class="box-text" x="12" y="78">previous_event_hash</text>
+        <text class="box-text" x="12" y="94">event_hash = SHA-256(event)</text>
+      </g>
+      <g class="audit box" transform="translate(355,528)">
+        <rect width="255" height="102"></rect>
+        <text class="box-title" x="12" y="22">Event N</text>
+        <text class="box-text" x="12" y="44">previous_event_hash = head(N-1)</text>
+        <text class="box-text" x="12" y="61">sync result hash / 游标</text>
+        <text class="box-text" x="12" y="78">attempted_dispatches</text>
+        <text class="box-text" x="12" y="94">event_hash = SHA-256(event)</text>
+      </g>
+      <g class="audit box" transform="translate(665,528)">
+        <rect width="255" height="102"></rect>
+        <text class="box-title" x="12" y="22">Event N+1</text>
+        <text class="box-text" x="12" y="44">previous_event_hash = head(N)</text>
+        <text class="box-text" x="12" y="61">错误 / blocked / needs_action</text>
+        <text class="box-text" x="12" y="78">status / last_error</text>
+        <text class="box-text" x="12" y="94">head_hash 指向最新事件</text>
+      </g>
+      <g class="neutral box" transform="translate(975,528)">
+        <rect width="230" height="102"></rect>
+        <text class="box-title" x="12" y="22">Dispatch 索引</text>
+        <text class="box-text" x="12" y="44">key = hash(run, node,</text>
+        <text class="box-text" x="12" y="60">input_bundle, attempt)</text>
+        <text class="box-text" x="12" y="78">value = issue_id</text>
+        <text class="box-text" x="12" y="94">同 key 不同 Issue 即重复</text>
+      </g>
+      <g class="risk box" transform="translate(1245,528)">
+        <rect width="205" height="102"></rect>
+        <text class="box-title" x="12" y="22">Fail-closed</text>
+        <text class="box-text" x="12" y="44">链断裂 / 哈希不符</text>
+        <text class="box-text" x="12" y="60">重复 / 跨 Run / 越权</text>
+        <text class="box-text" x="12" y="76">suspended_accuracy</text>
+        <text class="box-text" x="12" y="91">需显式 ack 恢复</text>
+      </g>
+
+      <g class="neutral badge" transform="translate(45,655)">
+        <rect width="120" height="30"></rect>
+        <text class="badge-text neutral" x="16" y="20">30s monitor</text>
+      </g>
+      <g class="neutral badge" transform="translate(180,655)">
+        <rect width="120" height="30"></rect>
+        <text class="badge-text neutral" x="22" y="20">60s check</text>
+      </g>
+      <g class="neutral badge" transform="translate(315,655)">
+        <rect width="120" height="30"></rect>
+        <text class="badge-text neutral" x="21" y="20">90s stale</text>
+      </g>
+      <g class="neutral badge" transform="translate(450,655)">
+        <rect width="180" height="30"></rect>
+        <text class="badge-text neutral" x="18" y="20">atomic write</text>
+      </g>
+      <g class="neutral badge" transform="translate(645,655)">
+        <rect width="205" height="30"></rect>
+        <text class="badge-text neutral" x="20" y="20">shadow authorization</text>
+      </g>
+
+      <path class="hash" d="M300,579 H355"></path>
+      <path class="hash" d="M610,579 H665"></path>
+      <path class="edge" d="M920,579 H975"></path>
+      <path class="fail" d="M1205,579 H1245"></path>
+      <path class="fail" d="M1347,630 V700"></path>
+      <path class="edge" d="M1347,700 H860"></path>
+      <text class="label" x="303" y="568">head</text>
+      <text class="label" x="613" y="568">head</text>
+      <text class="label" x="923" y="568">receipts</text>
+      <text class="label-red" x="1206" y="568">violation</text>
+      <text class="label-red" x="1240" y="718">任一校验失败即挂起，不用“下一步重试”掩盖问题</text>
+    </svg>
+  </section>
+
+  <section class="legend" aria-label="图例">
+    <span class="monitor">Monitor 扫描 / 授权</span>
+    <span class="heartbeat">Heartbeat 运行证据</span>
+    <span class="watchdog">Watchdog 健康检查</span>
+    <span class="audit">审计事件哈希链</span>
+    <span class="risk">Fail-closed / 挂起</span>
+    <span class="neutral">状态游标 / 指标</span>
+  </section>
+
+  <section class="notes" aria-label="关键规则">
+    <article>
+      <h2>心跳不是调度授权</h2>
+      heartbeat 只证明 monitor 最近一轮完成并给出统计；真正派发仍必须通过 plan_hash、allowed_nodes、bundle_hash 和 attempt 的完整校验。
+    </article>
+    <article>
+      <h2>审计链防篡改</h2>
+      每个事件保存前驱哈希和自身内容哈希，head_hash 锁定最新事件。加载时逐个重算；断链、哈希不符或 head 不一致都拒绝继续。
+    </article>
+    <article>
+      <h2>异常恢复原则</h2>
+      心跳过期只告警和可选拉起进程；重复派发、跨 Run、Gate 绕过或审计篡改会进入 accuracy suspension，必须显式 acknowledge 后才能恢复。
+    </article>
+  </section>
+
+  <footer>
+    配套架构图：`http://127.0.0.1:8765/qa-agents/docs/qa-agent-share-architecture.html` · 多分支任务流转图：`http://127.0.0.1:8765/qa-agents/docs/qa-agent-share-flow.html`
+  </footer>
+</main>
+</body>
+</html>

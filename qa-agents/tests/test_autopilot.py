@@ -10,8 +10,11 @@ from qa_agents.autopilot import (
     _approval_items,
     _artifact_state,
     _artifact_summary,
+    _auto_return_target,
+    _hold_behind_unfinished_dependencies,
     initialize_autopilot,
     reconcile_autopilot,
+    _refresh_definition_labels,
 )
 from qa_agents.contracts import ArtifactEnvelope, ArtifactStatus, Producer, content_hash
 from qa_agents.errors import ContractError
@@ -59,6 +62,40 @@ def test_artifact_summary_n11_shows_server_gate_counts() -> None:
         },
     }
     assert _artifact_summary(artifact) == "服务端不准出：执行 7，通过 0，失败 7"
+
+
+def test_artifact_summary_auto_return_does_not_ask_for_human() -> None:
+    artifact = {
+        "artifact_id": "n04-test-case-ir-validation",
+        "status": "needs_human",
+        "payload": {
+            "next_node": "A08",
+            "issues": [
+                {"id": "ISS-001", "route_to": "A08"},
+                {"id": "ISS-002", "route_to": "A08"},
+            ],
+        },
+    }
+    summary = _artifact_summary(artifact)
+    assert "自动回流 A08 修正" in summary
+    assert "需人工定向修正" not in summary
+
+
+def test_artifact_summary_human_next_node_does_not_claim_auto_return() -> None:
+    artifact = {
+        "artifact_id": "n04-test-case-ir-validation",
+        "status": "needs_human",
+        "payload": {
+            "next_node": "human",
+            "issues": [
+                {"id": "ISS-014", "route_to": "A08"},
+                {"id": "ISS-015", "route_to": "A08"},
+            ],
+        },
+    }
+    summary = _artifact_summary(artifact)
+    assert "需人工定向修正" in summary
+    assert "自动回流 A08 修正" not in summary
 
 
 def test_artifact_summary_needs_human_lists_blocking_issues() -> None:
@@ -242,6 +279,53 @@ def test_approval_items_only_surface_g02_case_design_uncertainty() -> None:
     assert _artifact_summary(artifact) == "2 个用例设计待确认（没权限时不要改提示、空指标名这轮不测）"
 
 
+def test_auto_return_target_uses_issue_code_without_id() -> None:
+    artifact = {
+        "payload": {
+            "issues": [
+                {"issue_code": "oracle_mapping_incomplete", "route_to": "A14"},
+                {"issue_code": "expected_id_not_bound", "route_to": "A14"},
+            ]
+        }
+    }
+    assert _auto_return_target(artifact, set()) == "A14"
+    assert _auto_return_target(artifact, {"oracle_mapping_incomplete"}) == "A14"
+
+
+def test_hold_keeps_n05_and_g03_behind_blocked_a18_be() -> None:
+    nodes = [
+        {"node_id": "A18-BE", "stage": 16, "state": "blocked"},
+        {"node_id": "A18-CT", "stage": 16, "state": "skipped"},
+        {"node_id": "N05", "stage": 17, "state": "completed"},
+        {"node_id": "G03", "stage": 18, "state": "skipped"},
+        {"node_id": "N07", "stage": 19, "state": "queued"},
+    ]
+
+    _advance_frontier(nodes)
+    _hold_behind_unfinished_dependencies(nodes)
+
+    assert nodes[0]["state"] == "blocked"
+    assert nodes[2]["state"] == "not_started"
+    assert nodes[3]["state"] == "not_started"
+    assert nodes[4]["state"] == "not_started"
+
+
+def test_hold_demotes_blocked_n05_and_keeps_queued_a14() -> None:
+    nodes = [
+        {"node_id": "A14", "stage": 15, "state": "queued"},
+        {"node_id": "A18-BE", "stage": 16, "state": "blocked"},
+        {"node_id": "N05", "stage": 17, "state": "blocked"},
+        {"node_id": "G03", "stage": 18, "state": "not_started"},
+    ]
+
+    _hold_behind_unfinished_dependencies(nodes)
+
+    assert nodes[0]["state"] == "queued"
+    assert nodes[1]["state"] == "blocked"
+    assert nodes[2]["state"] == "not_started"
+    assert nodes[3]["state"] == "not_started"
+
+
 def test_frontier_advances_past_skipped_g03_to_n07() -> None:
     nodes = [
         {"node_id": "G03", "stage": 18, "state": "skipped"},
@@ -268,6 +352,64 @@ def test_frontier_queues_all_parallel_nodes_and_stops_on_blocker() -> None:
     nodes[1]["state"] = "blocked"
     _advance_frontier(nodes)
     assert nodes[2]["state"] == "not_started"
+
+
+def test_frontier_does_not_queue_c5_generators_while_a22_waits() -> None:
+    nodes = [
+        {"node_id": "N15", "stage": 14, "state": "completed"},
+        {"node_id": "A22", "stage": 15, "state": "waiting_human"},
+        {"node_id": "N27", "stage": 16, "state": "completed"},
+        {"node_id": "A14", "stage": 15, "state": "queued"},
+        {"node_id": "A15", "stage": 15, "state": "not_started"},
+    ]
+
+    _advance_frontier(nodes)
+
+    assert nodes[3]["state"] == "not_started"
+    assert nodes[3]["result_summary"] == "等待上游节点"
+    assert nodes[4]["state"] == "not_started"
+
+    nodes[1]["state"] = "completed"
+    _advance_frontier(nodes)
+    assert nodes[3]["state"] == "queued"
+    assert nodes[4]["state"] == "queued"
+
+
+def test_c5_definition_and_refresh_follow_execution_dependencies() -> None:
+    card = next(
+        card for card in SERVER_STAGE_CARD_DEFINITIONS if card[0] == "C5"
+    )
+    assert card[2][:4] == ("A22", "N27", "A14", "A15")
+
+    spec = {
+        "revision": 1,
+        "nodes": [
+            {"node_id": "A14"},
+            {"node_id": "A22"},
+            {"node_id": "A15"},
+            {"node_id": "N27"},
+        ],
+        "stage_cards": [
+            {
+                "stage_card_id": "C5",
+                "title": "旧标题",
+                "node_ids": ["A14", "A15", "A22", "N27"],
+            }
+        ],
+    }
+    refreshed = _refresh_definition_labels(spec)
+    assert [node["node_id"] for node in refreshed["nodes"]] == [
+        "A22",
+        "N27",
+        "A14",
+        "A15",
+    ]
+    assert refreshed["stage_cards"][0]["node_ids"][:4] == [
+        "A22",
+        "N27",
+        "A14",
+        "A15",
+    ]
 
 
 def _write(path: Path, value: dict) -> Path:
@@ -468,6 +610,8 @@ def test_autopilot_initializes_complete_server_quality_dag(tmp_path: Path) -> No
     assert nodes["N08"]["stage"] == nodes["N17"]["stage"]
     assert nodes["N17"]["label"] == "未执行用例收口"
     assert nodes["N11"]["label"] == "服务端准出判定"
+    assert nodes["G03"]["label"] == "自动化代码审核（自动关闭/不需要人工）"
+    assert "人工审核" not in nodes["G03"]["label"]
     assert nodes["N23"]["stage"] > nodes["N12"]["stage"]
 
 
@@ -506,6 +650,19 @@ def test_reconcile_derives_nodes_and_human_actions_from_artifacts(tmp_path: Path
         tmp_path / "registry",
         tmp_path / "initial",
         runner=multica,
+    )
+    initial_spec = json.loads((tmp_path / "initial/workflow-center-spec.json").read_text())
+    g01 = next(node for node in initial_spec["nodes"] if node["node_id"] == "G01")
+    g01.update(
+        {
+            "issue_id": "issue-g01",
+            "issue_identifier": "QAA-G01",
+            "stage_issue_id": "issue-c2",
+            "stage_issue_identifier": "QAA-C2",
+        }
+    )
+    (tmp_path / "initial/workflow-center-spec.json").write_text(
+        json.dumps(initial_spec, ensure_ascii=False), encoding="utf-8"
     )
     artifacts = tmp_path / "artifacts"
     for component, artifact_id, status, payload in (
@@ -562,6 +719,8 @@ def test_reconcile_derives_nodes_and_human_actions_from_artifacts(tmp_path: Path
     assert nodes["A03"]["state"] == "completed"
     assert nodes["G01"]["state"] == "waiting_human"
     assert spec["actions"][0]["item_count"] == 2
+    assert spec["actions"][0]["issue_id"] == "issue-g01"
+    assert spec["actions"][0]["issue_identifier"] == "QAA-G01"
     approval_items = spec["actions"][0]["approval_items"]
     assert [item["id"] for item in approval_items] == ["I1", "I2"]
     assert spec["actions"][0]["item_count"] == len(approval_items)
@@ -619,7 +778,7 @@ def test_reconcile_refreshes_summary_when_completed_artifact_changes(tmp_path: P
     assert n27["result_summary"] == "new validation summary"
 
 
-def test_reconcile_routes_blocked_a09_to_waiting_human_when_n04_routes_human(
+def test_reconcile_routes_human_authorization_to_a08_owner(
     tmp_path: Path,
 ) -> None:
     multica = FakeMultica()
@@ -696,12 +855,147 @@ def test_reconcile_routes_blocked_a09_to_waiting_human_when_n04_routes_human(
     assert result["changed"] is True
     spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
     nodes = {item["node_id"]: item for item in spec["nodes"]}
-    assert nodes["N04"]["state"] == "waiting_human"
-    assert nodes["A09"]["state"] == "waiting_human"
-    assert nodes["A09"]["result_summary"] == "阻塞问题已路由人工处置，等待定向修正或终止决策"
+    assert nodes["A08"]["state"] == "waiting_human"
+    assert nodes["A08"]["result_summary"] == "自动修正预算耗尽，等待测试设计人工授权"
+    assert nodes["N04"]["state"] == "blocked"
+    assert nodes["A09"]["state"] == "blocked"
     gate_ids = {action["gate_id"] for action in spec["actions"]}
-    assert "N04" in gate_ids and "A09" in gate_ids
-    assert result["open_action_count"] == 2
+    assert gate_ids == {"A08"}
+    assert result["open_action_count"] == 1
+
+
+def test_reconcile_reopens_completed_a08_when_n04_auto_returns(
+    tmp_path: Path,
+) -> None:
+    initialize_autopilot(
+        _request(tmp_path / "request.json"),
+        _config(tmp_path / "config.json"),
+        tmp_path / "registry",
+        tmp_path / "initial",
+        runner=FakeMultica(),
+    )
+    artifacts = tmp_path / "artifacts"
+    a08 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="a08-test-design-ir",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("A08"),
+        payload={"schema_version": "test-design-ir/1.0", "parent_cases": []},
+        status=ArtifactStatus.COMPLETED,
+    )
+    _write(artifacts / "a08-test-design-ir.json", a08.to_dict())
+    n04 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="n04-test-case-ir-validation",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("N04"),
+        payload={
+            "schema_version": "test-case-ir-validation/1.0",
+            "valid": False,
+            "next_node": "A08",
+            "test_design_artifact_hash": a08.artifact_hash,
+            "issues": [
+                {"id": "ISS-001", "origin": "A09", "severity": "error", "route_to": "A08"}
+            ],
+            "correction_attempt": 1,
+            "max_correction_attempts": 2,
+        },
+        status=ArtifactStatus.NEEDS_HUMAN,
+    )
+    _write(artifacts / "n04-test-case-ir-validation.json", n04.to_dict())
+
+    result = reconcile_autopilot(
+        tmp_path / "initial/workflow-center-spec.json",
+        [artifacts],
+        tmp_path / "reconciled",
+    )
+
+    assert result["changed"] is True
+    spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
+    nodes = {item["node_id"]: item for item in spec["nodes"]}
+    assert nodes["A08"]["state"] == "queued"
+    assert "自动回流修正" in nodes["A08"]["result_summary"]
+    assert nodes["N04"]["state"] == "blocked"
+
+
+def test_reconcile_reopens_a14_when_a18_be_auto_returns(tmp_path: Path) -> None:
+    initialize_autopilot(
+        _request(tmp_path / "request.json"),
+        _config(tmp_path / "config.json"),
+        tmp_path / "registry",
+        tmp_path / "initial",
+        runner=FakeMultica(),
+    )
+    artifacts = tmp_path / "artifacts"
+    a14 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="a14-backend-automation-generation",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("A14"),
+        payload={
+            "schema_version": "automation-generation/1.0",
+            "manifest": {"schema_version": "automation-manifest/1.0"},
+            "code_candidates": [],
+        },
+        status=ArtifactStatus.COMPLETED,
+    )
+    _write(artifacts / "a14-backend-automation-generation.json", a14.to_dict())
+    a18 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="a18-be-backend-automation-review",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("A18-BE"),
+        payload={
+            "schema_version": "automation-review/1.0",
+            "approved": False,
+            "generation_hash": content_hash(a14.payload),
+            "issues": [
+                {"issue_code": "oracle_mapping_incomplete", "route_to": "A14"},
+                {"issue_code": "expected_id_not_bound", "route_to": "A14"},
+            ],
+        },
+        status=ArtifactStatus.NEEDS_HUMAN,
+    )
+    _write(artifacts / "a18-be-backend-automation-review.json", a18.to_dict())
+    n05 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="n05-automation-code-check",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("N05"),
+        payload={
+            "schema_version": "automation-code-check/1.0",
+            "passed": False,
+            "input_bindings": [{"generation_hash": content_hash(a14.payload)}],
+            "issues": [
+                {
+                    "issue_code": "oracle_matcher_not_supported",
+                    "route_to": "A14",
+                }
+            ],
+        },
+        status=ArtifactStatus.NEEDS_HUMAN,
+    )
+    _write(artifacts / "n05-automation-code-check.json", n05.to_dict())
+
+    result = reconcile_autopilot(
+        tmp_path / "initial/workflow-center-spec.json",
+        [artifacts],
+        tmp_path / "reconciled",
+    )
+
+    assert result["changed"] is True
+    spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
+    nodes = {item["node_id"]: item for item in spec["nodes"]}
+    assert nodes["A14"]["state"] == "queued"
+    assert nodes["A14"]["result_summary"] == "A18-BE 校验未通过，等待自动回流修正"
+    assert nodes["A18-BE"]["state"] == "blocked"
+    assert nodes["N05"]["state"] == "not_started"
+    assert nodes["G03"]["state"] == "not_started"
 
 
 def test_a06_needs_human_merges_into_g01_without_second_action(tmp_path: Path) -> None:
@@ -818,8 +1112,8 @@ def test_artifact_summary_needs_human_lists_unresolved_requirements() -> None:
         },
     }
     summary = _artifact_summary(artifact)
-    assert "5 个未决数据需求需人工确认" in summary
-    assert "UR-01" in summary
+    assert "3 项必须你拍板（UR-02、UR-03、UR-04）" in summary
+    assert "2 项系统去新建，不用你审（UR-01、UR-05）" in summary
 
 
 def test_approval_items_carry_a22_unresolved_requirements() -> None:
@@ -832,6 +1126,8 @@ def test_approval_items_carry_a22_unresolved_requirements() -> None:
                     "requirement_id": "UR-01",
                     "reason_code": "chart_create_op_unverified",
                     "requirement": "stat_chart 创建接口及参数未验证，图表 setup_operation 需人工确认",
+                    "affected_cases": ["TC-BE-001", "TC-CT-001"],
+                    "required_resolution": "Provide a verified chart creation recipe.",
                 }
             ],
         },
@@ -839,9 +1135,15 @@ def test_approval_items_carry_a22_unresolved_requirements() -> None:
     items = _approval_items(artifact)
     assert len(items) == 1
     assert items[0]["id"] == "UR-01"
-    assert items[0]["title"] == "未决数据需求"
-    assert "stat_chart 创建接口及参数未验证" in items[0]["summary"]
+    assert items[0]["title"] == "确认系统去建图"
+    assert "建图方法还没验证" in items[0]["summary"]
+    assert items[0]["needed_from_you"].startswith("不需要你审")
+    assert items[0]["review_kind"] == "system"
+    assert "recipe" not in items[0]["recommendation"]
+    assert "Provide a verified" not in items[0]["recommendation"]
+    assert items[0]["affected_case_ids"] == ["TC-BE-001", "TC-CT-001"]
     assert items[0]["category"] == "test_data_pending_human"
+    assert items[0]["product_scene"]
 
 
 def test_reconcile_clears_ghost_completed_nodes_when_artifact_disappears(tmp_path: Path) -> None:
@@ -956,3 +1258,165 @@ def test_unexecuted_n17_is_blocked_without_approval_action(tmp_path: Path) -> No
     assert nodes["N17"]["state"] == "blocked"
     assert "approval_items" not in nodes["N17"]
     assert all(item.get("gate_id") != "N17" for item in spec["actions"])
+
+
+def test_reconcile_waits_for_human_when_budget_is_exhausted(
+    tmp_path: Path,
+) -> None:
+    initialize_autopilot(
+        _request(tmp_path / "request.json"),
+        _config(tmp_path / "config.json"),
+        tmp_path / "registry",
+        tmp_path / "initial",
+        runner=FakeMultica(),
+    )
+    artifacts = tmp_path / "artifacts"
+    a08 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="a08-test-design-ir",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("A08"),
+        payload={
+            "schema_version": "test-design-ir/1.0",
+            "parent_cases": [],
+            "correction_resolutions": [
+                {
+                    "feedback_id": "ISS-001",
+                    "disposition": "fixed",
+                    "affected_case_ids": ["TC-BE-005"],
+                }
+            ],
+        },
+        status=ArtifactStatus.COMPLETED,
+    )
+    _write(artifacts / "a08-test-design-ir.json", a08.to_dict())
+    n04 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="n04-test-case-ir-validation",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("N04"),
+        payload={
+            "schema_version": "test-case-ir-validation/1.0",
+            "valid": False,
+            "next_node": "human",
+            "test_design_artifact_hash": a08.artifact_hash,
+            "issues": [
+                {
+                    "id": "ISS-014",
+                    "origin": "A09",
+                    "severity": "error",
+                    "route_to": "A08",
+                }
+            ],
+            "correction_attempt": 2,
+            "max_correction_attempts": 2,
+        },
+        status=ArtifactStatus.NEEDS_HUMAN,
+    )
+    _write(artifacts / "n04-test-case-ir-validation.json", n04.to_dict())
+    a09 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="a09-oracle-coverage-review",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("A09"),
+        payload={
+            "schema_version": "oracle-coverage-review/1.0",
+            "approved": False,
+            "issues": [
+                {
+                    "id": "ISS-014",
+                    "severity": "error",
+                    "route_to": "A08",
+                    "case_id": "TC-BE-005",
+                }
+            ],
+        },
+        status=ArtifactStatus.NEEDS_HUMAN,
+    )
+    _write(artifacts / "a09-oracle-coverage-review.json", a09.to_dict())
+
+    result = reconcile_autopilot(
+        tmp_path / "initial/workflow-center-spec.json",
+        [artifacts],
+        tmp_path / "reconciled",
+    )
+
+    assert result["changed"] is True
+    spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
+    nodes = {item["node_id"]: item for item in spec["nodes"]}
+    assert nodes["A08"]["state"] == "waiting_human"
+    assert nodes["N04"]["state"] == "blocked"
+    assert nodes["A09"]["state"] == "blocked"
+    assert result["open_action_count"] == 1
+
+
+def test_reconcile_reopens_a09_after_corrected_a08(tmp_path: Path) -> None:
+    initialize_autopilot(
+        _request(tmp_path / "request.json"),
+        _config(tmp_path / "config.json"),
+        tmp_path / "registry",
+        tmp_path / "initial",
+        runner=FakeMultica(),
+    )
+    artifacts = tmp_path / "artifacts"
+    a08 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="a08-test-design-ir",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("A08"),
+        payload={"schema_version": "test-design-ir/1.0", "parent_cases": []},
+        status=ArtifactStatus.COMPLETED,
+    )
+    _write(artifacts / "a08-test-design-ir.json", a08.to_dict())
+    n04 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="n04-test-case-ir-validation",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("N04"),
+        payload={
+            "schema_version": "test-case-ir-validation/1.0",
+            "valid": False,
+            "next_node": "human",
+            "test_design_artifact_hash": "sha256:old-a08",
+            "issues": [
+                {"id": "ISS-014", "origin": "A09", "severity": "error", "route_to": "A08"}
+            ],
+            "correction_attempt": 2,
+            "max_correction_attempts": 2,
+        },
+        status=ArtifactStatus.NEEDS_HUMAN,
+    )
+    _write(artifacts / "n04-test-case-ir-validation.json", n04.to_dict())
+    a09 = ArtifactEnvelope(
+        workflow_run_id="REQ-1-r001",
+        workflow_mode="new_requirement",
+        artifact_id="a09-oracle-coverage-review",
+        source_snapshot_id="snapshot-1",
+        producer=Producer("A09"),
+        payload={
+            "schema_version": "oracle-coverage-review/1.0",
+            "approved": False,
+            "issues": [
+                {"id": "ISS-014", "severity": "error", "route_to": "A08"}
+            ],
+        },
+        status=ArtifactStatus.NEEDS_HUMAN,
+    )
+    _write(artifacts / "a09-oracle-coverage-review.json", a09.to_dict())
+
+    result = reconcile_autopilot(
+        tmp_path / "initial/workflow-center-spec.json",
+        [artifacts],
+        tmp_path / "reconciled",
+    )
+
+    spec = json.loads((tmp_path / "reconciled/workflow-center-spec.json").read_text())
+    nodes = {item["node_id"]: item for item in spec["nodes"]}
+    assert nodes["A09"]["state"] == "queued"
+    assert nodes["A09"]["result_summary"] == "A08 已修正，等待 A09 复审"
+    assert result["changed"] is True

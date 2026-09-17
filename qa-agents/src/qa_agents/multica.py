@@ -25,11 +25,18 @@ from .historical_behavior import (
     assert_historical_regression_coverage,
     validate_historical_behavior_packet,
 )
+from .case_provider import (
+    CaseProviderAdapter,
+    load_case_provider_inspection,
+    validate_provider_case_mappings,
+)
 from .security import SecurityPolicy
 from .storage import ArtifactStore
+from .test_data_copy import case_titles_from_cases, has_cjk, humanize_unresolved_requirement
 
 
 HUMAN_FACING_ISSUE_FIELDS = frozenset({"plain_summary", "human_title"})
+UNRESOLVED_HUMAN_FIELDS = ("human_title", "product_scene", "plain_summary", "needed_from_you", "confirm_action", "recommendation")
 
 
 PROFILE_INPUTS = {
@@ -716,6 +723,7 @@ def prepare_multica_test_design_input(
     *,
     security: SecurityPolicy | None = None,
     prior_test_rules_paths: Sequence[Path] | None = None,
+    case_provider_output_path: Path | None = None,
 ) -> dict[str, Any]:
     """Compile G01-approved evidence and N24 strategy into A08's only input."""
 
@@ -797,6 +805,58 @@ def prepare_multica_test_design_input(
                 "concise and no structured rules are available for this snapshot"
             )
     obligations = _test_rule_obligations(test_rules)
+    requirements = artifacts["requirement_analysis"]["payload"].get("requirements", [])
+    provider_input: dict[str, Any] | None = None
+    if isinstance(requirements, list) and requirements:
+        provider_input = {
+            "schema_version": "case-provider-input/1.0",
+            "workflow_run_id": workflow_run_id,
+            "source_snapshot_id": snapshot_id,
+            "approved_scope": {
+                "gate_id": "G01",
+                "decision": "approved",
+                "decision_hash": decision_hash,
+                "test_rules": dict(test_rules),
+                "test_rule_obligations": obligations,
+            },
+            "test_strategy": artifacts["test_strategy"]["payload"],
+            "requirements": requirements,
+            "source_refs": [
+                {
+                    "type": "artifact",
+                    "id": "a02-requirement-analysis",
+                    "content_hash": artifacts["requirement_analysis"]["artifact_hash"],
+                },
+                {
+                    "type": "human_gate_decision",
+                    "id": "G01",
+                    "content_hash": decision_hash,
+                },
+            ],
+        }
+        provider_input["input_hash"] = content_hash(provider_input)
+        ArtifactStore(output_dir).write_json("case-provider-input.json", provider_input)
+    if case_provider_output_path is not None:
+        if provider_input is None:
+            raise ContractError(
+                "A08 Case Provider input requires at least one frozen requirement"
+            )
+        case_provider_draft = load_case_provider_draft(
+            case_provider_output_path,
+            provider_input,
+            inspection=load_case_provider_inspection(),
+        )
+    else:
+        case_provider_draft = {
+            "provider_status": "incompatible",
+            "candidate_count": 0,
+            "candidates": [],
+            "reason": (
+                "Frozen fs-qa-knowledge provider has no artifact-only capability"
+                if provider_input is not None
+                else "A02 frozen requirements are unavailable for the Case Provider"
+            ),
+        }
     allowed_inputs = {
         "validated_analysis": {
             input_name: artifact["payload"]
@@ -824,12 +884,7 @@ def prepare_multica_test_design_input(
             ),
         },
         "test_strategy": artifacts["test_strategy"]["payload"],
-        "case_provider_draft": {
-            "provider_status": "incompatible",
-            "candidate_count": 0,
-            "candidates": [],
-            "reason": "Frozen fs-qa-knowledge provider has no artifact-only capability",
-        },
+        "case_provider_draft": case_provider_draft,
     }
     bundle = {
         "schema_version": "multica-agent-input/1.0",
@@ -864,6 +919,38 @@ def prepare_multica_test_design_input(
     bundle["bundle_hash"] = content_hash(bundle)
     ArtifactStore(output_dir).write_json("a08-input.json", bundle)
     return bundle
+
+
+def load_case_provider_draft(
+    provider_output_path: Path,
+    provider_input: Mapping[str, Any],
+    *,
+    inspection: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Load a reviewed artifact-only Provider result bound to this A08 input."""
+
+    inspection = inspection or load_case_provider_inspection()
+    provider_output = _read(provider_output_path)
+    metadata = provider_output.get("metadata")
+    if not isinstance(metadata, Mapping):
+        raise ContractError("Case Provider output metadata must be an object")
+    if str(metadata.get("workflow_run_id", "")) != str(provider_input["workflow_run_id"]):
+        raise ContractError("Case Provider output belongs to another workflow run")
+    if str(metadata.get("source_snapshot_id", "")) != str(
+        provider_input["source_snapshot_id"]
+    ):
+        raise ContractError("Case Provider output belongs to another source snapshot")
+    if str(metadata.get("input_bundle_hash", "")) != str(provider_input["input_hash"]):
+        raise ContractError("Case Provider output is not bound to the current input")
+    if inspection.get("status") != "compatible" or inspection.get("production_enabled") is not True:
+        raise ContractError("Frozen fs-qa-knowledge Provider is not production-enabled")
+    reviewed_commit = str(inspection.get("reviewed_commit", ""))
+    if str(metadata.get("provider_commit", "")) != reviewed_commit:
+        raise ContractError("Case Provider output commit is not the reviewed production commit")
+    draft = CaseProviderAdapter().adapt(provider_output, expected_commit=reviewed_commit)
+    draft["provider_status"] = "compatible"
+    draft["input_bundle_hash"] = provider_input["input_hash"]
+    return draft
 
 
 def _group_n04_correction_issues(issues: list[Any]) -> list[dict[str, Any]]:
@@ -1039,6 +1126,21 @@ def prepare_multica_test_design_correction_input(
         raise ContractError("A08 correction cannot mix human recovery and G02 direction")
     n04_payload = n04["payload"]
     expected_route = "human" if human_recovery else "A08"
+    claimed_ids = {
+        str(item.get("feedback_id") or "").strip()
+        for item in design.get("payload", {}).get("correction_resolutions") or []
+        if isinstance(item, dict)
+        and item.get("disposition") == "fixed"
+        and str(item.get("feedback_id") or "").strip()
+    }
+    unattempted = [
+        item
+        for item in n04_payload.get("issues") or []
+        if isinstance(item, dict)
+        and str(item.get("route_to") or "").strip() == "A08"
+        and str(item.get("id") or "").strip()
+        and str(item.get("id") or "").strip() not in claimed_ids
+    ]
     if g02_direction:
         route_ok = (
             n04_payload.get("valid") is True
@@ -1048,8 +1150,11 @@ def prepare_multica_test_design_correction_input(
     else:
         route_ok = (
             n04_payload.get("valid") is False
-            and n04_payload.get("next_node") == expected_route
             and n04_payload.get("g02_status") == "not_started"
+            and (
+                n04_payload.get("next_node") == expected_route
+                or (not human_recovery and bool(unattempted))
+            )
         )
     if not route_ok:
         raise ContractError(
@@ -1063,7 +1168,10 @@ def prepare_multica_test_design_correction_input(
     max_attempts = n04_payload.get("max_correction_attempts")
     if not isinstance(attempt, int) or not isinstance(max_attempts, int):
         raise ContractError("A08 correction N04 retry budget is invalid")
-    if attempt >= max_attempts and not (human_recovery or g02_direction):
+    if (
+        attempt > max_attempts
+        and not (human_recovery or g02_direction or unattempted)
+    ):
         raise ContractError("A08 correction retry budget is exhausted")
 
     human_authorization: dict[str, Any] | None = None
@@ -2226,6 +2334,8 @@ def _compact_a11_review_case(
             len(case.get("preconditions", [])) if isinstance(case.get("preconditions"), list) else 0
         ),
     }
+    if case.get("layer_responsibility") is not None:
+        compact["layer_responsibility"] = case.get("layer_responsibility")
     if parent is not None:
         compact["parent_case_id"] = case.get("parent_case_id")
         compact["inherits_parent"] = {
@@ -2637,6 +2747,36 @@ def _fill_human_facing_issue_fields(payload: dict[str, Any]) -> None:
             item["human_title"] = title
 
 
+def _fill_unresolved_requirement_human_fields(
+    payload: dict[str, Any],
+    bundle: Mapping[str, Any] | None = None,
+) -> None:
+    """Backfill Chinese review copy for A22 ``unresolved_requirements``.
+
+    The A22 plan is reviewed by the QA owner on the Multica detail page, so a
+    plan whose requirements only carry an English ``reason_code`` plus an
+    English ``required_resolution`` may not be accepted: the Chinese
+    human-facing fields are derived here (or kept when the Agent already wrote
+    Chinese) before contract validation and Artifact hashing. The original
+    English values stay untouched on the Artifact for audit.
+    """
+
+    requirements = payload.get("unresolved_requirements")
+    if not isinstance(requirements, list):
+        return
+    case_titles: dict[str, str] = {}
+    if isinstance(bundle, Mapping):
+        allowed = bundle.get("allowed_inputs")
+        if isinstance(allowed, Mapping):
+            case_titles = case_titles_from_cases(allowed.get("cases"))
+    for index, item in enumerate(requirements):
+        if not isinstance(item, dict):
+            continue
+        requirements[index] = humanize_unresolved_requirement(
+            item, index, case_titles=case_titles
+        )
+
+
 def _validate_collection_item_fields(
     payload: Mapping[str, Any], field_requirements: Mapping[str, set[str]]
 ) -> None:
@@ -2797,12 +2937,15 @@ def _validate_test_design_semantics(
     approved_scope = allowed_inputs.get("approved_scope", {})
     strategy = allowed_inputs.get("test_strategy", {})
     historical = allowed_inputs.get("historical_behavior_packet")
+    provider_draft = allowed_inputs.get("case_provider_draft", {})
     if not all(isinstance(item, Mapping) for item in (validated, approved_scope, strategy)):
         raise ContractError("A08 approved inputs are invalid")
     if historical is not None:
         if not isinstance(historical, Mapping):
             raise ContractError("A08 historical behavior knowledge packet is invalid")
         validate_historical_behavior_packet(historical)
+    if not isinstance(provider_draft, Mapping):
+        raise ContractError("A08 Case Provider draft is invalid")
 
     requirements = validated.get("requirement_analysis", {}).get("requirements", [])
     requirement_ids = {str(item.get("id")) for item in requirements}
@@ -2881,6 +3024,7 @@ def _validate_test_design_semantics(
                 )
     if observed_layers != required_layers:
         raise ContractError("A08 parent Cases do not cover every N24-required test layer")
+    validate_provider_case_mappings(provider_draft, payload)
 
     coverage = payload.get("coverage_matrix", [])
     covered_requirements: list[str] = []
@@ -3766,6 +3910,15 @@ def _validate_test_data_plan_semantics(
     unresolved = payload.get("unresolved_requirements", [])
     if not isinstance(unresolved, list):
         raise ContractError("A22 unresolved_requirements must be a list")
+    for index, item in enumerate(unresolved):
+        if not isinstance(item, Mapping):
+            raise ContractError(f"A22 unresolved_requirements[{index}] must be an object")
+        for field in UNRESOLVED_HUMAN_FIELDS:
+            value = str(item.get(field) or "").strip()
+            if not value or not has_cjk(value):
+                raise ContractError(
+                    f"A22 unresolved_requirements[{index}] must carry Chinese {field}"
+                )
     if unresolved and payload.get("status") != ArtifactStatus.NEEDS_HUMAN.value:
         raise ContractError("A22 unresolved requirements must route to needs_human")
     if not unresolved and payload.get("status") != ArtifactStatus.COMPLETED.value:
@@ -3921,6 +4074,7 @@ def ingest_multica_output(
     if missing:
         raise ContractError(f"Multica output is missing required fields: {', '.join(missing)}")
     _fill_human_facing_issue_fields(payload)
+    _fill_unresolved_requirement_human_fields(payload, bundle)
     _validate_evidence_collections(payload, output_config["evidence_collections"])
     _validate_collection_item_fields(payload, output_config["collection_item_fields"])
     if profile_id in {"A18-BE", "A18-CT"}:

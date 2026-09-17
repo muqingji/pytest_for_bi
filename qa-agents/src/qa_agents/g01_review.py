@@ -133,14 +133,24 @@ def _write_state(store: ArtifactStore, state: Mapping[str, Any]) -> dict[str, An
 
 
 def _validate_issue(
-    issue: Mapping[str, Any], adapter: Mapping[str, Any], *, require_metadata: bool
+    issue: Mapping[str, Any],
+    adapter: Mapping[str, Any],
+    *,
+    require_metadata: bool,
+    request: Mapping[str, Any] | None = None,
 ) -> None:
     multica = adapter["multica"]
     if issue.get("workspace_id") != multica["workspace_id"]:
         raise SecurityPolicyError("G01 issue belongs to another Multica workspace")
     allowed_project_ids = set(multica.get("review_project_ids", [multica["project_id"]]))
     if issue.get("project_id") not in allowed_project_ids:
-        raise SecurityPolicyError("G01 issue belongs to another Multica project")
+        metadata = issue.get("metadata") if isinstance(issue.get("metadata"), Mapping) else {}
+        same_run = bool(request) and (
+            metadata.get("qa_workflow_run_id") == str(request.get("workflow_run_id", ""))
+            or metadata.get("qa_request_hash") == str(request.get("request_hash", ""))
+        )
+        if metadata.get("qa_gate_id") != "G01" or not same_run:
+            raise SecurityPolicyError("G01 issue belongs to another Multica project")
     if issue.get("assignee_type") != "member":
         raise SecurityPolicyError("G01 issue must be assigned to a human member")
     if issue.get("assignee_id") not in adapter["allowed_multica_member_ids"]:
@@ -186,7 +196,7 @@ def open_multica_scope_review(
         _validate_hash(state, "state_hash", "G01 workflow state")
         if state.get("request_hash") != request["request_hash"]:
             raise ContractError("G01 workflow state belongs to another request")
-        if issue_id and state.get("issue_id") != issue_id:
+        if issue_id and state.get("issue_id") and state.get("issue_id") != issue_id:
             raise ContractError("G01 workflow state is already bound to another issue")
         if state.get("issue_id") and state.get("state") != "opening_review":
             return state
@@ -224,7 +234,7 @@ def open_multica_scope_review(
                     request_path.parent,
                 )
                 bound = {**bound, "assignee_type": "member", "assignee_id": multica["assignee_member_id"]}
-            _validate_issue(bound, adapter, require_metadata=False)
+            _validate_issue(bound, adapter, require_metadata=False, request=request)
             created = bound
         else:
             created = runner(
@@ -254,13 +264,15 @@ def open_multica_scope_review(
             issue_id = str(created.get("id", ""))
             if not issue_id:
                 raise ContractError("Multica did not return a G01 issue ID")
-            _validate_issue(created, adapter, require_metadata=False)
+            _validate_issue(created, adapter, require_metadata=False, request=request)
         state = _write_state(
             store,
             {
                 **state,
                 "state": "opening_review",
                 "issue_id": str(created["id"]),
+                "issue_identifier": str(created.get("identifier", "")),
+                "issue_binding": "gate_issue",
                 "observed_multica_status": str(created.get("status", "todo")),
             },
         )
@@ -309,6 +321,8 @@ def open_multica_scope_review(
         {
             **state,
             "state": "waiting_for_review",
+            "issue_identifier": str(state.get("issue_identifier", "")),
+            "issue_binding": "gate_issue",
             "observed_multica_status": "in_review",
         },
     )
@@ -354,8 +368,77 @@ _NON_DECISION_MARKERS = (
     "待 QA Owner 确认",
     "待 QA Owner 明确",
     "当前状态：待",
+    "G01 审核补充说明",
+    "系统不会使用不完整提交",
+)
+_REVIEW_TEXT_TRANSLATION = str.maketrans(
+    {
+        "“": '"',
+        "”": '"',
+        "‘": "'",
+        "’": "'",
+        "「": '"',
+        "」": '"',
+        " ": "",
+        "\n": "",
+        "\t": "",
+        "：": ":",
+        "，": ",",
+    }
 )
 
+
+def _folded_review_text(value: str) -> str:
+    return str(value).translate(_REVIEW_TEXT_TRANSLATION).strip()
+
+
+def _issue_match_needles(item: Mapping[str, Any]) -> list[str]:
+    detail = item.get("detail") if isinstance(item.get("detail"), Mapping) else {}
+    texts = [
+        str(item.get("confirm_action") or ""),
+        str(item.get("plain_summary") or ""),
+        str(detail.get("recommendation") or ""),
+        str(detail.get("summary") or ""),
+    ]
+    needles: list[str] = []
+    seen: set[str] = set()
+
+    def add(folded: str) -> None:
+        if len(folded) < 16 or folded in seen:
+            return
+        seen.add(folded)
+        needles.append(folded)
+
+    for text in texts:
+        folded = _folded_review_text(text)
+        add(folded)
+        for prefix in ("产品", "请"):
+            if folded.startswith(prefix):
+                add(folded[len(prefix):])
+    return needles
+
+
+def _unlabeled_match_bodies(content: str) -> list[str]:
+    bodies: list[str] = []
+    seen: set[str] = set()
+    for raw in (content, *reversed(str(content).split("\n\n"))):
+        folded = _folded_review_text(raw)
+        if len(folded) < 16 or folded in seen:
+            continue
+        seen.add(folded)
+        bodies.append(folded)
+    return bodies
+
+
+def _unlabeled_comment_matches_issue(content: str, item: Mapping[str, Any]) -> bool:
+    needles = _issue_match_needles(item)
+    if not needles:
+        return False
+    for body in _unlabeled_match_bodies(content):
+        for needle in needles:
+            if needle in body or body in needle:
+                return True
+    return False
 
 
 def _is_concise_comment(comment: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
@@ -364,7 +447,10 @@ def _is_concise_comment(comment: Mapping[str, Any], request: Mapping[str, Any]) 
         return False
     if any(marker in content for marker in _NON_DECISION_MARKERS):
         return False
-    return any(str(item.get("issue_id", "")) in content for item in request.get("issues", []))
+    issues = [item for item in request.get("issues", []) if isinstance(item, Mapping)]
+    if any(str(item.get("issue_id", "")) and str(item.get("issue_id")) in content for item in issues):
+        return True
+    return any(_unlabeled_comment_matches_issue(content, item) for item in issues)
 
 
 
@@ -415,6 +501,29 @@ def _parse_concise_responses(content: str, request: Mapping[str, Any]) -> list[d
             "rationale": reply,
             "owner": "A06 需求与变更对齐" if unclear else "QA Owner",
         })
+    if missing:
+        leftover_start = (
+            occurrences[-1][0] + len(occurrences[-1][1]) if occurrences else 0
+        )
+        leftover = content[leftover_start:]
+        by_id = {str(item.get("issue_id")): item for item in request.get("issues", [])}
+        still_missing: list[str] = []
+        for issue_id in missing:
+            item = by_id.get(issue_id, {})
+            source = leftover if _unlabeled_comment_matches_issue(leftover, item) else content
+            if _unlabeled_comment_matches_issue(source, item):
+                rationale = leftover.strip(strip_chars) or str(content).strip()
+                rows.append(
+                    {
+                        "issue_id": issue_id,
+                        "disposition": "confirmed",
+                        "rationale": rationale,
+                        "owner": "QA Owner",
+                    }
+                )
+            else:
+                still_missing.append(issue_id)
+        missing = still_missing
     if missing:
         blanket = _blanket_confirmation_rationale(content, rows)
         if not blanket:
@@ -674,7 +783,7 @@ def sync_multica_scope_review(
     )
     if not isinstance(issue, Mapping) or issue.get("id") != state["issue_id"]:
         raise SecurityPolicyError("Multica returned a different G01 issue")
-    _validate_issue(issue, adapter, require_metadata=True)
+    _validate_issue(issue, adapter, require_metadata=True, request=request)
     metadata = issue["metadata"]
     expected_metadata = _expected_metadata(request, adapter)
     if any(metadata.get(key) != value for key, value in expected_metadata.items()):

@@ -1,8 +1,8 @@
-# 生产级 QA 多 Agent 质量系统设计规范
+# 服务端需求自动化测试设计规范
 
 ## 1. 文档定位
 
-本文档是 QA 多 Agent 质量系统的顶层设计规范，也是后续设计、实现和验收每个 Agent
+本文档是“服务端需求自动化测试”的顶层设计规范，也是后续设计、实现和验收每个 Agent
 及 Multica 流程节点时的共同参照。
 
 系统目标不是生成一批看起来完整的测试 Case，而是进入真实研发流程，建立一套能够：
@@ -23,7 +23,7 @@
 以及阶段 2 后端自动化切片的本地参考实现位于 `qa-agents/`；`pilot-001` 已完成人工恢复、G02
 与阶段二 N25/A11/N26/N15 真实闭环。独立置信运行 `multica-confidence-20260811-01` 已过 G01/
 N24/A08/A09/N04 双轮自动修正，现停在 human（预算耗尽）。参考实现不等于生产 Multica、模型
-Runtime、完整自动化链路或发布门禁已经完成。
+Runtime、完整自动化链路或发布门禁已经完成。最新实现边界见 §2.10（2026-09-10）。
 
 ## 2. 设计状态与使用规则
 
@@ -49,7 +49,7 @@ Runtime、完整自动化链路或发布门禁已经完成。
 
 - 已完成 N00/N01/N02/N03/N04/N05/N06/N14/N15/N24/N25/N26、A02-A09、A11/A12、
   A14/A18-BE 和 G01-G03 的本地参考链路。
-- 已在独立 Multica Workspace `QA 多 Agent 质量系统` 中配置首批 7 个 Agent，并使用真实冻结
+- 已在独立 Multica Workspace `服务端需求自动化测试` 中配置首批 7 个 Agent，并使用真实冻结
   需求、技术方案和后端 commit 跑通
   `A02/A03/A05 -> A06 -> G01 -> N24 -> A08 -> A09 -> N04 -> A08 -> A09 -> N04`。
 - G01 已汇总并由 QA Owner 逐项确认 23 个问题；N24 将本需求判定为 `critical`，强制覆盖
@@ -406,6 +406,61 @@ Runtime、完整自动化链路或发布门禁已经完成。
   `create -> configure -> readback -> execute` 生命周期。
 
 
+### 2.10 当前进展快照（2026-09-10）
+
+本节记录编排监听、G01 审批协议、A08 派发/摄入契约，以及 20260909 统计图查看明细 i18n
+重跑的当前边界。§2.1–2.9 是历史快照，不改写。实时 Project/Issue ID 以本机
+`generated/` 为准，禁止抄进同事配置或当成模板。
+
+**已经实现并验证**
+
+- 活跃工作流由统一 monitor 管理：实现 `qa-agents/src/qa_agents/workflow_monitor.py`，
+  CLI `qa-agents/scripts/workflow_monitor.py`，注册表 `generated/active-workflows.json`
+  （gitignored）。初始化写入注册表，不再为每个 run 安装带 `--config` 的 plist。
+- `install-sync-timer.sh` 安装两个 LaunchAgent：`com.qa.sync-eight-card` 每 **30 秒**
+  扫描，`com.qa.sync-eight-card-watchdog` 每 **60 秒** 检查 heartbeat（超过 90 秒不健康才
+  kickstart）。watchdog 无分发授权。旧 plist 指向已删除 `--config` 时，
+  `handoff_missing_config_to_monitor` 转交 monitor，不得因 ENOENT 退出。
+- 锁跳过与进程失败不是跨 run 违规：stdout `{"skipped": ...}` 记 busy；`{"fatal": ...}`
+  且 `workflow_run_id` 为空或等于当前 run 记本 run 错误。只有真实跨 run、重复分发或未授权
+  节点才 `suspended_accuracy_violation`。恢复该挂起必须显式
+  `--acknowledge-accuracy-violation`。
+- G01：`g01-comment-table/1.0` 才是批准。Issue 仅改 `done` 会被忽略并拉回 `in_review`。
+  无标签跟评可匹配当前最后一个未答项；系统评论、非授权成员、旧 request hash 都不是决策。
+  必须绑定**本 run spec** 的 C2 `issue_id`，C2 项目可以不是 Adapter 默认 `project_id`。
+  同一扫描轮次内 G01 批准后立刻跑 N24，再派发 A08。
+- A08 派发按轮次对齐指令：首轮 Profile `1.1.0` → `a08-v1.1.1.md`，自动修正 `1.2.1`，
+  人工恢复 `1.3.0`，G02 退回修正 `1.4.0`。配置缺 `node_instruction_files` 时使用打包默认
+  映射。派发必须写 `inputs/.issue-bundles.json`；摄入时若 `node_input_files` 为空，回落到
+  `inputs/<node>-input.json`。已完成 Run 无法摄入时 Issue 标 `blocked`，禁止长期留在
+  `in_progress`。`blocked_input` 不得入库（写入后删除并抛错，允许重派）。
+  `ingest_failures` 中的 issue_id 不能再当成 `already_dispatched`。首轮 Agent 读完输入后
+  保持静默直到输出一份 JSON，此窗口内 C3「进行中」是预期行为。
+- 同事本机配置见 `qa-agents/docs/COLLEAGUE_SETUP.md`。模板 ID 在
+  `qa-agents/multica/workflow-center-config.json`，与任何一次 live run 的 Project ID 都不同。
+- Case Provider 消费端已接，生产启用仍 fail-closed。钉死 commit
+  `64cf10c3d2e030285f7f634a4cc5c61539546713` 仍 `incompatible`（缺 `qa-agent-provider.json`，
+  强制 `upload2fs`）。历史试点冻在 `1ca888b645bd1c346b6d708a9a583af58d299fc8`。详见 §12.5。
+
+**当前真实重跑状态**
+
+- 运行：`REQ-DETAIL-DRILL-I18N-RERUN-20260909-FRESH` /
+  `detail-drill-i18n-8card-20260909-fresh-01`；产物目录
+  `generated/multica-eight-card-run-20260909-fresh/`（不入库）。
+- C1（A02/A03/A05/A06）已完成；C2 的 G01 与 N24 已完成。
+- A08 首轮失败卡已记入 `ingest_failures` 并保持 `blocked`，不得再 `already_dispatched`。
+  后续首轮 QAA-472 已摄入，Artifact 状态 `completed_with_gaps`（`test-design-ir/1.1`，
+  11 个父 Case / 8 个 Intent，`provider_case_mappings` 为空）。A09 处于 `queued`，N04/G02
+  未开始。
+- 不得写成「测试设计已闭环」「A09 已完成」或「自动化已跑通」。Provider Case 未启用。
+
+**仍阻塞（含需 Provider 仓维护者做的事）**
+
+- 发布 `qa-agent-provider.json` 和真正无副作用的 `artifact_only` 入口；评审新 commit 后
+  更新 inspection，影子实跑通过，再允许启用 Provider Case。
+- 生产隔离 Runner、外部发布/缺陷/MR Adapter、统计图 update/save 完整契约仍未闭合。
+
+
 ## 3. 核心架构原则
 
 ### 3.1 Agent 负责判断，程序负责执行
@@ -574,6 +629,26 @@ flowchart LR
 4. 全部已路由节点为 `completed`、`skipped_by_policy` 或其他合法终态：`done`。
 5. 其余情况：`backlog`。
 
+节点卡（`内部执行` 项目里的子任务卡）状态与投影保持一致：Agent 节点存在
+`queued`/`dispatched`/`running`/`in_progress`/`completed` 的 run 时，卡状态由 Agent 运行时拥有，
+同步不得改写；run 结束后（含从未产生 run）必须按节点状态映射回写（未开始→`backlog`、
+排队→`todo`、运行→`in_progress`、等待人工→`in_review`、阻塞→`blocked`）。已关闭
+（`done`/`cancelled`）的卡不得被陈旧 Artifact 重新打开，否则会覆盖人工确认（例如 A22 数据计划
+确认依赖 A22 卡保持 `done`），并让用户看到卡状态与节点真实状态长期不一致。
+人工审核卡（`qa_item_type=人工处理`）同样以人工决策为准：人工卡一旦被置为 `done`/`cancelled`，
+同步不得按仍处于 `open` 的 action 把它改回 `in_review`；在处置评论齐备、确认 Artifact 形成之前，
+需求卡继续显示该待处理项，但不再反复改写审核卡状态。
+
+人工卡「已置 `done` 但未形成确认」时改用评论提醒，不改状态：
+
+- 首次观察到该状态时在卡上写锚点 `qa_review_done_seen_at`（含 `qa_review_reminder_action_id`，
+  换一轮 action 会重新计时），当轮不打扰。
+- 等待超过 `human_review_reminder_minutes`（默认 30）发第一条提醒评论；超过
+  `human_review_reminder_escalation_minutes`（默认 120，`0` 表示关闭提醒）发最后一条升级提醒；
+  最多两条，之后不再重复。已发条数记录在 `qa_review_reminder_count`。
+- 提醒内容逐项列出待处置项与 A22 的评论格式（`UR-xx: confirmed/skip/return/need_evidence`），
+  并说明补评论即可自动形成确认、无需再改状态；升级提醒说明下游 A14/A15/A18/N05/G03 仍被阻塞。
+
 活动重试优先于历史失败，因此重跑开始后卡片必须从 `blocked` 回到 `in_progress`。修正回路、
 重试和同一运行的重复同步只更新原阶段卡的状态与正文，禁止创建新卡。每张卡正文统一包含：
 
@@ -589,7 +664,9 @@ flowchart LR
 ```
 
 `阶段任务` 逐条列出本卡内部节点、状态和可点击的子任务卡链接（`[QAA-xxx](mention://issue/<id>)`，
-无独立任务卡的节点只显示节点标识）；`当前进度` 必须列出内部节点总数及各状态数量，并标明当前节点；`产出` 展示 Artifact 名称、
+无独立任务卡的节点只显示节点标识，未开始节点只用文本注明“卡在 `<上游节点>` 的决策”，
+不得嵌入上游节点的问题链接——Multica 的 mention 徽标会携带被链接问题的状态，会让未开始节点看起来是上游的
+`审核中` 状态）；`当前进度` 必须列出内部节点总数及各状态数量，并标明当前节点；`产出` 展示 Artifact 名称、
 版本和哈希；`异常处理` 展示最近错误、重试次数和下一路由；`人工操作` 仅在需要人工决策时给出
 明确动作。长日志留在 Artifact/运行记录中，不复制到任务卡正文。
 
@@ -729,13 +806,26 @@ flowchart TD
   Artifact 后对账，再把阶段状态和详情投影回 8 张卡；每次对一张卡只同步一次，同一投影幂等。
 - A02、A03、A06 的结果齐备后，同步脚本自动生成 G01 请求、可读 Markdown 和决策模板；
   A06 的待确认项与需求、技术方案问题合并到一次人工审核，不再单独打断流程。
-- 人工 Gate 批准后，后续链路全自动推进：G01 通过自动执行 N24；N24 就绪自动派发 A08 测试
-  设计（先按轮次对齐 Agent 指令，再创建带输入附件的内部 Issue 交给 A08 Agent 执行）；
-  A08 完成自动派发 A09 Oracle 与覆盖审查；A08+A09 齐备自动运行 N04 Test Case IR 校验。
-  N04 不通过（`next_node=A08`）时全自动回流：A08 修正 → A09 复审 → N04 重验，循环直到
-  校验通过自动打开 G02 人工审核，或修正预算耗尽转人工恢复。Agent 节点 Issue 幂等创建，
-  重复同步不会产生重复卡，修正/复审卡标题带“修正”字样、输入落在
+- G01 批准不是 Issue 状态机：`g01-comment-table/1.0` 才是决策。仅把 C2/G01 Issue 置 `done`
+  会被 Adapter 忽略并拉回 `in_review`。无标签跟评可以匹配当前最后一个未答项；系统评论、
+  非授权成员和旧 request hash 都不是决策。C2 阶段卡可能不在 Adapter 默认 `project_id`，
+  必须绑定本 run spec 的 C2 `issue_id`，不能用政策文件里的模板项目 ID。
+- 人工 Gate 批准后，后续链路全自动推进，且必须在同一扫描轮次完成：G01 通过自动执行 N24；
+  N24 就绪自动派发 A08 测试设计（先按轮次对齐 Agent 指令，再创建带输入附件的内部 Issue
+  交给 A08 Agent 执行）；A08 完成自动派发 A09 Oracle 与覆盖审查；A08+A09 齐备自动运行
+  N04 Test Case IR 校验。N04 不通过（`next_node=A08`）时全自动回流：A08 修正 → A09 复审 →
+  N04 重验，循环直到校验通过自动打开 G02 人工审核，或修正预算耗尽转人工恢复。Agent 节点
+  Issue 幂等创建，重复同步不会产生重复卡，修正/复审卡标题带“修正”字样、输入落在
   `inputs/a08-correction-*` / `inputs/a09-correction-*`，不覆盖原卡。
+- A08 派发按轮次对齐指令：首轮 Profile `1.1.0` → `a08-v1.1.1.md`，自动修正 `1.2.1`，
+  人工恢复 `1.3.0`，G02 退回修正 `1.4.0`。配置缺 `node_instruction_files` 时使用打包默认
+  映射（模板 `workflow-center-config.json` 现已带该字段）。派发必须写入
+  `inputs/.issue-bundles.json`；摄入时若 `node_input_files` 为空，回落到
+  `inputs/<node>-input.json`。
+- 已完成 Run 的输出不能作为合法 Artifact 摄入时，Issue 必须标 `blocked` 并更新内存状态，
+  禁止长期留在 `in_progress`。`blocked_input` 不得入库（写入后删除并抛错，允许重派）。
+  `ingest_failures` 记录的 issue_id 不能再被当成 `already_dispatched`。首轮 A08 在读完输入后
+  保持静默，直到输出一份 JSON；此窗口内 C3 显示“进行中”是预期行为。
 - G02 批准后 C4/C5 全自动推进：G02 通过自动运行 N25 父子 Case 编译，然后派发 A11 拆分覆盖
   审查；A11 批准后自动运行 N26 测试选择与 N15 执行计划；N15/N25 就绪后自动派发 A14 服务端
   自动化生成、A15 契约自动化生成与 A22 测试数据规划（每个 Agent 先按 `node_instruction_files`
@@ -747,7 +837,9 @@ flowchart TD
   按新哈希重验，循环直到通过或修正预算耗尽转人工；A14/A15 只在 N27 通过后才绑定测试数据计划，
   N27 未通过时生成卡等待修订，不携带被拒数据。
 - A22 计划带未决数据需求时保持 `needs_human`，由 QA Owner 在审核 Issue 上确认（置 `done`）
-  后生成 `a22-human-confirmation`，C5 才能进入终态；未登记能力路由到
+  后生成 `a22-human-confirmation`，C5 才能进入终态；审核卡上的每条未决数据需求必须展示中文
+  （`human_title`/`plain_summary`/`recommendation`），英文 `reason_code` 只作机器标识，
+  入库契约与卡片渲染都强制走 `qa_agents/test_data_copy.py::humanize_unresolved_requirement`；未登记能力路由到
   `capability_adapter_backlog`，由 `bi-recipe-adapter` skill 从 112 已验证契约产出证据门禁
   候选（`verification_requirements` 闭合前不可执行），不制造人工手写链路任务。
 - 阶段卡状态以实时 Issue 状态为准，不再只看历史 Artifact：节点存在进行中的 Agent Issue 时按
@@ -759,13 +851,22 @@ flowchart TD
 - C5 每个子任务都可点击跳转：A14/A15/A22/A18-BE/A18-CT 由 Agent Issue 承载（输入包为附件），
   N27/N05 由系统自动创建的记录卡承载（Artifact 为附件），G03 由人工审核卡承载；阶段卡详情页
   的节点表格会把它们渲染成可点击的 Issue 链接。
-- 同步脚本默认“跑一次推进一次”，要做到无人值守全自动需保持它周期性运行（幂等，可重叠）：
-  常驻模式追加 `--watch --watch-interval 60`；或安装 LaunchAgent 定时器
-  `qa-agents/scripts/com.qa.sync-eight-card.plist`（每 120 秒一次，
-  `bash qa-agents/scripts/install-sync-timer.sh` 安装，安装前校验 multica CLI 存在）；或用
-  crontab 每分钟执行一次。平台侧另有 multica Autopilot（cron `*/5 * * * *`）做服务端 DAG
-  对账与首轮节点派发，它只负责幂等对账（不重复建卡），无法执行本地摄入/确定性节点/修正轮次；
-  本地同步定时器与之互补，两者不会重复创建节点 Issue。
+- 无人值守调度由统一 monitor 驱动，不再把单次 `--config` 写进 LaunchAgent。注册表为
+  `generated/active-workflows.json`；CLI 为 `qa-agents/scripts/workflow_monitor.py`
+  （实现位于 `qa-agents/src/qa_agents/workflow_monitor.py`）。
+  `bash qa-agents/scripts/install-sync-timer.sh` 安装两个 LaunchAgent：
+  `com.qa.sync-eight-card` 每 30 秒扫描一次，`com.qa.sync-eight-card-watchdog` 每 60 秒
+  检查 heartbeat（超过 90 秒不健康才 kickstart），watchdog 无分发授权。常驻模式可用
+  `workflow_monitor.py ... scan --watch --interval 30`。旧 plist 若仍带已删除的 `--config`，
+  `sync_eight_card_progress.py` 会 `handoff_missing_config_to_monitor`，不得因 ENOENT 退出。
+- 锁冲突与进程失败不是跨 run 违规：stdout 为 `{"skipped": ...}` 记 busy；`{"fatal": ...}`
+  且 `workflow_run_id` 为空或等于当前 run 记本 run 错误。只有真实跨 run、重复分发或未授权
+  节点才 `suspended_accuracy_violation`。恢复该挂起必须显式
+  `--acknowledge-accuracy-violation`。同事配置见 `qa-agents/docs/COLLEAGUE_SETUP.md`；
+  模板 ID 在 `qa-agents/multica/workflow-center-config.json`，禁止抄 `generated/` 里的 live ID。
+- 平台侧另有 multica Autopilot（cron `*/5 * * * *`）做服务端 DAG 对账与首轮节点派发，
+  它只负责幂等对账（不重复建卡），无法执行本地摄入/确定性节点/修正轮次；本地 monitor 与之
+  互补，两者不会重复创建节点 Issue。
 - 恢复既有运行时，只把重新发现的 Issue 绑定合并到当前状态，并以已发布 revision 为版本下限，
   不允许初始化规格把已完成节点改回“待规划”。修正、退回和重试只更新原阶段卡的状态与正文，
   禁止创建新卡或后缀卡。人工 Gate 仍以正式 Decision Artifact 为准，卡片上的“待审核”只是
@@ -1479,9 +1580,15 @@ INPUT-FREEZE 冻结需求
 - 在 Provider 尚未支持 `artifact_only` 和稳定结构化输出前，只允许影子运行，不能接入
   正式发布门禁。
 
-当前冻结版本的兼容结论是 `incompatible`，阻塞原因为 `provider_manifest_missing` 和
-`mandatory_external_side_effect_workflow`。QA 系统消费端不得修改 Provider 仓库来绕过阻塞；
-需由 `fs-qa-knowledge` 维护者发布 capability manifest 和真正无副作用的独立入口。
+当前已评审并钉死的 Provider commit 是
+`64cf10c3d2e030285f7f634a4cc5c61539546713`（2026-09-10）。兼容结论仍是
+`incompatible`，阻塞原因为 `provider_manifest_missing` 和
+`mandatory_external_side_effect_workflow`。消费端 Adapter、A08 一一映射、未覆盖义务补
+Case、IR 字段补全、G02 `provider_case_id` 展示和影子对比已落地；消费端已接，上游仍阻塞，
+`production_enabled` 必须保持 false。在 artifact_only 入口发布前禁止生产启用。历史试点
+`pilot-001` 仍冻在 `1ca888b645bd1c346b6d708a9a583af58d299fc8`。QA 系统消费端不得修改
+Provider 仓库来绕过阻塞；需由 `fs-qa-knowledge` 维护者发布 `qa-agent-provider.json` 和
+真正无副作用的独立入口，评审新 commit 后更新 inspection，影子实跑通过才能启用 Provider Case。
 
 ## 13. Oracle 与测试防范覆盖审查
 
@@ -2533,6 +2640,12 @@ TAPD 需求分支提交和 Bug 准出审批门的实际边界。当前能力是�
 生成并安装 plist，旧配置、已安装配置和当前运行容易漂移；任一同步进程退出还会使人工评论、
 Agent Run 和卡片变化无人消费。目标架构改为“一个监听控制面管理全部活跃工作流”，但监听器
 不得直接决定下一个节点，也不得把用户手工修改的阶段卡状态当作流程事实。
+
+截至 2026-09-10，该控制面已落地：初始化写入 `generated/active-workflows.json`，LaunchAgent
+只启动统一 monitor（30 秒扫描 + 60 秒 watchdog），不再为每个 run 安装带 `--config` 的
+plist。锁跳过/`fatal` JSON 不是跨 run 违规；准确性挂起恢复要求
+`--acknowledge-accuracy-violation`。细节以本节不变量为准，实现见
+`qa_agents.workflow_monitor` 与 §5.1.1。
 
 职责必须分离：
 

@@ -15,6 +15,10 @@ from typing import Any
 
 from .requirement_case_renderer import CASE_CARDS_FILENAME
 from .review_copy import g02_approval_items, g02_decision_items_from_request, humanize_review_item
+from .test_data_copy import (
+    is_test_data_approval_item,
+    render_a22_approval_sections,
+)
 
 STAGE_CARD_COPY: dict[str, dict[str, Any]] = {
     "C1": {
@@ -313,16 +317,17 @@ NODE_CARD_COPY: dict[str, dict[str, Any]] = {
         ],
     },
     "A22": {
-        "goal": "从已审核用例提取测试数据意图，规划主题、资源、约束与数据关系，产出可执行的测试数据计划。",
-        "background": "自动化生成前必须明确要创建什么数据与资产；A22 基于能力目录与数据意图解析 112 数据能力，产出测试数据计划供 A14/A15 绑定与 N27 安全校验。",
+        "goal": "根据已审核用例规划 112 隔离测试数据。默认新建；只有系统造不出来的材料才问人。",
+        "background": "112 通常没有现成测试数据。A22 要写出新建计划。找不到现成对象不是停下来的理由。历史老图和无权限账号除外。",
         "scope_includes": [
-            "识别数据主题、资源、约束与数据关系",
-            "结合 112 能力目录规划数据生成方式",
-            "标记保留要求与高风险写入",
+            "默认新建本轮隔离测试数据",
+            "能建的用例写入 case_plans",
+            "只有改前老对象、无权限账号等系统造不了的材料才问人",
         ],
         "scope_excludes": [
-            "直接猜测接口参数或执行未验证写入",
-            "绕过 N27 数据安全校验",
+            "把「没有现成数据」当成不造数",
+            "让审核人补查询语句或造数步骤",
+            "直接执行写入",
         ],
         "inputs": [
             "输入参数包（附件）",
@@ -415,8 +420,23 @@ def node_issue_title(run_id: str, node_id: str, label: str) -> str:
 
 def _approval_section_lines(
     issues: Sequence[Mapping[str, Any]],
+    *,
+    node_id: str = "",
 ) -> list[str]:
-    """Render the human decision block for a waiting node card."""
+    """Render the human decision block for a waiting node card.
+
+    A22 unresolved data requirements always use the locked two-section card:
+    owner materials under ``## 你需要处理``, system-created data under
+    ``## 系统要去造的数据（不用你审）``.
+    """
+
+    is_a22_card = node_id == "A22" or any(
+        is_test_data_approval_item(issue, node_id) for issue in issues
+    )
+    if is_a22_card:
+        return render_a22_approval_sections(
+            issues, include_operations=True, node_id=node_id
+        )
 
     lines = ["## 你需要处理", ""]
     lines.append("本卡阻塞问题已路由人工处置，需要你决定下一步。")
@@ -445,15 +465,27 @@ def _approval_section_lines(
             if isinstance(issue.get("source_refs"), list)
             else []
         )
-        lines.extend(
-            [
-                f"{index}. **{title}**（`{issue_id}` · {severity}）",
-                f"   - 问题：{summary}",
-                f"   - 建议修正：{recommendation}",
-            ]
-        )
+        affected_case_ids = issue.get("affected_case_ids")
+        if not isinstance(affected_case_ids, list) or not affected_case_ids:
+            affected_case_ids = (
+                issue.get("affected_cases")
+                if isinstance(issue.get("affected_cases"), list)
+                else []
+            )
+        header = f"{index}. **{title}**（`{issue_id}`"
+        if severity:
+            header += f" · {severity}"
+        header += "）"
+        lines.extend([header, f"   - 问题：{summary or issue_id}"])
+        if recommendation:
+            lines.append(f"   - 建议修正：{recommendation}")
         if case_id:
             lines.append(f"   - 涉及用例：`{case_id}`")
+        if affected_case_ids:
+            lines.append(
+                "   - 涉及用例："
+                + "、".join(f"`{item}`" for item in affected_case_ids)
+            )
         if expected_id:
             lines.append(f"   - 期望项：`{expected_id}`")
         if source_refs:
@@ -469,6 +501,7 @@ def _approval_section_lines(
         ]
     )
     return lines
+
 
 
 def node_issue_description(
@@ -513,7 +546,7 @@ def node_issue_description(
         "",
     ]
     if approval_issues:
-        lines.extend(_approval_section_lines(approval_issues))
+        lines.extend(_approval_section_lines(approval_issues, node_id=node_id))
     return "\n".join(lines)
 
 
@@ -730,6 +763,9 @@ def _g02_frozen_coverage_lines(request: Mapping[str, Any]) -> list[str]:
         copy = humanize_review_item(item)
         title = copy["human_title"] or str(item.get("title") or "").strip() or "用例"
         prefix = f"`{case_id}` " if case_id else ""
+        provider_case_id = str(item.get("provider_case_id") or "").strip()
+        if provider_case_id:
+            prefix += f"（Provider `{provider_case_id}`） "
         lines.append(f"- {prefix}{title}")
     lines.append("")
     return lines
@@ -793,7 +829,12 @@ def g02_review_description(request: Mapping[str, Any]) -> str:
             "",
             "## 背景",
             "",
-            f"N04 校验已通过（阻塞问题 {summary['blocking_issue_count']} 个），A08 测试设计与 A09 Oracle 审查已完成。",
+            f"N04 校验已通过（阻塞问题 {summary['blocking_issue_count']} 个），A08 测试设计与 A09 Oracle 审查已完成。"
+            + (
+                f" 其中 {summary['provider_case_count']} 条来自 Case Provider，与 A08 补充用例在同一 Gate 审核。"
+                if summary.get("provider_case_count")
+                else ""
+            ),
             "",
             "## 范围",
             "",

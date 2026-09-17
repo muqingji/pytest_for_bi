@@ -28,6 +28,7 @@ from qa_agents.multica import (
     prepare_multica_test_data_plan_revision_input,
     prepare_multica_test_design_correction_input,
     prepare_multica_test_design_input,
+    load_case_provider_draft,
 )
 from qa_agents.storage import ArtifactStore
 
@@ -703,6 +704,7 @@ def valid_a08_output(bundle: dict) -> dict:
 
 def test_prepare_and_ingest_multica_a08_input(tmp_path: Path) -> None:
     bundle = prepare_real_a08_bundle(tmp_path / "inputs")
+    provider_input = read_json(tmp_path / "inputs" / "case-provider-input.json")
 
     assert set(bundle["allowed_inputs"]) == {
         "validated_analysis",
@@ -713,6 +715,10 @@ def test_prepare_and_ingest_multica_a08_input(tmp_path: Path) -> None:
     assert bundle["allowed_inputs"]["test_strategy"]["risk_level"] == "critical"
     assert bundle["allowed_inputs"]["approved_scope"]["decision"] == "approved"
     assert bundle["allowed_inputs"]["approved_scope"]["status"] == "approved"
+    assert provider_input["schema_version"] == "case-provider-input/1.0"
+    assert provider_input["workflow_run_id"] == bundle["workflow_run_id"]
+    assert provider_input["requirements"][0]["id"] == "REQ-001"
+    assert provider_input["input_hash"].startswith("sha256:")
     assert {
         item["id"]
         for item in bundle["allowed_inputs"]["approved_scope"][
@@ -746,6 +752,109 @@ def test_prepare_and_ingest_multica_a08_input(tmp_path: Path) -> None:
     )
     assert artifact["artifact_id"] == "a08-test-design-ir"
     assert artifact["payload"]["parent_cases"][0]["priority"] == "P0"
+
+
+def test_case_provider_output_is_bound_and_reviewed_before_a08(tmp_path: Path) -> None:
+    bundle = prepare_real_a08_bundle(tmp_path / "inputs")
+    provider_input = read_json(tmp_path / "inputs" / "case-provider-input.json")
+    metadata = {
+        "mode": "artifact_only",
+        "provider_commit": "64cf10c3d2e030285f7f634a4cc5c61539546713",
+        "output_contract": "case-provider-output/1.0",
+        "side_effects": [],
+        "workflow_run_id": bundle["workflow_run_id"],
+        "source_snapshot_id": bundle["source_snapshot_id"],
+        "input_bundle_hash": provider_input["input_hash"],
+    }
+    provider_output = {
+        "metadata": metadata,
+        "candidates": [
+            {
+                "id": "FS-20260915-001",
+                "feature": "查看明细",
+                "title": "验证受限场景返回专用提示",
+                "priority": "P1",
+                "case_type": "功能测试",
+                "preconditions": ["准备受限统计图"],
+                "steps": ["发起查看明细请求"],
+                "expected": ["返回专用提示"],
+                "source_refs": ["REQ-001"],
+            }
+        ],
+    }
+    output_path = tmp_path / "inputs" / "case-provider-output.json"
+    write_json(output_path, provider_output)
+
+    with pytest.raises(ContractError, match="not production-enabled"):
+        load_case_provider_draft(output_path, provider_input)
+
+    compatible_inspection = {
+        "status": "compatible",
+        "production_enabled": True,
+        "reviewed_commit": metadata["provider_commit"],
+    }
+    draft = load_case_provider_draft(
+        output_path, provider_input, inspection=compatible_inspection
+    )
+    assert draft["provider_status"] == "compatible"
+    assert draft["candidate_count"] == 1
+    assert draft["input_bundle_hash"] == provider_input["input_hash"]
+
+    metadata["input_bundle_hash"] = content_hash({"stale": True})
+    write_json(output_path, provider_output)
+    with pytest.raises(ContractError, match="current input"):
+        load_case_provider_draft(
+            output_path, provider_input, inspection=compatible_inspection
+        )
+
+
+def test_ingest_a08_requires_every_provider_case_to_map_once(tmp_path: Path) -> None:
+    bundle = prepare_real_a08_bundle(tmp_path / "inputs")
+    bundle["allowed_inputs"]["case_provider_draft"] = {
+        "schema_version": "case-provider-draft/1.0",
+        "provider_id": "fs-qa-knowledge",
+        "provider_commit": "c" * 40,
+        "candidate_count": 1,
+        "external_side_effects": False,
+        "candidates": [{"id": "FS-20260910-001"}],
+    }
+    bundle.pop("bundle_hash")
+    bundle["bundle_hash"] = content_hash(bundle)
+    bundle_path = tmp_path / "inputs" / "a08-input.json"
+    bundle_path.write_text(json.dumps(bundle, ensure_ascii=False), encoding="utf-8")
+    output = valid_a08_output(bundle)
+
+    with pytest.raises(ContractError, match="provider_case_mappings"):
+        ingest_multica_output(
+            bundle_path,
+            json.dumps(output, ensure_ascii=False),
+            tmp_path / "rejected",
+            task_id="task-a08",
+            issue_id="issue-a08",
+            attachment_id="attachment-a08",
+            model_provider="codex",
+            model_snapshot="gpt-test",
+            prompt_version="1.1.0",
+        )
+
+    output["provider_case_mappings"] = [
+        {"provider_case_id": "FS-20260910-001", "test_case_ir_id": "CASE-001"}
+    ]
+    artifact = ingest_multica_output(
+        bundle_path,
+        json.dumps(output, ensure_ascii=False),
+        tmp_path / "accepted",
+        task_id="task-a08",
+        issue_id="issue-a08",
+        attachment_id="attachment-a08",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.1.0",
+    )
+    assert artifact["payload"]["provider_case_mappings"][0] == {
+        "provider_case_id": "FS-20260910-001",
+        "test_case_ir_id": "CASE-001",
+    }
 
 
 def test_ingest_a08_rejects_missing_approved_rule_coverage(tmp_path: Path) -> None:
@@ -843,7 +952,8 @@ def test_prepare_multica_a08_correction_input_rejects_exhausted_budget(
         / "artifacts"
         / "n04-test-case-ir-validation.json"
     )
-    n04["payload"]["correction_attempt"] = n04["payload"]["max_correction_attempts"]
+    n04["payload"]["correction_attempt"] = n04["payload"]["max_correction_attempts"] + 1
+    n04["payload"]["issues"] = []
     n04["artifact_hash"] = artifact_hash_from_mapping(n04)
     n04_path = tmp_path / "n04-test-case-ir-validation.json"
     write_json(n04_path, n04)
@@ -1561,7 +1671,11 @@ def test_a11_input_is_compact_review_scope(tmp_path: Path) -> None:
     assert "test_data" not in parents[0] and "steps" not in parents[0]
     expected = parents[0]["expected"][0]
     assert set(expected) <= {"id", "description", "type", "matcher", "source_ref"}
-    assert set(children[0]) <= set(parents[0]) | {"parent_case_id", "inherits_parent"}
+    assert set(children[0]) <= set(parents[0]) | {
+        "parent_case_id",
+        "inherits_parent",
+        "layer_responsibility",
+    }
     assert children[0]["parent_case_id"] == parents[0]["id"]
     assert children[0]["inherits_parent"]["expected_oracle_ids"] is True
 
@@ -2470,6 +2584,70 @@ def test_prepare_and_ingest_multica_a22_plan_input(tmp_path: Path) -> None:
     )
     assert artifact["artifact_id"] == "a22-test-data-plan"
     assert artifact["status"] == "completed"
+
+
+def test_a22_ingest_backfills_chinese_unresolved_requirement_copy(
+    tmp_path: Path,
+) -> None:
+    """An English-only A22 plan must still reach the reviewer in Chinese.
+
+    The plan below reproduces the 20260915-R001 shape: a free-form English
+    ``id``/``required_resolution`` pair. Ingest derives the Chinese human
+    fields so card rendering, the workflow center and N27 all see one
+    language, and keeps the English original on the Artifact for audit.
+    """
+
+    setup = build_c5_prepare_inputs(tmp_path)
+    bundle = prepare_multica_test_data_plan_input(
+        setup["compiled_path"],
+        tmp_path / "stage14" / "artifacts" / "n15-execution-plan.json",
+        ROOT / "policies" / "test-data-policy.json",
+        tmp_path / "a22-i18n-input",
+    )
+    plan = {
+        "schema_version": "test-data-plan/1.0",
+        "workflow_run_id": bundle["workflow_run_id"],
+        "source_snapshot_id": bundle["source_snapshot_id"],
+        "input_bundle_hash": bundle["bundle_hash"],
+        "status": "needs_human",
+        "environment": "112",
+        "namespace": "qa-a22-i18n-review",
+        "case_plans": [],
+        "paused_cases": [],
+        "unresolved_requirements": [
+            {
+                "id": "joined_table_policy_gap",
+                "affected_cases": ["A08-TC-EXAMPLE-BACKEND"],
+                "required_resolution": (
+                    "joined_table is referenced by recipes but is not an allowed "
+                    "test-data-policy resource_type."
+                ),
+            }
+        ],
+    }
+
+    artifact = ingest_multica_output(
+        tmp_path / "a22-i18n-input" / "a22-input.json",
+        json.dumps(plan, ensure_ascii=False),
+        tmp_path / "stage22-i18n",
+        task_id="task-a22-i18n",
+        issue_id="issue-a22-i18n",
+        attachment_id="attachment-a22-i18n",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.0.0",
+    )
+
+    item = artifact["payload"]["unresolved_requirements"][0]
+    assert item["requirement_id"] == "UR-01"
+    assert item["human_title"] == "请批准新建拼表"
+    assert "还没允许自动创建拼表" in item["plain_summary"]
+    assert item["needed_from_you"].startswith("不需要你审")
+    assert item["review_kind"] == "system"
+    assert "joined_table" not in item["plain_summary"]
+    assert item["required_resolution"] == plan["unresolved_requirements"][0][
+        "required_resolution"
+    ]
 
 
 def test_a22_existing_asset_reuse_must_bind_frozen_discovery(tmp_path: Path) -> None:

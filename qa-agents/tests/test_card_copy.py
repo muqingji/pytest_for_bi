@@ -109,6 +109,142 @@ def test_node_issue_description_includes_approval_details() -> None:
     assert "置 **cancelled**" in description
 
 
+def test_a22_issue_description_prints_complete_disposition_block() -> None:
+    description = node_issue_description(
+        "A22",
+        "112 测试数据规划",
+        input_name="a22-input.json",
+        approval_issues=[
+            {
+                "id": "UR-01",
+                "requirement_id": "UR-01",
+                "reason_code": "stat_chart_integrity_probes_missing",
+                "severity": "blocking",
+                "affected_case_ids": ["TC-BE-001", "TC-CT-001"],
+                "required_resolution": (
+                    "Provide a verified recipe containing read-only fxops_query integrity probes."
+                ),
+            }
+        ],
+    )
+
+    assert "## 系统要去造的数据（不用你审）" in description
+    assert "1. **确认新建统计图**（`UR-01` · blocking）" in description
+    assert "   - 要造什么：" in description
+    assert "   - 卡在哪：112 没有现成测试图，本应新建。" in description
+    assert "不该问你要不要建" in description
+    assert "处置评论：`UR-01:" not in description
+    assert "   - 涉及用例：`TC-BE-001`、`TC-CT-001`" in description
+    assert "这轮不造新图" not in description
+    assert "stat_chart_integrity_probes_missing" not in description
+    assert "Provide a verified" not in description
+    assert "fxops_query" not in description
+    assert "recipe" not in description
+    assert "只给上面「你需要处理」里出现「请提供」的项回评论" in description
+
+
+A22_RUN_APPROVAL_ITEMS = [
+    {
+        "id": f"UR-{index + 1:02d}",
+        "requirement_id": f"UR-{index + 1:02d}",
+        "reason_code": code,
+        "severity": "blocking",
+        "affected_case_ids": ["A08-TC-EXAMPLE-BACKEND"],
+        "required_resolution": (
+            "Provide a verified recipe covering source, topology, dimension and aggregation."
+        ),
+    }
+    for index, code in enumerate(
+        (
+            "stat_chart_integrity_probes_missing",
+            "historical_pre_change_assets_missing",
+            "pre_change_response_baselines_missing",
+            "joined_table_policy_gap",
+            "frozen_dynamic_relation_metadata_missing",
+            "permission_test_fixtures_missing",
+            "result_set_metric_type_fixtures_missing",
+        )
+    )
+]
+
+
+def test_a22_run_requirements_are_rendered_in_chinese() -> None:
+    description = node_issue_description(
+        "A22",
+        "112 测试数据规划",
+        input_name="a22-input.json",
+        approval_issues=A22_RUN_APPROVAL_ITEMS,
+    )
+
+    assert "待审批：`2` 项" in description
+    for title in (
+        "确认新建统计图",
+        "历史场景缺老图",
+        "缺改前提示样例",
+        "请批准新建拼表",
+        "动态关联名单未定",
+        "缺无权限测试账号",
+        "确认新建更多指标",
+    ):
+        assert f"**{title}**" in description, title
+    assert "## 你需要处理" in description
+    assert "## 系统要去造的数据（不用你审）" in description
+    assert description.count("   - 要造什么：") == 7
+    assert description.count("   - 请拍板：") == 2  # owner: historical + permission
+    assert "这轮不造新图" not in description
+    for code in (item["reason_code"] for item in A22_RUN_APPROVAL_ITEMS):
+        assert code not in description, code
+    assert "Provide a verified" not in description
+    assert "fxops_query" not in description
+    assert "recipe" not in description
+    assert "existing_asset_discovery" not in description
+
+
+def test_a22_two_section_format_is_locked() -> None:
+    description = node_issue_description(
+        "A22",
+        "112 测试数据规划",
+        input_name="a22-input.json",
+        approval_issues=[
+            {
+                "requirement_id": "UR-02",
+                "reason_code": "historical_pre_change_assets_missing",
+                "severity": "blocking",
+                "affected_case_ids": ["TC-BE-HIST"],
+            },
+            {
+                "requirement_id": "UR-01",
+                "reason_code": "stat_chart_integrity_probes_missing",
+                "severity": "blocking",
+                "affected_case_ids": ["TC-BE-CHART"],
+            },
+            {
+                "requirement_id": "UR-09",
+                "id": "never_seen_gap",
+                "severity": "blocking",
+                "affected_case_ids": ["TC-BE-NEW"],
+            },
+        ],
+    )
+    block = description[description.index("## 你需要处理") :]
+    assert block.startswith("## 你需要处理")
+    assert "## 系统要去造的数据（不用你审）" in block
+    owner, system = block.split("## 系统要去造的数据（不用你审）", 1)
+    assert "待审批：`2` 项" in owner
+    assert "请拍板：" in owner
+    assert "处置评论：`UR-02: confirmed/skip/return/need_evidence`" in owner
+    assert "处置评论：`UR-09: confirmed/skip/return/need_evidence`" in owner
+    assert "请拍板：" not in system.split("操作选项：", 1)[0]
+    assert "处置评论：" not in system.split("操作选项：", 1)[0]
+    assert "要测什么：" in owner
+    assert "要造什么：" in owner
+    assert "要测什么：" in system
+    assert "要造什么：" in system
+    assert "产品场景：" not in block
+    assert "这轮不造新图" not in block
+    assert "内部原因代码" in block
+
+
 def test_all_dedicated_nodes_have_own_copy_not_default() -> None:
     for node_id in DEDICATED_NODES:
         copy = NODE_CARD_COPY[node_id]
@@ -266,3 +402,30 @@ def test_test_case_review_description_surfaces_uncertainties_not_every_case() ->
     assert "**测试步骤**" not in description
     assert "请确认该用例的场景、步骤和预期结果可直接执行" not in description
     assert "deterministic · equals" not in description
+
+
+def test_g02_description_shows_provider_case_ids() -> None:
+    description = g02_review_description(
+        {
+            "review_summary": {
+                "parent_case_count": 1,
+                "blocking_issue_count": 0,
+                "warning_count": 0,
+                "n04_valid": True,
+                "provider_case_count": 1,
+            },
+            "upstream_artifacts": [
+                {"artifact_id": "n04-test-case-ir-validation", "artifact_hash": "sha256:n04"}
+            ],
+            "review_items": [
+                {
+                    "case_id": "PROVIDER-CASE-001",
+                    "provider_case_id": "FS-20260910-001",
+                    "title": "验证查看明细",
+                    "human_title": "验证查看明细",
+                }
+            ],
+        }
+    )
+    assert "其中 1 条来自 Case Provider" in description
+    assert "`PROVIDER-CASE-001` （Provider `FS-20260910-001`） 验证查看明细" in description

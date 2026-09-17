@@ -137,12 +137,66 @@ def test_n04_exhausted_budget_routes_to_human(tmp_path: Path) -> None:
         tmp_path / "stage5" / "artifacts" / "a09-oracle-coverage-review.json",
         tmp_path / "inputs" / "a09-input.json",
         tmp_path / "stage6",
-        correction_attempt=2,
+        correction_attempt=3,
         max_correction_attempts=2,
     )
 
     assert artifact["payload"]["next_node"] == "human"
     assert artifact["reason_code"] == "test_case_ir_correction_budget_exhausted"
+
+
+def test_n04_ignores_missing_optional_historical_packet_issue(
+    tmp_path: Path,
+) -> None:
+    bundle = prepare_multica_oracle_review_input(
+        PILOT_RUN / "multica-stage4" / "artifacts" / "a08-test-design-ir.json",
+        PILOT_RUN / "multica-inputs" / "a08-input.json",
+        ROOT / "policies" / "oracle-rule-library.json",
+        tmp_path / "inputs",
+    )
+    a09_output = rejected_a09_output(bundle)
+    a09_output["issues"] = [
+        {
+            "id": "A09-HISTORICAL-PACKET",
+            "issue_code": "HISTORICAL_BEHAVIOR_PACKET_MISSING",
+            "human_title": "历史包缺失",
+            "plain_summary": "可选历史行为包没有随输入提供。",
+            "severity": "blocking",
+            "category": "coverage",
+            "message": "historical_behavior_packet is absent",
+            "path": "allowed_inputs.frozen_evidence",
+            "route_to": "A06/G01",
+            "case_id": None,
+            "expected_id": None,
+            "source_refs": ["RULE-HISTORICAL-COMPATIBILITY"],
+            "recommendation": "Restore the optional packet",
+        },
+        a09_output["issues"][0],
+    ]
+    ingest_multica_output(
+        tmp_path / "inputs" / "a09-input.json",
+        json.dumps(a09_output, ensure_ascii=False),
+        tmp_path / "stage5",
+        task_id="task-a09",
+        issue_id="issue-a09",
+        attachment_id="attachment-a09",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.1.0",
+    )
+
+    artifact = run_n04_after_a09(
+        PILOT_RUN / "multica-stage4" / "artifacts" / "a08-test-design-ir.json",
+        tmp_path / "stage5" / "artifacts" / "a09-oracle-coverage-review.json",
+        tmp_path / "inputs" / "a09-input.json",
+        tmp_path / "stage6",
+        correction_attempt=3,
+        max_correction_attempts=3,
+    )
+
+    issue_codes = {item["issue_code"] for item in artifact["payload"]["issues"]}
+    assert "HISTORICAL_BEHAVIOR_PACKET_MISSING" not in issue_codes
+    assert artifact["payload"]["next_node"] == "A08"
 
 
 def test_n04_routes_human_when_previous_fix_claimed_but_still_blocking(
@@ -156,7 +210,7 @@ def test_n04_routes_human_when_previous_fix_claimed_but_still_blocking(
     first_case = design["payload"]["parent_cases"][0]
     design["payload"]["correction_resolutions"] = [
         {
-            "feedback_id": "A09-ISSUE-004",
+            "feedback_id": "A09-ISSUE-008",
             "disposition": "fixed",
             "affected_case_ids": [first_case["id"]],
             "source_refs": ["REQ-006"],
@@ -217,3 +271,78 @@ def test_n04_routes_human_when_previous_fix_claimed_but_still_blocking(
     assert artifact["payload"]["next_node"] == "human"
     assert artifact["reason_code"] == "test_case_ir_fix_unverified"
     assert artifact["payload"]["unverified_fix_issue_ids"] == ["A09-ISSUE-008"]
+
+
+
+def test_n04_routes_a08_when_new_issue_on_previously_fixed_case(
+    tmp_path: Path,
+) -> None:
+    design = json.loads(
+        (
+            PILOT_RUN / "multica-stage4" / "artifacts" / "a08-test-design-ir.json"
+        ).read_text(encoding="utf-8")
+    )
+    first_case = design["payload"]["parent_cases"][0]
+    design["payload"]["correction_resolutions"] = [
+        {
+            "feedback_id": "ISS-002",
+            "disposition": "fixed",
+            "affected_case_ids": [first_case["id"]],
+            "source_refs": ["REQ-006"],
+            "rationale": "已修正另一条 Oracle",
+        }
+    ]
+    design["artifact_hash"] = artifact_hash_from_mapping(design)
+    corrected_design_path = tmp_path / "a08-corrected.json"
+    corrected_design_path.write_text(
+        json.dumps(design, ensure_ascii=False), encoding="utf-8"
+    )
+
+    bundle = prepare_multica_oracle_review_input(
+        corrected_design_path,
+        PILOT_RUN / "multica-inputs" / "a08-input.json",
+        ROOT / "policies" / "oracle-rule-library.json",
+        tmp_path / "inputs",
+    )
+    a09_output = rejected_a09_output(bundle)
+    a09_output["issues"] = [
+        {
+            "id": "ISS-014",
+            "issue_code": "ORACLE_MATCHER_INEFFECTIVE",
+            "human_title": "新的 Oracle 问题",
+            "plain_summary": "同一 Case 上出现尚未修正过的新问题。",
+            "severity": "error",
+            "category": "oracle",
+            "message": "matcher 无法检出泄露",
+            "path": "parent_cases[0].expected[0].oracle",
+            "route_to": "A08",
+            "case_id": first_case["id"],
+            "expected_id": first_case["expected"][0]["id"],
+            "source_refs": list(first_case["source_refs"]),
+            "recommendation": "改 matcher",
+        }
+    ]
+    ingest_multica_output(
+        tmp_path / "inputs" / "a09-input.json",
+        json.dumps(a09_output, ensure_ascii=False),
+        tmp_path / "stage5",
+        task_id="task-a09-new",
+        issue_id="issue-a09-new",
+        attachment_id="attachment-a09-new",
+        model_provider="codex",
+        model_snapshot="gpt-test",
+        prompt_version="1.2.1",
+    )
+
+    artifact = run_n04_after_a09(
+        corrected_design_path,
+        tmp_path / "stage5" / "artifacts" / "a09-oracle-coverage-review.json",
+        tmp_path / "inputs" / "a09-input.json",
+        tmp_path / "stage6",
+        correction_attempt=2,
+        max_correction_attempts=2,
+    )
+
+    assert artifact["payload"]["next_node"] == "A08"
+    assert artifact["reason_code"] == "test_case_ir_requires_correction"
+    assert artifact["payload"]["unverified_fix_issue_ids"] == []

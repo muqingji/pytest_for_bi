@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>服务端需求自动化测试 · 系统架构图</title>
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --line: #d8dee6;
+      --text: #17212b;
+      --muted: #62707d;
+      --blue: #1668b3;
+      --blue-bg: #eaf3fb;
+      --green: #22704a;
+      --green-bg: #edf7f1;
+      --orange: #b96b09;
+      --orange-bg: #fff5e6;
+      --purple: #6a45b5;
+      --purple-bg: #f3effd;
+      --red: #bd2f4a;
+      --red-bg: #fdf0f3;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      color: var(--text);
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+    .page { max-width: 1600px; margin: 0 auto; }
+    header {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      align-items: end;
+      padding: 18px 22px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+    }
+    h1 { margin: 0 0 6px; font-size: 21px; }
+    .subtitle { margin: 0; max-width: 1150px; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+    .date { flex: none; color: var(--muted); font-size: 12px; text-align: right; }
+    .architecture {
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel);
+      overflow-x: auto;
+    }
+    .architecture svg {
+      display: block;
+      width: 100%;
+      min-width: 1280px;
+      height: auto;
+      max-width: none;
+    }
+    .diagram-title { font-size: 19px; font-weight: 700; fill: var(--text); }
+    .diagram-subtitle { font-size: 12px; fill: var(--muted); }
+    .layer-rect { fill: #f8fafc; stroke: #dce3ea; stroke-width: 1.4; rx: 14; }
+    .layer-title { font-size: 15px; font-weight: 700; }
+    .layer-desc { font-size: 11.5px; fill: var(--muted); }
+    .box rect { rx: 9; stroke-width: 1.3; }
+    .box-title { font-size: 13px; font-weight: 700; }
+    .box-text { font-size: 10.8px; fill: #4c5967; }
+    .external rect { fill: #eef2f6; stroke: #a9b7c4; }
+    .external .box-title { fill: #52606d; }
+    .control rect { fill: var(--blue-bg); stroke: #88b9df; }
+    .control .box-title { fill: var(--blue); }
+    .orchestration rect { fill: var(--purple-bg); stroke: #bba9e9; }
+    .orchestration .box-title { fill: var(--purple); }
+    .agent rect { fill: var(--orange-bg); stroke: #e9bd75; }
+    .agent .box-title { fill: var(--orange); }
+    .deterministic rect { fill: var(--green-bg); stroke: #83ccab; }
+    .deterministic .box-title { fill: var(--green); }
+    .contract rect { fill: #f6f8fa; stroke: #a9b7c4; }
+    .contract .box-title { fill: #52606d; }
+    .store rect { fill: var(--red-bg); stroke: #e9a3b3; }
+    .store .box-title { fill: var(--red); }
+    .edge { fill: none; stroke: #7c8b99; stroke-width: 1.8; marker-end: url(#arrow); }
+    .feedback { fill: none; stroke: #bd2f4a; stroke-width: 1.7; stroke-dasharray: 7 5; marker-end: url(#arrow-red); }
+    .policy { fill: none; stroke: #8a97a4; stroke-width: 1.5; stroke-dasharray: 4 4; marker-end: url(#arrow-grey); }
+    .edge-label { font-size: 11px; fill: #62707d; }
+    .risk-label { font-size: 11px; font-weight: 700; fill: #bd2f4a; }
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(150px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .legend span {
+      padding: 7px 9px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      line-height: 1.45;
+    }
+    .legend .external { background: #eef2f6; color: #52606d; }
+    .legend .control { background: var(--blue-bg); color: var(--blue); }
+    .legend .orchestration { background: var(--purple-bg); color: var(--purple); }
+    .legend .agent { background: var(--orange-bg); color: var(--orange); }
+    .legend .deterministic { background: var(--green-bg); color: var(--green); }
+    .legend .contract { background: #f6f8fa; color: #52606d; border: 1px solid var(--line); }
+    .legend .store { background: var(--red-bg); color: var(--red); }
+    section.notes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(240px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+    section.notes article {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    section.notes h2 { margin: 0 0 6px; font-size: 15px; }
+    footer {
+      margin-top: 10px;
+      padding: 11px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    @media (max-width: 900px) {
+      body { padding: 12px; }
+      header { flex-direction: column; align-items: start; }
+      .legend, section.notes { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <div>
+      <h1>服务端需求自动化测试 · 系统架构图</h1>
+      <p class="subtitle">这张图只看系统分层与组件关系：Multica 负责人机交互和状态投影，monitor 负责编排，Agent 只给结构化候选，确定性程序负责校验、执行与收口，契约约束全链路，Artifact 与审计承载流程事实。</p>
+    </div>
+    <div class="date">2026-09-15</div>
+  </header>
+
+  <section class="architecture" aria-label="服务端需求自动化测试系统架构图" role="img">
+    <svg viewBox="0 0 1560 810" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="#7c8b99"></path>
+        </marker>
+        <marker id="arrow-red" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="#bd2f4a"></path>
+        </marker>
+        <marker id="arrow-grey" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="#8a97a4"></path>
+        </marker>
+      </defs>
+
+      <text class="diagram-title" x="25" y="30">服务端需求自动化测试架构</text>
+      <text class="diagram-subtitle" x="25" y="52">输入冻结、输出校验、Agent 只出候选、程序收口；卡片是投影，Artifact 与审计才是事实。</text>
+
+      <rect class="layer-rect" x="25" y="78" width="235" height="355"></rect>
+      <text class="layer-title external" x="43" y="105">输入与交互</text>
+      <text class="layer-desc" x="43" y="124">证据与人工决策入口</text>
+      <g class="external box" transform="translate(42,135)">
+        <rect width="201" height="50"></rect>
+        <text class="box-title" x="12" y="20">需求 / Multica Issue</text>
+        <text class="box-text" x="12" y="37">父卡、评论、附件、口径</text>
+      </g>
+      <g class="external box" transform="translate(42,196)">
+        <rect width="201" height="50"></rect>
+        <text class="box-title" x="12" y="20">代码 / 方案 / OpenAPI</text>
+        <text class="box-text" x="12" y="37">commit、契约、技术证据</text>
+      </g>
+      <g class="external box" transform="translate(42,257)">
+        <rect width="201" height="50"></rect>
+        <text class="box-title" x="12" y="20">策略 / 知识 / 历史</text>
+        <text class="box-text" x="12" y="37">测试策略、评估、失败经验</text>
+      </g>
+      <g class="external box" transform="translate(42,318)">
+        <rect width="201" height="50"></rect>
+        <text class="box-title" x="12" y="20">QA Owner</text>
+        <text class="box-text" x="12" y="37">G01-G03 白名单签核</text>
+      </g>
+
+      <rect class="layer-rect" x="290" y="78" width="255" height="355"></rect>
+      <text class="layer-title control" x="308" y="105">Multica 控制面</text>
+      <text class="layer-desc" x="308" y="124">人机交互与状态投影</text>
+      <g class="control box" transform="translate(307,135)">
+        <rect width="221" height="50"></rect>
+        <text class="box-title" x="12" y="20">workflow_center</text>
+        <text class="box-text" x="12" y="37">父卡 / Run / 节点卡</text>
+      </g>
+      <g class="control box" transform="translate(307,196)">
+        <rect width="221" height="50"></rect>
+        <text class="box-title" x="12" y="20">C1-C8 阶段卡</text>
+        <text class="box-text" x="12" y="37">只展示，不驱动调度</text>
+      </g>
+      <g class="control box" transform="translate(307,257)">
+        <rect width="221" height="50"></rect>
+        <text class="box-title" x="12" y="20">Human Gate 入口</text>
+        <text class="box-text" x="12" y="37">请求、评论、决策回写</text>
+      </g>
+      <g class="control box" transform="translate(307,318)">
+        <rect width="221" height="50"></rect>
+        <text class="box-title" x="12" y="20">对象映射</text>
+        <text class="box-text" x="12" y="37">Issue / Run / Attachment</text>
+      </g>
+
+      <rect class="layer-rect" x="575" y="78" width="290" height="355"></rect>
+      <text class="layer-title orchestration" x="593" y="105">监听与编排</text>
+      <text class="layer-desc" x="593" y="124">计划、派发、对账、熔断</text>
+      <g class="orchestration box" transform="translate(592,135)">
+        <rect width="256" height="50"></rect>
+        <text class="box-title" x="12" y="20">monitor / autopilot</text>
+        <text class="box-text" x="12" y="37">扫描事件、Artifact 对账</text>
+      </g>
+      <g class="orchestration box" transform="translate(592,196)">
+        <rect width="256" height="50"></rect>
+        <text class="box-title" x="12" y="20">Planner</text>
+        <text class="box-text" x="12" y="37">Artifact + DAG → 计划</text>
+      </g>
+      <g class="orchestration box" transform="translate(592,257)">
+        <rect width="256" height="50"></rect>
+        <text class="box-title" x="12" y="20">Dispatcher</text>
+        <text class="box-text" x="12" y="37">二次校验后派发</text>
+      </g>
+      <g class="orchestration box" transform="translate(592,318)">
+        <rect width="256" height="50"></rect>
+        <text class="box-title" x="12" y="20">Supervisor / Watchdog</text>
+        <text class="box-text" x="12" y="37">防重复、越权、篡改</text>
+      </g>
+
+      <rect class="layer-rect" x="895" y="78" width="300" height="355"></rect>
+      <text class="layer-title agent" x="913" y="105">双运行时</text>
+      <text class="layer-desc" x="913" y="124">语义候选与程序裁决分离</text>
+      <g class="agent box" transform="translate(912,135)">
+        <rect width="266" height="135"></rect>
+        <text class="box-title" x="12" y="22">Agent Runtime</text>
+        <text class="box-text" x="12" y="45">model_runtime / multica.py</text>
+        <text class="box-text" x="12" y="65">冻结 Bundle、来源、工具轨迹</text>
+        <text class="box-text" x="12" y="85">A* 分析 / 设计 / 审查候选</text>
+        <text class="box-text" x="12" y="105">不直接写主链状态</text>
+      </g>
+      <g class="deterministic box" transform="translate(912,285)">
+        <rect width="266" height="135"></rect>
+        <text class="box-title" x="12" y="22">确定性质量运行时</text>
+        <text class="box-text" x="12" y="45">ingest-multica：Schema / 哈希</text>
+        <text class="box-text" x="12" y="65">N*：门禁、编译、执行</text>
+        <text class="box-text" x="12" y="85">N09-N23：证据、聚类、准出</text>
+        <text class="box-text" x="12" y="105">fail-closed，不伪造通过</text>
+      </g>
+
+      <rect class="layer-rect" x="1220" y="78" width="315" height="355"></rect>
+      <text class="layer-title store" x="1238" y="105">Artifact 与审计</text>
+      <text class="layer-desc" x="1238" y="124">流程事实与回放来源</text>
+      <g class="store box" transform="translate(1237,135)">
+        <rect width="281" height="278"></rect>
+        <text class="box-title" x="12" y="24">内容寻址存储</text>
+        <text class="box-text" x="12" y="55">Artifact Store / Run 隔离</text>
+        <text class="box-text" x="12" y="80">执行证据与环境快照</text>
+        <text class="box-text" x="12" y="105">Issue、评论、工具轨迹</text>
+        <text class="box-text" x="12" y="130">Dispatch Receipt / 审计链</text>
+        <text class="box-text" x="12" y="155">Gate 请求 / 决策 / 结果</text>
+        <text class="box-text" x="12" y="180">失败聚类与质量信号</text>
+        <text class="box-text" x="12" y="205">质量报告与证据索引</text>
+        <text class="box-text" x="12" y="240">路径受限、哈希校验</text>
+      </g>
+
+      <rect class="layer-rect" x="290" y="468" width="915" height="105"></rect>
+      <text class="layer-title contract" x="308" y="494">契约、策略与知识</text>
+      <text class="layer-desc" x="520" y="494">任一输入变化，下游 Artifact 变 stale</text>
+      <g class="contract box" transform="translate(307,514)">
+        <rect width="281" height="46"></rect>
+        <text class="box-title" x="12" y="19">Artifact Envelope</text>
+        <text class="box-text" x="12" y="35">Schema、证据、Producer、哈希</text>
+      </g>
+      <g class="contract box" transform="translate(605,514)">
+        <rect width="281" height="46"></rect>
+        <text class="box-title" x="12" y="19">DAG / 权限策略</text>
+        <text class="box-text" x="12" y="35">Gate、预算、路径、工具、Adapter</text>
+      </g>
+      <g class="contract box" transform="translate(903,514)">
+        <rect width="281" height="46"></rect>
+        <text class="box-title" x="12" y="19">版本与评估</text>
+        <text class="box-text" x="12" y="35">Prompt、模型、Skill、修正集</text>
+      </g>
+
+      <rect class="layer-rect" x="25" y="608" width="1510" height="145"></rect>
+      <text class="layer-title deterministic" x="43" y="634">输出与消费</text>
+      <text class="layer-desc" x="180" y="634">结论必须携带证据、哈希与边界</text>
+      <g class="deterministic box" transform="translate(42,660)">
+        <rect width="360" height="68"></rect>
+        <text class="box-title" x="12" y="25">质量报告</text>
+        <text class="box-text" x="12" y="46">范围、覆盖、失败、风险、豁免、准出</text>
+      </g>
+      <g class="deterministic box" transform="translate(414,660)">
+        <rect width="360" height="68"></rect>
+        <text class="box-title" x="12" y="25">自动化候选 / Execution Plan</text>
+        <text class="box-text" x="12" y="46">artifact-only；不直接写业务仓</text>
+      </g>
+      <g class="deterministic box" transform="translate(786,660)">
+        <rect width="360" height="68"></rect>
+        <text class="box-title" x="12" y="25">缺陷 / 反馈 / 评估</text>
+        <text class="box-text" x="12" y="46">失败指纹、人工修正、模型回归</text>
+      </g>
+      <g class="deterministic box" transform="translate(1158,660)">
+        <rect width="360" height="68"></rect>
+        <text class="box-title" x="12" y="25">结论与边界</text>
+        <text class="box-text" x="12" y="46">passed / blocked / inconclusive / gaps</text>
+      </g>
+
+      <path class="edge" d="M243,160 H307"></path>
+      <path class="edge" d="M243,221 H307"></path>
+      <path class="edge" d="M243,282 H307"></path>
+      <path class="edge" d="M243,343 H307"></path>
+      <path class="edge" d="M528,160 H592"></path>
+      <path class="edge" d="M528,221 H592"></path>
+      <path class="edge" d="M848,160 H912"></path>
+      <path class="edge" d="M848,282 C878,282 878,347 912,347"></path>
+      <path class="edge" d="M1178,202 H1237"></path>
+      <path class="edge" d="M1178,347 H1237"></path>
+      <path class="policy" d="M448,514 V433"></path>
+      <path class="policy" d="M746,514 V433"></path>
+      <path class="policy" d="M1044,514 V433"></path>
+      <path class="edge" d="M1378,433 V660"></path>
+      <path class="edge" d="M448,560 V660"></path>
+      <path class="feedback" d="M596,660 V500 C596,468 620,450 648,433"></path>
+
+      <text class="edge-label" x="252" y="151">事件</text>
+      <text class="edge-label" x="252" y="335">签核</text>
+      <text class="edge-label" x="537" y="151">对账</text>
+      <text class="edge-label" x="854" y="151">A*</text>
+      <text class="edge-label" x="854" y="325">N*</text>
+      <text class="edge-label" x="1188" y="193">候选</text>
+      <text class="edge-label" x="1188" y="338">Artifact</text>
+      <text class="edge-label" x="455" y="480">契约约束</text>
+      <text class="edge-label" x="1390" y="550">报告 / 证据</text>
+      <text class="risk-label" x="640" y="580">人工反馈 / 评估修正回流</text>
+    </svg>
+  </section>
+
+  <section class="legend" aria-label="架构图例">
+    <span class="external">输入与交互</span>
+    <span class="control">Multica 控制面</span>
+    <span class="orchestration">监听与编排</span>
+    <span class="agent">Agent Runtime</span>
+    <span class="deterministic">确定性质量运行时</span>
+    <span class="contract">契约 / 策略 / 知识</span>
+    <span class="store">Artifact / 审计存储</span>
+  </section>
+
+  <section class="notes" aria-label="阅读说明">
+    <article>
+      <h2>为什么分六层</h2>
+      把人机交互、调度控制、模型判断、程序裁决、契约约束和事实存储拆开，才能避免“卡片被改了就算通过”或“Agent 输出直接进入主链”的灰色路径。
+    </article>
+    <article>
+      <h2>关键安全边界</h2>
+      Agent 默认 artifact-only；业务仓库只读；外部写入必须通过受审计 Adapter。缺 Schema、旧哈希、越权路径、非法工具轨迹均拒收或 blocked。
+    </article>
+    <article>
+      <h2>分享时的边界</h2>
+      当前是可审计参考实现：真实 Multica 需求与代码证据已打通，生产隔离 Runner、外部系统 Adapter、生产模型灰度和完整职责分离仍在演进中。
+    </article>
+  </section>
+
+  <footer>
+    配套多分支任务流转链路图：`http://127.0.0.1:8765/qa-agents/docs/qa-agent-share-flow.html` · Monitor 心跳与审计链图：`http://127.0.0.1:8765/qa-agents/docs/qa-agent-share-monitor-audit-chain.html`
+  </footer>
+</main>
+</body>
+</html>

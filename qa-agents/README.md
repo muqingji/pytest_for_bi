@@ -1,4 +1,10 @@
-# QA Multi-Agent System
+# 服务端需求自动化测试
+
+> 同事本机接入、Multica ID、定时器和 G01 审批配置见
+> [docs/COLLEAGUE_SETUP.md](docs/COLLEAGUE_SETUP.md)。
+>
+> fs-qa-knowledge Case Provider 的远程探查、artifact-only 合同、A08 一一映射和 G02
+> 统一审核方案见 [docs/FS_QA_KNOWLEDGE_INTEGRATION.md](docs/FS_QA_KNOWLEDGE_INTEGRATION.md)。
 
 该目录是 [QA_AGENT_DESIGN.md](../QA_AGENT_DESIGN.md) 的可运行参考实现。目前完成阶段 0
 基础能力、阶段 1/2 真实试点链路，以及阶段 3 的环境门禁和受控执行参考切片。不声称已经
@@ -29,7 +35,8 @@
 - N24 风险策略、A07 未知项兜底、N25 Case 编译、N26 测试选择（策略强制/跳过/影响置信度）和 A12 测试选择建议（仅 N26 无法判定时触发，建议经 N26 校验折叠，只能扩大或升级范围）。
 - N03/N04 契约校验、G02 人工停顿和 N15 Execution Plan。
 - `fs-qa-knowledge` Case Provider 的固定版本能力探测、契约校验和无副作用消费端 Adapter；
-  当前冻结版本不兼容，未实际调用其生成流程。
+  已评审 commit `64cf10c3…` 仍不兼容，未实际调用其生成流程。消费端映射、IR 补全、G02
+  展示和影子对比已就绪，生产启用仍 fail-closed。
 - Agent 与 Oracle 评估进程分离。
 - JSON Artifact、文本报告和 HTML 报告。
 - 结构化模型 Runtime 安全边界；策略默认关闭，尚未绑定生产模型。
@@ -106,6 +113,7 @@ PYTHONPATH=src ../.venv/bin/python -m qa_agents prepare-test-data \
 ```text
 qa-agents/
 ├── contracts/     # Artifact、ChangeSet、Test Case IR Schema
+├── docs/          # 同事接入配置、Case Provider 方案
 ├── policies/      # 仓库白名单、权限和风险规则
 ├── profiles/      # 每个语义 Agent 的版本化 Profile
 ├── src/qa_agents/ # Runtime、确定性节点、Agent、CLI 和报告
