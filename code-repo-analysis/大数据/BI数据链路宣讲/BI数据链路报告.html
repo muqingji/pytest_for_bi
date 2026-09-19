@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BI 数据链路分析报告 · 从存储到出数</title>
+  <style>
+    :root {
+      --bg: #f4f6fb; --ink: #1b2433; --muted: #5b677a; --line: #d8dee9; --card: #ffffff;
+      --store: #4f46e5; --store-bg: #eef2ff;
+      --flow: #0f766e;  --flow-bg: #f0fdfa;
+      --calc: #c2410c;  --calc-bg: #fff7ed;
+      --query: #2563eb; --query-bg: #eff6ff;
+      --warn: #b91c1c;  --warn-bg: #fef2f2;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    code { background: #f1f5f9; border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+    .layout { display: flex; gap: 28px; max-width: 1400px; margin: 0 auto; padding: 28px 24px 60px; }
+    .side { flex: 0 0 210px; position: sticky; top: 24px; align-self: flex-start; font-size: 13px; }
+    .side h4 { margin: 0 0 10px; font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+    .side a { display: block; padding: 7px 10px; color: var(--muted); text-decoration: none; border-left: 2px solid var(--line); line-height: 1.4; }
+    .side a:hover { color: var(--store); border-left-color: var(--store); background: #fff; }
+    main { flex: 1 1 auto; min-width: 0; }
+    header { margin-bottom: 22px; }
+    h1 { margin: 0 0 8px; font-size: 30px; letter-spacing: -.01em; }
+    .sub { color: var(--muted); font-size: 14px; line-height: 1.7; max-width: 800px; }
+    .meta { margin-top: 12px; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 8px; }
+    .meta span { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+    section { margin-top: 40px; scroll-margin-top: 20px; }
+    h2 { font-size: 20px; margin: 0 0 6px; padding-left: 12px; border-left: 4px solid var(--store); }
+    section.flow-sec h2 { border-left-color: var(--flow); }
+    section.calc-sec h2 { border-left-color: var(--calc); }
+    section.query-sec h2 { border-left-color: var(--query); }
+    .lead { color: var(--muted); font-size: 13.5px; line-height: 1.75; margin: 0 0 16px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+    .card h3 { margin: 0 0 8px; font-size: 15px; }
+    .card p { margin: 0 0 8px; font-size: 13px; color: var(--muted); line-height: 1.75; }
+    .card ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--muted); line-height: 1.85; }
+    .grid { display: grid; gap: 14px; }
+    .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    /* 通用流程节点 */
+    .flow { display: flex; align-items: stretch; flex-wrap: wrap; gap: 8px; }
+    .node { flex: 1 1 150px; background: #fff; border: 1px solid var(--line); border-top: 3px solid var(--store); border-radius: 10px; padding: 12px 13px; min-width: 0; }
+    .flow-sec .node { border-top-color: var(--flow); }
+    .calc-sec .node { border-top-color: var(--calc); }
+    .query-sec .node { border-top-color: var(--query); }
+    .node .idx { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: var(--store-bg); color: var(--store); font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+    .flow-sec .node .idx { background: var(--flow-bg); color: var(--flow); }
+    .calc-sec .node .idx { background: var(--calc-bg); color: var(--calc); }
+    .query-sec .node .idx { background: var(--query-bg); color: var(--query); }
+    .node b { display: block; font-size: 13.5px; margin-bottom: 4px; }
+    .node small { display: block; font-size: 12px; color: var(--muted); line-height: 1.6; }
+    .arrow { display: flex; align-items: center; color: #94a3b8; font-size: 18px; padding: 0 2px; }
+
+    /* 存储卡片 */
+    .store-card { border: 1px solid var(--line); border-top: 3px solid var(--store); border-radius: 10px; background: #fff; }
+    .store-card .hd { padding: 12px 14px 8px; }
+    .store-card .hd b { font-size: 14px; display: block; }
+    .store-card .hd span { font-size: 11.5px; color: var(--store); font-weight: 600; }
+    .store-card ul { margin: 0; padding: 0 14px 14px 26px; font-size: 12.5px; color: var(--muted); line-height: 1.8; }
+
+    /* 分层图 */
+    .layers { display: flex; flex-direction: column; gap: 6px; }
+    .layer { display: grid; grid-template-columns: 132px 1fr; gap: 14px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+    .layer .tag { font-size: 12.5px; font-weight: 700; color: var(--store); background: var(--store-bg); border-radius: 6px; padding: 6px 8px; text-align: center; line-height: 1.3; }
+    .layer .body { font-size: 12.5px; color: var(--muted); line-height: 1.65; }
+    .layer .body b { color: var(--ink); font-size: 13px; display: block; margin-bottom: 2px; }
+    .layer .body .t { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--store); }
+    .layer.hl { border-color: #c7d2fe; box-shadow: 0 0 0 3px #eef2ff; }
+
+    /* 时间戳对齐 */
+    .timeline { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin-top: 4px; }
+    .tl-item { flex: 1 1 130px; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; min-width: 0; }
+    .tl-item b { display: block; font-size: 12.5px; margin-bottom: 3px; }
+    .tl-item small { font-size: 11.5px; color: var(--muted); line-height: 1.55; display: block; }
+    .tl-sep { width: 26px; text-align: center; color: #94a3b8; font-size: 15px; }
+
+    /* 表格 */
+    table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 12.5px; }
+    th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.65; }
+    th { background: #f8fafc; font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    .tbl-note { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.7; }
+
+    /* 三列对比 */
+    .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .pillar { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+    .pillar .ph { font-size: 13.5px; font-weight: 700; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+    .pillar.p1 .ph { color: var(--query); }
+    .pillar.p2 .ph { color: var(--calc); }
+    .pillar.p3 .ph { color: var(--store); }
+    .pillar ul { margin: 0; padding-left: 16px; font-size: 12.5px; color: var(--muted); line-height: 1.8; }
+    .pillar .fail { margin-top: 10px; font-size: 12px; background: var(--warn-bg); color: var(--warn); border-radius: 6px; padding: 7px 9px; line-height: 1.6; }
+
+    /* 强调框 */
+    .callout { border-radius: 10px; padding: 13px 16px; font-size: 13px; line-height: 1.75; margin: 12px 0; border: 1px solid; }
+    .co-info { background: var(--store-bg); border-color: #c7d2fe; color: #312e81; }
+    .co-warn { background: var(--warn-bg); border-color: #fecaca; color: #7f1d1d; }
+    .co-ok { background: var(--flow-bg); border-color: #99f6e4; color: #134e4a; }
+
+    /* 大链路横幅 */
+    .banner { background: linear-gradient(135deg, #4f46e5 0%, #0f766e 100%); color: #fff; border-radius: 12px; padding: 20px 22px; font-size: 13.5px; line-height: 1.9; }
+    .banner .chain { font-size: 14px; font-weight: 600; line-height: 2; }
+    .banner .chain span { background: rgba(255,255,255,.16); border-radius: 6px; padding: 2px 8px; display: inline-block; margin: 3px 2px; }
+
+    /* 泳道时序 */
+    .swim { overflow-x: auto; }
+    .swim table { min-width: 940px; }
+    .swim td.stage { white-space: nowrap; font-weight: 600; }
+    .swim td.arrowcell { text-align: center; color: #94a3b8; font-size: 14px; white-space: nowrap; }
+    .actor { display: inline-block; font-size: 11.5px; border-radius: 999px; padding: 2px 9px; border: 1px solid; white-space: nowrap; }
+    .a-biz { background: #f8fafc; border-color: var(--line); color: var(--muted); }
+    .a-mq { background: var(--flow-bg); border-color: #99f6e4; color: var(--flow); }
+    .a-ch { background: var(--store-bg); border-color: #c7d2fe; color: var(--store); }
+    .a-dws { background: var(--calc-bg); border-color: #fed7aa; color: var(--calc); }
+    .a-ui { background: var(--query-bg); border-color: #bfdbfe; color: var(--query); }
+
+    footer { margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); line-height: 1.9; }
+    @media (max-width: 1080px) {
+      .layout { flex-direction: column; }
+      .side { position: static; flex: none; }
+      .side a { display: inline-block; border-left: none; border-bottom: 2px solid var(--line); }
+      .g4, .g2, .three { grid-template-columns: 1fr; }
+      .layer { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body { background: #fff; }
+      .side { display: none; }
+      .card, table, .node, .layer, .pillar { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <nav class="side">
+    <h4>目录</h4>
+    <a href="#readme">阅读说明</a>
+    <a href="#overview">总览</a>
+    <a href="#store">① 数据存在哪里</a>
+    <a href="#layers">② 数仓分层</a>
+    <a href="#ingest">③ 数据怎么进来</a>
+    <a href="#calc">④ 数据怎么算出来</a>
+    <a href="#query">⑤ 查询怎么出结果</a>
+    <a href="#timeline">⑥ 端到端总时序</a>
+    <a href="#speed">⑦ 速查表</a>
+    <a href="#risk">⑧ 风险与治理</a>
+    <a href="#source">⑨ 口径与来源</a>
+  </nav>
+
+  <main>
+    <header>
+      <h1>BI 数据链路 · 从存储到出数</h1>
+      <p class="sub">一次讲清四件事：数据<b>存在哪里</b>、<b>怎么进来</b>、<b>怎么算出来</b>、<b>怎么出结果</b>。每个环节都给出"断了会怎样"，便于对号入座定位问题。</p>
+      <div class="meta">
+        <span>范围：智能分析平台（报表 / 统计图 / 驾驶舱）</span>
+        <span>依据：源码走读 + 表结构字典 + 缺陷场景库</span>
+        <span>性质：静态架构梳理，未查生产</span>
+      </div>
+    </header>
+
+    <section id="readme">
+      <h2>阅读说明</h2>
+      <p class="lead">本页是一份<b>完整报告</b>，包含全部流程图与正文。全文回答四个问题，顺序就是数据在系统中的真实流向。</p>
+      <table>
+        <thead><tr><th>#</th><th>问题</th><th>章节</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>数据存在哪里？—— 三库分工与数仓分层</td><td>①②</td></tr>
+          <tr><td>2</td><td>数据怎么进来的？—— 事件驱动的同步链路</td><td>③</td></tr>
+          <tr><td>3</td><td>数据怎么算出来的？—— DWS 聚合计算</td><td>④</td></tr>
+          <tr><td>4</td><td>查询怎么出结果？—— 拓扑、权限与渲染</td><td>⑤</td></tr>
+        </tbody>
+      </table>
+      <div class="callout co-info" style="margin-top:14px">
+        <b>怎么用这份材料</b><br>
+        · <b>宣讲</b>：本页投屏，左侧目录可直接跳章节；讲稿见 <code>02-宣讲讲稿.md</code>（约 26 分钟）或 <code>03-宣讲讲稿-10分钟精简版.md</code>。<br>
+        · <b>查细节</b>：同一内容的 Markdown 版见 <code>01-BI数据链路报告.md</code>，其中每条结论都标了证据等级（<code>[代码]</code> / <code>[字典]</code> / <code>[知识库]</code> / <code>[场景]</code> / <code>[推断]</code>）。<br>
+        · <b>打印</b>：直接浏览器打印即可，左侧导航会自动隐藏。
+      </div>
+      <div class="callout co-warn">
+        <b>三条使用提醒</b><br>
+        1）本页为<b>静态架构梳理</b>，未对生产环境执行任何查询。<br>
+        2）文中阈值（如"报表查询 10 秒基线""组织成员缓存 6 小时"）来自既有知识库与实战归纳，属于<b>经验基线而非实时测量</b>，下结论请以当次环境实际数据为准。<br>
+        3）表与列在不同云环境、不同租户可能有差异，<b>执行 SQL 前先核对当前环境表结构</b>；引用代码位置时以方法名为准。
+      </div>
+    </section>
+
+    <section id="overview">
+      <h2>总览</h2>
+      <p class="lead">BI 的数据不是"业务库连过来直接查"，而是一条<b>事件驱动、分层落库、预聚合加速</b>的链路。</p>
+      <div class="banner">
+        <div class="chain">
+          <span>业务库数据变更</span> → <span>变更事件（MQ）</span> → <span>数仓读增量</span> → <span>写入 ClickHouse 明细层</span> → <span>发计算事件</span> → <span>聚合服务算受影响视图</span> → <span>写入 ClickHouse 聚合层</span> → <span>报表出数</span>
+        </div>
+        <p style="margin:14px 0 0">用户查报表时读的是<b>预先算好的聚合结果</b>，不是现算。这一句话解释了 BI 的全部特性。</p>
+      </div>
+      <div class="grid g4" style="margin-top:14px">
+        <div class="card"><h3>快</h3><p>报表读预聚合结果，不做全表扫描。</p></div>
+        <div class="card"><h3>有延迟</h3><p>同步与聚合都是异步的，天然存在时间差。</p></div>
+        <div class="card"><h3>会"对不上"</h3><p>配置与数据分属不同库，聚合还有窗口与状态。</p></div>
+        <div class="card"><h3>排查要分层</h3><p>断在哪一段现象都一样，根因却完全不同。</p></div>
+      </div>
+    </section>
+
+    <section id="store">
+      <h2>① 数据存在哪里</h2>
+      <p class="lead">三个库分工，另有一个日志库。记住一句：配置在 PostgreSQL，数据在 ClickHouse，两者<b>不在同一个库</b>。</p>
+      <div class="grid g4">
+        <div class="store-card">
+          <div class="hd"><span>PostgreSQL</span><b>bi · 业务库</b></div>
+          <ul>
+            <li>报表 / 统计图定义</li>
+            <li>维度规则、目标规则</li>
+            <li>数据权限表</li>
+            <li>视图字段 / 筛选 / 属性</li>
+          </ul>
+        </div>
+        <div class="store-card">
+          <div class="hd"><span>ClickHouse</span><b>bi · 数仓</b></div>
+          <ul>
+            <li>ODS / DWD 明细</li>
+            <li><b>DWS 聚合结果</b></li>
+            <li>日志聚合（多版本）</li>
+            <li>排行榜、用户行为统计</li>
+          </ul>
+        </div>
+        <div class="store-card">
+          <div class="hd"><span>PostgreSQL</span><b>bi-system · 引擎元数据</b></div>
+          <ul>
+            <li><b>拓扑表</b>（决定读哪列）</li>
+            <li>聚合规则、字段槽位映射</li>
+            <li>指标元数据</li>
+            <li>调度任务、同步日志</li>
+          </ul>
+        </div>
+        <div class="store-card">
+          <div class="hd"><span>ClickHouse</span><b>biz-app-log · 日志</b></div>
+          <ul>
+            <li>数仓同步服务日志</li>
+            <li>聚合服务运行日志</li>
+            <li>排障取证入口</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout co-warn">
+        <b>两个必须记住的约束</b><br>
+        1）BI 数据库是<b>双方言</b>：查询时必须显式指定「ClickHouse 侧」或「PostgreSQL 侧」，不指定会命中错误的库。<br>
+        2）PostgreSQL 与 ClickHouse <b>无法 JOIN</b>：对数类排查只能两个库分别查，再在分析侧比对。
+      </div>
+      <div class="callout co-info">
+        <b>设计后果</b>：「改了配置」和「数据生效」是两条独立链路。配置改完并不会自动写进物理表——这正是一大类"配置改了但报表没变"问题的根源。
+      </div>
+    </section>
+
+    <section id="layers">
+      <h2>② 数仓分层</h2>
+      <p class="lead">ClickHouse 侧按数仓标准分层，从表命名就能看出层次。数据自上而下逐层加工，报表只查聚合层。</p>
+      <div class="layers">
+        <div class="layer">
+          <div class="tag">ODS<br>明细层</div>
+          <div class="body"><b>从业务库同步过来的原始 / 增量明细</b>
+            <span class="t">ODS 明细表 · 贴源层表</span>
+            <br>数据的入口，写入按 INC / STOCK / CAL 分区，受 TTL 过期清理。
+          </div>
+        </div>
+        <div class="layer">
+          <div class="tag">DWD<br>明细层</div>
+          <div class="body"><b>增量 ID 宽表，做明细加工</b>
+            <span class="t">增量 ID 宽表</span>
+            <br>把明细整理成便于聚合的宽表形态。
+          </div>
+        </div>
+        <div class="layer hl">
+          <div class="tag">DWS<br>聚合层</div>
+          <div class="body"><b>报表 / 统计图真正查询的数据</b>
+            <span class="t">聚合数据表 · 日志聚合表 v1–v7 · 聚合历史表 · 同步状态表</span>
+            <br>聚合结果落在这里。日志聚合表存在七个版本，是列式 schema 演进的直接证据——新增指标类型时扩展新表，不改老表。
+          </div>
+        </div>
+        <div class="layer">
+          <div class="tag">应用<br>统计层</div>
+          <div class="body"><b>面向场景的预置统计</b>
+            <span class="t">排行榜 年 / 季 / 月 / 周 / 日 表 · 用户行为统计表</span>
+            <br>预置的排行榜类分析直接读这层。
+          </div>
+        </div>
+        <div class="layer">
+          <div class="tag">拓扑与<br>运行时层</div>
+          <div class="body"><b>排障必经之路</b>
+            <span class="t">查询日志 · 视图访问日志 · 聚合运行日志</span>
+            <br>容易被忽略，但定位"卡在哪一步"几乎都要靠它。
+          </div>
+        </div>
+      </div>
+      <div class="callout co-info">
+        <b>聚合表的列为什么长这样</b>：维度值按<b>固定槽位</b>落列（<code>dim_string_1</code>…<code>dim_string_N</code>），指标落成 ClickHouse 的<b>聚合状态列</b>（<code>agg_sum_N</code> / <code>agg_count_N</code> / <code>agg_uniq_N</code>）。聚合列存的是<b>中间态而非最终值</b>，直接查询是乱码，必须用 <code>finalizeAggregation()</code> 解码。
+      </div>
+    </section>
+
+    <section id="ingest" class="flow-sec">
+      <h2>③ 数据怎么进来</h2>
+      <p class="lead">整条链路<b>每一步都是异步的</b>——这就是"数据改了但报表还没变"的根本原因。</p>
+      <div class="flow">
+        <div class="node"><span class="idx">1</span><b>业务库数据变更</b><small>新增客户、改订单状态</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="idx">2</span><b>变更事件投递</b><small>上游经消息队列投递变更事件，支持灰度分流</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="idx">3</span><b>数仓消费事件</b><small>解析业务库 / 数仓连接与 schema</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="idx">4</span><b>分页读增量</b><small>按「业务库+schema」查同步配置、算批次号，按修改时间 / 主键读 PG 增量</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="idx">5</span><b>写入 CH 明细层</b><small>先反查历史数据，再批量写入，按分区路由</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="idx">6</span><b>发送计算事件</b><small>通知聚合层开始计算 —— 同步与计算的分界线</small></div>
+      </div>
+
+      <h3 style="font-size:15px;margin:26px 0 8px">定位延迟：四种时间戳对齐法</h3>
+      <p class="lead" style="margin-bottom:10px">不要凭感觉，取四个时间点，差值落在哪一段就是哪一段的问题。</p>
+      <div class="timeline">
+        <div class="tl-item"><b>① 源数据写入</b><small>业务库已落库<br>取不到 = 源头问题，BI 无解</small></div>
+        <div class="tl-sep">→</div>
+        <div class="tl-item"><b>② 同步消费</b><small>数仓已消费<br>滞后 = 事件没到 / 消费阻塞</small></div>
+        <div class="tl-sep">→</div>
+        <div class="tl-item"><b>③ CH 到达</b><small>已写入明细层<br>滞后 = 写入被拒 / 合并积压</small></div>
+        <div class="tl-sep">→</div>
+        <div class="tl-item"><b>④ 聚合完成</b><small>聚合已算完<br>滞后 = 聚合失败 / 窗口未关 / 重试中</small></div>
+      </div>
+      <div class="callout co-ok">
+        这一步有现成接口：上层服务会调用数仓的「查询最近计算时间」接口，前端用它提示用户"数据更新到几点"。<b>用户看到的时间提示，就是这条链路算出来的。</b>
+      </div>
+
+      <h3 style="font-size:15px;margin:26px 0 8px">三条容易忽略的支线</h3>
+      <table>
+        <thead><tr><th>支线</th><th>触发方式</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td><b>手动补算</b></td><td>运维接口</td><td>消息丢了或计算失败时，手动补触发一次聚合</td></tr>
+          <tr><td><b>视图变更建表</b></td><td>用户保存报表 / 统计图 → 消息队列</td><td>数仓<b>预建</b> ClickHouse 聚合表（先建表，暂不填数）</td></tr>
+          <tr><td><b>字段一致性比对</b></td><td>上层服务调用</td><td>检查"报表字段配置 vs ClickHouse 表结构"是否一致，不一致则重建</td></tr>
+        </tbody>
+      </table>
+      <p class="tbl-note">第三条是理解"槽位漂移"的关键：<b>配置改了不会自动同步到物理表</b>，要靠比对接口发现差异后触发重建。</p>
+
+      <div class="grid g2" style="margin-top:14px">
+        <div class="card">
+          <h3>全量补数 vs 增量同步</h3>
+          <p>历史补数时若未先停增量任务，<b>全量写入的旧快照会覆盖增量已同步的新数据</b>。</p>
+          <ul>
+            <li>全量写<b>影子表</b>，对账一致后再原子切换表名</li>
+            <li>增量按单调递增版本号比较，旧快照不回退新版本</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>计算字段重算：另一条独立链路</h3>
+          <p>明细批量变更后，重算任务经调度进入队列，由计算服务执行后回写。高并发下会限流并转发备用队列。</p>
+          <p><b>典型表现</b>：从对象已保存，但主对象汇总值几分钟没变。<b>这是最终一致性未收敛，不是计算 Bug。</b></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="calc" class="calc-sec">
+      <h2>④ 数据怎么算出来</h2>
+      <p class="lead">聚合不是"对着原始表跑 SQL"，而是由三份元数据决定<b>读哪一列、用哪个槽位</b>。</p>
+      <div class="flow">
+        <div class="node"><span class="idx">元</span><b>字段槽位映射</b><small>业务字段 ↔ 物理槽位</small></div>
+        <div class="arrow">+</div>
+        <div class="node"><span class="idx">元</span><b>聚合规则</b><small>哪些字段参与、如何分配槽位</small></div>
+        <div class="arrow">+</div>
+        <div class="node"><span class="idx">元</span><b>拓扑表</b><small>决定查询用哪些槽位、读哪张表</small></div>
+        <div class="arrow">=</div>
+        <div class="node" style="border-top-color:#b91c1c"><span class="idx" style="background:#fef2f2;color:#b91c1c">!</span><b>槽位漂移风险</b><small>配置变更 → 槽位重分配 → 拓扑未重建 → 读错列</small></div>
+      </div>
+      <div class="callout co-warn">
+        <b>最经典的一类缺陷</b>：字段配置变更 → 槽位重新分配 → 拓扑未重建 → 查询用错槽位 → <b>统计值错误或全零</b>。该问题从 2019 持续到 2024，根因是规则增删改时的<b>并发竞争导致槽位分配冲突</b>，以及停用 / 启用规则共享槽位。
+      </div>
+
+      <h3 style="font-size:15px;margin:26px 0 8px">聚合实计算的执行路径</h3>
+      <div class="flow">
+        <div class="node"><span class="idx">1</span><b>加分布式锁</b><small>防止同一批次重复计算</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="idx">2</span><b>构建变更上下文</b><small>确定本批次涉及哪些对象与字段</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="idx">3</span><b>查拓扑找受影响视图</b><small>得到需重算的统计图 / 报表清单</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="idx">4</span><b>生成并执行聚合 SQL</b><small>全量或增量，写入 CH 聚合表</small></div>
+        <div class="arrow">→</div>
+        <div class="node"><span class="idx">5</span><b>更新状态与日志</b><small>失败自动重试，有明确次数上限</small></div>
+      </div>
+      <p class="tbl-note">第 3 步的"分片 + 线程池"设计，解释了为什么大批量变更时会<b>互相争抢资源</b>；第 4 步的"全量 / 增量"两种策略，解释了为什么有时延迟明显更长。</p>
+
+      <h3 style="font-size:15px;margin:26px 0 8px">指标如何编译成聚合状态</h3>
+      <table>
+        <thead><tr><th>聚合类型</th><th>物理列</th><th>ClickHouse 类型</th><th>注意事项</th></tr></thead>
+        <tbody>
+          <tr><td>求和</td><td class="mono">agg_sum_N</td><td class="mono">AggregateFunction(sum, Nullable(Decimal))</td><td>金额用 Decimal，不用 Float</td></tr>
+          <tr><td>计数</td><td class="mono">agg_count_N</td><td class="mono">AggregateFunction(sum, Nullable(Int64))</td><td>注意 <code>COUNT(*)</code> 与 <code>COUNT(col)</code> 的 NULL 差异</td></tr>
+          <tr><td>精确去重</td><td class="mono">agg_uniq_N</td><td class="mono">AggregateFunction(uniqExact, …)</td><td>精确</td></tr>
+          <tr><td>近似去重</td><td>——</td><td class="mono">uniq() → HyperLogLog</td><td><b>约 1–2% 误差</b>，与业务对不上先查这里</td></tr>
+        </tbody>
+      </table>
+      <p class="tbl-note">取值的唯一正确写法：<code>finalizeAggregation(列名)</code>。</p>
+
+      <h3 style="font-size:15px;margin:26px 0 8px">计算偏差的六个来源</h3>
+      <table>
+        <thead><tr><th>来源</th><th>机理</th><th>典型现象</th></tr></thead>
+        <tbody>
+          <tr><td>聚合消费阻塞</td><td>部分变更事件未被聚合</td><td>统计图与前台数字不一致</td></tr>
+          <tr><td>输入数据丢失</td><td>变更日志在某时间窗丢失，输入不完整</td><td>统计图条数比明细少</td></tr>
+          <tr><td>归属部门粒度</td><td>平铺与层级的 GROUP BY 处理不当</td><td>选了多个子部门只显示一个</td></tr>
+          <tr><td>槽位重复</td><td>多字段共享同一槽位，存值互相覆盖</td><td>差值不是"少"，而是"多了不相关的值"</td></tr>
+          <tr><td>主题未检测开启</td><td>底层主题注册 / 发现机制缺陷</td><td><b>统计图全部显示 0</b></td></tr>
+          <tr><td>多对多重复计数</td><td>计数未去重</td><td>客户数被放大数倍</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size:15px;margin:26px 0 8px">时间口径与拼表：另外两个高发区</h3>
+      <div class="grid g2">
+        <div class="card">
+          <h3>时间口径</h3>
+          <ul>
+            <li>时间转换<b>默认 UTC</b>，中国时间必须显式指定时区；按日 / 周 / 月截断时<b>时区参数极易漏</b></li>
+            <li><b>跨年周归属</b>：底层用 ISO-8601 周，跨年那一周被判给下一年，按自然年过滤时<b>整周丢失</b></li>
+            <li><b>闰年同比环比</b>：跨闰年 2 月时日期对齐会错位</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>拼表（多表拼接）</h3>
+          <ul>
+            <li><b>低基数笛卡尔积爆炸</b>：仅用"客户名称"这类低基数高重复字段做唯一关联维度，产生平方级膨胀，内存超限或查询超时</li>
+            <li>修复要求：补充<b>高基数唯一键</b>（业务主键 + 单据主键）作为联合维度</li>
+            <li><b>一对多行膨胀</b>：多对多未去重导致行数翻倍，需<b>先聚合再 JOIN</b></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="query" class="query-sec">
+      <h2>⑤ 查询怎么出结果</h2>
+      <p class="lead">一次统计图点击，走的是<b>「拓扑 → 权限 → 渲染」三段式</b>。三段断裂现象看起来都是"报表没数据"，但根因完全不同。</p>
+      <div class="three">
+        <div class="pillar p1">
+          <div class="ph">① 拓扑段</div>
+          <ul>
+            <li>读视图定义</li>
+            <li>查拓扑表确定槽位与目标表</li>
+            <li>生成 ClickHouse SQL</li>
+          </ul>
+          <div class="fail">断裂现象：页面提示"初始化中""数据量过大"</div>
+        </div>
+        <div class="pillar p2">
+          <div class="ph">② 权限段</div>
+          <ul>
+            <li>在 SQL 内按权限编码过滤行</li>
+            <li>报表走<b>主业务对象</b>权限</li>
+            <li>统计图走<b>主题对象</b>权限</li>
+          </ul>
+          <div class="fail">断裂现象：框架正常、图在、只是没数（<code>--</code>）</div>
+        </div>
+        <div class="pillar p3">
+          <div class="ph">③ 渲染段</div>
+          <ul>
+            <li>结果序列化</li>
+            <li>前端组件绘制</li>
+            <li>导出 / 订阅走同一份结果</li>
+          </ul>
+          <div class="fail">断裂现象：白屏、样式错乱</div>
+        </div>
+      </div>
+
+      <div class="callout co-warn" style="margin-top:14px">
+        <b>宣讲必讲的三条消歧规则</b><br>
+        · 白屏 + 浏览器控制台有 JS 报错 → <b>前端问题</b><br>
+        · 一直转圈 → <b>后端 API 超时</b><br>
+        · 框架正常、图在、只是没数（<code>--</code>）→ <b>不是白屏，先走权限口径</b>
+      </div>
+
+      <h3 style="font-size:15px;margin:26px 0 8px">权限：三层缓存，三个时长</h3>
+      <p class="lead" style="margin-bottom:10px">"改完权限看不到图"是最大的误报来源——因为不同层级的变更，生效窗口根本不是同一个量级。</p>
+      <table>
+        <thead><tr><th>变更类型</th><th>生效窗口</th></tr></thead>
+        <tbody>
+          <tr><td>把员工加入部门 / 角色 / 用户组</td><td>最长 <b>6 小时</b></td></tr>
+          <tr><td>后台给角色勾选对象功能 / 数据权限</td><td>最长 <b>2 小时</b></td></tr>
+          <tr><td>单张图 / 驾驶舱授权给某人</td><td><b>10–30 分钟</b></td></tr>
+        </tbody>
+      </table>
+      <p class="tbl-note">窗口内属于<b>设计如此</b>，超窗口才需要深入排查。另：若数仓侧权限编码为空，<b>非管理员用户看不到统计数据</b>；"是否包含离职员工"配置<b>只作用于</b>负责人及负责人主属部门类字段，不管创建人、自定义人员、归属部门。</p>
+
+      <h3 style="font-size:15px;margin:26px 0 8px">性能：瓶颈通常在扫描量与内存</h3>
+      <div class="grid g2">
+        <div class="card">
+          <h3>看四个指标</h3>
+          <ul>
+            <li>查询耗时：报表正常基线在 <b>10 秒以内</b></li>
+            <li>扫描行数 vs 返回行数：比值过高 = 过滤不足或分区裁剪失效</li>
+            <li>内存峰值：是否接近上限（OOM 前兆）</li>
+            <li>是否命中预聚合：未命中说明在现算</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>四类高频问题</h3>
+          <ul>
+            <li><b>DDL 并发超时</b>：大表加列需重建数据块，并发互相持锁</li>
+            <li><b>双维度查询</b>：计算量指数级增长，需预聚合优化</li>
+            <li><b>大文本分组 OOM</b>：数百万行可消耗数十 GB 内存</li>
+            <li><b>合并操作并发</b>：强制合并打满 CPU，影响全局</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 style="font-size:15px;margin:26px 0 8px">三种输出形态与各自的坑</h3>
+      <table>
+        <thead><tr><th>形态</th><th>典型故障</th></tr></thead>
+        <tbody>
+          <tr><td><b>页面渲染</b></td><td>白屏（前端）/ 转圈超时（后端慢查询）/ 框架在没数（权限）</td></tr>
+          <tr><td><b>导出</b></td><td>大文件内存溢出、切片丢失、百万行触发网关超时、高基数列 OOM</td></tr>
+          <tr><td><b>订阅推送</b></td><td>串行渲染导致大批量推送延迟数小时；<b>当天改推送时点次日才生效</b></td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout co-warn" style="margin-top:14px">
+        <b>已知盲区</b>：ClickHouse 查询日志<b>可能因配置限制未记录所有查询</b>，线上频繁出现"日志不全导致排查困难"。此时要下沉到容器级日志或上层服务日志。另外该日志若不清理会<b>打满系统盘</b>。
+      </div>
+    </section>
+
+    <section id="timeline">
+      <h2>⑥ 端到端总时序</h2>
+      <p class="lead">一条数据从"用户改单"到"报表可见"的完整旅程，以及每一步断了会怎样。</p>
+      <div class="swim">
+        <table>
+          <thead>
+            <tr><th>#</th><th>阶段</th><th>组件</th><th></th><th>数据动作</th><th>失败表现</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>1</td><td class="stage">业务操作</td><td><span class="actor a-biz">业务对象</span></td><td class="arrowcell">→</td><td>用户新建 / 修改单据</td><td>——</td></tr>
+            <tr><td>2</td><td class="stage">变更事件</td><td><span class="actor a-mq">消息队列</span></td><td class="arrowcell">→</td><td>投递变更事件</td><td>积压 / 丢消息</td></tr>
+            <tr><td>3</td><td class="stage">同步消费</td><td><span class="actor a-dws">数仓同步服务</span></td><td class="arrowcell">→</td><td>分页读业务库增量</td><td>消费阻塞 / 报错</td></tr>
+            <tr><td>4</td><td class="stage">明细落库</td><td><span class="actor a-ch">ClickHouse ODS</span></td><td class="arrowcell">→</td><td>批量写入明细层</td><td>小 Part / 副本只读</td></tr>
+            <tr><td>5</td><td class="stage">计算事件</td><td><span class="actor a-mq">消息队列</span></td><td class="arrowcell">→</td><td>通知聚合层开始计算</td><td>事件丢失</td></tr>
+            <tr><td>6</td><td class="stage">聚合计算</td><td><span class="actor a-dws">DWS 聚合服务</span></td><td class="arrowcell">→</td><td>查拓扑、生成并执行聚合 SQL</td><td>任务失败 / 重试中 / 锁等待</td></tr>
+            <tr><td>7</td><td class="stage">聚合落库</td><td><span class="actor a-ch">ClickHouse DWS</span></td><td class="arrowcell">→</td><td>写入聚合表</td><td>写入超时 / 内存超限</td></tr>
+            <tr><td>8</td><td class="stage">视图刷新</td><td><span class="actor a-dws">刷新服务</span></td><td class="arrowcell">→</td><td>校验并刷新统计视图</td><td>拓扑缺失</td></tr>
+            <tr><td>9</td><td class="stage">权限过滤</td><td><span class="actor a-ui">查询层</span></td><td class="arrowcell">→</td><td>按权限编码过滤行</td><td>框架在、没数</td></tr>
+            <tr><td>10</td><td class="stage">结果输出</td><td><span class="actor a-ui">前端 / 导出 / 订阅</span></td><td class="arrowcell">■</td><td>渲染、导出、推送</td><td>白屏 / OOM / 推送延迟</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="speed">
+      <h2>⑦ 速查表</h2>
+      <p class="lead">宣讲时最容易被追问的几个机制，一句话备好。</p>
+      <table>
+        <thead><tr><th>机制</th><th>一句话解释</th></tr></thead>
+        <tbody>
+          <tr><td>为什么报表快</td><td>读的是预聚合结果（聚合状态列），不是现算</td></tr>
+          <tr><td>为什么会有延迟</td><td>同步、聚合、刷新全是异步链路，天然有时间差</td></tr>
+          <tr><td>为什么聚合值查出来是乱码</td><td>聚合列存的是 ClickHouse 中间态，必须 <code>finalizeAggregation()</code> 解码</td></tr>
+          <tr><td>为什么改配置后报表没变</td><td>配置在 PG、数据在 CH，改配置不会自动改物理表，要靠拓扑重建 + 字段比对</td></tr>
+          <tr><td>为什么统计图全 0</td><td>先查主题是否被检测开启，再查拓扑槽位是否漂移</td></tr>
+          <tr><td>为什么改完权限看不到图</td><td>权限有三层缓存三个时长，窗口内是设计如此</td></tr>
+          <tr><td>为什么"没数"不是白屏</td><td>框架在、图在、只是没值 → 走权限口径；白屏通常是前端 JS 报错</td></tr>
+          <tr><td>为什么金额有时翻倍</td><td>折叠引擎后台合并未完成前的重复计数，查询端要注入折叠逻辑</td></tr>
+          <tr><td>为什么日志查不到</td><td>ClickHouse 查询日志可能未记录全部查询，需下沉到容器级日志</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="risk">
+      <h2>⑧ 风险与治理</h2>
+      <p class="lead">按数据域划分的结构性风险，以及对应的治理方向。</p>
+      <table>
+        <thead><tr><th>风险域</th><th>结构性风险</th><th>治理方向</th></tr></thead>
+        <tbody>
+          <tr><td>存储</td><td>小 Part 堆积、副本只读、Mutation 堆积</td><td>写入端攒批；废弃单条更新，改版本号追加写入</td></tr>
+          <tr><td>存储</td><td>折叠引擎未合并前重复计数</td><td>查询端统一注入折叠逻辑</td></tr>
+          <tr><td>入库</td><td>全量补数覆盖增量位点</td><td>影子表 + 对账 + 原子切换；增量按版本号单调比较</td></tr>
+          <tr><td>入库</td><td>主库 DDL 导致同步断流</td><td>开启 schema 自动演进；DDL 变更纳入发布门禁</td></tr>
+          <tr><td>计算</td><td>槽位重复、并发分配冲突</td><td>槽位分配加锁；停用规则立即释放槽位</td></tr>
+          <tr><td>计算</td><td>配置变更后拓扑不重建</td><td>变更后强制触发拓扑重建与字段比对</td></tr>
+          <tr><td>计算</td><td>近似去重与业务对不上</td><td>需精确时统一改为精确去重</td></tr>
+          <tr><td>查询</td><td>拼表低基数笛卡尔积</td><td>建模器接笛卡尔积预警；强制高基数唯一键</td></tr>
+          <tr><td>权限</td><td>三层缓存被当成 Bug</td><td>先判层与窗口，窗口内收口"设计如此"</td></tr>
+          <tr><td>可观测</td><td>查询日志不全、日志打满磁盘</td><td>补容器级日志；配置清理策略</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="source">
+      <h2>⑨ 口径与来源</h2>
+      <p class="lead">同一条链路，运维口径与代码口径叫法不同，宣讲时容易被追问，先统一在这里。</p>
+      <table>
+        <thead><tr><th>环节</th><th>运维 / 排障口径</th><th>代码实现口径</th></tr></thead>
+        <tbody>
+          <tr><td>变更来源</td><td>业务操作日志</td><td>上游变更事件（消息队列）</td></tr>
+          <tr><td>同步执行者</td><td>数仓同步服务</td><td>变更事件消费者 + 增量传输服务</td></tr>
+          <tr><td>写入</td><td>写入 ClickHouse</td><td>增量写入器批量落库</td></tr>
+          <tr><td>计算触发</td><td>聚合事件</td><td>计算事件生产者 / 消费者</td></tr>
+          <tr><td>聚合执行者</td><td>聚合框架</td><td>DWS 计算服务 + 聚合数据服务</td></tr>
+          <tr><td>查询元数据</td><td>拓扑表</td><td>拓扑服务</td></tr>
+        </tbody>
+      </table>
+      <div class="grid g2" style="margin-top:14px">
+        <div class="card">
+          <h3>证据来源</h3>
+          <ul>
+            <li>数仓分层、同步与聚合链路、表引擎与分区：<code>大数据/fs-bi-warehouse-架构分析.md</code>、<code>大数据/全链路走读-fs-bi-warehouse.md</code></li>
+            <li>同步链路、已知排查限制、缓存窗口：BI 域运维知识库</li>
+            <li>表与列、聚合状态类型：BI 数据字典（ClickHouse / PostgreSQL 侧）</li>
+            <li>实战缺陷场景：缺陷场景库（基于近 1 年 1,138 条 BI 缺陷萃取）</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>使用提醒</h3>
+          <ul>
+            <li>本页为<b>静态架构梳理</b>，未对生产环境执行任何查询</li>
+            <li>阈值（如 10 秒基线、6 小时缓存）来自既有知识库与实战归纳，<b>非实时测量</b></li>
+            <li>表与列在不同云环境、不同租户可能有差异，<b>执行 SQL 前先核对当前环境表结构</b></li>
+            <li>行号会随代码更新偏移，引用代码位置时<b>以方法名为准</b></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      BI 数据链路分析报告 &nbsp;|&nbsp; 配套文件：<code>01-BI数据链路报告.md</code>（Markdown 版）、<code>02-宣讲讲稿.md</code>（26 分钟）、<code>03-宣讲讲稿-10分钟精简版.md</code>（10 分钟）
+    </footer>
+  </main>
+</div>
+</body>
+</html>
