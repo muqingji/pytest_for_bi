@@ -1,0 +1,29 @@
+{
+  "name": "pytest-for-bi-dev-tools",
+  "version": "0.1.0",
+  "description": "项目自建 Codex 开发工具集：PRD 改造、验收标准、后端技术方案的生成与回查，按技术方案逐项实现代码，以及按测试方案执行测试并产出测试报告的可复用 Skill",
+  "author": {
+    "name": "liushanshan"
+  },
+  "keywords": [
+    "codex-skill",
+    "tech-design",
+    "prd",
+    "review"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Pytest For BI Dev Tools",
+    "shortDescription": "项目自建 Skill 集合",
+    "longDescription": "沉淀项目内可复用的 Codex Skill，覆盖需求到验收的完整链路：按 9 稿模板改造 PRD、依据 PRD 生成并回查验收标准、依据 PRD 与产品方案生成并回查后端技术方案、依据已确认的技术方案逐项实现代码并执行未决项、单测、联调和双文档回查门禁，以及依据测试方案和验收标准执行测试、建立 AC 追踪关系并产出可复核的测试报告。",
+    "developerName": "liushanshan",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": [
+      "使用 $prd-to-tech-design 根据 9 稿 PRD 生成后端技术方案并自动回查。",
+      "使用 $prd-to-acceptance-criteria 根据 9 稿 PRD 生成或审查验收标准。",
+      "使用 $tech-design-implementation 按技术方案实现下一个功能，并执行单测、联调和双文档回查门禁。",
+      "使用 $test-plan-to-test-report 按测试方案执行测试并更新测试报告，声明未覆盖范围。"
+    ]
+  }
+}

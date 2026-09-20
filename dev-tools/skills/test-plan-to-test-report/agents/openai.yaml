@@ -1,0 +1,4 @@
+interface:
+  display_name: "测试方案转报告"
+  short_description: "按验收标准追踪执行测试，生成可复核的测试报告并声明未覆盖范围"
+  default_prompt: "使用 $test-plan-to-test-report 依据测试方案和验收标准执行测试，并更新测试报告。"

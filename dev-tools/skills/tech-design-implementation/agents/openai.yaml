@@ -1,0 +1,4 @@
+interface:
+  display_name: "技术方案代码实现"
+  short_description: "依据技术方案逐项实现后端功能并完成测试回查"
+  default_prompt: "使用 $tech-design-implementation 按技术方案实现下一个功能，并执行单测、联调和人工确认门禁。"

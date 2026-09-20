@@ -1,0 +1,24 @@
+{
+  "go.goroot": "/Users/liushanshan/code/my/pytest_for_bi/.cache/go-sdk/go",
+  "go.gopath": "/Users/liushanshan/code/my/pytest_for_bi/.cache/gopath",
+  "go.toolsGopath": "/Users/liushanshan/code/my/pytest_for_bi/.cache/gopath",
+  "go.toolsEnvVars": {
+    "GOPROXY": "https://goproxy.cn,direct",
+    "GOTOOLCHAIN": "local",
+    "GOFLAGS": "-mod=mod"
+  },
+  "go.testEnvVars": {
+    "GOTOOLCHAIN": "local"
+  },
+  "terminal.integrated.env.osx": {
+    "GOROOT": "/Users/liushanshan/code/my/pytest_for_bi/.cache/go-sdk/go",
+    "GOPATH": "/Users/liushanshan/code/my/pytest_for_bi/.cache/gopath",
+    "GOBIN": "/Users/liushanshan/code/my/pytest_for_bi/.cache/gopath/bin",
+    "GOCACHE": "/Users/liushanshan/code/my/pytest_for_bi/.cache/go-build-cache",
+    "GOMODCACHE": "/Users/liushanshan/code/my/pytest_for_bi/.cache/gopath/pkg/mod",
+    "GOENV": "/Users/liushanshan/code/my/pytest_for_bi/.cache/go/env",
+    "GOPROXY": "https://goproxy.cn,direct",
+    "GOTOOLCHAIN": "local",
+    "PATH": "/Users/liushanshan/code/my/pytest_for_bi/.cache/go-sdk/go/bin:/Users/liushanshan/code/my/pytest_for_bi/.cache/gopath/bin:${env:PATH}"
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "PRD 9稿改造"
+  short_description: "严格依据5稿完善9稿PRD并完成产品Leader复核"
+  default_prompt: "使用 $prd-refinement 严格依据产品方案5稿和业务诉求原文改造9稿PRD，并完成数据、范围和产品Leader复核。"

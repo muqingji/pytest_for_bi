@@ -1,0 +1,28 @@
+{
+  "scenario": "FR-001 passive user with incomplete tasks",
+  "user_id": "user-passive",
+  "task_date": "2026-09-20",
+  "task": {
+    "required_count": 5,
+    "completed_count": 2,
+    "estimated_minutes": 30,
+    "deadline": "2026-09-20T20:00:00Z"
+  },
+  "preference": {
+    "enabled": true,
+    "push_enabled": true,
+    "timezone": "UTC",
+    "daily_push_cap": 1
+  },
+  "behavior": {
+    "history_days_available": 7,
+    "inactive_days": 0,
+    "complete_days_7d": 2,
+    "reminder_attributed_complete_days_7d": 0
+  },
+  "expected": {
+    "should_remind": true,
+    "channel": "push",
+    "reason_code": "ELIGIBLE"
+  }
+}
