@@ -1,0 +1,5 @@
+interface:
+  display_name: "最终测试报告与准出"
+  short_description: "汇总质量证据，生成最终测试报告并判定是否准出"
+  default_prompt: "使用 $test-release-report 汇总本次需求、测试、CR 和 Bug 证据，生成最终测试准出报告。"
+

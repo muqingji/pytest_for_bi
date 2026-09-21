@@ -1,0 +1,253 @@
+{
+  "note": "业务测试与本地 Demo 共用的前置种子数据。用例里的 scenario.fixture 指向本文件的 user_id；被测服务启动时按本文件加载，测试预期才成立。",
+  "source": "测试方案/数据构造/数据构造说明.md（用户 Fixture、任务数据、行为数据、提醒设置数据四节）",
+  "scope": "P0 Push 单渠道，覆盖 FR-001~FR-005、FR-007、FR-008",
+  "conventions": {
+    "task_date": "不在 Fixture 写死，由请求体传入；任务按 (user_id, task_date) 唯一命中",
+    "deadline": "相对表达 {relative_to: now, offset_minutes: N}，避免随运行日期失效；offset 为负表示已过期",
+    "timezone": "用户本地时区，提醒时间与免打扰都按该时区计算",
+    "quiet_hours": "[开始, 结束] 本地 HH:mm，可跨午夜；缺省用默认值 21:30-07:00",
+    "behavior.complete_days_7d": "最近 7 天完成全部必做任务的天数，用于自驱型判定（>=5 天）",
+    "behavior.reminder_attributed_complete_days_7d": "最近 7 天收到提醒后完成的天数，自驱型需 <=1 天",
+    "usage.push_sent_count": "当天已发送的系统主动 Push 次数，用于频控；SNOOZE 用量独立计量"
+  },
+  "defaults": {
+    "preference": {
+      "reminder_enabled": true,
+      "push_enabled": true,
+      "quiet_hours": ["21:30", "07:00"],
+      "daily_push_cap": 1,
+      "timezone": "UTC"
+    },
+    "usage": {
+      "push_sent_count": 0,
+      "snooze_sent_count": 0
+    }
+  },
+  "task_templates": {
+    "PENDING": {
+      "required_count": 5,
+      "completed_count": 2,
+      "estimated_minutes": 30,
+      "deadline": {"relative_to": "now", "offset_minutes": 240}
+    },
+    "COMPLETED": {
+      "required_count": 5,
+      "completed_count": 5,
+      "estimated_minutes": 30,
+      "deadline": {"relative_to": "now", "offset_minutes": 240}
+    },
+    "EXPIRED": {
+      "required_count": 5,
+      "completed_count": 2,
+      "estimated_minutes": 30,
+      "deadline": {"relative_to": "now", "offset_minutes": -60}
+    },
+    "COMPLETED_BEFORE_SEND": {
+      "required_count": 5,
+      "completed_count": 5,
+      "estimated_minutes": 30,
+      "deadline": {"relative_to": "now", "offset_minutes": 240}
+    },
+    "NO_TASK": {
+      "required_count": 0,
+      "completed_count": 0,
+      "estimated_minutes": 0,
+      "deadline": {"relative_to": "now", "offset_minutes": 240}
+    }
+  },
+  "users": [
+    {
+      "user_id": "user-passive",
+      "segment": "PASSIVE",
+      "description": "被动型：晚饭后完成概率较高，有未完成任务，Push 开启",
+      "task_variants": ["PENDING", "EXPIRED", "NO_TASK"],
+      "behavior": {
+        "history_days_available": 7,
+        "inactive_days": 0,
+        "complete_days_7d": 2,
+        "reminder_attributed_complete_days_7d": 1,
+        "data_degraded": false,
+        "app_open_windows": [["19:00", "21:00"]],
+        "task_complete_windows": [["19:30", "20:30"]]
+      },
+      "covers": ["EVAL-001", "EVAL-003", "EVAL-009", "EVAL-012", "EVAL-013", "EVAL-017", "EVAL-018", "EVAL-019", "DISP-001", "DISP-002", "DISP-003", "DISP-004", "DISP-005", "DISP-006", "DISP-007", "SNZ-001", "SNZ-002", "SNZ-003", "SNZ-005", "SNZ-006", "SNZ-008"]
+    },
+    {
+      "user_id": "user-self-driven",
+      "segment": "SELF_DRIVEN",
+      "description": "自驱型：最近 7 天完成 6 天、提醒归因完成 0 天；用于验证已完成不提醒，以及未完成时最多一条 Push",
+      "task_variants": ["COMPLETED", "PENDING"],
+      "behavior": {
+        "history_days_available": 7,
+        "inactive_days": 0,
+        "complete_days_7d": 6,
+        "reminder_attributed_complete_days_7d": 0,
+        "data_degraded": false,
+        "app_open_windows": [["18:00", "19:00"]],
+        "task_complete_windows": [["18:00", "19:00"]]
+      },
+      "covers": ["EVAL-002", "EVAL-016"]
+    },
+    {
+      "user_id": "user-inactive",
+      "segment": "INACTIVE",
+      "description": "流失型：评估时点连续 3 天未打开 App，有未完成任务",
+      "task_variants": ["PENDING"],
+      "behavior": {
+        "history_days_available": 7,
+        "inactive_days": 3,
+        "complete_days_7d": 0,
+        "reminder_attributed_complete_days_7d": 0,
+        "data_degraded": false,
+        "app_open_windows": [],
+        "task_complete_windows": []
+      },
+      "covers": ["EVAL-005"]
+    },
+    {
+      "user_id": "user-returning",
+      "segment": "RETURNING",
+      "description": "回流型：由 AppOpened 触发，请求侧传入本次打开前的 last_open_at；当天不发送、不排程",
+      "task_variants": ["PENDING"],
+      "behavior": {
+        "history_days_available": 7,
+        "inactive_days": 0,
+        "complete_days_7d": 1,
+        "reminder_attributed_complete_days_7d": 0,
+        "data_degraded": false,
+        "app_open_windows": [],
+        "task_complete_windows": []
+      },
+      "covers": ["EVAL-006", "EVAL-008"]
+    },
+    {
+      "user_id": "user-returning-day2",
+      "segment": "PASSIVE",
+      "description": "回流次日的被动型：回流判定已失效，由每日评估恢复常规 Push",
+      "task_variants": ["PENDING"],
+      "behavior": {
+        "history_days_available": 7,
+        "inactive_days": 0,
+        "complete_days_7d": 1,
+        "reminder_attributed_complete_days_7d": 0,
+        "data_degraded": false,
+        "app_open_windows": [["19:00", "21:00"]],
+        "task_complete_windows": [["19:30", "20:30"]]
+      },
+      "covers": ["EVAL-020"]
+    },
+    {
+      "user_id": "user-quiet",
+      "segment": "PASSIVE",
+      "description": "被动型：免打扰区间刻意设为全天，保证用例在任意运行时刻都处于免打扰，结果可复现",
+      "task_variants": ["PENDING"],
+      "behavior": {
+        "history_days_available": 7,
+        "inactive_days": 0,
+        "complete_days_7d": 2,
+        "reminder_attributed_complete_days_7d": 1,
+        "data_degraded": false,
+        "app_open_windows": [["19:00", "21:00"]],
+        "task_complete_windows": [["19:30", "20:30"]]
+      },
+      "preference": {
+        "quiet_hours": ["00:00", "23:59"]
+      },
+      "covers": ["EVAL-014"]
+    },
+    {
+      "user_id": "user-no-push",
+      "segment": "PASSIVE",
+      "description": "被动型：Push 未授权，验证不调用 Push、跳过本次提醒并记录未触达原因",
+      "task_variants": ["PENDING"],
+      "behavior": {
+        "history_days_available": 7,
+        "inactive_days": 0,
+        "complete_days_7d": 2,
+        "reminder_attributed_complete_days_7d": 1,
+        "data_degraded": false,
+        "app_open_windows": [["19:00", "21:00"]],
+        "task_complete_windows": [["19:30", "20:30"]]
+      },
+      "preference": {
+        "push_enabled": false
+      },
+      "covers": ["EVAL-011"]
+    },
+    {
+      "user_id": "user-no-history",
+      "segment": "PASSIVE",
+      "description": "被动型：无历史行为数据，按被动型处理并使用默认活跃窗口",
+      "task_variants": ["PENDING"],
+      "behavior": {
+        "history_days_available": 0,
+        "inactive_days": 0,
+        "complete_days_7d": 0,
+        "reminder_attributed_complete_days_7d": 0,
+        "data_degraded": false,
+        "app_open_windows": [],
+        "task_complete_windows": []
+      },
+      "covers": ["EVAL-007"]
+    },
+    {
+      "user_id": "user-duplicate",
+      "segment": "PASSIVE",
+      "description": "被动型：当天已达系统主动 Push 上限，验证频控",
+      "task_variants": ["PENDING"],
+      "behavior": {
+        "history_days_available": 7,
+        "inactive_days": 0,
+        "complete_days_7d": 2,
+        "reminder_attributed_complete_days_7d": 1,
+        "data_degraded": false,
+        "app_open_windows": [["19:00", "21:00"]],
+        "task_complete_windows": [["19:30", "20:30"]]
+      },
+      "usage": {
+        "push_sent_count": 1
+      },
+      "covers": ["EVAL-010"]
+    },
+    {
+      "user_id": "user-snooze",
+      "segment": "PASSIVE",
+      "description": "被动型：当天已收到一次系统主动 Push，验证延后提醒用 Push、不占当日上限、无再次入口",
+      "task_variants": ["PENDING", "COMPLETED"],
+      "behavior": {
+        "history_days_available": 7,
+        "inactive_days": 0,
+        "complete_days_7d": 2,
+        "reminder_attributed_complete_days_7d": 1,
+        "data_degraded": false,
+        "app_open_windows": [["19:00", "21:00"]],
+        "task_complete_windows": [["19:30", "20:30"]]
+      },
+      "usage": {
+        "push_sent_count": 1
+      },
+      "covers": ["SNZ-004", "SNZ-007"]
+    },
+    {
+      "user_id": "user-disabled",
+      "segment": "PASSIVE",
+      "description": "被动型：已关闭智能提醒，验证不生成提醒且取消未发送排程",
+      "task_variants": ["PENDING"],
+      "behavior": {
+        "history_days_available": 7,
+        "inactive_days": 0,
+        "complete_days_7d": 2,
+        "reminder_attributed_complete_days_7d": 1,
+        "data_degraded": false,
+        "app_open_windows": [["19:00", "21:00"]],
+        "task_complete_windows": [["19:30", "20:30"]]
+      },
+      "preference": {
+        "reminder_enabled": false
+      },
+      "covers": ["EVAL-004"],
+      "note": "数据构造说明.md 未列出该用户，为覆盖 AC-018 补充；需同步回该文档"
+    }
+  ]
+}

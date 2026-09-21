@@ -1,0 +1,39 @@
+{
+  "name": "pytest-for-bi-dev-tools",
+  "version": "0.1.0",
+  "description": "项目自建 Codex 开发工具集：PRD 改造、验收标准、后端技术方案的生成与回查，按技术方案逐项实现代码，从需求推导测试场景与用例并封板，独立评审场景与用例，以及按测试方案执行测试并产出测试报告的可复用 Skill",
+  "author": {
+    "name": "liushanshan"
+  },
+  "keywords": [
+    "bug-fix",
+    "code-review",
+    "codex-skill",
+    "prd",
+    "review",
+    "tech-design",
+    "test-automation",
+    "test-case"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Pytest For BI Dev Tools",
+    "shortDescription": "项目自建 Skill 集合",
+    "longDescription": "沉淀项目内可复用的 Codex Skill，覆盖需求到验收的完整链路：按 9 稿模板改造 PRD、依据 PRD 生成并回查验收标准、依据 PRD 与产品方案生成并回查后端技术方案、依据已确认的技术方案逐项实现代码并执行未决项、单测覆盖率、模块集成测试、联调和双文档回查门禁、依据 PRD 与技术方案推导测试场景并经过三道“AI 评审 → 人工确认”门禁生成、补全和封板测试用例、以第三方视角独立重推导基线并评审场景与用例、输出分级评审意见并签发评审报告、把封板后的每条 TC 翻译成 tests/cases 用例数据与 tests/subjects 主体文件，经映射表审批与生成后复核两道人工门禁，并回填自动化映射、显式登记条件可自动化与不可自动化的用例，依据测试方案和验收标准执行测试、建立 AC 追踪关系并产出可复核的测试报告，以第三方视角只读评审测试用例与后端代码，以及在先判定缺陷归属、先复现、先补回归用例的前提下做最小修复，经全量单测、集成测试与 CR 复核后给出带验证范围的修复结论。",
+    "developerName": "liushanshan",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": [
+      "使用 $prd-to-tech-design 根据 9 稿 PRD 生成后端技术方案并自动回查。",
+      "使用 $prd-to-acceptance-criteria 根据 9 稿 PRD 生成或审查验收标准。",
+      "使用 $tech-design-implementation 按技术方案实现下一个功能，并执行单测、联调和双文档回查门禁。",
+      "使用 $test-case-design 依据 PRD 与技术方案推导测试场景，产出场景清单等我审批。",
+      "使用 $test-case-review 评审这份测试场景清单或测试用例，先独立推导基线再给分级评审意见。",
+      "使用 $test-case-to-automation 依据测试方案/测试用例.md 生成用例数据与主体文件，产出自动化映射报告等我复核。",
+      "使用 $test-plan-to-test-report 按测试方案执行测试并更新测试报告，声明未覆盖范围。",
+      "使用 $code-review 审查本次代码改动与 PRD、验收标准和技术方案的一致性，给出分级 findings。",
+      "使用 $bug-fix 复现并修复这个缺陷，跑全量测试与 CR 后给我带验证范围的修复结论。"
+    ],
+    "description": "项目自建 Codex 开发工具集：PRD 改造、验收标准、后端技术方案的生成与回查，按技术方案逐项实现代码，从需求推导测试场景与用例并封板、把封板用例翻译成自动化用例数据与主体文件，以及按测试方案执行测试并产出测试报告的可复用 Skill"
+  }
+}

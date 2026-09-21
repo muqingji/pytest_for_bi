@@ -1,0 +1,392 @@
+{
+  "subject": "evaluate_reminder",
+  "description": "提醒评估：POST /internal/v1/reminders/evaluate（技术方案 4.3.2.1、IDL docs/api/reminder-service.openapi.yaml）",
+  "endpoint": {
+    "method": "POST",
+    "path": "/internal/v1/reminders/evaluate"
+  },
+  "defaults": {
+    "headers": {
+      "X-Caller": "pytest_reminder"
+    }
+  },
+  "cases": [
+    {
+      "id": "EVAL-001",
+      "name": "被动型用户有未完成任务，生成 Push 排程",
+      "priority": "P0",
+      "ac": ["AC-001"],
+      "fr": ["FR-001", "FR-002"],
+      "scenario": {"fixture": "user-passive", "task_state": "PENDING"},
+      "note": "IDL example: eligible；expected.scheduled_at 只锁定 RFC3339 格式，具体时刻由时区与活跃窗口决定",
+      "request": {
+        "body": {
+          "user_id": "user-passive",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "CREATED",
+          "reason_code": "ELIGIBLE",
+          "should_remind": true,
+          "channel": "push",
+          "user_segment": "PASSIVE",
+          "strategy_version": "v1",
+          "decision_id": {"$regex": "^decision-[0-9a-f]{32}$"},
+          "scheduled_at": {"$regex": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"}
+        }
+      }
+    },
+    {
+      "id": "EVAL-002",
+      "name": "已完成全部必做任务，不生成提醒",
+      "priority": "P0",
+      "ac": ["AC-002"],
+      "fr": ["FR-004"],
+      "scenario": {"fixture": "user-self-driven", "task_state": "COMPLETED"},
+      "request": {
+        "body": {
+          "user_id": "user-self-driven",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "REJECTED",
+          "reason_code": "TASK_COMPLETED",
+          "should_remind": false,
+          "strategy_version": "v1"
+        }
+      }
+    },
+    {
+      "id": "EVAL-003",
+      "name": "任务已过期，不发送过期提醒",
+      "priority": "P0",
+      "ac": ["AC-009"],
+      "fr": ["FR-001"],
+      "scenario": {"fixture": "user-passive", "task_state": "EXPIRED"},
+      "request": {
+        "body": {
+          "user_id": "user-passive",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "REJECTED",
+          "reason_code": "TASK_EXPIRED",
+          "should_remind": false,
+          "strategy_version": "v1"
+        }
+      }
+    },
+    {
+      "id": "EVAL-004",
+      "name": "用户关闭智能提醒，不生成提醒",
+      "priority": "P0",
+      "ac": ["AC-018"],
+      "fr": ["FR-003"],
+      "scenario": {"fixture": "user-disabled", "task_state": "PENDING", "reminder_enabled": false},
+      "request": {
+        "body": {
+          "user_id": "user-disabled",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "REJECTED",
+          "reason_code": "REMINDER_DISABLED",
+          "should_remind": false,
+          "strategy_version": "v1"
+        }
+      }
+    },
+    {
+      "id": "EVAL-005",
+      "name": "流失型用户不进入主动 Push 排程",
+      "priority": "P0",
+      "ac": ["AC-015"],
+      "fr": ["FR-001"],
+      "scenario": {"fixture": "user-inactive", "task_state": "PENDING", "inactive_days": 3},
+      "request": {
+        "body": {
+          "user_id": "user-inactive",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "REJECTED",
+          "reason_code": "USER_INACTIVE",
+          "should_remind": false,
+          "user_segment": "INACTIVE",
+          "strategy_version": "v1"
+        }
+      }
+    },
+    {
+      "id": "EVAL-006",
+      "name": "回流首日：App 打开且距上次打开 5 天",
+      "priority": "P0",
+      "ac": ["AC-016"],
+      "fr": ["FR-001"],
+      "scenario": {"fixture": "user-returning", "task_state": "PENDING", "days_since_last_open": 5},
+      "note": "IDL example: returning_first_day",
+      "request": {
+        "body": {
+          "user_id": "user-returning",
+          "task_date": "2026-09-20",
+          "trigger": "APP_OPENED",
+          "last_open_at": "2026-09-15T11:20:00Z"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "CREATED",
+          "reason_code": "RETURNING_FIRST_DAY",
+          "should_remind": false,
+          "user_segment": "RETURNING",
+          "strategy_version": "v1"
+        }
+      }
+    },
+    {
+      "id": "EVAL-007",
+      "name": "历史行为不足 3 天，按被动型处理并使用默认窗口",
+      "priority": "P0",
+      "ac": ["AC-008"],
+      "fr": ["FR-001"],
+      "scenario": {"fixture": "user-no-history", "task_state": "PENDING", "history_days_available": 2},
+      "request": {
+        "body": {
+          "user_id": "user-no-history",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "CREATED",
+          "reason_code": "INSUFFICIENT_HISTORY",
+          "should_remind": true,
+          "channel": "push",
+          "strategy_version": "v1"
+        }
+      }
+    },
+    {
+      "id": "EVAL-008",
+      "name": "App 打开但无历史打开记录，不命中回流首日",
+      "priority": "P0",
+      "ac": ["AC-016"],
+      "fr": ["FR-001"],
+      "scenario": {"fixture": "user-passive", "task_state": "PENDING", "last_open_at": ""},
+      "note": "技术方案 4.3.2.1：last_open_at 传空串表示无历史打开记录，按普通评估继续",
+      "request": {
+        "body": {
+          "user_id": "user-passive",
+          "task_date": "2026-09-20",
+          "trigger": "APP_OPENED",
+          "last_open_at": ""
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "CREATED",
+          "reason_code": "ELIGIBLE",
+          "should_remind": true,
+          "channel": "push",
+          "strategy_version": "v1"
+        }
+      }
+    },
+    {
+      "id": "EVAL-009",
+      "name": "非 APP_OPENED 触发却传入 last_open_at，返回参数错误",
+      "priority": "P0",
+      "ac": [],
+      "fr": ["FR-001"],
+      "scenario": {"fixture": "user-passive", "task_state": "PENDING"},
+      "note": "契约校验：技术方案 4.3.2.1 请求校验规则",
+      "request": {
+        "body": {
+          "user_id": "user-passive",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH",
+          "last_open_at": "2026-09-15T11:20:00Z"
+        }
+      },
+      "expected": {
+        "status_code": 400,
+        "body": {
+          "code": "INVALID_REQUEST",
+          "retryable": false,
+          "message": "$any",
+          "request_id": "$any"
+        }
+      }
+    },
+    {
+      "id": "EVAL-010",
+      "name": "当天已达到系统主动 Push 上限",
+      "priority": "P0",
+      "ac": ["AC-005"],
+      "fr": ["FR-005"],
+      "scenario": {"fixture": "user-duplicate", "task_state": "PENDING", "push_sent_today": 1},
+      "request": {
+        "body": {
+          "user_id": "user-duplicate",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "REJECTED",
+          "reason_code": "DAILY_CAP_REACHED",
+          "should_remind": false,
+          "strategy_version": "v1"
+        }
+      }
+    },
+    {
+      "id": "EVAL-011",
+      "name": "Push 未授权，跳过本次提醒并记录未触达原因",
+      "priority": "P0",
+      "ac": ["AC-007"],
+      "fr": ["FR-005"],
+      "scenario": {"fixture": "user-no-push", "task_state": "PENDING", "push_enabled": false},
+      "request": {
+        "body": {
+          "user_id": "user-no-push",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "REJECTED",
+          "reason_code": "NO_AVAILABLE_CHANNEL",
+          "should_remind": false,
+          "strategy_version": "v1"
+        }
+      }
+    },
+    {
+      "id": "EVAL-012",
+      "name": "未知 trigger 枚举值，返回参数错误",
+      "priority": "P0",
+      "ac": [],
+      "fr": ["FR-001"],
+      "scenario": {"fixture": "user-passive", "task_state": "PENDING"},
+      "request": {
+        "body": {
+          "user_id": "user-passive",
+          "task_date": "2026-09-20",
+          "trigger": "UNKNOWN_TRIGGER"
+        }
+      },
+      "expected": {
+        "status_code": 400,
+        "body": {
+          "code": "INVALID_REQUEST",
+          "retryable": false,
+          "message": "$any",
+          "request_id": "$any"
+        }
+      }
+    },
+    {
+      "id": "EVAL-013",
+      "name": "组合场景：同一 request_id 重复评估命中幂等",
+      "priority": "P0",
+      "ac": ["AC-006"],
+      "fr": ["FR-005"],
+      "scenario": {"fixture": "user-snooze", "task_state": "PENDING"},
+      "note": "组合场景：两次调用同一主体接口，第二次必须返回 REUSED 且 decision_id 与第一次一致",
+      "steps": [
+        {
+          "name": "首次评估生成决策",
+          "request": {
+            "body": {
+              "request_id": "idempotency-check-0001",
+              "user_id": "user-snooze",
+              "task_date": "2026-09-20",
+              "trigger": "DAILY_BATCH"
+            }
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {
+              "status": "CREATED",
+              "reason_code": "ELIGIBLE",
+              "should_remind": true
+            }
+          }
+        },
+        {
+          "name": "重复评估命中已有决策",
+          "request": {
+            "body": {
+              "request_id": "idempotency-check-0001",
+              "user_id": "user-snooze",
+              "task_date": "2026-09-20",
+              "trigger": "DAILY_BATCH"
+            }
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {
+              "status": "REUSED",
+              "reason_code": "ELIGIBLE",
+              "should_remind": true,
+              "decision_id": "{step1.body.decision_id}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "EVAL-014",
+      "name": "处于免打扰时段时的返回",
+      "priority": "P0",
+      "ac": ["AC-003"],
+      "fr": ["FR-002", "FR-003"],
+      "pending": true,
+      "pending_reason": "PRD 7.2 允许延后到下一个可用窗口，也可能因无可用窗口返回 QUIET_HOURS；预期值需在实现免打扰后确认",
+      "scenario": {"fixture": "user-quiet", "task_state": "PENDING", "quiet_hours": true},
+      "request": {
+        "body": {
+          "user_id": "user-quiet",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "reason_code": "QUIET_HOURS",
+          "should_remind": false
+        }
+      }
+    }
+  ]
+}

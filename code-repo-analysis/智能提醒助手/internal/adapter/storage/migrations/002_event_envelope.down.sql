@@ -1,0 +1,2 @@
+-- SQLite does not support dropping columns on all supported versions.
+-- The forward migration is additive and the table is removed by 001 down.

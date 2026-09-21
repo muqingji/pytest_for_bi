@@ -1,0 +1,293 @@
+{
+  "subject": "snooze_reminder",
+  "description": "延后提醒：POST /internal/v1/reminders/{decision_id}/snooze（技术方案 4.3.2.3；字段契约见 docs/api/reminder-service.openapi.yaml）",
+  "endpoint": {
+    "method": "POST",
+    "path": "/internal/v1/reminders/{decision_id}/snooze"
+  },
+  "defaults": {
+    "headers": {
+      "X-Caller": "pytest_reminder"
+    }
+  },
+  "cases": [
+    {
+      "id": "SNZ-001",
+      "name": "点击稍后提醒：生成一小时后的 SNOOZE 排程",
+      "priority": "P0",
+      "ac": ["AC-013"],
+      "fr": ["FR-007"],
+      "pending": true,
+      "pending_reason": "需要固定测试时钟：snooze 会在服务端重新校验免打扰与截止时间，且 snooze_until 由服务端时钟推算，结果随运行时刻变化",
+      "scenario": {"fixture": "user-snooze", "test_clock": "2026-09-20T12:00:00Z"},
+      "note": "组合场景：先评估拿到 decision_id，再对同一 decision_id 发起延后。延后使用 Push，schedule_type=SNOOZE",
+      "steps": [
+        {
+          "name": "生成当天决策",
+          "request": {
+            "body": {"user_id": "user-snooze", "task_date": "2026-09-20", "trigger": "DAILY_BATCH"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"status": "CREATED", "decision_id": {"$regex": "^decision-[0-9a-f]{32}$"}}
+          }
+        },
+        {
+          "name": "对已有决策发起延后提醒",
+          "request": {
+            "body": {"request_id": "snooze-0001", "user_id": "user-snooze"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {
+              "status": "SCHEDULED",
+              "reason_code": "ELIGIBLE",
+              "schedule_type": "SNOOZE",
+              "channel": "push",
+              "schedule_id": {"$regex": "^schedule-[0-9a-f]{32}$"},
+              "snooze_until": "2026-09-20T13:00:00Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "SNZ-002",
+      "name": "同一 decision_id 第二次延后属非法调用",
+      "priority": "P0",
+      "ac": ["AC-013"],
+      "fr": ["FR-007"],
+      "pending": true,
+      "pending_reason": "依赖 SNZ-001 的首次延后成功；首次延后依赖固定测试时钟。另需确认首次延后被业务拒绝（如免打扰）时，第二次是否仍按 INVALID_REQUEST 返回",
+      "scenario": {"fixture": "user-snooze", "test_clock": "2026-09-20T12:00:00Z"},
+      "note": "AC-013：延后提醒不再提供再次入口，第二次 snooze 返回 400 INVALID_REQUEST",
+      "steps": [
+        {
+          "name": "生成当天决策",
+          "request": {
+            "body": {"user_id": "user-snooze", "task_date": "2026-09-20", "trigger": "DAILY_BATCH"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"decision_id": {"$regex": "^decision-[0-9a-f]{32}$"}}
+          }
+        },
+        {
+          "name": "首次延后成功",
+          "request": {
+            "body": {"request_id": "snooze-1001", "user_id": "user-snooze"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"status": "SCHEDULED", "schedule_type": "SNOOZE"}
+          }
+        },
+        {
+          "name": "换一个 request_id 再次延后同一 decision_id",
+          "request": {
+            "body": {"request_id": "snooze-1002", "user_id": "user-snooze"}
+          },
+          "expected": {
+            "status_code": 400,
+            "body": {"code": "INVALID_REQUEST", "retryable": false, "message": "$any", "request_id": "$any"}
+          }
+        }
+      ]
+    },
+    {
+      "id": "SNZ-003",
+      "name": "重复点击同一 request_id 幂等返回原排程",
+      "priority": "P0",
+      "ac": ["AC-013"],
+      "fr": ["FR-007"],
+      "pending": true,
+      "pending_reason": "依赖首次延后成功，需要固定测试时钟；幂等返回 REUSED 还是 SCHEDULED 需与实现确认（IDL 文案为「已创建延后排程（SCHEDULED）、命中幂等（REUSED）或业务拒绝（REJECTED）」）",
+      "scenario": {"fixture": "user-snooze", "test_clock": "2026-09-20T12:00:00Z"},
+      "note": "AC-013：重复点击不产生第三次 Push，schedule_id 必须与首次一致",
+      "steps": [
+        {
+          "name": "生成当天决策",
+          "request": {
+            "body": {"user_id": "user-snooze", "task_date": "2026-09-20", "trigger": "DAILY_BATCH"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"decision_id": {"$regex": "^decision-[0-9a-f]{32}$"}}
+          }
+        },
+        {
+          "name": "首次延后",
+          "request": {
+            "body": {"request_id": "snooze-2001", "user_id": "user-snooze"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"schedule_id": {"$regex": "^schedule-[0-9a-f]{32}$"}}
+          }
+        },
+        {
+          "name": "复用同一 request_id 重复提交",
+          "request": {
+            "body": {"request_id": "snooze-2001", "user_id": "user-snooze"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {
+              "status": "REUSED",
+              "schedule_id": "{step2.body.schedule_id}",
+              "schedule_type": "SNOOZE"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "SNZ-004",
+      "name": "延后请求不占用当日系统主动 Push 上限",
+      "priority": "P0",
+      "ac": ["AC-013"],
+      "fr": ["FR-005", "FR-007"],
+      "pending": true,
+      "pending_reason": "需要先有「当天已发送一次系统主动 Push」的状态，再验证延后仍能成功；依赖固定测试时钟与测试库隔离。另外本期没有查询用量的接口，只能通过延后是否成功间接验证",
+      "scenario": {"fixture": "user-snooze", "push_sent_count": 1, "test_clock": "2026-09-20T12:00:00Z"},
+      "steps": [
+        {
+          "name": "已用完当日上限的用户生成决策",
+          "request": {
+            "body": {"user_id": "user-snooze", "task_date": "2026-09-20", "trigger": "DAILY_BATCH"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"status": "REJECTED", "reason_code": "DAILY_CAP_REACHED"}
+          }
+        },
+        {
+          "name": "延后仍应成功且不占用主动上限",
+          "request": {
+            "body": {"request_id": "snooze-3001", "user_id": "user-snooze"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"status": "SCHEDULED", "schedule_type": "SNOOZE"}
+          }
+        }
+      ]
+    },
+    {
+      "id": "SNZ-005",
+      "name": "未知 decision_id 的处理方式",
+      "priority": "P0",
+      "ac": ["AC-013"],
+      "fr": ["FR-007"],
+      "pending": true,
+      "pending_reason": "口径不一致：IDL 的 404 描述写「decision_id 不属于该用户时按业务拒绝处理，不泄露资源存在性」，技术方案 4.3.2.3 写「同一 decision_id 的第二次 snooze 返回 400 INVALID_REQUEST」。不存在的 decision_id 到底返回 404、400 还是 200+REJECTED，需要先定",
+      "scenario": {"decision_id": "decision-00000000000000000000000000000000"},
+      "request": {
+        "path_params": {"decision_id": "decision-00000000000000000000000000000000"},
+        "body": {"request_id": "snooze-4001", "user_id": "user-passive"}
+      },
+      "expected": {
+        "status_code": 400,
+        "body": {"code": "INVALID_REQUEST", "retryable": false, "message": "$any", "request_id": "$any"}
+      }
+    },
+    {
+      "id": "SNZ-006",
+      "name": "缺少必填字段 user_id，返回参数错误",
+      "priority": "P0",
+      "ac": [],
+      "fr": ["FR-007"],
+      "scenario": {"fixture": "user-passive"},
+      "note": "IDL：SnoozeReminderRequest 必填 request_id、user_id。该用例不依赖服务端状态，路径参数只需要是可解析的字符串",
+      "request": {
+        "path_params": {"decision_id": "decision-00000000000000000000000000000000"},
+        "body": {"request_id": "snooze-5001"}
+      },
+      "expected": {
+        "status_code": 400,
+        "body": {"code": "INVALID_REQUEST", "retryable": false, "message": "$any", "request_id": "$any"}
+      }
+    },
+    {
+      "id": "SNZ-007",
+      "name": "已经处于免打扰且无可用窗口时拒绝延后",
+      "priority": "P1",
+      "ac": ["AC-003", "AC-013"],
+      "fr": ["FR-003", "FR-007"],
+      "pending": true,
+      "pending_reason": "需要固定测试时钟把用户置于免打扰区间且无可用窗口，同时需要先有合法 decision_id",
+      "scenario": {"fixture": "user-quiet", "quiet_hours": ["00:00", "23:59"], "test_clock": "2026-09-20T12:00:00Z"},
+      "steps": [
+        {
+          "name": "免打扰中的用户生成决策",
+          "request": {
+            "body": {"user_id": "user-quiet", "task_date": "2026-09-20", "trigger": "DAILY_BATCH"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"decision_id": {"$regex": "^decision-[0-9a-f]{32}$"}}
+          }
+        },
+        {
+          "name": "延后请求被免打扰拒绝",
+          "request": {
+            "body": {"request_id": "snooze-6001", "user_id": "user-quiet"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"status": "REJECTED", "reason_code": "QUIET_HOURS", "schedule_id": ""}
+          }
+        }
+      ]
+    },
+    {
+      "id": "SNZ-008",
+      "name": "缺少鉴权令牌，返回 401",
+      "priority": "P0",
+      "ac": [],
+      "fr": ["FR-007"],
+      "scenario": {"credential": "missing"},
+      "request": {
+        "omit_headers": ["Authorization"],
+        "path_params": {"decision_id": "decision-00000000000000000000000000000000"},
+        "body": {"request_id": "snooze-7001", "user_id": "user-passive"}
+      },
+      "expected": {
+        "status_code": 401,
+        "body": {"code": "$any", "message": "$any", "retryable": false, "request_id": "$any"}
+      }
+    },
+    {
+      "id": "SNZ-009",
+      "name": "延后时任务已完成，重新校验后拒绝",
+      "priority": "P0",
+      "ac": ["AC-013", "AC-002"],
+      "fr": ["FR-004", "FR-007"],
+      "pending": true,
+      "pending_reason": "需要一个「已完成任务但已生成过决策」的状态。已完成的用户在评估阶段就被拒绝，能否对一条 REJECTED 的 decision_id 发起 snooze 未定义；需要先确认测试状态构造方式",
+      "scenario": {"fixture": "user-snooze-completed", "task_template": "COMPLETED"},
+      "steps": [
+        {
+          "name": "已完成的用户生成决策",
+          "request": {
+            "body": {"user_id": "user-snooze-completed", "task_date": "2026-09-20", "trigger": "DAILY_BATCH"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"status": "REJECTED", "reason_code": "TASK_COMPLETED"}
+          }
+        },
+        {
+          "name": "对已完成任务的决策发起延后",
+          "request": {
+            "body": {"request_id": "snooze-8001", "user_id": "user-snooze-completed"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"status": "REJECTED", "reason_code": "TASK_COMPLETED"}
+          }
+        }
+      ]
+    }
+  ]
+}

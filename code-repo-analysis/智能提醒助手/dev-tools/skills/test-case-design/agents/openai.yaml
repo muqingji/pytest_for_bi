@@ -1,0 +1,4 @@
+interface:
+  display_name: "测试场景与用例设计"
+  short_description: "从 PRD 与技术方案推导测试场景，经三次人工门禁生成用例、按代码补全影响范围并封板"
+  default_prompt: "使用 $test-case-design 依据 PRD、验收标准和技术方案推导测试场景，产出场景清单等我审批。"

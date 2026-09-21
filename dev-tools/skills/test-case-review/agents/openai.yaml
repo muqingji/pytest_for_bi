@@ -1,0 +1,4 @@
+interface:
+  display_name: "测试场景与用例评审"
+  short_description: "先独立重推导基线，再逐条核验溯源与覆盖，输出分级的评审意见与结论"
+  default_prompt: "使用 $test-case-review 评审测试场景清单与测试用例清单，先独立推导基线再给分级的评审意见。"

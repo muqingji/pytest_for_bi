@@ -1,0 +1,1064 @@
+openapi: 3.1.0
+info:
+  title: 智能提醒助手内部接口契约
+  version: 1.0.0
+  description: |
+    本文件是《技术方案》4.3 章接口定义的字段级唯一事实源（IDL），覆盖三个内部 HTTP 接口、
+    统一错误响应、事件信封与事件 payload、全部枚举取值。
+
+    使用方式：
+    - 开发：按本文件的字段名、类型、必填性实现 `internal/transport/http/dto`，字段只增不删不改名。
+    - 测试：golden 用例直接取自本文件的 example，比对字段名与枚举值。
+
+    边界：本文件只在本仓库内作为契约来源，不发布、不注册 PSM/BAM、不生成对外 SDK；
+    本地入口仅绑定 127.0.0.1，由配置项 http.enabled 控制。文档与实现冲突时以本文件为准。
+servers:
+  - url: http://127.0.0.1:8080
+    description: 本地回环入口；生产地址由接入方按既有服务规范决定
+tags:
+  - name: reminder
+    description: 提醒评估、到期发送与延后提醒
+security:
+  - staticToken: []
+paths:
+  /internal/v1/reminders/evaluate:
+    post:
+      operationId: evaluateReminder
+      tags: [reminder]
+      summary: 提醒资格判断
+      description: |
+        对单个用户在单个任务日期上执行一次提醒资格评估，覆盖 PRD FR-001、FR-002、FR-003、FR-004、FR-005。
+        入口为每日分片评估、AppOpened 同步通道、任务状态变化事件和偏好变化事件。
+        幂等键为 request_id + (user_id, task_date, strategy_version)；重复评估返回已有决策。
+        业务拒绝（无任务、已完成、过期、关闭提醒、频控、无渠道）返回 200，用 status=REJECTED 与 reason_code 表达。
+      parameters:
+        - $ref: '#/components/parameters/XRequestID'
+        - $ref: '#/components/parameters/XCaller'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluateReminderRequest'
+            example:
+              request_id: 8f2c1a9e-6b41-4c2b-9f0d-7a1b2c3d4e5f
+              user_id: user-passive
+              task_date: '2026-09-20'
+              trigger: APP_OPENED
+              last_open_at: '2026-09-15T11:20:00Z'
+      responses:
+        '200':
+          description: 业务处理完成，含业务拒绝（status=REJECTED）
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/XRequestID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluateReminderResponse'
+              examples:
+                eligible:
+                  summary: 被动型用户未完成任务，生成 Push 排程
+                  value:
+                    decision_id: decision-2291d3c8648abab22d033c693f0a3076
+                    status: CREATED
+                    reason_code: ELIGIBLE
+                    should_remind: true
+                    scheduled_at: '2026-09-20T19:30:00Z'
+                    channel: push
+                    user_segment: PASSIVE
+                    strategy_version: v1
+                returning_first_day:
+                  summary: 回流首日，当天不发送提醒、不生成 Push 排程
+                  value:
+                    decision_id: decision-2291d3c8648abab22d033c693f0a3076
+                    status: CREATED
+                    reason_code: RETURNING_FIRST_DAY
+                    should_remind: false
+                    user_segment: RETURNING
+                    strategy_version: v1
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '408':
+          $ref: '#/components/responses/DependencyTimeout'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/FeatureDisabled'
+        '504':
+          $ref: '#/components/responses/DependencyTimeout'
+  /internal/v1/reminders/dispatch-due:
+    post:
+      operationId: dispatchDue
+      tags: [reminder]
+      summary: 到期排程发送
+      description: |
+        扫描 status=SCHEDULED 且 scheduled_at<=now 的排程，抢占后二次校验任务与设置，再调用 Push 渠道（PRD FR-004、FR-005、FR-008）。
+        不接受调用方传入执行时间或用户清单：执行时间由服务端 Clock 决定，处理对象由服务端按到期条件扫描。
+        幂等：排程租约 + idempotency_key + 发送记录唯一键；单条排程最多 2 次发送尝试，重试复用同一幂等键。
+      parameters:
+        - $ref: '#/components/parameters/XRequestID'
+        - $ref: '#/components/parameters/XCaller'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DispatchDueRequest'
+            example:
+              batch_size: 50
+      responses:
+        '200':
+          description: 批次执行结果，只返回计数与游标，不返回用户级明细
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/XRequestID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DispatchDueResponse'
+              example:
+                scanned: 50
+                claimed: 48
+                sent: 41
+                cancelled: 5
+                failed: 1
+                unknown: 1
+                retried: 1
+                finished: true
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '408':
+          $ref: '#/components/responses/DependencyTimeout'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/FeatureDisabled'
+        '504':
+          $ref: '#/components/responses/DependencyTimeout'
+  /internal/v1/reminders/{decision_id}/snooze:
+    post:
+      operationId: snoozeReminder
+      tags: [reminder]
+      summary: 一小时后再次提醒
+      description: |
+        用户点击“稍后提醒”后由 App 经既有网关同步调用（PRD FR-007）。
+        服务端重新校验任务完成、过期、免打扰、截止时间与频控，通过则创建 schedule_type=SNOOZE 的 Push 排程。
+        SNOOZE 排程独立计量，不占用当日系统主动 Push 上限（当天最多 2 次 Push）；延后提醒不再提供二次入口。
+        幂等键为 request_id + decision_id；同一 request_id 重复调用返回 200 + status=REUSED 并复用原 schedule_id；
+        对同一 decision_id 使用另一个 request_id 再次 snooze 属非法调用，返回 400 INVALID_REQUEST。
+        decision_id 不存在、或存在但不属于请求中的 user_id 时，一律返回 200 + status=REJECTED + reason_code=DECISION_NOT_FOUND，
+        两种情况响应体完全一致，不泄露资源存在性；403 只用于鉴权层，404 只用于未知路由。
+      parameters:
+        - $ref: '#/components/parameters/DecisionIDPath'
+        - $ref: '#/components/parameters/XRequestID'
+        - $ref: '#/components/parameters/XCaller'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SnoozeReminderRequest'
+            example:
+              request_id: 3c7d5e10-9a84-4f2e-8b71-2d5f6a7c8b9d
+              user_id: user-passive
+      responses:
+        '200':
+          description: 已创建延后排程（SCHEDULED）、命中幂等（REUSED）或业务拒绝（REJECTED）
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/XRequestID'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnoozeReminderResponse'
+              examples:
+                scheduled:
+                  summary: 延后到 1 小时后
+                  value:
+                    schedule_id: schedule-6a1f0c93b7d24e58a0c5f8b1d3e7a942
+                    status: SCHEDULED
+                    reason_code: ELIGIBLE
+                    snooze_until: '2026-09-20T20:30:00Z'
+                    channel: push
+                    schedule_type: SNOOZE
+                rejected_by_quiet_hours:
+                  summary: 进入免打扰且无可用窗口
+                  value:
+                    schedule_id: ''
+                    status: REJECTED
+                    reason_code: QUIET_HOURS
+                rejected_decision_not_found:
+                  summary: 决策不存在或不属于该用户，两种情况返回体一致
+                  value:
+                    schedule_id: ''
+                    status: REJECTED
+                    reason_code: DECISION_NOT_FOUND
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '408':
+          $ref: '#/components/responses/DependencyTimeout'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '504':
+          $ref: '#/components/responses/DependencyTimeout'
+components:
+  securitySchemes:
+    staticToken:
+      type: http
+      scheme: bearer
+      description: |
+        本地为静态令牌白名单（Authenticator 端口），入口只绑定回环地址；
+        生产替换为服务身份或 mTLS，并校验调用方身份与 user_id 归属。
+  parameters:
+    XRequestID:
+      name: X-Request-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 64
+      description: 调用方链路 ID；缺省时服务端生成，响应头回写
+    XCaller:
+      name: X-Caller
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 64
+      description: 调用方标识，用于审计、限流维度与错误归因，如 reminder_scheduler、app-gateway
+    DecisionIDPath:
+      name: decision_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 64
+      description: 原提醒决策 ID；必须属于请求中的 user_id，不属于时按业务拒绝处理，不泄露资源存在性
+  headers:
+    XRequestID:
+      schema:
+        type: string
+      description: 请求追踪 ID，回写调用方传入值或服务端生成值
+  responses:
+    InvalidRequest:
+      description: 参数缺失或前后矛盾（如 trigger 与 last_open_at 不匹配、未知枚举值）
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: INVALID_REQUEST
+            message: last_open_at must be empty when trigger is not APP_OPENED
+            retryable: false
+            request_id: 8f2c1a9e-6b41-4c2b-9f0d-7a1b2c3d4e5f
+    Unauthorized:
+      description: 令牌缺失或无效
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: INVALID_REQUEST
+            message: missing or invalid credential
+            retryable: false
+            request_id: 8f2c1a9e-6b41-4c2b-9f0d-7a1b2c3d4e5f
+    Forbidden:
+      description: |
+        鉴权层拒绝：调用方无权调用该动作，或无权操作该 user_id，与具体 decision_id 无关。
+        decision_id 不存在或不属于该 user_id 不走本响应，按业务拒绝返回 200 + REJECTED + DECISION_NOT_FOUND。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: INVALID_REQUEST
+            message: caller is not allowed to operate this user
+            retryable: false
+            request_id: 8f2c1a9e-6b41-4c2b-9f0d-7a1b2c3d4e5f
+    NotFound:
+      description: |
+        未知路由：路径本身不存在，未匹配到任何接口，不进入业务逻辑。
+        decision_id 不存在或不属于该 user_id 不使用 404，按业务拒绝返回 200 + REJECTED + DECISION_NOT_FOUND。
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: INVALID_REQUEST
+            message: resource not found
+            retryable: false
+            request_id: 8f2c1a9e-6b41-4c2b-9f0d-7a1b2c3d4e5f
+    DependencyTimeout:
+      description: 依赖超时，本次失败关闭，不发送旧快照
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: DEPENDENCY_TIMEOUT
+            message: task service timeout
+            retryable: true
+            request_id: 8f2c1a9e-6b41-4c2b-9f0d-7a1b2c3d4e5f
+    RateLimited:
+      description: 触发限流
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: INVALID_REQUEST
+            message: rate limit exceeded
+            retryable: true
+            request_id: 8f2c1a9e-6b41-4c2b-9f0d-7a1b2c3d4e5f
+    InternalError:
+      description: 未预期错误，不返回堆栈或敏感信息
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: DEPENDENCY_UNAVAILABLE
+            message: internal error
+            retryable: true
+            request_id: 8f2c1a9e-6b41-4c2b-9f0d-7a1b2c3d4e5f
+    FeatureDisabled:
+      description: 服务级灰度开关关闭；这是不可重试的配置状态
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            code: FEATURE_DISABLED
+            message: feature is disabled
+            retryable: false
+            request_id: 8f2c1a9e-6b41-4c2b-9f0d-7a1b2c3d4e5f
+  schemas:
+    EvaluateReminderRequest:
+      type: object
+      additionalProperties: true
+      required: [request_id, user_id, task_date, trigger]
+      description: 提醒资格评估请求（EvaluateReminder）
+      properties:
+        request_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 调用请求唯一 ID；幂等键之一，重试必须复用同一取值
+          example: 8f2c1a9e-6b41-4c2b-9f0d-7a1b2c3d4e5f
+        user_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 匿名用户 ID；不接受手机号、学号等可识别信息
+          example: user-passive
+        task_date:
+          type: string
+          format: date
+          description: 用户本地任务日期（YYYY-MM-DD），不是服务器日期
+          example: '2026-09-20'
+        trigger:
+          $ref: '#/components/schemas/Trigger'
+        last_open_at:
+          type: string
+          description: |
+            本次打开之前的最近一次打开时间（RFC3339 UTC）。
+            仅 trigger=APP_OPENED 必填；无历史打开记录传空串 ""，不使用 null。
+            服务端据此计算 days_since_last_open，不读取已被本次打开覆盖的记录。
+          example: '2026-09-15T11:20:00Z'
+    EvaluateReminderResponse:
+      type: object
+      required: [decision_id, status, reason_code, should_remind, strategy_version]
+      description: 提醒资格评估响应；业务拒绝用 status=REJECTED 表达，仍返回 HTTP 200
+      properties:
+        decision_id:
+          type: string
+          description: 决策 ID；幂等命中时返回已有 ID
+          example: decision-2291d3c8648abab22d033c693f0a3076
+        status:
+          type: string
+          enum: [CREATED, REUSED, REJECTED]
+          description: CREATED 新建决策；REUSED 幂等命中已有决策；REJECTED 业务拒绝
+        reason_code:
+          $ref: '#/components/schemas/ReasonCode'
+        should_remind:
+          type: boolean
+          description: 是否进入提醒策略；status=REJECTED 时固定 false。服务端决策结果，不接受客户端传入
+          example: true
+        scheduled_at:
+          type: string
+          format: date-time
+          description: 计划提醒时间（UTC RFC3339）；仅 should_remind=true 时返回
+          example: '2026-09-20T19:30:00Z'
+        channel:
+          $ref: '#/components/schemas/Channel'
+        user_segment:
+          $ref: '#/components/schemas/UserSegment'
+        strategy_version:
+          type: string
+          description: 本次决策使用的策略版本，取自服务端配置，不接受客户端传入
+          example: v1
+    DispatchDueRequest:
+      type: object
+      additionalProperties: true
+      description: 到期发送请求；不接受执行时间与用户清单，由服务端 Clock 与到期条件决定
+      properties:
+        batch_size:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 50
+          default: 50
+          description: 单次最多处理的到期排程数，上限受配置 dispatch_batch_size 约束
+          example: 50
+        cursor:
+          type: string
+          description: 分页游标，取上次响应返回的 next_cursor；首次调用省略，用于续跑积压
+    DispatchDueResponse:
+      type: object
+      required: [scanned, claimed, sent, cancelled, failed, unknown, retried, finished]
+      description: 到期发送批次结果；不返回 user_id、任务内容、推送文案等明细
+      properties:
+        scanned:
+          type: integer
+          description: 本次扫描到的到期排程数
+        claimed:
+          type: integer
+          description: 成功抢占（SCHEDULED -> CLAIMED）的排程数
+        sent:
+          type: integer
+          description: 渠道返回明确成功的数量
+        cancelled:
+          type: integer
+          description: 发送前二次校验取消的数量（任务完成、过期、关闭提醒、免打扰、频控）
+        failed:
+          type: integer
+          description: 明确失败且重试耗尽的数量
+        unknown:
+          type: integer
+          description: 渠道状态未知、等待 reconcile 收敛的数量
+        retried:
+          type: integer
+          description: 触发的重试次数；每条排程最多 1 次（max_send_attempts=2），复用同一 idempotency_key
+        next_cursor:
+          type: string
+          description: 仍有未处理的到期排程时返回；为空表示本次已处理完
+        finished:
+          type: boolean
+          description: 是否已无待处理排程
+    SnoozeReminderRequest:
+      type: object
+      additionalProperties: true
+      required: [request_id, user_id]
+      description: 延后提醒请求（SnoozeReminder）；decision_id 在路径中
+      properties:
+        request_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 幂等键；用户重复点击或调用方重试必须复用同一取值
+          example: 3c7d5e10-9a84-4f2e-8b71-2d5f6a7c8b9d
+        user_id:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: 匿名用户 ID；需与鉴权上下文一致，并与 decision_id 归属校验
+          example: user-passive
+    SnoozeReminderResponse:
+      type: object
+      required: [schedule_id, status, reason_code]
+      properties:
+        schedule_id:
+          type: string
+          description: 新建或已存在的 SNOOZE 排程 ID；status=REJECTED 时为空串
+          example: schedule-6a1f0c93b7d24e58a0c5f8b1d3e7a942
+        status:
+          type: string
+          enum: [SCHEDULED, REUSED, REJECTED]
+          description: SCHEDULED 已创建延后排程；REUSED 幂等命中已有排程；REJECTED 未创建
+        reason_code:
+          $ref: '#/components/schemas/ReasonCode'
+        snooze_until:
+          type: string
+          format: date-time
+          description: 延后到的计划时间（UTC RFC3339）；仅 status=SCHEDULED/REUSED 时返回
+          example: '2026-09-20T20:30:00Z'
+        channel:
+          $ref: '#/components/schemas/Channel'
+        schedule_type:
+          type: string
+          enum: [INITIAL, SNOOZE]
+          description: 排程类型；SNOOZE 表示用户主动延后，独立计量、不占当日系统主动 Push 上限
+    ErrorResponse:
+      type: object
+      required: [code, message, retryable, request_id]
+      description: 三个接口共用的错误响应
+      properties:
+        code:
+          $ref: '#/components/schemas/ErrorCode'
+        message:
+          type: string
+          description: 不含敏感信息的可读描述
+        retryable:
+          type: boolean
+          description: 调用方是否可以安全重试；重试必须复用同一 request_id
+        request_id:
+          type: string
+          description: 请求追踪 ID，与响应头 X-Request-ID 一致
+    Trigger:
+      type: string
+      enum: [DAILY_BATCH, APP_OPENED, TASK_CHANGED, PREFERENCE_CHANGED]
+      description: |
+        评估触发来源：
+        DAILY_BATCH 每日分片评估；APP_OPENED App 打开同步通道；TASK_CHANGED 任务状态变化异步事件；PREFERENCE_CHANGED 偏好变化异步事件。
+        未知取值返回 400 INVALID_REQUEST。
+    Channel:
+      type: string
+      enum: [push, in_app]
+      description: 提醒渠道。本期只产生 push；in_app 为 P1 预留，本期不返回、不写入
+    UserSegment:
+      type: string
+      enum: [PASSIVE, SELF_DRIVEN, INACTIVE, RETURNING]
+      description: |
+        本次分层结果，仅用于审计与效果分析，不作为跨日判定依据：
+        PASSIVE 被动型；SELF_DRIVEN 自驱型；INACTIVE 流失型（连续 3 天以上未打开）；RETURNING 回流型（回流首日）。
+    ReasonCode:
+      type: string
+      enum:
+        - ELIGIBLE
+        - NO_TASK
+        - TASK_COMPLETED
+        - TASK_EXPIRED
+        - REMINDER_DISABLED
+        - DAILY_CAP_REACHED
+        - QUIET_HOURS
+        - INSUFFICIENT_TIME
+        - NO_AVAILABLE_CHANNEL
+        - USER_INACTIVE
+        - INSUFFICIENT_HISTORY
+        - RETURNING_FIRST_DAY
+        - DEFAULT_WINDOW
+        - BEHAVIOR_DATA_DEGRADED
+        - DECISION_NOT_FOUND
+      description: |
+        决策原因码，与 PRD 10.4 及技术方案 4.3.4 一致：
+        ELIGIBLE 满足提醒条件；NO_TASK 当天没有任务；TASK_COMPLETED 当天任务已完成；TASK_EXPIRED 任务已过期；
+        REMINDER_DISABLED 用户关闭提醒；DAILY_CAP_REACHED 达到每日系统主动 Push 上限；QUIET_HOURS 当前处于免打扰；
+        INSUFFICIENT_TIME 剩余时间不足；NO_AVAILABLE_CHANNEL 没有可用渠道（本期为 Push 未授权或发送失败）；
+        USER_INACTIVE 流失型不进入主动 Push 排程；INSUFFICIENT_HISTORY 历史行为不足 3 天，按被动型处理；
+        RETURNING_FIRST_DAY 回流首日不发送提醒、不生成排程；DEFAULT_WINDOW 缺少有效历史，使用默认活跃窗口；
+        BEHAVIOR_DATA_DEGRADED 行为数据降级，未据不完整数据命中回流或提醒归因规则。
+
+        DECISION_NOT_FOUND 是接口层拒绝原因码，只由 snooze 的资源不可用路径产生，不代表评估链路的业务结论：
+        decision_id 不存在、或存在但不属于请求中的 user_id 时均返回该值，两种情况响应体完全一致，调用方无法区分，
+        避免用状态码差异枚举 decision_id。该取值已于 2026-09-21 经确认并收录进 PRD 10.4（与业务原因码分列说明）。
+    ErrorCode:
+      type: string
+      enum:
+        - REMINDER_ALREADY_EXISTS
+        - DAILY_CAP_REACHED
+        - TASK_COMPLETED
+        - TASK_EXPIRED
+        - REMINDER_DISABLED
+        - QUIET_HOURS
+        - NO_AVAILABLE_CHANNEL
+        - BEHAVIOR_DATA_DEGRADED
+        - DEPENDENCY_TIMEOUT
+        - DEPENDENCY_UNAVAILABLE
+        - FEATURE_DISABLED
+        - CHANNEL_SEND_FAILED
+        - CHANNEL_STATUS_UNKNOWN
+        - CONTENT_INVALID
+        - INVALID_REQUEST
+      description: |
+        错误码与渠道 error_code 的全部取值，与 PRD 10.4 及技术方案 4.3.4 一致：
+        REMINDER_ALREADY_EXISTS 正常幂等命中；DAILY_CAP_REACHED/TASK_COMPLETED/TASK_EXPIRED/REMINDER_DISABLED/NO_AVAILABLE_CHANNEL 为正常业务拒绝；
+        QUIET_HOURS 正常延后；BEHAVIOR_DATA_DEGRADED 正常降级；DEPENDENCY_TIMEOUT/DEPENDENCY_UNAVAILABLE 为可重试错误；
+        FEATURE_DISABLED 表示服务级灰度开关关闭，返回 503 且不可重试；
+        CHANNEL_SEND_FAILED 明确渠道错误，最多重试一次且幂等键不变；CHANNEL_STATUS_UNKNOWN 未知状态，先查询禁止盲目重发；INVALID_REQUEST 调用错误；
+        CONTENT_INVALID 属内容校验错误（2026-09-21 FR-008 契约补齐），只写 reminder_delivery.error_code 与告警指标，不作为接口 ErrorResponse.code 返回，不重试。
+    ReminderEvent:
+      type: object
+      description: 统一事件信封；详细字段与各事件 payload 见技术方案 4.3.2.4 与 PRD 10.2/10.3
+      required: [event_id, event_name, event_time, schema_version, source, user_id, task_date, timezone]
+      properties:
+        event_id:
+          type: string
+          description: 事件唯一 ID，reminder_event 主键；重复投递按幂等忽略
+        event_name:
+          type: string
+          enum:
+            - AppOpened
+            - reminder_decision_created
+            - reminder_scheduled
+            - reminder_cancelled
+            - reminder_snoozed
+            - reminder_sent
+            - reminder_delivered
+            - reminder_failed
+            - reminder_opened
+            - task_started
+            - task_completed
+            - reminder_preference_updated
+            - reminder_impression
+          description: 事件名称；reminder_impression 为 P1 预留，本期不产生
+        event_time:
+          type: string
+          format: date-time
+          description: 事件发生时间（UTC RFC3339），不是接收时间
+        schema_version:
+          type: string
+          description: 信封与 payload 的 schema 版本，本期固定 v1
+          example: v1
+        source:
+          type: string
+          description: 事件产生方标识，如 reminder-service、task-service、app
+        user_id:
+          type: string
+          description: 匿名用户 ID
+        task_date:
+          type: string
+          format: date
+          description: 用户本地任务日期
+        timezone:
+          type: string
+          description: 用户档案时区（IANA）
+        decision_id:
+          type: string
+          description: 决策关联键；提醒生命周期事件与可归因的 task_started/task_completed 必填
+        strategy_version:
+          type: string
+          description: 策略版本；与 decision_id 同条件填写
+        channel:
+          $ref: '#/components/schemas/Channel'
+        experiment_group:
+          type: string
+          description: 实验分组，由既有实验平台提供；无实验平台时缺省，不作为 P0 实现前提
+        payload:
+          type: object
+          additionalProperties: true
+          description: |
+            事件专属字段；每个事件名的字段清单与必填性见 x-payload-schemas 指向的 schema，
+            并与技术方案 4.3.2.4「各事件 payload 字段」表一一对应。只允许非敏感结构化字段。
+      x-payload-schemas:
+        AppOpened:
+          $ref: '#/components/schemas/AppOpenedPayload'
+        reminder_decision_created:
+          $ref: '#/components/schemas/ReminderDecisionCreatedPayload'
+        reminder_scheduled:
+          $ref: '#/components/schemas/ReminderScheduledPayload'
+        reminder_cancelled:
+          $ref: '#/components/schemas/ReminderCancelledPayload'
+        reminder_snoozed:
+          $ref: '#/components/schemas/ReminderSnoozedPayload'
+        reminder_sent:
+          $ref: '#/components/schemas/ReminderSentPayload'
+        reminder_delivered:
+          $ref: '#/components/schemas/ReminderDeliveredPayload'
+        reminder_failed:
+          $ref: '#/components/schemas/ReminderFailedPayload'
+        reminder_opened:
+          $ref: '#/components/schemas/ReminderOpenedPayload'
+        task_started:
+          $ref: '#/components/schemas/TaskStartedPayload'
+        task_completed:
+          $ref: '#/components/schemas/TaskCompletedPayload'
+        reminder_preference_updated:
+          $ref: '#/components/schemas/ReminderPreferenceUpdatedPayload'
+        reminder_impression:
+          $ref: '#/components/schemas/ReminderImpressionPayload'
+      example:
+        event_id: evt-2b1c9f0d4e5a6b7c8d9e0f1a2b3c4d5e
+        event_name: reminder_sent
+        event_time: '2026-09-20T19:30:01Z'
+        schema_version: v1
+        source: reminder-service
+        user_id: user-passive
+        task_date: '2026-09-20'
+        timezone: Asia/Shanghai
+        decision_id: decision-2291d3c8648abab22d033c693f0a3076
+        strategy_version: v1
+        channel: push
+        payload:
+          attempt_no: 1
+          delivery_status: SENT
+    # ---------- 事件 payload 字段级定义 ----------
+    # 与《技术方案》4.3.2.4「各事件 payload 字段」表一一对应；
+    # 事件名到 payload schema 的映射见 ReminderEvent.x-payload-schemas。
+    AppOpenedPayload:
+      type: object
+      additionalProperties: true
+      description: AppOpened 事件 payload；决策创建前的事件，不要求决策关联字段
+      properties:
+        last_open_at:
+          type: string
+          format: date-time
+          description: 本次打开之前的最近一次打开时间（RFC3339 UTC）；无历史记录为空串 ""，不使用 null
+          example: '2026-09-15T11:20:00Z'
+        entry_page:
+          type: string
+          description: 打开落地页标识，用于审计与活跃时段统计
+          example: today_task_page
+      example:
+        last_open_at: '2026-09-15T11:20:00Z'
+        entry_page: today_task_page
+    ReminderDecisionCreatedPayload:
+      type: object
+      additionalProperties: true
+      required: [should_remind, reason_code, remaining_count, user_segment, decision_source]
+      description: reminder_decision_created 事件 payload；每次评估产生一条，业务拒绝时 scheduled_at 缺省
+      properties:
+        should_remind:
+          type: boolean
+          description: 是否进入提醒策略；与决策记录一致
+          example: true
+        reason_code:
+          $ref: '#/components/schemas/ReasonCode'
+        scheduled_at:
+          type: string
+          format: date-time
+          description: 计划提醒时间（UTC RFC3339）；未生成排程时缺省
+          example: '2026-09-20T19:30:00Z'
+        remaining_count:
+          type: integer
+          format: int32
+          description: 剩余必做任务数
+          example: 2
+        estimated_minutes:
+          type: integer
+          format: int32
+          description: 剩余任务预计用时（分钟）；任务系统未返回该字段时缺省不写（2026-09-21 由必填改为非必填），该次提醒在发送前渲染阶段按 CONTENT_INVALID 拒绝发送
+          example: 35
+        user_segment:
+          $ref: '#/components/schemas/UserSegment'
+        decision_source:
+          $ref: '#/components/schemas/DecisionSource'
+      example:
+        should_remind: true
+        reason_code: ELIGIBLE
+        scheduled_at: '2026-09-20T19:30:00Z'
+        remaining_count: 2
+        estimated_minutes: 35
+        user_segment: PASSIVE
+        decision_source: DAILY_BATCH
+    ReminderScheduledPayload:
+      type: object
+      additionalProperties: true
+      required: [scheduled_at, channel, schedule_version, schedule_type, reschedule_reason, dedupe_key]
+      description: reminder_scheduled 事件 payload；每次生成或改期排程时产生
+      properties:
+        scheduled_at:
+          type: string
+          format: date-time
+          description: 排程计划时间（UTC RFC3339）
+          example: '2026-09-20T19:30:00Z'
+        channel:
+          $ref: '#/components/schemas/Channel'
+        schedule_version:
+          type: integer
+          format: int32
+          minimum: 1
+          description: 排程版本，首次为 1，延后提醒递增
+          example: 1
+        schedule_type:
+          $ref: '#/components/schemas/ScheduleType'
+        reschedule_reason:
+          $ref: '#/components/schemas/RescheduleReason'
+        dedupe_key:
+          type: string
+          description: 排程幂等键，重复排程按该键去重
+          example: user-passive_2026-09-20_push_decision-2291d3c8648abab22d033c693f0a3076
+      example:
+        scheduled_at: '2026-09-20T19:30:00Z'
+        channel: push
+        schedule_version: 1
+        schedule_type: INITIAL
+        reschedule_reason: INITIAL_PLAN
+        dedupe_key: user-passive_2026-09-20_push_decision-2291d3c8648abab22d033c693f0a3076
+    ReminderCancelledPayload:
+      type: object
+      additionalProperties: true
+      required: [cancel_reason, previous_status, cancelled_at]
+      description: reminder_cancelled 事件 payload；评估拒绝（含任务已完成）、用户关闭提醒或发送前二次校验失败时产生，逐条对应被取消的未发送排程
+      properties:
+        cancel_reason:
+          $ref: '#/components/schemas/CancelReason'
+        previous_status:
+          $ref: '#/components/schemas/ScheduleStatus'
+        cancelled_at:
+          type: string
+          format: date-time
+          description: 取消时间（UTC RFC3339）
+          example: '2026-09-20T19:00:00Z'
+      example:
+        cancel_reason: TASK_COMPLETED
+        previous_status: SCHEDULED
+        cancelled_at: '2026-09-20T19:00:00Z'
+    ReminderSnoozedPayload:
+      type: object
+      additionalProperties: true
+      required: [snooze_until, snooze_duration_minutes, original_scheduled_at]
+      description: reminder_snoozed 事件 payload；用户点击“稍后提醒”后产生
+      properties:
+        snooze_until:
+          type: string
+          format: date-time
+          description: 延后到的计划时间（UTC RFC3339）
+          example: '2026-09-20T20:30:00Z'
+        snooze_duration_minutes:
+          type: integer
+          format: int32
+          description: 延后时长，固定 60（PRD 7.7）
+          example: 60
+        original_scheduled_at:
+          type: string
+          format: date-time
+          description: 延后前的计划时间（UTC RFC3339）
+          example: '2026-09-20T19:30:00Z'
+      example:
+        snooze_until: '2026-09-20T20:30:00Z'
+        snooze_duration_minutes: 60
+        original_scheduled_at: '2026-09-20T19:30:00Z'
+    ReminderSentPayload:
+      type: object
+      additionalProperties: true
+      required: [attempt_no, delivery_status]
+      description: reminder_sent 事件 payload；渠道返回结果后产生，失败或未知时带 error_code
+      properties:
+        attempt_no:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 2
+          description: 发送尝试序号，取值 1 或 2（max_send_attempts=2）
+          example: 1
+        delivery_status:
+          $ref: '#/components/schemas/DeliveryStatus'
+        error_code:
+          $ref: '#/components/schemas/ErrorCode'
+      example:
+        attempt_no: 1
+        delivery_status: SENT
+    ReminderDeliveredPayload:
+      type: object
+      additionalProperties: true
+      required: [delivered_at]
+      description: reminder_delivered 事件 payload；渠道送达回执到达后产生
+      properties:
+        delivered_at:
+          type: string
+          format: date-time
+          description: 渠道确认送达时间（UTC RFC3339）
+          example: '2026-09-20T19:30:05Z'
+      example:
+        delivered_at: '2026-09-20T19:30:05Z'
+    ReminderFailedPayload:
+      type: object
+      additionalProperties: true
+      required: [attempt_no, error_code, will_retry]
+      description: reminder_failed 事件 payload；明确失败时产生，重试复用同一 idempotency_key
+      properties:
+        attempt_no:
+          type: integer
+          format: int32
+          minimum: 1
+          maximum: 2
+          description: 失败时的尝试序号
+          example: 2
+        error_code:
+          $ref: '#/components/schemas/ErrorCode'
+        will_retry:
+          type: boolean
+          description: 是否还有剩余重试次数；attempt_no=1 且为明确失败时为 true
+          example: false
+      example:
+        attempt_no: 2
+        error_code: CHANNEL_SEND_FAILED
+        will_retry: false
+    ReminderOpenedPayload:
+      type: object
+      additionalProperties: true
+      required: [open_source]
+      description: reminder_opened 事件 payload；用户经提醒入口打开 App 时产生
+      properties:
+        open_source:
+          $ref: '#/components/schemas/OpenSource'
+        latency_seconds:
+          type: integer
+          format: int32
+          minimum: 0
+          description: 送达至打开的间隔秒数；无送达回执时缺省
+          example: 240
+        target_page:
+          type: string
+          description: 打开落地页标识
+          example: today_task_page
+      example:
+        open_source: push
+        latency_seconds: 240
+        target_page: today_task_page
+    TaskStartedPayload:
+      type: object
+      additionalProperties: true
+      required: [entry_source, remaining_count]
+      description: task_started 事件 payload；用户开始今日任务时产生
+      properties:
+        entry_source:
+          $ref: '#/components/schemas/EntrySource'
+        remaining_count:
+          type: integer
+          format: int32
+          minimum: 0
+          description: 开始时的剩余必做任务数
+          example: 2
+      example:
+        entry_source: REMINDER_PUSH
+        remaining_count: 2
+    TaskCompletedPayload:
+      type: object
+      additionalProperties: true
+      required: [completed_count, required_count, completion_source]
+      description: task_completed 事件 payload；归因缺失时只有信封的关联字段缺省，payload 仍完整
+      properties:
+        completed_count:
+          type: integer
+          format: int32
+          minimum: 0
+          description: 已完成必做任务数
+          example: 3
+        required_count:
+          type: integer
+          format: int32
+          minimum: 0
+          description: 当日必做任务总数
+          example: 3
+        completion_duration_seconds:
+          type: integer
+          format: int32
+          minimum: 0
+          description: 当日首次开始到全部完成的耗时；未记录开始时间时缺省
+          example: 5400
+        completion_source:
+          $ref: '#/components/schemas/CompletionSource'
+      example:
+        completed_count: 3
+        required_count: 3
+        completion_duration_seconds: 5400
+        completion_source: REMINDER_ATTRIBUTED
+    ReminderPreferenceUpdatedPayload:
+      type: object
+      additionalProperties: true
+      required: [changed_fields, reminder_enabled, quiet_hours_start, quiet_hours_end, effective_at]
+      description: reminder_preference_updated 事件 payload；设置变更后产生，字段为变更后的完整状态
+      properties:
+        changed_fields:
+          type: array
+          description: 本次变更的字段集合
+          items:
+            type: string
+            enum: [reminder_enabled, quiet_hours_start, quiet_hours_end]
+          example: [reminder_enabled, quiet_hours_start]
+        reminder_enabled:
+          type: boolean
+          description: 变更后的提醒开关状态
+          example: true
+        quiet_hours_start:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+          description: 变更后的免打扰开始时间，用户本地 HH:mm
+          example: '22:00'
+        quiet_hours_end:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+          description: 变更后的免打扰结束时间，用户本地 HH:mm，可跨午夜
+          example: '07:00'
+        effective_at:
+          type: string
+          format: date-time
+          description: 设置生效时间（UTC RFC3339）
+          example: '2026-09-20T10:00:00Z'
+      example:
+        changed_fields: [reminder_enabled, quiet_hours_start]
+        reminder_enabled: true
+        quiet_hours_start: '22:00'
+        quiet_hours_end: '07:00'
+        effective_at: '2026-09-20T10:00:00Z'
+    ReminderImpressionPayload:
+      type: object
+      additionalProperties: true
+      required: [page, placement, display_type]
+      description: reminder_impression 事件 payload；P1 预留，本期不产生该事件
+      properties:
+        page:
+          type: string
+          description: 承载页面标识
+          example: today_task_page
+        placement:
+          type: string
+          description: 页面内的展示位置标识
+          example: top_banner
+        display_type:
+          type: string
+          description: 展示形态标识
+          example: inline_card
+      example:
+        page: today_task_page
+        placement: top_banner
+        display_type: inline_card
+    DecisionSource:
+      type: string
+      enum: [DAILY_BATCH, APP_OPENED, TASK_CHANGED, PREFERENCE_CHANGED]
+      description: 决策触发来源，与 EvaluateReminderRequest.trigger 取值口径一致
+    ScheduleType:
+      type: string
+      enum: [INITIAL, SNOOZE]
+      description: 排程类型；INITIAL 系统主动 Push、SNOOZE 用户延后
+    RescheduleReason:
+      type: string
+      enum: [INITIAL_PLAN, SNOOZE, QUIET_HOURS_DEFERRAL]
+      description: 排程原因；INITIAL_PLAN 首次排程（本期主路径）、SNOOZE 用户延后、QUIET_HOURS_DEFERRAL 免打扰改期
+    CancelReason:
+      type: string
+      enum: [TASK_COMPLETED, TASK_EXPIRED, REMINDER_DISABLED, DAILY_CAP_REACHED, NO_AVAILABLE_CHANNEL, QUIET_HOURS, NO_TASK, INSUFFICIENT_TIME, USER_INACTIVE, RETURNING_FIRST_DAY]
+      description: 取消原因；与 ReasonCode 中对应的拒绝原因保持同一取值。NO_TASK、INSUFFICIENT_TIME 为 2026-09-21 FR-004 契约补齐新增（MVP-002 与 4.1.1 规则 1/8 隐含的取消原因），枚举只增不删
+    ScheduleStatus:
+      type: string
+      enum: [SCHEDULED, CLAIMED, SENDING, RETRY_WAIT]
+      description: 取消前可处于的排程状态
+    DeliveryStatus:
+      type: string
+      enum: [SENT, FAILED, UNKNOWN]
+      description: 本期渠道对外投递结果；UNKNOWN 必须先查询再决定，禁止盲目重发。DELIVERED 等真实渠道回执状态留待后续渠道接入
+    OpenSource:
+      type: string
+      enum: [push, in_app]
+      description: 打开来源渠道；in_app 为 P1 预留，本期不产生
+    EntrySource:
+      type: string
+      enum: [REMINDER_PUSH, REMINDER_IN_APP, TASK_ENTRY]
+      description: 任务开始入口；REMINDER_IN_APP 为 P1 预留，本期不产生
+    CompletionSource:
+      type: string
+      enum: [REMINDER_ATTRIBUTED, ORGANIC]
+      description: 完成归因；REMINDER_ATTRIBUTED 可归因到提醒，ORGANIC 自然完成

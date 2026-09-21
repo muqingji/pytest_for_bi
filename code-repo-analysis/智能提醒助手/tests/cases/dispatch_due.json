@@ -1,0 +1,251 @@
+{
+  "subject": "dispatch_due",
+  "description": "到期排程发送：POST /internal/v1/reminders/dispatch-due（技术方案 4.3.2.2；字段契约见 docs/api/reminder-service.openapi.yaml）",
+  "endpoint": {
+    "method": "POST",
+    "path": "/internal/v1/reminders/dispatch-due"
+  },
+  "defaults": {
+    "headers": {
+      "X-Caller": "pytest_reminder"
+    }
+  },
+  "cases": [
+    {
+      "id": "DISP-001",
+      "name": "请求体可省略，批次结果字段齐全",
+      "priority": "P0",
+      "ac": [],
+      "fr": ["FR-008"],
+      "scenario": {"note": "IDL：DispatchDueRequest 不是必填请求体"},
+      "note": "只锁字段存在与类型，不锁具体计数：计数取决于运行时的排程与任务状态",
+      "request": {
+        "body": null
+      },
+      "expected": {
+        "status_code": 200,
+        "headers": {"X-Request-ID": "$any"},
+        "body": {
+          "scanned": {"$type": "integer"},
+          "claimed": {"$type": "integer"},
+          "sent": {"$type": "integer"},
+          "cancelled": {"$type": "integer"},
+          "failed": {"$type": "integer"},
+          "unknown": {"$type": "integer"},
+          "retried": {"$type": "integer"},
+          "finished": {"$type": "boolean"}
+        }
+      }
+    },
+    {
+      "id": "DISP-002",
+      "name": "batch_size 小于下限，返回参数错误",
+      "priority": "P0",
+      "ac": [],
+      "fr": ["FR-008"],
+      "scenario": {"batch_size": 0},
+      "note": "IDL：batch_size 取值 1..50，上限受配置 dispatch_batch_size 约束",
+      "request": {
+        "body": {"batch_size": 0}
+      },
+      "expected": {
+        "status_code": 400,
+        "body": {"code": "INVALID_REQUEST", "retryable": false, "message": "$any", "request_id": "$any"}
+      }
+    },
+    {
+      "id": "DISP-003",
+      "name": "batch_size 超过上限，返回参数错误",
+      "priority": "P0",
+      "ac": [],
+      "fr": ["FR-008"],
+      "scenario": {"batch_size": 51},
+      "request": {
+        "body": {"batch_size": 51}
+      },
+      "expected": {
+        "status_code": 400,
+        "body": {"code": "INVALID_REQUEST", "retryable": false, "message": "$any", "request_id": "$any"}
+      }
+    },
+    {
+      "id": "DISP-004",
+      "name": "batch_size 类型错误，返回参数错误",
+      "priority": "P1",
+      "ac": [],
+      "fr": ["FR-008"],
+      "scenario": {"batch_size": "50"},
+      "note": "IDL：batch_size 为 integer；字符串不满足 schema",
+      "request": {
+        "body": {"batch_size": "50"}
+      },
+      "expected": {
+        "status_code": 400,
+        "body": {"code": "INVALID_REQUEST", "retryable": false, "message": "$any", "request_id": "$any"}
+      }
+    },
+    {
+      "id": "DISP-005",
+      "name": "缺少鉴权令牌，返回 401",
+      "priority": "P0",
+      "ac": [],
+      "fr": ["FR-008"],
+      "scenario": {"credential": "missing"},
+      "request": {
+        "omit_headers": ["Authorization"],
+        "body": {"batch_size": 50}
+      },
+      "expected": {
+        "status_code": 401,
+        "body": {"code": "$any", "message": "$any", "retryable": false, "request_id": "$any"}
+      }
+    },
+    {
+      "id": "DISP-006",
+      "name": "没有到期排程时批次为空",
+      "priority": "P0",
+      "ac": [],
+      "fr": ["FR-008"],
+      "pending": true,
+      "pending_reason": "dispatch-due 是全局批量操作，结果取决于库里当前有哪些排程。需要先确认测试库隔离方式（每次运行独立数据库，或服务提供重置接口），以及固定测试时钟，才能断言 scanned/claimed 的具体数值",
+      "scenario": {"fixture_db": "empty", "test_clock": "2026-09-20T12:00:00Z"},
+      "request": {
+        "body": {"batch_size": 50}
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "scanned": 0,
+          "claimed": 0,
+          "sent": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unknown": 0,
+          "retried": 0,
+          "finished": true
+        }
+      }
+    },
+    {
+      "id": "DISP-007",
+      "name": "发送前二次校验：任务已完成则取消发送",
+      "priority": "P0",
+      "ac": ["AC-010", "AC-002"],
+      "fr": ["FR-004"],
+      "pending": true,
+      "pending_reason": "需要「排程已到期」的状态：依赖固定测试时钟把排程推进到 scheduled_at 之后。同时需要能确认该排程只属于本用例的测试库隔离",
+      "scenario": {"fixture": "user-completed-before-send", "test_clock": "2026-09-20T20:00:00Z"},
+      "note": "组合场景：先生成排程，再在任务已完成的状态下触发发送，期望 cancelled 计数增加且 sent 为 0",
+      "steps": [
+        {
+          "name": "已完成的用户在评估阶段就不生成排程（前置校验）",
+          "request": {
+            "body": {"user_id": "user-completed-before-send", "task_date": "2026-09-20", "trigger": "DAILY_BATCH"}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"status": "REJECTED", "reason_code": "TASK_COMPLETED", "should_remind": false}
+          }
+        },
+        {
+          "name": "调度批次不应把该用户发送出去",
+          "request": {
+            "body": {"batch_size": 50}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"sent": 0}
+          }
+        }
+      ]
+    },
+    {
+      "id": "DISP-008",
+      "name": "渠道明确失败时最多重试一次且不新增第二条提醒",
+      "priority": "P0",
+      "ac": ["AC-007"],
+      "fr": ["FR-005", "FR-008"],
+      "pending": true,
+      "pending_reason": "需要可控的 Push 渠道桩（能让渠道明确失败），以及固定测试时钟把排程推进到到期；两项都还没有确定实现方式",
+      "scenario": {"channel_stub": "fail_once", "test_clock": "2026-09-20T20:00:00Z"},
+      "request": {
+        "body": {"batch_size": 50}
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "failed": 1,
+          "retried": 1,
+          "unknown": 0
+        }
+      }
+    },
+    {
+      "id": "DISP-009",
+      "name": "已达当日上限的到期排程在发送前被取消",
+      "priority": "P0",
+      "ac": ["AC-005"],
+      "fr": ["FR-005"],
+      "pending": true,
+      "pending_reason": "需要「同一天已有一次成功发送」再加一条到期排程的状态构造，依赖固定测试时钟与测试库隔离",
+      "scenario": {"fixture": "user-duplicate", "push_sent_count": 1, "test_clock": "2026-09-20T20:00:00Z"},
+      "request": {
+        "body": {"batch_size": 50}
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {"cancelled": 1, "sent": 0}
+      }
+    },
+    {
+      "id": "DISP-010",
+      "name": "重复调度幂等：连续两次批次不产生重复发送",
+      "priority": "P0",
+      "ac": ["AC-006"],
+      "fr": ["FR-005"],
+      "pending": true,
+      "pending_reason": "需要固定测试时钟让排程处于到期状态，并需要测试库隔离来确认第二次批次没有新增发送",
+      "scenario": {"fixture": "user-passive", "test_clock": "2026-09-20T20:00:00Z"},
+      "note": "组合场景：同一到期排程连续调度两次，第二次不应再发送",
+      "steps": [
+        {
+          "name": "第一次调度",
+          "request": {
+            "body": {"batch_size": 50}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"sent": 1}
+          }
+        },
+        {
+          "name": "第二次调度不应重复发送",
+          "request": {
+            "body": {"batch_size": 50}
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {"sent": 0, "finished": true}
+          }
+        }
+      ]
+    },
+    {
+      "id": "DISP-011",
+      "name": "到期排程的取消原因覆盖免打扰与关闭提醒",
+      "priority": "P1",
+      "ac": ["AC-003", "AC-018"],
+      "fr": ["FR-003", "FR-004"],
+      "pending": true,
+      "pending_reason": "需要固定测试时钟让排程到期，并需要能构造「排程已存在后用户进入免打扰 / 关闭提醒」的状态，依赖设置变更入口的实现方式",
+      "scenario": {"fixture": "user-quiet", "test_clock": "2026-09-20T20:00:00Z"},
+      "request": {
+        "body": {"batch_size": 50}
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {"cancelled": {"$type": "integer"}, "sent": 0}
+      }
+    }
+  ]
+}

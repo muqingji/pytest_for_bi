@@ -1,0 +1,4 @@
+interface:
+  display_name: "PRD 转技术方案"
+  short_description: "按模板生成后端技术方案并按 RD leader 视角回查"
+  default_prompt: "使用 $prd-to-tech-design 依据 9 稿 PRD 和产品方案生成后端技术方案，并完成结构与覆盖度回查。"

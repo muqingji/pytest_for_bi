@@ -1,0 +1,9 @@
+# 内部接口契约的 lint 配置。
+# 用法： npx --yes @redocly/cli@1.25.5 lint docs/api/reminder-service.openapi.yaml --config docs/api/redocly.yaml
+extends:
+  - recommended
+rules:
+  # 内部契约不声明开源许可证。
+  info-license: off
+  # ReminderEvent 只被事件契约（技术方案 4.3.2.4）和 golden 用例引用，不对应任何 HTTP 路径。
+  no-unused-components: off

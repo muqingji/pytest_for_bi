@@ -1,0 +1,4 @@
+interface:
+  display_name: "PRD 转验收标准"
+  short_description: "按颗粒度规范生成验收标准并按 RD/QA 视角回查覆盖度"
+  default_prompt: "使用 $prd-to-acceptance-criteria 依据 9 稿 PRD 生成验收标准，并完成颗粒度与覆盖度回查。"

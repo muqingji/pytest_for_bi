@@ -1,0 +1,186 @@
+{
+  "subject": "evaluate_stub",
+  "description": "测试环境自检：向本地桩服务发起真实 HTTP 请求，验证 JSON 用例 → 请求 → 字段断言 → 报告附件整条管线",
+  "endpoint": {
+    "method": "POST",
+    "path": "/internal/v1/reminders/evaluate"
+  },
+  "defaults": {
+    "headers": {
+      "X-Caller": "pytest_reminder_selftest"
+    }
+  },
+  "cases": [
+    {
+      "id": "STUB-001",
+      "name": "HTTP 200 且字段断言通过",
+      "note": "最小正例：验证状态码断言、响应体字段断言、正则通配、响应头断言都会被执行",
+      "request": {
+        "body": {
+          "user_id": "stub-user-passive",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "headers": {
+          "X-Request-ID": "$any"
+        },
+        "body": {
+          "status": "CREATED",
+          "reason_code": "ELIGIBLE",
+          "should_remind": true,
+          "channel": "push",
+          "user_segment": "PASSIVE",
+          "strategy_version": "v1",
+          "decision_id": {"$regex": "^decision-[0-9a-f]{32}$"},
+          "scheduled_at": {"$regex": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"}
+        }
+      }
+    },
+    {
+      "id": "STUB-002",
+      "name": "业务拒绝用 200 + REJECTED 表达，不报 4xx",
+      "note": "验证契约约定：业务拒绝不返回 4xx，避免调用方当故障重试",
+      "request": {
+        "body": {
+          "user_id": "stub-user-completed",
+          "task_date": "2026-09-20",
+          "trigger": "DAILY_BATCH"
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "status": "CREATED",
+          "reason_code": "TASK_COMPLETED",
+          "should_remind": false,
+          "strategy_version": "v1"
+        }
+      }
+    },
+    {
+      "id": "STUB-003",
+      "name": "未知枚举返回 400 INVALID_REQUEST",
+      "note": "验证错误路径：非 200 状态码与错误信封断言同样生效",
+      "request": {
+        "body": {
+          "user_id": "stub-user-passive",
+          "task_date": "2026-09-20",
+          "trigger": "UNKNOWN_TRIGGER"
+        }
+      },
+      "expected": {
+        "status_code": 400,
+        "body": {
+          "code": "INVALID_REQUEST",
+          "retryable": false,
+          "message": "$any",
+          "request_id": "$any"
+        }
+      }
+    },
+    {
+      "id": "STUB-004",
+      "name": "组合场景：同一 request_id 两次评估，第二次命中幂等",
+      "note": "验证多步骤组合场景、上一步响应取值占位符 {step1.body.decision_id} 与 expected 内引用",
+      "steps": [
+        {
+          "name": "首次评估生成决策",
+          "request": {
+            "body": {
+              "request_id": "stub-idempotency-0001",
+              "user_id": "stub-user-passive",
+              "task_date": "2026-09-20",
+              "trigger": "DAILY_BATCH"
+            }
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {
+              "status": "CREATED",
+              "reason_code": "ELIGIBLE",
+              "should_remind": true
+            }
+          }
+        },
+        {
+          "name": "重复评估返回 REUSED 且 decision_id 一致",
+          "request": {
+            "body": {
+              "request_id": "stub-idempotency-0001",
+              "user_id": "stub-user-passive",
+              "task_date": "2026-09-20",
+              "trigger": "DAILY_BATCH"
+            }
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {
+              "status": "REUSED",
+              "reason_code": "ELIGIBLE",
+              "should_remind": true,
+              "decision_id": "{step1.body.decision_id}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "STUB-005",
+      "name": "路径参数主体：延后提醒带 decision_id 路径参数",
+      "note": "验证带路径参数的主体：method/path 在步骤级覆盖，路径参数正确替换",
+      "steps": [
+        {
+          "name": "对合法 decision_id 生成延后排程",
+          "method": "POST",
+          "path": "/internal/v1/reminders/{decision_id}/snooze",
+          "request": {
+            "path_params": {"decision_id": "decision-allowed"},
+            "body": {
+              "request_id": "stub-snooze-0001",
+              "user_id": "stub-user-passive"
+            }
+          },
+          "expected": {
+            "status_code": 200,
+            "body": {
+              "status": "SCHEDULED",
+              "reason_code": "ELIGIBLE",
+              "schedule_type": "SNOOZE",
+              "channel": "push",
+              "schedule_id": {"$regex": "^schedule-[0-9a-f]{32}$"},
+              "snooze_until": "$any"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "STUB-006",
+      "name": "到期发送接口：批量字段断言",
+      "note": "验证另一个主体接口，以及 exact 比对模式可以锁定完整契约",
+      "match": "exact",
+      "request": {
+        "path": "/internal/v1/reminders/dispatch-due",
+        "body": {
+          "batch_size": 50
+        }
+      },
+      "expected": {
+        "status_code": 200,
+        "body": {
+          "scanned": 0,
+          "claimed": 0,
+          "sent": 0,
+          "cancelled": 0,
+          "failed": 0,
+          "unknown": 0,
+          "retried": 0,
+          "finished": true
+        }
+      }
+    }
+  ]
+}

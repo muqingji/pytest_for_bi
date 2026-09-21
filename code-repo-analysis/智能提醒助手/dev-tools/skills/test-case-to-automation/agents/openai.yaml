@@ -1,0 +1,4 @@
+interface:
+  display_name: "用例转自动化脚本"
+  short_description: "把测试用例逐条翻译成 tests/cases 用例数据与 tests/subjects 主体文件，回填自动化映射并显式登记无法自动化的原因"
+  default_prompt: "使用 $test-case-to-automation 依据测试方案/测试用例.md 生成 tests/cases 用例数据与主体文件，产出自动化映射报告等我复核。"

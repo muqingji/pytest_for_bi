@@ -1,0 +1,7 @@
+{
+  "base_url": "http://127.0.0.1:8080",
+  "token": "local-dev-token",
+  "caller": "pytest_reminder",
+  "timeout_seconds": 5,
+  "note": "被测服务地址与静态令牌。可被环境变量 REMINDER_BASE_URL / REMINDER_TOKEN / REMINDER_CALLER / REMINDER_TIMEOUT 覆盖。"
+}

@@ -36,8 +36,8 @@ source scripts/go-env.sh
 
 ~~~text
 Go      : go version go1.22.12 darwin/amd64
-GOROOT  : /Users/liushanshan/code/my/pytest_for_bi/.cache/go-sdk/go
-GOPATH  : /Users/liushanshan/code/my/pytest_for_bi/.cache/gopath
+GOROOT  : /Users/muqingji/code/study/pytest_for_bi/.cache/go-sdk/go
+GOPATH  : /Users/muqingji/code/study/pytest_for_bi/.cache/gopath
 GOPROXY : https://goproxy.cn,direct
 Delve   : version: 1.25.2
 ~~~
@@ -45,7 +45,7 @@ Delve   : version: 1.25.2
 如需每个终端自动生效，由本人把下面一行追加到 `~/.zshrc`（需要改用户主目录文件，故未自动写入）：
 
 ~~~bash
-source /Users/liushanshan/code/my/pytest_for_bi/.cache/go-env.sh
+source /Users/muqingji/code/study/pytest_for_bi/.cache/go-env.sh
 ~~~
 
 ## 3. 运行与验证
@@ -138,12 +138,14 @@ dlv test ./internal/domain/reminder -- -test.run TestEvaluateDecisionBoundaries
 
 首次使用扩展会提示安装 `dlv`、`gopls` 等工具，按提示安装即可（代理已指向 `goproxy.cn`，会装到 `.cache/gopath/bin`）。
 
+当前机器已预装 `dlv v1.25.2` 和 `gopls v0.16.2`，无需再由扩展下载。注意 `gopls v0.17` 及以上要求 Go ≥ 1.23，而本项目固定 `GOTOOLCHAIN=local` 并使用 Go 1.22.12，升级 gopls 前需先升级本地 Go 工具链。
+
 ### 4.4 IntelliJ IDEA Ultimate
 
 本机 IDEA 尚未安装 Go 插件，需先在 `Settings > Plugins > Marketplace` 安装 `Go` 插件并重启。然后：
 
-1. `Settings > Languages & Frameworks > Go > GOROOT` 选择 `/Users/liushanshan/code/my/pytest_for_bi/.cache/go-sdk/go`。
-2. 同页 `Go Modules` 将代理设为 `https://goproxy.cn,direct`；`GOPATH` 设为 `/Users/liushanshan/code/my/pytest_for_bi/.cache/gopath`。
+1. `Settings > Languages & Frameworks > Go > GOROOT` 选择 `/Users/muqingji/code/study/pytest_for_bi/.cache/go-sdk/go`。
+2. 同页 `Go Modules` 将代理设为 `https://goproxy.cn,direct`；`GOPATH` 设为 `/Users/muqingji/code/study/pytest_for_bi/.cache/gopath`。
 3. 新建 `Go Build` 运行配置：`Run kind=Package`，`Package path=intelligent-reminder-assistant/cmd/reminder-service`，`Working directory` 为项目根，`Program arguments` 填 `-user user-passive -task-date 2026-09-20 -db data/reminder.db`。
 4. 新建 `Go Test` 运行配置即可调试单测；断点直接打在源码行上。
 
@@ -160,7 +162,7 @@ Delve 没能真正接管目标进程。按顺序排查：
 
    ~~~bash
    codesign --force --sign - --entitlements /tmp/dlv-entitlements.plist \
-     /Users/liushanshan/code/my/pytest_for_bi/.cache/gopath/bin/dlv
+     /Users/muqingji/code/study/pytest_for_bi/.cache/gopath/bin/dlv
    ~~~
 
 3. 仍失败时，在 `系统设置 > 隐私与安全性 > 开发者工具` 中勾选所使用的终端/IDE。
@@ -178,7 +180,7 @@ Delve 没能真正接管目标进程。按顺序排查：
 本环境可整体迁移：
 
 ~~~bash
-mv /Users/liushanshan/code/my/pytest_for_bi/.cache/go-sdk/go /usr/local/go
+mv /Users/muqingji/code/study/pytest_for_bi/.cache/go-sdk/go /usr/local/go
 ~~~
 
 然后修改 `.cache/go-env.sh` 中的 `GOROOT`（以及可选的 `GOPATH`、`GOCACHE`）。迁移后 `.vscode/settings.json` 与上述 IDEA 配置需同步修改。
@@ -194,3 +196,26 @@ mv /Users/liushanshan/code/my/pytest_for_bi/.cache/go-sdk/go /usr/local/go
 | `cmd/`、`internal/` 下 8 个文件 | `gofmt` 未对齐 | 执行 `gofmt -w`，仅空白与对齐变化 |
 
 完成后 `go build ./...`、`go vet ./...`、`go test ./...` 全部通过。
+
+## 本地 HTTP 入口与业务测试
+
+本地入口把技术方案 4.3 的三个内部接口跑在 `127.0.0.1` 上，业务测试（pytest）直接发真实 HTTP 请求：
+
+```bash
+make build                                  # 编译 bin/reminder-service
+make serve                                  # 显式开启 feature_enabled 并启动本地入口（默认 127.0.0.1:8080）
+make test-api-fresh                         # 显式开启开关 → 跑 pytest → 自动关闭（推荐）
+```
+
+- 启动参数：`-serve`（开启入口）、`-addr`（默认 `127.0.0.1:8080`，只接受回环地址或 `localhost`）、`-token`（默认 `local-dev-token`）、`-fixtures`（默认 `testenv/fixtures/users.json`）、`-db`（不传时用进程内 SQLite，每次启动回到 Fixture 基线）。
+- 直接请求示例：
+
+```bash
+curl -s -X POST http://127.0.0.1:8080/internal/v1/reminders/evaluate \
+  -H 'Authorization: Bearer local-dev-token' -H 'Content-Type: application/json' \
+  -d '{"request_id":"req-1","user_id":"user-passive","task_date":"2026-09-20","trigger":"DAILY_BATCH"}'
+```
+
+- 退出与重启：入口收到 `SIGINT/SIGTERM` 后优雅关闭（等待在途请求，最长 5s）。**不要复用同一个进程连跑两遍业务测试**：重复评估会命中幂等返回 `REUSED`，应改用 `make test-api-fresh` 或手动重启。
+- 灰度开关：二进制的 `-feature-enabled` 默认 false；`make serve` 与 `make test-api-fresh` 已显式传入。关闭状态下 evaluate/dispatch 返回 `503 FEATURE_DISABLED`、`retryable=false`。
+- 未实现项：入口限流（`rate_limit_caller_qps`、`rate_limit_user_qps`）与固定测试时钟仍未实现，依赖运行时刻的用例保持 `pending`。

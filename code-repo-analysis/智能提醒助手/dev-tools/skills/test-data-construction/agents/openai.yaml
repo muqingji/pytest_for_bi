@@ -1,0 +1,4 @@
+interface:
+  display_name: "测试数据构造"
+  short_description: "按已审批用例前置条件生成隔离 Fixture，并把测试数据强绑定到 pytest 请求"
+  default_prompt: "使用 $test-data-construction 根据已审批测试用例构造隔离测试数据，建立 case 与 Fixture、pytest 请求体的运行时绑定并输出报告。"

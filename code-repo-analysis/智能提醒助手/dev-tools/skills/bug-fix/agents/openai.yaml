@@ -1,0 +1,4 @@
+interface:
+  display_name: "缺陷修复与验证"
+  short_description: "先判定归属再复现，最小根因修复并跑全量单测与集成测试，经 code-review 复核后产出带验证范围的修复记录"
+  default_prompt: "使用 $bug-fix 复现并修复这个缺陷，跑全量测试与 CR 后给我带验证范围的修复结论。"
