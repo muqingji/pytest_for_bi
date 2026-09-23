@@ -1,1 +1,0 @@
-{"meta":{"schema_version":"trc-log-error-summary-v1","source":"log_error_dist","default_read":true,"env":"foneshare","generated_at":"2026-09-22T15:59:39+00:00","full_evidence_file":"TRC-log-error.full.json"},"stats":{"input_rows":0,"unique_groups":0,"truncated_rows":0},"groups":[],"rows":[]}

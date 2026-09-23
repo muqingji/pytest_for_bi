@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TraceFactCard",
+  "type": "object",
+  "required": ["schema_version", "mode", "trace_id", "title", "nodes", "gaps", "evidence"],
+  "properties": {
+    "schema_version": {"const": "trace-fact-card-v1"},
+    "mode": {"enum": ["knowledge", "live"]},
+    "trace_id": {"type": "string", "minLength": 8},
+    "title": {"type": "string"},
+    "profile": {"type": "string"},
+    "entry_time": {"type": "string"},
+    "identity": {"type": "object"},
+    "runtime": {"type": "object"},
+    "resources": {"type": "object"},
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "service", "entry", "method", "flow", "downstream", "timing", "evidence", "label", "row", "title_zh", "detail", "layer"],
+        "properties": {
+          "label": {"enum": ["已观测", "代码映射", "推断", "未取证"]},
+          "row": {"type": "integer", "minimum": 0},
+          "layer": {"enum": ["display", "gateway", "service", "data", "offpath"]}
+        }
+      }
+    },
+    "gaps": {"type": "array", "items": {"type": "string"}},
+    "evidence": {"type": "array", "items": {"type": "object"}}
+  }
+}

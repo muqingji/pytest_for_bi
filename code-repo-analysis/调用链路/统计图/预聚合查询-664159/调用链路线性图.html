@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>统计图预聚合查询</title>
+  <style>
+    :root {
+      --bg: #f4f6fb; --ink: #1b2433; --muted: #5b677a; --line: #d8dee9; --card: #ffffff;
+      --l1: #2563eb; --l1-bg: #eff6ff; --l2: #4f46e5; --l2-bg: #eef2ff;
+      --l3: #0f766e; --l3-bg: #f0fdfa; --l4: #c2410c; --l4-bg: #fff7ed;
+      --sync: #334155; --sync-bg: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+    .page { max-width: 1280px; margin: 0 auto; padding: 28px 24px 40px; }
+    header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 18px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.02em; }
+    .sub { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .meta { text-align: right; font-size: 12px; color: var(--muted); line-height: 1.7; }
+    .meta code, .card code { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
+    .stack { display: grid; gap: 10px; }
+    .layer { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--card);
+      box-shadow: 0 8px 24px rgba(27, 36, 51, 0.05); }
+    .layer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 16px; font-weight: 700; letter-spacing: 0.04em; }
+    .layer-head .tag { font-size: 12px; opacity: 0.9; font-weight: 600; }
+    .layer-body { display: grid; gap: 10px; padding: 12px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-height: 108px; }
+    .card h3 { margin: 0 0 8px; font-size: 15px; }
+    .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .l1 .layer-head { background: var(--l1-bg); color: var(--l1); }
+    .l2 .layer-head { background: var(--l2-bg); color: var(--l2); }
+    .l3 .layer-head { background: var(--l3-bg); color: var(--l3); }
+    .l4 .layer-head { background: var(--l4-bg); color: var(--l4); }
+    .sync .layer-head { background: var(--sync-bg); color: var(--sync); }
+    .arrow { text-align: center; color: #94a3b8; font-size: 18px; line-height: 10px; }
+    .note { margin-top: 14px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    @media print { body { background: #fff; } .page { max-width: none; padding: 8px; } .layer { box-shadow: none; } }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>统计图预聚合查询</h1>
+        <div class="sub">/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query · 200 · 785 ms · 同 trace 上还有三次更早的 HTTP</div>
+      </div>
+      <div class="meta">承载服务 fs-bi-stat<br />Pod fs-bi-stat-bfc75496b-f6fq6<br />租户 664159<br />FSW-664159.1047-01M36NH7ASNKA8DMXD8PKDXFZV</div>
+    </header>
+    <div class="stack">
+      <section class="layer l2">
+        <div class="layer-head"><span>L2 网关层</span><span class="tag">CEP</span></div>
+        <div class="layer-body"><div class="cards">
+            <div class="card">
+              <h3>读取统计视图</h3>
+              <p>同一次 trace 先经过 `getStatView`，接口是 /FHH/EM1HBICRM/statEditController/getStatView。状态 200，耗时 246 ms。fs-bi-stat 应用日志没有这条 URI，对应 Pod 未取证。</p>
+            </div>
+            <div class="card">
+              <h3>数据查询入口</h3>
+              <p>用户说的预聚合查询对应 `stat/data/query`，完整路径 /FHH/EM1HBISTAT/fs-bi-stat/stat/data/query。状态 200，网关耗时 785 ms，进入 fs-bi-stat。</p>
+            </div>
+        </div></div>
+      </section>
+<div class="arrow">▼</div>
+      <section class="layer l3">
+        <div class="layer-head"><span>L3 服务层</span><span class="tag">应用</span></div>
+        <div class="layer-body"><div class="cards">
+            <div class="card">
+              <h3>读取图表配置</h3>
+              <p>`getViewChartConfById` 读取 /fs-bi-stat/stat/chartConfig/query。结果 chartType=table，视图 BI_6aa427deec2d2200076ef9f6，日志中的名称是销售订单统计_副本-报表。网关耗时 604 ms，方法耗时未细分。</p>
+            </div>
+            <div class="card">
+              <h3>读取筛选结果</h3>
+              <p>`statFilterService.getFilters` 处理 /fs-bi-stat/stat/filters/getFiltersResult，从开始读取到结束读取都有日志。网关耗时 85 ms。</p>
+            </div>
+            <div class="card">
+              <h3>接收查询参数</h3>
+              <p>`StatBaseController` 接收 /fs-bi-stat/stat/data/query，日志写出 dataQuerySource=0。这个取值的枚举含义未取证，耗时未单列。</p>
+            </div>
+            <div class="card">
+              <h3>补齐查询参数</h3>
+              <p>`fulFillQueryChartDataArg` 已观测执行 61 ms，耗时明细里出现 isSlaveSchema。方法内部如何拼装参数未展开。</p>
+            </div>
+            <div class="card">
+              <h3>生成查询模型</h3>
+              <p>`generateModel` 生成查询模型并写出 where，已观测 76 ms。条件涉及 dim_data 和 dt_auth_simple，对象是 SalesOrderObj。</p>
+            </div>
+            <div class="card">
+              <h3>准备选项查询</h3>
+              <p>`PreSqlContextCacheSelectOptionLegacyFlowNode` 执行 selectOption，StopWatch 为 124 ms，计入 MainStep-1。具体 RPC 方法未取证。</p>
+            </div>
+            <div class="card">
+              <h3>回写查询缓存</h3>
+              <p>`cacheSyncReqResultWithBinary` 在 ReleaseResourcesThreadLocalNode 释放线程变量之后回写查询缓存。EasyStat 总观察窗口是 294 ms。缓存介质未取证。</p>
+            </div>
+        </div></div>
+      </section>
+<div class="arrow">▼</div>
+      <section class="layer l4">
+        <div class="layer-head"><span>L4 数据层</span><span class="tag">查询时依赖</span></div>
+        <div class="layer-body"><div class="cards">
+            <div class="card">
+              <h3>执行统计 SQL</h3>
+              <p>`ClickHouseSQLExecutor` 由 DataQueryFlowNode 执行 easyStat SQL，应用侧耗时 88 ms。SQL 中能确认 CTE d1_select_option 和表 agg_data。数据库服务端耗时未取证。</p>
+            </div>
+        </div></div>
+      </section>
+    </div>
+    <p class="note">四次 HTTP 按时间顺序发生，没有并行重叠。getStatView 的应用 Pod、dataQuerySource 枚举、RPC 方法、缓存介质、ClickHouse 服务端耗时和源码行号都未取证。</p>
+  </div>
+</body>
+</html>

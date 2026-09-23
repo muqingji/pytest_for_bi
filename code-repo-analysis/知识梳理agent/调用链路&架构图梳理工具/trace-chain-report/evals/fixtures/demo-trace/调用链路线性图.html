@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>演示链路</title>
+  <style>
+    :root {
+      --bg: #f4f6fb; --ink: #1b2433; --muted: #5b677a; --line: #d8dee9; --card: #ffffff;
+      --l1: #2563eb; --l1-bg: #eff6ff; --l2: #4f46e5; --l2-bg: #eef2ff;
+      --l3: #0f766e; --l3-bg: #f0fdfa; --l4: #c2410c; --l4-bg: #fff7ed;
+      --sync: #334155; --sync-bg: #f8fafc;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+    .page { max-width: 1280px; margin: 0 auto; padding: 28px 24px 40px; }
+    header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 18px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.02em; }
+    .sub { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .meta { text-align: right; font-size: 12px; color: var(--muted); line-height: 1.7; }
+    .meta code, .card code { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
+    .stack { display: grid; gap: 10px; }
+    .layer { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--card);
+      box-shadow: 0 8px 24px rgba(27, 36, 51, 0.05); }
+    .layer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 10px 16px; font-weight: 700; letter-spacing: 0.04em; }
+    .layer-head .tag { font-size: 12px; opacity: 0.9; font-weight: 600; }
+    .layer-body { display: grid; gap: 10px; padding: 12px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-height: 108px; }
+    .card h3 { margin: 0 0 8px; font-size: 15px; }
+    .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .l1 .layer-head { background: var(--l1-bg); color: var(--l1); }
+    .l2 .layer-head { background: var(--l2-bg); color: var(--l2); }
+    .l3 .layer-head { background: var(--l3-bg); color: var(--l3); }
+    .l4 .layer-head { background: var(--l4-bg); color: var(--l4); }
+    .sync .layer-head { background: var(--sync-bg); color: var(--sync); }
+    .arrow { text-align: center; color: #94a3b8; font-size: 18px; line-height: 10px; }
+    .note { margin-top: 14px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    @media print { body { background: #fff; } .page { max-width: none; padding: 8px; } .layer { box-shadow: none; } }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>演示链路</h1>
+        <div class="sub">FSW-DEMO.0001-ABCDEFGHIJKLMN</div>
+      </div>
+      <div class="meta">承载服务 demo-app<br />FSW-DEMO.0001-ABCDEFGHIJKLMN</div>
+    </header>
+    <div class="stack">
+<div class="arrow">▼</div>
+      <section class="layer l3">
+        <div class="layer-head"><span>L3 服务层</span><span class="tag">应用</span></div>
+        <div class="layer-body"><div class="cards">
+            <div class="card">
+              <h3>演示入口</h3>
+              <p>演示控制器 DemoController 接收 /demo/query，并返回结果。这是校验夹具，没有线上耗时，其余时间未细分。</p>
+            </div>
+        </div></div>
+      </section>
+    </div>
+    <p class="note">样例没有线上证据，未取证。</p>
+  </div>
+</body>
+</html>

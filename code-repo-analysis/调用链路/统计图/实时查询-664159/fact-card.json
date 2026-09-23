@@ -1,0 +1,211 @@
+{
+  "schema_version": "trace-fact-card-v1",
+  "mode": "knowledge",
+  "trace_id": "FSW-664159.1047-01M36MYX64CWZ33VQ03BHQF14K",
+  "title": "统计图实时查询",
+  "profile": "foneshare",
+  "entry_time": "2026-09-23 16:08:51.825",
+  "identity": {
+    "tenant": "664159",
+    "uri": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query",
+    "status": 200,
+    "total_ms": 1891
+  },
+  "runtime": {
+    "app": "fs-bi-stat",
+    "pod": "fs-bi-stat-bfc75496b-8zrtc",
+    "namespace": "foneshare-vip",
+    "cluster": "tke70-k8s1",
+    "replicaset": "fs-bi-stat-bfc75496b"
+  },
+  "resources": {
+    "requests": {
+      "cpu": "2 core",
+      "memory": "7516192768 byte"
+    },
+    "limits": null,
+    "usage": null
+  },
+  "nodes": [
+    {
+      "id": "cep",
+      "kind": "gateway",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query",
+      "method": "chartConfig/query",
+      "flow": "记录网关 URI → 返回 200",
+      "downstream": "fs-bi-stat",
+      "timing": "1891 ms",
+      "evidence": "CEP 日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "网关入口",
+      "layer": "gateway",
+      "detail": "CEP 记录图表配置接口 `chartConfig/query`，完整路径 /FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query。状态 200，网关总耗时 1891 ms，下一跳进入 fs-bi-stat。"
+    },
+    {
+      "id": "filter",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "/fs-bi-stat/stat/chartConfig/query",
+      "method": "CEPRequestFilter",
+      "flow": "记录 pathUrl → 进入控制器",
+      "downstream": "StatEditController",
+      "timing": "未单列",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "请求进入应用",
+      "layer": "service",
+      "detail": "`CEPRequestFilter` 记录应用内路径 /fs-bi-stat/stat/chartConfig/query，然后把请求交给编辑控制器。这一跳没有单独耗时。"
+    },
+    {
+      "id": "edit",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "CEPRequestFilter 之后",
+      "method": "StatEditController.start",
+      "flow": "进入编辑控制器 → 读取视图拓扑",
+      "downstream": "handleTopologyStatus",
+      "timing": "未单列",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "编辑控制器",
+      "layer": "service",
+      "detail": "`StatEditController.start` 接过过滤后的请求，开始读取视图拓扑。耗时未单列。"
+    },
+    {
+      "id": "topology",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "StatEditController.start",
+      "method": "handleTopologyStatus",
+      "flow": "处理拓扑状态 → getViewById",
+      "downstream": "视图读取",
+      "timing": "13 ms",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "读取视图拓扑",
+      "layer": "service",
+      "detail": "`handleTopologyStatus` 处理视图拓扑，并调用 getViewById。已观测总耗时 13 ms，其中 getViewById 为 8 ms。"
+    },
+    {
+      "id": "conf",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "getChartConf",
+      "method": "getViewChartConfById",
+      "flow": "校验视图权限 → 得到 bar",
+      "downstream": "BI_6a17ab049317110007ca8cc2",
+      "timing": "方法耗时未细分",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "读取图表配置",
+      "layer": "service",
+      "detail": "`getViewChartConfById` 校验视图权限并读出配置。结果是 bar，视图 BI_6a17ab049317110007ca8cc2。方法自身耗时未细分。"
+    },
+    {
+      "id": "dept",
+      "kind": "storage",
+      "service": "ClickHouse",
+      "entry": "ClickHouseSQLExecutor",
+      "method": "getMaxLevelForDepartment",
+      "flow": "查询部门层级 → 得到 maxLevel 6",
+      "downstream": "org_dept",
+      "timing": "服务端耗时未取证",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "查询部门层级",
+      "layer": "data",
+      "detail": "`getMaxLevelForDepartment` 通过 ClickHouseSQLExecutor 查询 org_dept 的部门父路径，得到 maxLevel 6。数据库服务端耗时未取证。"
+    },
+    {
+      "id": "i18n",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "配置组装过程",
+      "method": "loadByLangBatch",
+      "flow": "批量加载文案 → 返回翻译结果",
+      "downstream": "i18n",
+      "timing": "19 ms",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "加载文案",
+      "layer": "service",
+      "detail": "`loadByLangBatch` 在配置组装时按语言批量读取文案，已观测 19 ms。"
+    },
+    {
+      "id": "license",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "配置组装过程",
+      "method": "CrmObjLicenseService",
+      "flow": "查询可见对象 → 合并 license 结果",
+      "downstream": "未命中 span",
+      "timing": "未单列",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "合并对象许可",
+      "layer": "service",
+      "detail": "`CrmObjLicenseService` 查询企业可见对象，并合并 license 结果。下游 RPC 方法未命中 span，耗时未单列。"
+    },
+    {
+      "id": "done",
+      "kind": "return",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query",
+      "method": "返回 200",
+      "flow": "应用日志结束 → 网关状态 200",
+      "downstream": "无后续 span",
+      "timing": "总耗时 1891 ms",
+      "evidence": "CEP 日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "网关返回",
+      "layer": "gateway",
+      "detail": "应用日志结束后，网关对 chartConfig/query `返回 200`。返回 200 对应的总耗时仍是 1891 ms，已点名方法之外的时间未细分。"
+    }
+  ],
+  "gaps": [
+    "eye_trace 返回 0 行，跨服务 RPC 方法未取证。",
+    "ClickHouse 服务端耗时未取证。",
+    "容器 limits、使用量和镜像版本未取证。",
+    "未取得精确源码行号。"
+  ],
+  "evidence": [
+    {
+      "what": "CEP 入口",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-realtime/evidence/TRC-tracing-log-cep.json"
+    },
+    {
+      "what": "应用日志",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-realtime/evidence/TRC-app-log-full.json"
+    },
+    {
+      "what": "关键日志行",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-realtime/evidence/TRC-code-walk-key-lines.tsv"
+    },
+    {
+      "what": "eye trace",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-realtime/evidence/TRC-eye-trace.json"
+    },
+    {
+      "what": "Pod 位置",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-realtime/evidence/K8S-pod-info-at-time.json"
+    },
+    {
+      "what": "容器 requests",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-realtime/evidence/K8S-resource-at-time.json"
+    },
+    {
+      "what": "错误日志",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-realtime/evidence/TRC-log-error.json"
+    }
+  ]
+}

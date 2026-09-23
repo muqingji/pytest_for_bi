@@ -1,0 +1,229 @@
+{
+  "schema_version": "trace-fact-card-v1",
+  "mode": "knowledge",
+  "trace_id": "FSW-664159.1047-01M36NH7ASNKA8DMXD8PKDXFZV",
+  "title": "统计图预聚合查询",
+  "profile": "foneshare",
+  "entry_time": "2026-09-23 16:18:53.146",
+  "identity": {
+    "tenant": "664159",
+    "uri": "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query",
+    "status": 200,
+    "total_ms": 785
+  },
+  "runtime": {
+    "app": "fs-bi-stat",
+    "pod": "fs-bi-stat-bfc75496b-f6fq6",
+    "namespace": "foneshare-vip",
+    "cluster": "tke70-k8s1",
+    "replicaset": "fs-bi-stat-bfc75496b"
+  },
+  "resources": {
+    "requests": {
+      "cpu": "2 core",
+      "memory": "7516192768 byte"
+    },
+    "limits": null,
+    "usage": null
+  },
+  "nodes": [
+    {
+      "id": "view",
+      "kind": "gateway",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBICRM/statEditController/getStatView",
+      "method": "getStatView",
+      "flow": "网关记录 200 → 应用日志未覆盖",
+      "downstream": "未命中应用日志",
+      "timing": "246 ms",
+      "evidence": "CEP 日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "读取统计视图",
+      "layer": "gateway",
+      "detail": "同一次 trace 先经过 `getStatView`，接口是 /FHH/EM1HBICRM/statEditController/getStatView。状态 200，耗时 246 ms。fs-bi-stat 应用日志没有这条 URI，对应 Pod 未取证。"
+    },
+    {
+      "id": "conf",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "/fs-bi-stat/stat/chartConfig/query",
+      "method": "getViewChartConfById",
+      "flow": "读取视图配置 → 得到 table",
+      "downstream": "BI_6aa427deec2d2200076ef9f6",
+      "timing": "网关 604 ms",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "读取图表配置",
+      "layer": "service",
+      "detail": "`getViewChartConfById` 读取 /fs-bi-stat/stat/chartConfig/query。结果 chartType=table，视图 BI_6aa427deec2d2200076ef9f6，日志中的名称是销售订单统计_副本-报表。网关耗时 604 ms，方法耗时未细分。"
+    },
+    {
+      "id": "filter",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "/fs-bi-stat/stat/filters/getFiltersResult",
+      "method": "statFilterService.getFilters",
+      "flow": "开始读取筛选 → 结束筛选读取",
+      "downstream": "筛选结果",
+      "timing": "网关 85 ms",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "读取筛选结果",
+      "layer": "service",
+      "detail": "`statFilterService.getFilters` 处理 /fs-bi-stat/stat/filters/getFiltersResult，从开始读取到结束读取都有日志。网关耗时 85 ms。"
+    },
+    {
+      "id": "query",
+      "kind": "gateway",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query",
+      "method": "stat/data/query",
+      "flow": "接入数据查询 → 返回 200",
+      "downstream": "fs-bi-stat",
+      "timing": "785 ms",
+      "evidence": "CEP 日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "数据查询入口",
+      "layer": "gateway",
+      "detail": "用户说的预聚合查询对应 `stat/data/query`，完整路径 /FHH/EM1HBISTAT/fs-bi-stat/stat/data/query。状态 200，网关耗时 785 ms，进入 fs-bi-stat。"
+    },
+    {
+      "id": "base",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "/fs-bi-stat/stat/data/query",
+      "method": "StatBaseController",
+      "flow": "接收查询参数 → 记录 dataQuerySource=0",
+      "downstream": "StatDataServiceHelper",
+      "timing": "未单列",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "接收查询参数",
+      "layer": "service",
+      "detail": "`StatBaseController` 接收 /fs-bi-stat/stat/data/query，日志写出 dataQuerySource=0。这个取值的枚举含义未取证，耗时未单列。"
+    },
+    {
+      "id": "fill",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "StatBaseController",
+      "method": "fulFillQueryChartDataArg",
+      "flow": "执行该方法 → 记录耗时",
+      "downstream": "isSlaveSchema",
+      "timing": "61 ms",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "补齐查询参数",
+      "layer": "service",
+      "detail": "`fulFillQueryChartDataArg` 已观测执行 61 ms，耗时明细里出现 isSlaveSchema。方法内部如何拼装参数未展开。"
+    },
+    {
+      "id": "model",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "fulFillQueryChartDataArg 之后",
+      "method": "generateModel",
+      "flow": "生成查询模型 → 写出 where",
+      "downstream": "dim_data / dt_auth_simple",
+      "timing": "76 ms",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "生成查询模型",
+      "layer": "service",
+      "detail": "`generateModel` 生成查询模型并写出 where，已观测 76 ms。条件涉及 dim_data 和 dt_auth_simple，对象是 SalesOrderObj。"
+    },
+    {
+      "id": "option",
+      "kind": "app",
+      "service": "fs-bi-stat",
+      "entry": "RootFlowServiceImpl",
+      "method": "PreSqlContextCacheSelectOptionLegacyFlowNode",
+      "flow": "执行 selectOption → 计入 MainStep-1",
+      "downstream": "RPC 方法未取证",
+      "timing": "124 ms",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "准备选项查询",
+      "layer": "service",
+      "detail": "`PreSqlContextCacheSelectOptionLegacyFlowNode` 执行 selectOption，StopWatch 为 124 ms，计入 MainStep-1。具体 RPC 方法未取证。"
+    },
+    {
+      "id": "sql",
+      "kind": "storage",
+      "service": "ClickHouse",
+      "entry": "DataQueryFlowNode",
+      "method": "ClickHouseSQLExecutor",
+      "flow": "执行 easyStat SQL → 应用侧计时",
+      "downstream": "d1_select_option / agg_data",
+      "timing": "应用侧 88 ms",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "执行统计 SQL",
+      "layer": "data",
+      "detail": "`ClickHouseSQLExecutor` 由 DataQueryFlowNode 执行 easyStat SQL，应用侧耗时 88 ms。SQL 中能确认 CTE d1_select_option 和表 agg_data。数据库服务端耗时未取证。"
+    },
+    {
+      "id": "done",
+      "kind": "return",
+      "service": "fs-bi-stat",
+      "entry": "ReleaseResourcesThreadLocalNode",
+      "method": "cacheSyncReqResultWithBinary",
+      "flow": "释放 ThreadLocal → 回写查询缓存",
+      "downstream": "缓存介质未取证",
+      "timing": "watch-all 294 ms",
+      "evidence": "应用日志",
+      "label": "已观测",
+      "row": 0,
+      "title_zh": "回写查询缓存",
+      "layer": "service",
+      "detail": "`cacheSyncReqResultWithBinary` 在 ReleaseResourcesThreadLocalNode 释放线程变量之后回写查询缓存。EasyStat 总观察窗口是 294 ms。缓存介质未取证。"
+    }
+  ],
+  "gaps": [
+    "getStatView 只有网关记录，fs-bi-stat 应用日志没有这条 URI，它的 Pod 未取证。",
+    "dataQuerySource=0 已在日志出现，枚举含义未取证。",
+    "eye_trace 返回 0 行，跨服务 RPC 方法未取证。",
+    "ClickHouse 服务端耗时未取证。",
+    "容器 limits、使用量和镜像版本未取证。",
+    "未取得精确源码行号。"
+  ],
+  "evidence": [
+    {
+      "what": "CEP 入口",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-preagg/evidence/TRC-tracing-log-cep.json"
+    },
+    {
+      "what": "应用日志",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-preagg/evidence/TRC-app-log-full.json"
+    },
+    {
+      "what": "关键日志行",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-preagg/evidence/TRC-code-walk-key-lines.tsv"
+    },
+    {
+      "what": "eye trace",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-preagg/evidence/TRC-eye-trace.json"
+    },
+    {
+      "what": "Pod 位置",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-preagg/evidence/K8S-pod-info-at-time.json"
+    },
+    {
+      "what": "容器 requests",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-preagg/evidence/K8S-resource-at-time.json"
+    },
+    {
+      "what": "错误日志",
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260923-trace-FSW-664159-preagg/evidence/TRC-log-error.json"
+    }
+  ]
+}
