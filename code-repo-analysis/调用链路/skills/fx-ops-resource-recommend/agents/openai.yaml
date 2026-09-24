@@ -1,0 +1,4 @@
+interface:
+ display_name: "FX Ops Resource Recommend"
+ short_description: "Kubernetes 资源配额、历史用量与优化建议分析能力"
+ default_prompt: "Use $fx-ops-resource-recommend to analyze historical Kubernetes CPU and memory usage against requests, limits, replicas, and peak coverage; calculate guarded, evidence-backed recommendations and ask before generating or sharing HTML."

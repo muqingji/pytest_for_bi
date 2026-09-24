@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>报表列表查询</title>
+<style>
+
+    :root {
+      --bg: #f4f6fb; --ink: #1b2433; --muted: #5b677a; --line: #d8dee9; --card: #ffffff;
+      --l2: #4f46e5; --l2-bg: #eef2ff; --l3: #0f766e; --l3-bg: #f0fdfa; --l4: #c2410c; --l4-bg: #fff7ed;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+    .page { max-width: 1280px; margin: 0 auto; padding: 28px 24px 40px; }
+    header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 18px; }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    .sub, .meta { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .meta { text-align: right; font-size: 12px; }
+    .stack { display: grid; gap: 10px; }
+    .layer { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--card); }
+    .layer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; font-weight: 700; }
+    .layer-body { display: grid; gap: 10px; padding: 12px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+    .card h3 { margin: 0 0 8px; font-size: 15px; }
+    .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .l2 .layer-head { background: var(--l2-bg); color: var(--l2); }
+    .l3 .layer-head { background: var(--l3-bg); color: var(--l3); }
+    .l4 .layer-head { background: var(--l4-bg); color: var(--l4); }
+    .arrow { text-align: center; color: #94a3b8; font-size: 18px; line-height: 10px; }
+    .note { margin-top: 14px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+</style>
+</head>
+<body>
+<div class="page">
+<header><div>
+<h1>报表列表查询</h1>
+<div class="sub">/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt · 200 · 4143 ms</div>
+</div>
+<div class="meta">fs-bi-crm-report-web<br />Pod fs-bi-crm-report-web-65995d975f-qwqs5 / 10.71.129.221<br />FSW-664159.1047-01M39DP8627RFS81HCJZ0JN3G1</div>
+</header>
+<div class="stack">
+<section class="layer l2">
+<div class="layer-head"><span>L2 网关层</span><span class="tag">CEP</span></div>
+<div class="layer-body"><div class="cards">
+<div class="card">
+<h3>网关进入报表列表</h3>
+<p>CEP 在 2026-09-24 17:59:31.805 记录 /FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt，状态 200，网关耗时 4143 ms，下一跳是 fs-bi-crm-report-web。</p>
+</div>
+<div class="card">
+<h3>网关返回报表列表</h3>
+<p>同一接口 /FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt 返回 200。应用 StopWatch 的 ServiceInvoke 是 4119 ms，和网关 4143 ms 的差额未细分。</p>
+</div>
+</div></div></section>
+<div class="arrow">▼</div>
+<section class="layer l3">
+<div class="layer-head"><span>L3 服务层</span><span class="tag">应用</span></div>
+<div class="layer-body"><div class="cards">
+<div class="card">
+<h3>进入分类和视图查询</h3>
+<p>ViewCategoryService.getCategoryAndView 的 LocalLog 耗时 4097 ms。日志参数是 categoryID 0、type 3、listRange 2。Pod fs-bi-crm-report-web-65995d975f-qwqs5，IP 10.71.129.221。</p>
+</div>
+<div class="card">
+<h3>控制器返回列表</h3>
+<p>RptCategoryControllerImpl.getCategoryAndRpt 的 LocalLog 耗时 4121 ms。StopWatch 记录 ServiceInvoke 4119 ms，参数反序列化加结果序列化约 1 ms。</p>
+</div>
+<div class="card">
+<h3>读取第一层目录和图表</h3>
+<p>ViewCategoryService.getAllCategoryAndView 从 17:59:31.945 到 17:59:34.537，间隔 2592 ms。日志写明取第一层文件夹和报表，离开时报表 32 条、统计图 47 条。排序是报表 update_time desc、统计图 update_time desc。</p>
+</div>
+<div class="card">
+<h3>组装报表列表</h3>
+<p>ViewCategoryUnFoldDataSetService.constructFoldResDataSetNew 的 LocalLog 耗时 1363 ms，离开时 395 条，日志里的目录名是报表列表。</p>
+</div>
+<div class="card">
+<h3>回填目录路径</h3>
+<p>ViewCategoryPathService.fillCategoryExtInfo 的 LocalLog 耗时 1103 ms，处理 395 条。这段包含在折叠组装的 1363 ms 里面。</p>
+</div>
+<div class="card">
+<h3>补私有权限归属</h3>
+<p>ViewCategoryPermissionFilterService.constructOwnerMap 对 32 条报表和 47 条统计图各跑一次，日志间隔约 8 ms 和 4 ms，并调用 DataPermService.queryPteOwnerByDataIds。</p>
+</div>
+</div></div></section>
+<div class="arrow">▼</div>
+<section class="layer l4">
+<div class="layer-head"><span>L4 数据层</span><span class="tag">查表</span></div>
+<div class="layer-body"><div class="cards">
+<div class="card">
+<h3>查询报表视图</h3>
+<p>listRange 为全部时调用 RptViewRepository.getRptViewByCategoryId。租户 XML 的 FROM 是 rpt_view。是否改读系统库由 isReadSysRpt 决定，本次未取证。排序字段是 update_time。</p>
+</div>
+<div class="card">
+<h3>查询统计图视图</h3>
+<p>同一分支调用 StatViewRepository.getStatViewByCategoryId。租户 XML 的 FROM 是 stat_view。系统库分支还会连接 stat_template 和 subject_domain，本次未取证走哪一支。</p>
+</div>
+<div class="card">
+<h3>查询分类补路径</h3>
+<p>fillCategoryExtInfo 调用 RptCategoryRepository.getAllCategoryListByEi。对应语句 FROM rpt_category，条件包含 ei，并排除 is_delete 等于 1。</p>
+</div>
+<div class="card">
+<h3>查询图表私有权限</h3>
+<p>queryPteOwnerByDataIds 调用 ChartPrivatePermissionMapper.getPteRecordsByDataIds，语句从 chart_private_permission 按 tenant_id 和 object_id 查询。本次全量列表没有慢 SQL。同 trace 的搜索请求在 17:59:50.595 命中该表，耗时 10 ms，库 10.17.10.207:6432/fsbidb017013074004。</p>
+</div>
+</div></div></section>
+</div>
+<p class="note">证据边界：目录列表的管理员分支、驾驶舱缓存、系统库开关、Node 和 requests 未取证。没有慢 SQL 不等于没有查表。</p>
+</div></body></html>

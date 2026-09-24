@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>获取图表配置</title>
+<style>
+
+    :root {
+      --bg: #f4f6fb; --ink: #1b2433; --muted: #5b677a; --line: #d8dee9; --card: #ffffff;
+      --l2: #4f46e5; --l2-bg: #eef2ff; --l3: #0f766e; --l3-bg: #f0fdfa; --l4: #c2410c; --l4-bg: #fff7ed;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+    .page { max-width: 1280px; margin: 0 auto; padding: 28px 24px 40px; }
+    header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 18px; }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    .sub, .meta { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .meta { text-align: right; font-size: 12px; }
+    .stack { display: grid; gap: 10px; }
+    .layer { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--card); }
+    .layer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; font-weight: 700; }
+    .layer-body { display: grid; gap: 10px; padding: 12px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+    .card h3 { margin: 0 0 8px; font-size: 15px; }
+    .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .l2 .layer-head { background: var(--l2-bg); color: var(--l2); }
+    .l3 .layer-head { background: var(--l3-bg); color: var(--l3); }
+    .l4 .layer-head { background: var(--l4-bg); color: var(--l4); }
+    .arrow { text-align: center; color: #94a3b8; font-size: 18px; line-height: 10px; }
+    .note { margin-top: 14px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+</style>
+</head>
+<body>
+<div class="page">
+<header><div>
+<h1>获取图表配置</h1>
+<div class="sub">/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query · 200 · 86 ms · 新建模板 card</div>
+</div>
+<div class="meta">fs-bi-stat<br />Pod fs-bi-stat-bfc75496b-x5v4d / 10.71.17.1<br />FSW-664159.1047-01M39DP8627RFS81HCJZ0JN3G1</div>
+</header>
+<div class="stack">
+<section class="layer l2">
+<div class="layer-head"><span>L2 网关层</span><span class="tag">CEP</span></div>
+<div class="layer-body"><div class="cards">
+<div class="card">
+<h3>网关进入图表配置</h3>
+<p>CEP 在 2026-09-24 18:04:08.931 记录 /FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query，状态 200，网关耗时 86 ms。</p>
+</div>
+<div class="card">
+<h3>网关返回图表配置</h3>
+<p>同一接口 /FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query 返回 200。应用日志从 18:04:08.933 到 18:04:09.014，约 81 ms，和网关 86 ms 的差额未细分。</p>
+</div>
+</div></div></section>
+<div class="arrow">▼</div>
+<section class="layer l3">
+<div class="layer-head"><span>L3 服务层</span><span class="tag">应用</span></div>
+<div class="layer-body"><div class="cards">
+<div class="card">
+<h3>请求进入统计图服务</h3>
+<p>CEPRequestFilter 记录路径 /fs-bi-stat/stat/chartConfig/query。Pod fs-bi-stat-bfc75496b-x5v4d，IP 10.71.17.1。</p>
+</div>
+<div class="card">
+<h3>按新建模板读配置</h3>
+<p>StatEditController.getChartConfig 打出 StatEditController.start。参数 type 为 add，isView 为 0，模板 BI_5cc51a4537aa1b9ff04a4304。这是新建，不是打开已有视图。</p>
+</div>
+<div class="card">
+<h3>跳过视图拓扑</h3>
+<p>StatViewService.handleTopologyStatus 的耗时统计是 0 ms。源码在 isView 为 0 时直接返回，不查 stat_view。</p>
+</div>
+<div class="card">
+<h3>读取配置缓存</h3>
+<p>StatEditController.getChartConfig 会调用 queryRedisCache.get，键前缀是 bi_stat_configcache_。随后日志进入 getTmpChartConfById，推断这次缓存没有直接返回配置。Redis 地址未取证。</p>
+</div>
+<div class="card">
+<h3>读取模板图表配置</h3>
+<p>StatChartConfService.getTmpChartConfById 从 18:04:08.940 到 18:04:08.981。source 为 1，chartType 为 card，模板 BI_5cc51a4537aa1b9ff04a4304。</p>
+</div>
+<div class="card">
+<h3>翻译指标文案</h3>
+<p>I18nRestClientImpl.loadByLangBatch 三次远程调用，耗时 6 ms、3 ms、2 ms。文案库表未取证。</p>
+</div>
+</div></div></section>
+<div class="arrow">▼</div>
+<section class="layer l4">
+<div class="layer-head"><span>L4 数据层</span><span class="tag">查表</span></div>
+<div class="layer-body"><div class="cards">
+<div class="card">
+<h3>查询统计图模板</h3>
+<p>StatTemplateMapper.getTmpById 从 stat_template 按 template_id 取模板。同一路径上 StatTemplateMapper.getSourceByTmpId 也读这张表，日志里的 source 为 1。</p>
+</div>
+<div class="card">
+<h3>查询模板筛选</h3>
+<p>source 为 1 时，getTmpChartConfById 先调用 StatTemplateFilterMapper.getTemplateFilterByTemplateId，FROM stat_template_filter。</p>
+</div>
+<div class="card">
+<h3>查询模板字段</h3>
+<p>StatTemplateFieldMapper.getStatFieldInfoByTmpIdInPg 从 stat_template_field 取未删除字段。应用日志随后打出 fieldList，对象名里能看到 AccountObj。</p>
+</div>
+<div class="card">
+<h3>查询模板样式</h3>
+<p>StatTemplatePropertyMapper.getPropertyByTmpId 连接 stat_template_property、stat_template、chart_property，并用 union 再连接 mobile_chart_property。日志里的 chartType 是 card。</p>
+</div>
+<div class="card">
+<h3>查询移动端样式</h3>
+<p>同一条 StatTemplatePropertyMapper.getPropertyByTmpId 的 union 后半段 FROM mobile_chart_property，终端标记为 MOBILE。</p>
+</div>
+<div class="card">
+<h3>查询是否收藏</h3>
+<p>StatEditController.getChartConfig 后段调用 BiUserViewFavoriteRepository.checkFavoriteViewExists。Mapper 接口没有贴出 SQL，XML 也没有同名语句，表名未取证。</p>
+</div>
+</div></div></section>
+</div>
+<p class="note">证据边界：Redis 地址、收藏表、文案表、Node 和 requests 未取证。isView 为 0，不查 stat_view。</p>
+</div></body></html>

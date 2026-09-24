@@ -1,0 +1,10 @@
+[
+ { "query": "traceId=16-9ab321，帮我追一下这条请求到底挂在哪一跳", "should_trigger": true },
+ { "query": "前端报了个 15-84f875，截图时间是 05-15 14:13:13，帮我快速定位", "should_trigger": true },
+ { "query": "只有一个 reqId，没有时间，帮我先把这条 trace 的时间窗找出来", "should_trigger": true },
+ { "query": "给你一个 CEP 错误码 1-a927cb，看看最终是哪个服务抛的异常", "should_trigger": true },
+ { "query": "很多企业这 40 分钟都在报错，先判断严重度并定位根因", "should_trigger": false },
+ { "query": "帮我跑条 SQL 看下 slow_log_dist 最近一小时最慢的 20 条", "should_trigger": false },
+ { "query": "fs-paas-app-data 最近一小时 JVM 堆内存怎么变化，给我看 PromQL", "should_trigger": false },
+ { "query": "查一下 AccountObj 里系统管理员字段叫什么", "should_trigger": false }
+]

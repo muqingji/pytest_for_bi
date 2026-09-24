@@ -1,0 +1,40 @@
+# paas-i18n
+
+**方言**: `postgresql` 
+**说明**: PaaS国际化管理，提供多语言词条、本地化场景及发布队列的翻译与发布能力 
+**路由**: `fixed`（`show/query` 免传 `--tenant-id`；表级 WHERE 仍按 filterHint 拼）
+
+下列为 **表级租户筛选**（租户列、时间列、WHERE 模板）参考；拼 SQL 见 [filter-hint 通用规则](../../../idp-query-filter-hint.md)。
+
+执行前用 `show columns paas-i18n <name> -j` 核对 `filterHint` 与列类型。
+
+**查询入口**: `fx-ops idp query paas-i18n`（方言规则见 ../../../idp-query-sql.md，biz 索引见 [index.md](./index.md)）
+
+## 推荐流程
+
+```bash
+fx-ops idp --profile <profile> show tables paas-i18n --dialect postgresql -j
+fx-ops idp --profile <profile> show columns paas-i18n <table> --dialect postgresql -j
+fx-ops idp --profile <profile> tenant get --tenant-id <EI> -j  # 取 tenantAccount（EA）
+fx-ops idp --profile <profile> query paas-i18n --sql "<SQL>" -j
+```
+
+## 统计
+
+- 表级筛选条目: **6**
+- 复杂筛选（无租户列和/或子查询）: **0**
+- 使用 `$tenant_id` / EI: **6**
+- 使用 `$tenant_account` / EA: **0**
+
+## 租户 ID（EI）筛选表
+
+模板占位符含 `$tenant_id` / `$ei`；`--tenant-id` 传 EI 即可。
+
+| 表名 | 租户列 | 时间列 | 筛选模板 |
+| --- | --- | --- | --- |
+| `i18n_entry` | tenant_id | `last_modified_time` | `tenant_id`=$tenant_id |
+| `i18n_resource` | tenant_id | `update_time` | `tenant_id`=$tenant_id |
+| `localization` | tenant_id | `last_modified_time` | `tenant_id`=$tenant_id |
+| `localization_publish` | tenant_id | `-` | `tenant_id`=$tenant_id |
+| `localization_scene` | tenant_id | `-` | `tenant_id`=$tenant_id |
+| `localization_scene_step` | tenant_id | `-` | `tenant_id`=$tenant_id |

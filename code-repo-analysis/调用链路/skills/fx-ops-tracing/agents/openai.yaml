@@ -1,0 +1,4 @@
+interface:
+ display_name: "FX Ops Tracing"
+ short_description: "追踪 traceId、CEP 错误码和单次请求链路，定位首发异常与瓶颈"
+ default_prompt: "Use $fx-ops-tracing to trace a request by traceId or CEP error code and find the failing hop, stack, or downstream bottleneck."

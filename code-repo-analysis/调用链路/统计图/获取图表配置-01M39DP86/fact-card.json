@@ -1,0 +1,279 @@
+{
+  "schema_version": "trace-fact-card-v1",
+  "mode": "live",
+  "trace_id": "FSW-664159.1047-01M39DP8627RFS81HCJZ0JN3G1",
+  "title": "获取图表配置",
+  "profile": "foneshare",
+  "entry_time": "2026-09-24 18:04:08.931",
+  "identity": {
+    "ea": "664159",
+    "app": "fs-bi-stat"
+  },
+  "runtime": {
+    "pod": "fs-bi-stat-bfc75496b-x5v4d",
+    "pod_ip": "10.71.17.1",
+    "profile": "foneshare-vip"
+  },
+  "resources": {
+    "node_ip": "未取证",
+    "requests": "未取证"
+  },
+  "nodes": [
+    {
+      "id": "gw-in",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "fs-bi-stat",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query",
+      "method": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query",
+      "timing": "86 ms",
+      "label": "已观测",
+      "layer": "gateway",
+      "title_zh": "网关进入图表配置",
+      "detail": "CEP 在 2026-09-24 18:04:08.931 记录 /FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query，状态 200，网关耗时 86 ms。"
+    },
+    {
+      "id": "gw-out",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "调用方",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query",
+      "method": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query",
+      "timing": "未细分",
+      "label": "已观测",
+      "layer": "gateway",
+      "title_zh": "网关返回图表配置",
+      "detail": "同一接口 /FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query 返回 200。应用日志从 18:04:08.933 到 18:04:09.014，约 81 ms，和网关 86 ms 的差额未细分。"
+    },
+    {
+      "id": "svc-filter",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "StatEditController.getChartConfig",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "fs-bi-stat",
+      "entry": "CEPRequestFilter",
+      "method": "CEPRequestFilter",
+      "timing": "未单列",
+      "label": "已观测",
+      "layer": "service",
+      "title_zh": "请求进入统计图服务",
+      "detail": "CEPRequestFilter 记录路径 /fs-bi-stat/stat/chartConfig/query。Pod fs-bi-stat-bfc75496b-x5v4d，IP 10.71.17.1。"
+    },
+    {
+      "id": "svc-edit",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "模板配置",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "fs-bi-stat",
+      "entry": "StatEditController.getChartConfig",
+      "method": "StatEditController.getChartConfig",
+      "timing": "含在 86 ms 内",
+      "label": "已观测",
+      "layer": "service",
+      "title_zh": "按新建模板读配置",
+      "detail": "StatEditController.getChartConfig 打出 StatEditController.start。参数 type 为 add，isView 为 0，模板 BI_5cc51a4537aa1b9ff04a4304。这是新建，不是打开已有视图。"
+    },
+    {
+      "id": "svc-topo",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "无",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "fs-bi-stat",
+      "entry": "StatViewService.handleTopologyStatus",
+      "method": "StatViewService.handleTopologyStatus",
+      "timing": "0 ms",
+      "label": "已观测",
+      "layer": "service",
+      "title_zh": "跳过视图拓扑",
+      "detail": "StatViewService.handleTopologyStatus 的耗时统计是 0 ms。源码在 isView 为 0 时直接返回，不查 stat_view。"
+    },
+    {
+      "id": "svc-redis",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "Redis",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "fs-bi-stat",
+      "entry": "queryRedisCache.get",
+      "method": "queryRedisCache.get",
+      "timing": "未单列",
+      "label": "推断",
+      "layer": "service",
+      "title_zh": "读取配置缓存",
+      "detail": "StatEditController.getChartConfig 会调用 queryRedisCache.get，键前缀是 bi_stat_configcache_。随后日志进入 getTmpChartConfById，推断这次缓存没有直接返回配置。Redis 地址未取证。"
+    },
+    {
+      "id": "svc-tmp",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "模板表",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "fs-bi-stat",
+      "entry": "StatChartConfService.getTmpChartConfById",
+      "method": "StatChartConfService.getTmpChartConfById",
+      "timing": "约 41 ms",
+      "label": "已观测",
+      "layer": "service",
+      "title_zh": "读取模板图表配置",
+      "detail": "StatChartConfService.getTmpChartConfById 从 18:04:08.940 到 18:04:08.981。source 为 1，chartType 为 card，模板 BI_5cc51a4537aa1b9ff04a4304。"
+    },
+    {
+      "id": "svc-i18n",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "文案服务",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "fs-bi-stat",
+      "entry": "I18nRestClientImpl.loadByLangBatch",
+      "method": "I18nRestClientImpl.loadByLangBatch",
+      "timing": "11 ms",
+      "label": "已观测",
+      "layer": "service",
+      "title_zh": "翻译指标文案",
+      "detail": "I18nRestClientImpl.loadByLangBatch 三次远程调用，耗时 6 ms、3 ms、2 ms。文案库表未取证。"
+    },
+    {
+      "id": "data-st",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "stat_template",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "StatTemplateMapper.getTmpById",
+      "method": "StatTemplateMapper.getTmpById",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询统计图模板",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/mysql/mapper/StatTemplateMapper.java",
+        "symbol": "StatTemplateMapper.getTmpById"
+      },
+      "detail": "StatTemplateMapper.getTmpById 从 stat_template 按 template_id 取模板。同一路径上 StatTemplateMapper.getSourceByTmpId 也读这张表，日志里的 source 为 1。"
+    },
+    {
+      "id": "data-filter",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "stat_template_filter",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "StatTemplateFilterMapper.getTemplateFilterByTemplateId",
+      "method": "StatTemplateFilterMapper.getTemplateFilterByTemplateId",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询模板筛选",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/mysql/mapper/StatTemplateFilterMapper.java",
+        "symbol": "StatTemplateFilterMapper.getTemplateFilterByTemplateId"
+      },
+      "detail": "source 为 1 时，getTmpChartConfById 先调用 StatTemplateFilterMapper.getTemplateFilterByTemplateId，FROM stat_template_filter。"
+    },
+    {
+      "id": "data-field",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "stat_template_field",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "StatTemplateFieldMapper.getStatFieldInfoByTmpIdInPg",
+      "method": "StatTemplateFieldMapper.getStatFieldInfoByTmpIdInPg",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询模板字段",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/mysql/mapper/StatTemplateFieldMapper.java",
+        "symbol": "StatTemplateFieldMapper.getStatFieldInfoByTmpIdInPg"
+      },
+      "detail": "StatTemplateFieldMapper.getStatFieldInfoByTmpIdInPg 从 stat_template_field 取未删除字段。应用日志随后打出 fieldList，对象名里能看到 AccountObj。"
+    },
+    {
+      "id": "data-prop",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "stat_template_property",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "StatTemplatePropertyMapper.getPropertyByTmpId",
+      "method": "StatTemplatePropertyMapper.getPropertyByTmpId",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询模板样式",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/mysql/mapper/StatTemplatePropertyMapper.java",
+        "symbol": "StatTemplatePropertyMapper.getPropertyByTmpId"
+      },
+      "detail": "StatTemplatePropertyMapper.getPropertyByTmpId 连接 stat_template_property、stat_template、chart_property，并用 union 再连接 mobile_chart_property。日志里的 chartType 是 card。"
+    },
+    {
+      "id": "data-mobile",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "mobile_chart_property",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "StatTemplatePropertyMapper.getPropertyByTmpId",
+      "method": "StatTemplatePropertyMapper.getPropertyByTmpId",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询移动端样式",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/mysql/mapper/StatTemplatePropertyMapper.java",
+        "symbol": "StatTemplatePropertyMapper.getPropertyByTmpId"
+      },
+      "detail": "同一条 StatTemplatePropertyMapper.getPropertyByTmpId 的 union 后半段 FROM mobile_chart_property，终端标记为 MOBILE。"
+    },
+    {
+      "id": "data-fav",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "未取证",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "BiUserViewFavoriteRepository.checkFavoriteViewExists",
+      "method": "BiUserViewFavoriteRepository.checkFavoriteViewExists",
+      "timing": "未单列",
+      "label": "未取证",
+      "layer": "data",
+      "title_zh": "查询是否收藏",
+      "detail": "StatEditController.getChartConfig 后段调用 BiUserViewFavoriteRepository.checkFavoriteViewExists。Mapper 接口没有贴出 SQL，XML 也没有同名语句，表名未取证。"
+    }
+  ],
+  "gaps": [
+    "Redis 地址未取证",
+    "收藏表名未取证",
+    "文案物理表未取证",
+    "Node 与 requests 未取证",
+    "网关与应用跨度差额未细分"
+  ],
+  "evidence": [
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-tracing-log-cep.json",
+      "note": "CEP 全量入口"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "note": "本报告使用的摘记"
+    }
+  ],
+  "html_sub": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query · 200 · 86 ms · 新建模板 card",
+  "html_meta": "fs-bi-stat<br />Pod fs-bi-stat-bfc75496b-x5v4d / 10.71.17.1<br />FSW-664159.1047-01M39DP8627RFS81HCJZ0JN3G1",
+  "html_footer": "证据边界：Redis 地址、收藏表、文案表、Node 和 requests 未取证。isView 为 0，不查 stat_view。",
+  "index_md": "# 证据索引\n\n`FSW-664159.1047-01M39DP8627RFS81HCJZ0JN3G1`\n\n| 内容 | 路径 |\n| --- | --- |\n| CEP 入口 | `/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-tracing-log-cep.json` |\n| 摘记 | `/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md` |\n\n## 查询范围\n\n- log_cep_dist：chartConfig/query，200，86 ms。\n- app_log_dist：app `fs-bi-stat`，profile `foneshare-vip`，rpcId `01M39DYQ0SAGBG31CEPX4Q61C3`，18:04:08 到 18:04:10。\n- sql_slow_dist：该 86 ms 窗口没有业务慢 SQL。18:04:09.922 的 stat_field 属于后续 data/query。\n- 源码：fs-bi 的 StatEditController、StatChartConfService、StatTemplateMapper、StatTemplateFieldMapper、StatTemplateFilterMapper、StatTemplatePropertyMapper。\n"
+}

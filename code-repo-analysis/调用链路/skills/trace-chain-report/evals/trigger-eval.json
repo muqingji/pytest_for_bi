@@ -1,0 +1,26 @@
+[
+  {
+    "query": "按调用日志把这几个 traceId 画成分层调用链页面，并写出代码走读",
+    "should_trigger": true
+  },
+  {
+    "query": "帮我生成统计图实时查询和预聚合查询的链路报告",
+    "should_trigger": true
+  },
+  {
+    "query": "这个 trace 的分层链路图里每个节点要用中文说明，并带上方法名",
+    "should_trigger": true
+  },
+  {
+    "query": "traceId 报了 500，帮我查根因",
+    "should_trigger": false
+  },
+  {
+    "query": "帮我跑条 SQL 看 slow_log_dist 最近一小时",
+    "should_trigger": false
+  },
+  {
+    "query": "看下这个服务的 CPU 和内存曲线",
+    "should_trigger": false
+  }
+]

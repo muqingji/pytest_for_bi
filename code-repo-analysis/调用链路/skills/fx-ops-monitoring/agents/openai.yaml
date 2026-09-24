@@ -1,0 +1,4 @@
+interface:
+ display_name: "FX Ops Monitoring"
+ short_description: "用 Prometheus 与 Grafana 看板只读分析解释资源、JVM、Tomcat 与中间件运行时体征（RED+USE）"
+ default_prompt: "Use $fx-ops-monitoring to inspect runtime metrics via Prometheus (CPU, memory, JVM, Tomcat, Pod restarts, middleware lag) or analyze a Grafana dashboard URL / readonly dashboard metadata, then explain impact with RED+USE."

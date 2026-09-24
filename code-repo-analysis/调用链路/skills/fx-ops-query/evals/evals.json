@@ -1,0 +1,223 @@
+{
+ "skill_name": "fx-ops-query",
+ "mode": "path-evaluation",
+ "_note": "路径评估模式：验证 fx-ops-query 能根据问题类型选择合适的数据源与安全等级，而不是把所有问题都粗暴转成日志或大 SQL。",
+ "evals": [
+  {
+   "id": 1,
+   "name": "table-data-verification",
+   "prompt": "帮我查一下这个租户的某条业务数据到底有没有写进 PostgreSQL 主库，顺便确认是不是同步延迟",
+   "expected_path": [
+    "优先走业务库查询，而不是直接查日志",
+    "先判断为 L1 或 L2 查询并加主键/租户/时间收敛条件",
+    "若主库有数据而下游没有，再收敛为写入延迟或同步异常"
+   ],
+   "must_not": [
+    "不加收敛条件直接跑大范围 SQL",
+    "一开始就转成 ClickHouse 日志问题",
+    "把查询 skill 写成 tracing 或 monitoring 的替代品"
+   ],
+   "files": []
+  },
+  {
+   "id": 2,
+   "name": "unknown-biz-routing",
+   "prompt": "我只知道这个业务叫 metadata changes，不知道 biz 名，帮我先定位该查哪个数据源",
+   "expected_path": [
+    "先走 catalog 或 biz 索引发现",
+    "明确 biz 后再进入具体方言文档",
+    "输出 why_now、chosen_source 和安全等级"
+   ],
+   "must_not": [
+    "在不知道 biz 名时直接猜数据源",
+    "不做发现就开始写 SQL",
+    "把发现步骤跳成对象查询或监控查询"
+   ],
+   "files": []
+  },
+  {
+   "id": 3,
+   "name": "clickhouse-log-error-dist-safety",
+   "prompt": "帮我查 clickhouse 里最近一小时的 biz-app-log.log_error_dist，但数据量可能很大，先给个稳妥的查询路径",
+   "expected_path": [
+    "识别为 ClickHouse 日志类查询",
+    "先做量级控制和 L2/L3 风险判断",
+    "先 count / sample / 限时窗，再决定是否展开"
+   ],
+   "must_not": [
+    "直接全量扫最近一小时明细",
+    "不做 L2/L3 风险判断",
+    "把 ClickHouse 查询安全约束省掉"
+   ],
+   "files": []
+  },
+  {
+   "id": 4,
+   "name": "biz-app-log-table-probe",
+   "prompt": "我想先确认 biz-app-log 的 log_error_dist 这张表能不能查，给我一个最小探测 SQL",
+   "expected_path": [
+    "识别为 biz-app-log 下真实表 log_error_dist 的 ClickHouse 查询",
+    "探测 SQL 必须访问真实表：SELECT * FROM log_error_dist LIMIT 1",
+    "查询命令使用 query biz-app-log，不给 biz-app-log 增加 --dialect clickhouse",
+    "如需字段确认，可先用 show columns biz-app-log log_error_dist"
+   ],
+   "must_not": [
+    "使用 SELECT 1 这类无表名常量探测",
+    "把 log_error_dist 当成 IDP biz 名查询",
+    "给 biz-app-log 加 --dialect clickhouse",
+    "在探测阶段直接扫大时间窗口明细"
+   ],
+   "files": []
+  },
+  {
+   "id": 5,
+   "name": "mail-filter-hint-template",
+   "prompt": "查 mail 库某租户 email 表最近数据，用 fx-ops 怎么拼 SQL？",
+   "expected_path": [
+    "读取 idp-query/biz/mysql/mail.md 或 show columns mail email -j",
+    "识别 queryTemplate 使用 fs_corp_id 与 $tenantAccount（EA），不是 tenant_id=EI",
+    "tenant get 解析 tenantAccount 后再拼 WHERE",
+    "执行 query mail --tenant-id <EI> --sql"
+   ],
+   "must_not": [
+    "WHERE tenant_id = <EI> 代替 fs_corp_id/ea 模板",
+    "忽略 mail.md 复杂筛选表中 IN 子查询模式",
+    "不读 filter-hint 文档直接猜列名"
+   ],
+   "files": []
+  },
+  {
+   "id": 6,
+   "name": "object-pg-es-reconciliation",
+   "prompt": "用同一个条件帮我对比 AccountObj 在 PG 和 ES 的数量，再列出差异 ID 并核对更新时间",
+   "expected_path": [
+    "先校验对象和字段元数据，再固定一份单对象 SOQL",
+    "用相同 SOQL 分别执行 idp object query --source pg 和 --source es",
+    "按 count、差异 ID、PG sys_modified_time 与 ES sys_ts 原始值逐层对账",
+    "把 PG is_deleted=-1/-2 归为 ES 预期排除，不做时间单位转换"
+   ],
+   "must_not": [
+    "为对账发明独立 compare 命令",
+    "让大模型为普通对象查询手写 ES DSL",
+    "把 life_status 当成 is_deleted 或 is_del",
+    "把逻辑删除记录计为 ES 漏数"
+   ],
+   "files": []
+  },
+  {
+   "id": 7,
+   "name": "tenant-wide-es-count",
+   "prompt": "帮我查这个企业在 ES 里的数据总量，不限定对象，大对象单独分片的也要算进去",
+   "expected_path": [
+    "使用 idp es query 的 count 操作且不传 --object",
+    "由平台读取 fs-sql2esdsl.sharding_config 并汇总默认路由和大对象专属路由",
+    "读取 result.count 作为总量，并保留 routeCounts 作为各路由分项证据",
+    "任一路由失败时报告查询失败，不把部分 count 当企业总量"
+   ],
+   "must_not": [
+    "默认补 AccountObj 或其他对象名",
+    "让大模型自行读取 sharding_config 后手工拼 tenant-router",
+    "只查默认路由就宣称是企业总量",
+    "对 search 命中列表做跨路由通用合并"
+   ],
+   "files": []
+  },
+  {
+   "id": 8,
+   "name": "object-es-field-value-mismatch",
+   "prompt": "这条订单产品 PG 和 ES 都存在，更新时间也一样，但两个统计日期字段查出来不对，先帮我对账",
+   "expected_path": [
+    "固定同一份 SOQL，分别查询 PG 和 Elasticsearch 的 id、两个业务字段和原始更新时间",
+    "按共同 ID 比较业务字段值，区分时间戳落后与字段值错位",
+    "若 Elasticsearch 两个逻辑字段同值而 PG 两字段不同，回抛 index_slot_collision_candidate",
+    "仅输出事实和元数据槽位专项取证需求，不在 query skill 内展开根因"
+   ],
+   "must_not": [
+    "只比较 count 就下同步故障结论",
+    "把相等的原始时间戳转换单位后再比较",
+    "在 query skill 中直接归因 fs-metadata 槽位分配源码",
+    "让大模型为普通对象查询手写 Elasticsearch DSL"
+   ],
+   "files": [
+    "references/object-es-reconciliation.md"
+   ]
+  },
+  {
+   "id": 9,
+   "name": "fac-599-sharedisk-vs-oa-netdisk",
+   "prompt": "帮我查这个企业互联网盘里最近改过的文件，用 fx-ops 怎么查？别查成 OA 网盘",
+   "expected_path": [
+    "识别 live biz 为 cross-enterprise-sharedisk（mongodb，库 sharedisk），不是 oa-netdisk",
+    "先 show tables/columns 核对 filterHint：file/folder 用 CrEA，dynamic 用 FEA，dynamic_viewpoint 用 EA",
+    "tenant get 取 tenantAccount 后 query --collection + --filter",
+    "走 idp query 只读入口，不写连接串、不直连主库"
+   ],
+   "must_not": [
+    "把互联网盘查成 oa-netdisk 或 open-material",
+    "使用 eip-data-sync / syncdata 当作 biz 名",
+    "手写连接串或引导直连主库"
+   ],
+   "files": [
+    "references/idp-query/biz/mongodb/cross-enterprise-sharedisk.md"
+   ]
+  },
+  {
+   "id": 10,
+   "name": "fac-599-eip-dialect-and-independent-dbs",
+   "prompt": "查一下这个租户的 EIP 同步策略 sync_ploy，另外 instance1 的 sync_data 在哪个入口",
+   "expected_path": [
+    "策略表走 link-eip-data-sync --dialect postgresql（未指定会 dialect_required）",
+    "独立库是 link-eip-data-sync-1 / link-eip-data-sync-747125，不是 dialect",
+    "默认实例无 sync_data，该表在 link-eip-data-sync-1",
+    "禁止 eip-data-sync / eip_data_sync / syncdata"
+   ],
+   "must_not": [
+    "query link-eip-data-sync 不带 --dialect",
+    "把 -1 / -747125 写成 dialect",
+    "用 syncdata 或 eip-data-sync 当 biz 名"
+   ],
+   "files": [
+    "references/idp-query/biz/link-eip-data-sync.md",
+    "references/idp-query/biz/postgresql/link-eip-data-sync.md"
+   ]
+  },
+  {
+   "id": 11,
+   "name": "fac-599-cross-notice-vs-open-material",
+   "prompt": "互联通知公告素材和发送记录在哪个库，别查成开放素材",
+   "expected_path": [
+    "识别 MySQL biz cross-notice（库 open_material），不是 Mongo open-material",
+    "material/message_record 用 ea，开关/权限表用 fs_ea，先 tenant get 取 EA",
+    "走 idp query cross-notice 只读入口"
+   ],
+   "must_not": [
+    "查成 mongodb open-material",
+    "WHERE tenant_id = EI 代替 ea/fs_ea 模板"
+   ],
+   "files": [
+    "references/idp-query/biz/mysql/cross-notice.md"
+   ]
+  },
+  {
+   "id": 12,
+   "name": "clickhouse-system-db-default-open",
+   "prompt": "帮我查已接入的 ClickHouse 数据源 system 库：先 SHOW DATABASES，再 SHOW TABLES FROM system，再查当前进程和最近 query_log",
+   "expected_path": [
+    "识别为 ClickHouse sql-query 元数据路径，system 库默认可查，不要当成不可访问",
+    "先读 references/idp-query/biz/clickhouse/system-db.md",
+    "给出可复制命令：SHOW DATABASES、SHOW TABLES FROM system、无库过滤 SELECT FROM system.tables",
+    "query_log / processes 走 current_database 过滤，无库过滤会注入 current_database IN (<业务库>, 'system')，可见性仍受 ClickHouse 账号 grants 约束",
+    "system.users / system.settings 仍拒绝；指定业务库如 SHOW TABLES FROM logger 不追加 system"
+   ],
+   "must_not": [
+    "把 system 库当成不可查或跳过",
+    "查询 system.users / system.settings",
+    "改 IDP 服务端逻辑、其它 dialect、endpoint allowlist 或 permission key",
+    "用 SHOW TABLES FROM logger 去找 system 表"
+   ],
+   "files": [
+    "references/idp-query/biz/clickhouse/system-db.md"
+   ]
+  }
+ ]
+}

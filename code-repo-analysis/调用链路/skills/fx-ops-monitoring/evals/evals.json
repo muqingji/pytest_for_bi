@@ -1,0 +1,160 @@
+{
+  "skill_name": "fx-ops-monitoring",
+  "mode": "path-evaluation",
+  "_note": "路径评估模式：验证 fx-ops-monitoring 是否能在资源与运行时问题里选对指标面，并用 RED/USE 解释业务影响。",
+  "evals": [
+    {
+      "id": 1,
+      "name": "pod-resource-diagnosis",
+      "prompt": "这个应用最近半小时一直重启，怀疑内存和 CPU 都有问题，帮我先确定要看哪些指标",
+      "expected_path": [
+        "先进入 Pod / K8s 资源视角",
+        "围绕重启次数、内存、CPU throttling、request/limit 做首轮体征判断",
+        "必要时再下钻 JVM 或 Tomcat"
+      ],
+      "must_not": [
+        "直接跳到单次请求 tracing",
+        "不区分 Pod、JVM、Tomcat 层就混在一起看",
+        "只报指标名，不解释业务含义"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "middleware-health-check",
+      "prompt": "RocketMQ 消费延迟突然飙高，帮我从监控角度判断是 broker 压力还是消费端堆积",
+      "expected_path": [
+        "进入 RocketMQ / middleware 视角",
+        "结合 lag、TPS、consumer/broker 指标判断问题位置",
+        "输出 RED/USE 解释和下一跳建议"
+      ],
+      "must_not": [
+        "把中间件问题直接当应用线程池问题",
+        "不看 consumer lag 就只看 CPU",
+        "在 monitoring 技能里转成 SQL 查询"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "jvm-gc-interpretation",
+      "prompt": "Heap 一直上涨，GC 也越来越频繁，帮我看看是不是 JVM 内存泄漏趋势",
+      "expected_path": [
+        "先进入 JVM 指标视角",
+        "关注 heap、old gen、GC 次数/停顿和线程/FD 等伴随体征",
+        "区分正常波动、容量压力和疑似泄漏"
+      ],
+      "must_not": [
+        "只看到 heap 上涨就直接定性泄漏",
+        "完全不看 GC 行为",
+        "跳过 JVM 直接去代码定位"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "grafana-url-dashboard-analysis",
+      "prompt": "https://grafana.foneshare.cn/d/be70c26d/overview?var-k8s_cluster=tke70-k8s1&var-namespace=foneshare&from=now-1h&to=now 帮我分析这个看板",
+      "expected_path": [
+        "解析 URL：grafana_profile=foneshare（主机），metrics_profile 按 k8s_cluster",
+        "idp grafana dashboard get 使用 grafana_profile；失败则显式降级",
+        "按观察层选择焦点面板（最多 5-8），用 metrics_profile 做 prometheus 查数",
+        "RED+USE 总结，并说明是否加载了看板定义"
+      ],
+      "must_not": [
+        "使用客户端 grafana_token 或 --base-url 直连 Grafana",
+        "引入 eye-query",
+        "无差别执行全部面板",
+        "对专属云 profile 调用 idp grafana",
+        "静默切换 metrics_profile 到其它云"
+      ],
+      "files": [
+        "references/idp-grafana/index.md",
+        "references/idp-grafana/url-parse.md",
+        "references/idp-grafana/errors-and-degrade.md"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "grafana-readonly-leaves",
+      "prompt": "帮我：1) 按关键词 JVM 搜 Grafana 看板 2) 看 home dashboard 3) 列 folder 与 datasource 元数据（不要改告警）",
+      "expected_path": [
+        "dashboard list 必须带 query/tag/folder-uid 过滤",
+        "dashboard get --home；folder list/get；datasource list/get 只读",
+        "--profile 仅 firstshare 或 foneshare；不执行 PromQL 除非用户要分析具体看板",
+        "拒绝 alerting provisioning"
+      ],
+      "must_not": [
+        "无过滤条件的 dashboard list 全量搜索",
+        "使用 --token / --base-url / --grafana-url",
+        "对 mengniu 等专属云调用 idp grafana",
+        "执行 Grafana alerting 写或 provisioning 操作",
+        "把 folder/datasource 元数据查询当成完整 RCA"
+      ],
+      "files": [
+        "references/idp-grafana/cli.md",
+        "references/idp-grafana/index.md",
+        "references/idp-grafana/eye-compare.md"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "grafana-degrade-without-platform",
+      "prompt": "https://grafana.foneshare.cn/d/abc/overview?var-k8s_cluster=hsyk-k8s1&from=now-30m&to=now 帮我看这个看板；假设本机 idp grafana 不可用",
+      "expected_path": [
+        "grafana_profile=foneshare（主机）；metrics_profile=hsyk（集群）；不因专属云去调 mengniu/hsyk 的 grafana",
+        "声明未加载看板定义，用 metrics_profile=hsyk 走 idp-prometheus 模板降级查数",
+        "RED+USE 总结；说明专属云无 Grafana / CLI 不可用，勿要求给 hsyk 配 Grafana"
+      ],
+      "must_not": [
+        "用 --profile hsyk 调用 idp grafana",
+        "静默把 metrics_profile 切到 foneshare",
+        "引导用户设置 grafana_token / grafana_base_url",
+        "臆造未提供的 grafana 子命令",
+        "要求平台为专属云补齐 Grafana 接入"
+      ],
+      "files": [
+        "references/idp-grafana/errors-and-degrade.md",
+        "references/idp-grafana/url-parse.md"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "foneshare-public-clb-metrics",
+      "prompt": "foneshare 腾讯云公网负载均衡 qce_lb_public_clientnewconn_max 和 NewConn 分别是什么单位，帮我按指标名解释一下",
+      "expected_path": [
+        "进入 foneshare 公网 LB / CLB 指标说明",
+        "按 Prometheus 指标名对照文档英文名、含义和文档单位",
+        "保留 ClientNewConn 个/秒与 NewConn 个/分钟的单位差异，不编造 NewActiveConn 更细定义"
+      ],
+      "must_not": [
+        "把客户端侧指标写成 RS 侧",
+        "把 ClientNewConn 和 NewConn 单位统一成同一种",
+        "给 NewActiveConn 编造超出原文的业务定义",
+        "扩大到内网 LB 或其他云"
+      ],
+      "files": [
+        "references/idp-prometheus/foneshare-public-clb.md"
+      ]
+    },
+    {
+      "id": 8,
+      "name": "foneshare-tencent-rocketmq-metrics",
+      "prompt": "foneshare 腾讯云 RocketMQ qce_rocketmq_rocketmqexpensepulltps_sum 对应哪个文档英文名，rmq-8rgrpm9a3 是 4.x 还是 5.x",
+      "expected_path": [
+        "进入 foneshare 腾讯云 RocketMQ / qce_rocketmq 指标说明",
+        "按命名规则对照 RocketmqExpensePullTps ↔ qce_rocketmq_rocketmqexpensepulltps_sum",
+        "用 tenant 区分版本：rmq-* 为 5.x，rocketmq-* 为 4.x，不要与自建 rocketmq_* 混表"
+      ],
+      "must_not": [
+        "把自建 rocketmq_* 与 qce_rocketmq_* 写成一张表",
+        "用 cluster=FS-MQ 或 instance_name 当腾讯云集群主键",
+        "把 rmq-8rgrpm9a3 当成 4.x",
+        "把「不要默认使用 5.x」套到腾讯云 qce_rocketmq_*"
+      ],
+      "files": [
+        "references/idp-prometheus/foneshare-tencent-rocketmq.md"
+      ]
+    }
+  ]
+}

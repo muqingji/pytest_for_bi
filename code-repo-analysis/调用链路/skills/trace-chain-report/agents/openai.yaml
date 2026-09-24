@@ -1,0 +1,4 @@
+interface:
+  display_name: "Trace Chain Report"
+  short_description: "按 traceId 批量生成可校验的 Markdown 链路报告"
+  default_prompt: "Use $trace-chain-report to build one fact card per traceId and write an evidence-backed Markdown report plus a layered HTML call-chain page."

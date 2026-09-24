@@ -1,0 +1,4 @@
+interface:
+ display_name: "Code Search"
+ short_description: "基于堆栈和符号跨仓库定位代码缺陷并分析最近代码变更"
+ default_prompt: "Use $code-search to locate code-level root causes from stack traces, exception classes, methods, or file paths across repositories."

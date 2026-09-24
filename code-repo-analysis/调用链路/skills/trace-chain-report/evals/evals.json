@@ -1,0 +1,25 @@
+{
+  "skill_name": "trace-chain-report",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "按调用日志里的一个 traceId，先写 fact-card.json，再生成 Markdown、分层 HTML 链路图 和证据索引。",
+      "expected": "validate_report.py exits 0"
+    },
+    {
+      "id": 2,
+      "prompt": "批量处理多个 traceId，每条独立目录，不能混用 Pod 或另一条 trace 的结论。",
+      "expected": "peer trace id and peer pod fail validation"
+    },
+    {
+      "id": 3,
+      "prompt": "eye_trace 没有 span，但应用日志有方法和 SQL，请继续生成报告。",
+      "expected": "缺口标未取证，不补 RPC URL 或数据库服务端耗时"
+    },
+    {
+      "id": 4,
+      "prompt": "没有源码仓库、文件和符号时，不要写接口内部实现步骤。",
+      "expected": "第 6 节写未取得精确源码"
+    }
+  ]
+}

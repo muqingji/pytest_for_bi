@@ -1,0 +1,305 @@
+{
+  "skill_name": "fx-ops-resource-recommend",
+  "mode": "path-evaluation",
+  "_note": "验证 Kubernetes 历史资源规格、配置匹配、容量风险与分享确认门；禁止把单点监控值或告警阈值写成确定性扩缩容结论。",
+  "evals": [
+    {
+      "id": 1,
+      "name": "resource-mismatch-analysis",
+      "prompt": "帮我分析 prod 的 order-api 在 orders 命名空间资源是否配置合理：比较最近 14 天 CPU/内存使用、requests、limits 和副本数，找出应该降配的对象。",
+      "expected_path": [
+        "确认 profile、k8s_cluster、namespace、服务范围、sidecar 范围和精确 UTC 窗口",
+        "发现已确认的 request/limit 指标和标签，在同一容器范围分别采集 CPU、内存、request、limit、实例数、重启和 throttling 时间序列",
+        "计算覆盖率、有效运行时长、长缺口、P50/P95/P99、受保护峰值及 Pod 离散，确认是否覆盖业务高峰",
+        "只有通过历史和安全门时才把对象列为分阶段回收候选，并给出冗余参数、首阶段值、验证和回滚；否则输出 observation 或 validation-only"
+      ],
+      "must_not": [
+        "只查询 CPU 而忽略内存、requests、limits 或副本数",
+        "直接修改 Deployment/HPA 或自动上传报告",
+        "用单点、平均值或巡检告警阈值编造调整值"
+      ],
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "shortage-risk-analysis",
+      "prompt": "payment 服务最近高峰 CPU throttling 很高、内存也快到 limit，帮我判断要不要扩容。环境是 tke70-k8s1，namespace=foneshare，时间看最近两周。",
+      "expected_path": [
+        "按 tke70-k8s1 确认 metrics profile，并补齐服务范围、sidecar 范围、业务高峰和实际 UTC 窗口",
+        "同时查看 CPU 使用/request/limit、throttling、内存 working set/request/limit、重启、实例数、Pod 离散和峰值趋势",
+        "分别输出 CPU 与内存的短缺风险，说明稳定性和 Node/配额容量分母是否有证据",
+        "将加资源或加实例写成带验证条件的建议；副本结论还需吞吐、延迟、错误或 SLO 事实"
+      ],
+      "must_not": [
+        "只看当前瞬时值就决定扩容",
+        "把 CPU 结论代替内存结论",
+        "没有 Node/配额指标仍声称有精确集群剩余容量"
+      ],
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "usage-ranking",
+      "prompt": "列出 staging 里 CPU 和内存使用量最多、最少的 10 个服务，并把 request/limit 配置量也分别排出来，时间窗口是昨天 09:00 到 18:00。",
+      "expected_path": [
+        "先确认 profile、cluster、namespace 与服务范围，并固定完整时间窗口和采样步长",
+        "分别按服务或 Pod 给出 CPU、内存实际使用、request、limit 的 topk/bottomk",
+        "说明单位、聚合统计、样本数和榜单不可互换的原因",
+        "数据不足时明确缺失维度，不用空结果声称服务正常"
+      ],
+      "must_not": [
+        "把实际使用量、使用率和配置量混为一个排名",
+        "无过滤条件全量扫描所有指标",
+        "省略时间窗口、聚合口径或单位"
+      ],
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "capacity-evidence-boundary",
+      "prompt": "帮我评估 inventory 命名空间还有多少 Kubernetes 容量，是否能承受多两倍副本；目前只拿到了 Pod CPU/内存和 requests/limits 指标。",
+      "expected_path": [
+        "明确已有证据只覆盖 Pod 级资源和配置，检查是否有已确认的 Node allocatable、配额或调度容量分母",
+        "没有容量分母时拒绝计算精确剩余容量和确定性承载结论",
+        "仍可输出 Pod 使用趋势、配置总量、实例数及需要补查的容量证据",
+        "将两倍副本作为待验证情景，列明假设、风险和需要的负载/SLO 证据"
+      ],
+      "must_not": [
+        "用 requests 总和臆造 Node 可用容量",
+        "只凭 Pod 当前值保证可以承受两倍副本",
+        "把缺少 Node/配额数据隐藏成资源正常"
+      ],
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "missing-context-and-degrade",
+      "prompt": "看看这个服务资源是不是浪费、能不能回收。",
+      "expected_path": [
+        "一次性追问环境/profile、k8s_cluster、namespace、服务范围、sidecar 范围、精确时间窗口和高峰/约束",
+        "在关键上下文补齐前返回 blocked，不执行宽范围 PromQL",
+        "说明需要 CPU/内存使用、requests、limits、实例数、生命周期、峰值和基线证据"
+      ],
+      "must_not": [
+        "默认猜 foneshare、prod 或最近一小时",
+        "扫描全量集群寻找服务",
+        "直接给出降配数值或分享链接"
+      ],
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "historical-numeric-recommendation",
+      "prompt": "orders/order-api 已稳定运行 28 天，14 天滚动窗口的 CPU P95=0.32 core、P99=0.46 core，memory working set P95=740MiB、P99=900MiB；每个 Pod 当前 request/limit=1/2 core 和 2/3GiB。覆盖率 96%，高峰已覆盖，无 OOM/重启/明显 throttling，HPA 不存在。请给分阶段优化建议。",
+      "expected_path": [
+        "确认统计对象、sidecar 范围、P95/P99 的采样和高峰定义，并将 28 天/96%/高峰覆盖评为高质量历史",
+        "使用公开的可配置 CPU 与内存 request/limit 冗余、资源量化和 max_first_reduction 公式计算候选值",
+        "将候选值与当前配置区分，并把首阶段下调限制在最大首阶段比例内",
+        "输出 supported recommendation，明确参数来源、验证高峰、监控 P95/P99/throttling/restarts/SLO 和回滚到当前值的条件"
+      ],
+      "must_not": [
+        "把 P99 或单个最大值直接等同于 request",
+        "一次性把资源降至候选值而没有首阶段限制",
+        "把默认冗余称为已确认组织政策"
+      ],
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "insufficient-history-blocks-reclaim",
+      "prompt": "一个新服务只运行了 3 天，CPU 平均只有 5%，内存也很低，帮我把 requests 和 limits 都砍半回收资源。",
+      "expected_path": [
+        "识别少于 7 天的历史不满足最小评估条件，并说明平均值不能代表峰值",
+        "返回 confirmed observation 或 insufficient evidence，要求补齐至少 7 天、峰值和配置/稳定性证据",
+        "可以提出验证计划，但不输出生产降配数值"
+      ],
+      "must_not": [
+        "根据 3 天平均使用给出砍半结论",
+        "把低使用等同于可安全回收",
+        "忽略新服务尚未覆盖完整业务周期"
+      ],
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "coverage-and-peak-gate",
+      "prompt": "billing 服务最近 14 天 CPU 很低，但 Prometheus 在每月结算高峰缺了两天数据，而且最长缺口有 3 小时。请把 limit 从 4 core 降到 1 core。",
+      "expected_path": [
+        "计算并报告覆盖率、最长连续缺口和缺失的结算高峰，标记 peak_coverage=partial 或 unknown",
+        "因为高峰漏采和长缺口阻断数值下调，即使其余观测低使用",
+        "给出补采完整结算周期或隔离验证的下一步，而不是承诺 1 core 可行"
+      ],
+      "must_not": [
+        "用 14 天名义窗口掩盖峰值缺失",
+        "仅增加冗余后继续下调",
+        "将缺失高峰解释为没有风险"
+      ],
+      "files": []
+    },
+    {
+      "id": 9,
+      "name": "sidecar-and-config-drift",
+      "prompt": "checkout 有 istio-proxy sidecar，部分 Pod 的 memory request 是 512MiB，部分是 1GiB；应用容器和 sidecar 的指标混在一起。给我一个 Deployment 统一内存 request。",
+      "expected_path": [
+        "先声明整体 workload 或主应用容器的统一范围，CPU/内存使用、request 和 limit 均使用同一范围",
+        "先将 Pod 间 request 配置差异标为配置漂移，并说明没有统一规格前不能产出可靠 workload 数值",
+        "要求确认 sidecar 策略和配置所有权后再做算法建议"
+      ],
+      "must_not": [
+        "在使用量中排除 sidecar、在 request 中包含 sidecar",
+        "把不一致的 Pod request 平均后当作正确统一规格",
+        "不说明 sidecar 范围就给 Deployment 数值"
+      ],
+      "files": []
+    },
+    {
+      "id": 10,
+      "name": "autoscaling-and-ownership-gate",
+      "prompt": "report-api 有 HPA 和 VPA，但不清楚谁维护；近期刚滚动发布。历史看起来 CPU request 配多了，直接给线上降配值。",
+      "expected_path": [
+        "检查或追问 HPA/VPA、配置所有权、最近发布和 Pod churn，并将其作为安全门",
+        "可以输出带前提的 validation-only recommendation，但禁止把数值写成直接线上变更指令",
+        "要求确认自动扩缩策略与稳定观察窗口后，按分阶段验证和回滚执行"
+      ],
+      "must_not": [
+        "忽略 HPA/VPA 会覆盖或改变配置语义",
+        "把刚发布的窗口当稳定基线",
+        "直接修改 Kubernetes 资源配置"
+      ],
+      "files": []
+    },
+    {
+      "id": 11,
+      "name": "metric-discovery-compatibility",
+      "prompt": "这个环境查不到 kube_pod_container_resource_requests 通用指标，帮我继续分析 resource requests。",
+      "expected_path": [
+        "先在已确认 namespace 范围发现指标和标签，而不是猜测资源不存在",
+        "只有发现证明通用指标不可用时，才尝试已确认的旧版 CPU/内存 request/limit 指标名称",
+        "记录最终指标名称、过滤范围和无法覆盖的维度"
+      ],
+      "must_not": [
+        "靠记忆臆造未验证的指标或标签",
+        "把空结果直接解释为零 request",
+        "扩大为无 namespace 限制的全局扫描"
+      ],
+      "files": []
+    },
+    {
+      "id": 12,
+      "name": "query-failure-degrade",
+      "prompt": "资源分析时 Prometheus 查询超时，CPU 查到了但内存和 requests/limits 查询失败，帮我继续给结论。",
+      "expected_path": [
+        "保留成功查询的 CPU 证据，明确内存和 requests/limits 的失败原因与覆盖缺口",
+        "缩小范围或复核指标/标签后再有限重试，不能把失败维度写成正常",
+        "输出 partial 或 error，并降低 confidence，说明无法完成的比较和下一步补查"
+      ],
+      "must_not": [
+        "用 CPU 结果代替内存和配置结论",
+        "查询失败后声称资源配置合理或可以回收",
+        "隐藏超时、502 或认证失败的影响"
+      ],
+      "files": []
+    },
+    {
+      "id": 13,
+      "name": "html-share-confirmation-and-failure",
+      "prompt": "资源分析完成后我拒绝生成 HTML；另一个场景用户已确认但分享服务认证失败。请分别说明结果。",
+      "expected_path": [
+        "拒绝场景保留 Markdown 分析并明确 executed: false，不生成或上传分享文件",
+        "确认场景只生成一个基于真实证据的明确 HTML 路径，再委托受控分享能力扫描和上传",
+        "认证失败时如实报告上传失败原因和本地准备状态，不返回伪造 URL",
+        "两种场景都不扫描目录猜文件，也不把本地路径冒充公网链接"
+      ],
+      "must_not": [
+        "用户拒绝后仍调用分享命令",
+        "上传失败后编造分享链接或声称成功",
+        "把底层认证错误原文或敏感信息直接暴露"
+      ],
+      "files": []
+    },
+    {
+      "id": 14,
+      "name": "natural-language-scope-mapping-and-ambiguity",
+      "prompt": "请分析何氏眼科 hsyk-k8s1 上 hsyk-public-prod 命名空间的 payment-api 最近 14 天资源配置；另一个请求只说生产 cluster-a，请不要猜。",
+      "expected_path": [
+        "将 hsyk-k8s1 按监控已知前缀归一为 metrics profile hsyk，并把 hsyk-public-prod 记录为 namespace 而非 profile",
+        "记录 cluster/profile/namespace/service/container scope、映射知识库依据、Prometheus datasource 和精确 UTC 窗口后才查询",
+        "对于只有生产和未登记 cluster-a 的请求，返回 blocked，列出集群/profile/namespace/服务/窗口缺口或候选映射，并要求确认",
+        "只在 profile 已确认且至少已有一个已确认的 k8s_cluster、namespace 或已发现的 application/workload/pod selector 时使用受控窄范围覆盖发现；profile 或有效 scope 任一缺失都必须先返回 blocked，不能先发现；前置条件满足后每条 discovery PromQL 才可保留该 selector，缺少有效 scope 时返回 blocked 并请求范围"
+      ],
+      "must_not": [
+        "从 namespace 反推 profile，或把中文环境名直接传给 --profile",
+        "因生产或 cluster-a 未映射而默认 foneshare、猜测集群、执行无 scope 的 count by (k8s_cluster)(up)，或扫描所有生产集群",
+        "把空结果写成资源正常或确认的覆盖"
+      ],
+      "files": []
+    },
+    {
+      "id": 15,
+      "name": "dark-resource-table-workload-and-container-coverage",
+      "prompt": "已确认数据包含一个 Deployment（2 个容器）、一个 StatefulSet 和一个 DaemonSet。用户确认要 HTML，请给出可审阅资源表合同。",
+      "expected_path": [
+        "使用深色、高密度、细网格和局部横向滚动的表格，且表头精确包含 Number、Cluster、Namespace、Name、Pods、Type、Container、CPU Requests、CPU Limits、Memory Requests、Memory Limits、Recommendation / Algorithm",
+        "使用完整的 `(pod, container)` 行对齐 CPU/内存使用、request、limit 和 sidecar 范围；先建立容器行，再单独命名并聚合 workload 的全部容器行；不得用 Pod 总使用量回填任何 per-container 行，也不得复用未命名的全容器汇总；四个资源列统一为 old -> new",
+        "把缺失配置写 none、不可确定写 ?；长 cluster/name 视觉省略但以安全转义 title 保留完整值",
+        "最右列为每项 recommendation 的 category 和可展开算法说明，保留文字结论与非颜色唯一的风险语义"
+      ],
+      "must_not": [
+        "省略或改名固定列，或将 Recommendation / Algorithm 放在非最右侧",
+        "将多容器的 Pod 级总使用量与单容器配置混写，或把未单独命名的 workload 全容器汇总复用为容器行，或根据名称猜测 workload Type",
+        "只用红绿颜色表达风险，或用截断文本替代完整搜索/tooltip 值"
+      ],
+      "files": []
+    },
+    {
+      "id": 16,
+      "name": "html-literal-search-folding-and-dynamic-escape",
+      "prompt": "用户确认生成 HTML。报告中有 12 个 workload、一个容器名为 <img src=x onerror=alert(1)>，并要求按 cluster、namespace、name、container、type、推荐类别实时搜索和全部展开/收起。",
+      "expected_path": [
+        "提供有可见 label 的 search 输入，使用大小写不敏感 literal includes 匹配完整 cluster/namespace/name/container/type/category，并以 aria-live 状态报告可见 workload 数；定义固定配置 report locale 的 normalizeSearchText(value) = value.toLocaleLowerCase(REPORT_LOCALE)，并在 includes 前对 query 与每条完整、预构建的 workload/container searchable text 都使用同一 normalizer；locale 不能由用户输入控制",
+        "匹配一个多容器 workload 时保留该 workload 的全部容器行，结果计数不因容器重复",
+        "因 workload 数大于 8 或说明超过 320 可见字符默认折叠，并提供单项及仅针对当前可见项的 Expand all / Collapse all；搜索不重置用户 open 状态",
+        "将动态文本和搜索状态通过 textContent 或安全文本节点写入，使用正确属性转义，并用 addEventListener 绑定静态控件"
+      ],
+      "must_not": [
+        "只规约 query 而未用同一固定 locale normalizer 规约完整预构建 searchable text，或把查询字符串交给 RegExp，或把搜索输入解释为 HTML",
+        "使用 innerHTML、outerHTML、insertAdjacentHTML、动态 on* 属性、eval、Function 或 javascript: URL",
+        "把恶意容器名渲染成标签、事件或未转义 tooltip"
+      ],
+      "files": []
+    },
+    {
+      "id": 17,
+      "name": "recommendation-disclosure-and-score-audit",
+      "prompt": "给一个 14 天资源建议 HTML：CPU P95/P99 已取到，memory limit 查询失败，峰值覆盖 unknown，HPA 所有权未知。",
+      "expected_path": [
+        "将 Scan result 定义为 0..100 的证据可审阅度，并展示 resource-evidence-score/v1 公式、每个罚分输入和原因；required_dimension_missing_ratio 固定以 {cpu_usage, memory_usage, cpu_request, cpu_limit, memory_request, memory_limit} 六字段为分母，任一字段为 missing|empty|error|scope-mismatch 即计入分子，Pod count 单独作为范围/稳定性条件，而不将分数称为健康度或可直接发布保证",
+        "每条 recommendation 显示 category、conclusion level、算法版本，并展开 sources/scope、UTC window、样本质量、P50/P95/P99/阈值、request/limit 对比、peak headroom、风险假设、验证与回滚边界",
+        "将 memory limit 失败、peak coverage unknown、HPA 所有权未知写入缺口和处罚，并把数值下调降级为 validation-only 或 insufficient evidence",
+        "明确瞬时读数和观测峰值不能被写成确定生产结论或真实业务峰值"
+      ],
+      "must_not": [
+        "隐藏失败维度、把 CPU 证据代替 memory limit，或以高分绕过安全门",
+        "只写建议增加/减少而不披露统计、阈值、请求/限制比较、来源或算法版本",
+        "将默认冗余称为已确认组织政策，或声称已经执行 Kubernetes 变更"
+      ],
+      "files": []
+    },
+    {
+      "id": 18,
+      "name": "html-share-accept-refuse-and-fail",
+      "prompt": "资源分析已经完成：场景 A 用户拒绝 HTML；场景 B 用户明确确认，HTML 已由 AI 基于冻结证据直接写出，但受控分享上传认证失败。分别交付结果。",
+      "expected_path": [
+        "场景 A 保留 Markdown，返回 executed: false，不生成 HTML、不扫描 output/tmp、也不调用分享能力",
+        "场景 B 仅把明确命名的 AI 直接撰写 HTML 交给 plan-first 分享检查；渲染阶段不重查数据，程序不渲染读者正文",
+        "认证失败时返回简化失败原因和 executed: false，说明未获得分享 URL，并保留真实本地准备状态但不把路径伪装为公网链接"
+      ],
+      "must_not": [
+        "将最初请求报告视为确认，或拒绝后仍生成/上传 HTML",
+        "扫描目录猜测最新文件，或上传失败后编造 URL/过期时间/成功审计",
+        "回显认证材料、敏感扫描原文或让模板/renderer 生成读者正文"
+      ],
+      "files": []
+    }
+  ]
+}

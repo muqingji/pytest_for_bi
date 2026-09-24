@@ -1,0 +1,26 @@
+{
+  "source": "kube_pod_info",
+  "time": "2026-09-24T17:59:31+08:00",
+  "cluster": "tke70-k8s1",
+  "namespace": "foneshare-vip",
+  "pods": [
+    {
+      "pod": "fs-bi-crm-report-web-65995d975f-qwqs5",
+      "pod_ip": "10.71.129.221",
+      "node": "10.71.240.56",
+      "replicaset": "fs-bi-crm-report-web-65995d975f"
+    },
+    {
+      "pod": "fs-bi-stat-bfc75496b-79hm2",
+      "pod_ip": "10.71.142.234",
+      "node": "10.71.241.152",
+      "replicaset": "fs-bi-stat-bfc75496b"
+    },
+    {
+      "pod": "fs-bi-stat-bfc75496b-x5v4d",
+      "pod_ip": "10.71.17.1",
+      "node": "10.71.0.53",
+      "replicaset": "fs-bi-stat-bfc75496b"
+    }
+  ]
+}

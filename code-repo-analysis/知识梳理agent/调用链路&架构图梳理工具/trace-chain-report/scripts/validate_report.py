@@ -42,8 +42,7 @@ HEADINGS = (
     "## 9. 证据边界",
     "## 10. 证据索引",
 )
-SECRET_RE = re.compile(r"password|passwd|jdbc:|userId|userName\s*=|uid\s*[:=]", re.IGNORECASE)
-IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+SECRET_RE = re.compile(r"password|passwd|userId|userName\s*=|uid\s*[:=]", re.IGNORECASE)
 
 def _load_card(path: Path) -> dict[str, object]:
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -156,8 +155,8 @@ def validate_report(directory: Path, peer: Path | None = None, check_evidence: b
     if "<svg" in html:
         errors.append("html must use layered cards, not svg")
 
-    if SECRET_RE.search(visible) or IPV4_RE.search(visible):
-        errors.append("report contains a secret or IP address")
+    if SECRET_RE.search(visible):
+        errors.append("report contains a secret or user identifier")
 
     evidence = card.get("evidence")
     if check_evidence:

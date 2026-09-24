@@ -1,0 +1,2 @@
+[fxops:fxops_query] fx-ops failed exit=5 error={"code":502,"message":"API request failed with status 502"}
+fxops_query: {"code":502,"message":"API request failed with status 502"}

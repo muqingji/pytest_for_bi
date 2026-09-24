@@ -1,0 +1,255 @@
+{
+  "schema_version": "trace-fact-card-v1",
+  "mode": "live",
+  "trace_id": "FSW-664159.1047-01M39DP8627RFS81HCJZ0JN3G1",
+  "title": "新建统计图获取主题列表",
+  "profile": "foneshare",
+  "entry_time": "2026-09-24 18:02:56.502",
+  "identity": {
+    "ea": "664159",
+    "app": "fs-bi-stat"
+  },
+  "runtime": {
+    "pod": "fs-bi-stat-bfc75496b-79hm2",
+    "pod_ip": "10.71.142.234",
+    "profile": "foneshare-vip"
+  },
+  "resources": {
+    "node_ip": "未取证",
+    "requests": "未取证"
+  },
+  "nodes": [
+    {
+      "id": "gw-in",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "fs-bi-stat",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult",
+      "method": "/FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult",
+      "timing": "111 ms",
+      "label": "已观测",
+      "layer": "gateway",
+      "title_zh": "网关进入模板和主题域",
+      "detail": "CEP 在 2026-09-24 18:02:56.502 记录 /FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult，状态 200，网关耗时 111 ms。记录里的「获取主题列表」对上的是这个接口，不是 schemaList/query。"
+    },
+    {
+      "id": "gw-out",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "调用方",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult",
+      "method": "/FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult",
+      "timing": "未细分",
+      "label": "已观测",
+      "layer": "gateway",
+      "title_zh": "网关返回模板和主题域",
+      "detail": "同一接口 /FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult 返回 200。应用日志从 18:02:56.507 到 18:02:56.606，约 99 ms，和网关 111 ms 的差额未细分。"
+    },
+    {
+      "id": "svc-filter",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "StatDomainTemplateService.getDomainTemplate",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "fs-bi-stat",
+      "entry": "CEPRequestFilter",
+      "method": "CEPRequestFilter",
+      "timing": "未单列",
+      "label": "已观测",
+      "layer": "service",
+      "title_zh": "请求进入统计图服务",
+      "detail": "CEPRequestFilter 记录路径 /fs-bi-stat/stat/template/getDomainTemplateResult。Pod fs-bi-stat-bfc75496b-79hm2，IP 10.71.142.234。"
+    },
+    {
+      "id": "svc-domain",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "模板、主题域、统计图主题",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "fs-bi-stat",
+      "entry": "StatDomainTemplateService.getDomainTemplate",
+      "method": "StatDomainTemplateService.getDomainTemplate",
+      "timing": "含在 111 ms 内",
+      "label": "已观测",
+      "layer": "service",
+      "title_zh": "按主题域组装模板",
+      "detail": "StatTemplateController 把 getDomainTemplateResult 交给 StatDomainTemplateService.getDomainTemplate。源码按 subject_domain 分组，并追加自选主题。请求 200，说明没有走到无权限异常。"
+    },
+    {
+      "id": "svc-perm",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "功能权限",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "fs-bi-stat",
+      "entry": "PermissionUtil.functionPerm",
+      "method": "PermissionUtil.functionPerm",
+      "timing": "约 15 ms",
+      "label": "已观测",
+      "layer": "service",
+      "title_zh": "校验主题域功能权限",
+      "detail": "PermissionUtil.functionPerm 从 18:02:56.555 到 18:02:56.570，约 15 ms。日志只给了权限结果，没有单独的库表。"
+    },
+    {
+      "id": "svc-i18n",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "文案服务",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "fs-bi-stat",
+      "entry": "I18nRestClientImpl.loadByLangBatch",
+      "method": "I18nRestClientImpl.loadByLangBatch",
+      "timing": "11 ms",
+      "label": "已观测",
+      "layer": "service",
+      "title_zh": "翻译主题和模板文案",
+      "detail": "I18nRestClientImpl.loadByLangBatch 完成一次远程调用，keysSize 5，耗时 11 ms。文案库表未取证。"
+    },
+    {
+      "id": "data-st",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "stat_template",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "StatDomainTemplateMapper.getDomainTemplate",
+      "method": "StatDomainTemplateMapper.getDomainTemplate",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询统计图模板",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/postgresql/mapper/StatDomainTemplateMapper.java",
+        "symbol": "StatDomainTemplateMapper.getDomainTemplate"
+      },
+      "detail": "StatDomainTemplateMapper.getDomainTemplate 的一条连接查询包含表 stat_template、subject_domain、stat_template_property、chart_property。数据库名未取证。数据源配置是 fs-bi-postgresql-tenant-auth，biz 是 BI，租户切到 -1，这不是物理库名。"
+    },
+    {
+      "id": "data-sd",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "subject_domain",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "StatDomainTemplateMapper.getDomainTemplate",
+      "method": "StatDomainTemplateMapper.getDomainTemplate",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询主题域",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/postgresql/mapper/StatDomainTemplateMapper.java",
+        "symbol": "StatDomainTemplateMapper.getDomainTemplate"
+      },
+      "detail": "StatDomainTemplateMapper.getDomainTemplate 的一条连接查询包含表 stat_template、subject_domain、stat_template_property、chart_property。数据库名未取证。数据源配置是 fs-bi-postgresql-tenant-auth，biz 是 BI，租户切到 -1，这不是物理库名。"
+    },
+    {
+      "id": "data-stp",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "stat_template_property",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "StatDomainTemplateMapper.getDomainTemplate",
+      "method": "StatDomainTemplateMapper.getDomainTemplate",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询模板样式",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/postgresql/mapper/StatDomainTemplateMapper.java",
+        "symbol": "StatDomainTemplateMapper.getDomainTemplate"
+      },
+      "detail": "StatDomainTemplateMapper.getDomainTemplate 的一条连接查询包含表 stat_template、subject_domain、stat_template_property、chart_property。数据库名未取证。数据源配置是 fs-bi-postgresql-tenant-auth，biz 是 BI，租户切到 -1，这不是物理库名。"
+    },
+    {
+      "id": "data-cp",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "chart_property",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "StatDomainTemplateMapper.getDomainTemplate",
+      "method": "StatDomainTemplateMapper.getDomainTemplate",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询图表类型",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/postgresql/mapper/StatDomainTemplateMapper.java",
+        "symbol": "StatDomainTemplateMapper.getDomainTemplate"
+      },
+      "detail": "StatDomainTemplateMapper.getDomainTemplate 的一条连接查询包含表 stat_template、subject_domain、stat_template_property、chart_property。数据库名未取证。数据源配置是 fs-bi-postgresql-tenant-auth，biz 是 BI，租户切到 -1，这不是物理库名。"
+    },
+    {
+      "id": "data-schema",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "stat_schema",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "StatSchemaMapper.querySchemaByObjNames",
+      "method": "StatSchemaMapper.querySchemaByObjNames",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询企业统计图主题",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/postgresql/mapper/StatSchemaMapper.java",
+        "symbol": "StatSchemaMapper.querySchemaByObjNames"
+      },
+      "detail": "StatSchemaMapper.querySchemaByObjNames 从 stat_schema 按对象名过滤，排除 status 为 5 和已删除行。后面 StatSchemaMapper.querySchemaByObjName 再按 new_opportunity 查同一张表。数据库名未取证，租户是当前请求企业。"
+    },
+    {
+      "id": "data-udf",
+      "row": 0,
+      "flow": "同步主路径",
+      "downstream": "udf_obj",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "service": "PostgreSQL",
+      "entry": "UdfObjMapper.queryUdfObjByName",
+      "method": "UdfObjMapper.queryUdfObjByName",
+      "timing": "未单列",
+      "label": "代码映射",
+      "layer": "data",
+      "title_zh": "查询商机对象描述",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/postgresql/mapper/UdfObjMapper.java",
+        "symbol": "UdfObjMapper.queryUdfObjByName"
+      },
+      "detail": "分组完成后调用 UdfObjMapper.queryUdfObjByName，FROM udf_obj，对象名 new_opportunity，且未删除。用来决定要不要去掉商机 2.0 主题域。数据库名未取证，租户是当前请求企业。"
+    }
+  ],
+  "gaps": [
+    "schemaList 与 /schemas/list 未出现",
+    "文案物理表未取证",
+    "功能权限物理表未取证",
+    "Node 与 requests 未取证",
+    "模板 SQL 耗时未细分",
+    "物理数据库名未取证"
+  ],
+  "evidence": [
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-tracing-log-cep.json",
+      "note": "CEP 全量入口"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md",
+      "note": "本报告使用的摘记"
+    }
+  ],
+  "html_sub": "/FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult · 200 · 111 ms",
+  "html_meta": "fs-bi-stat<br />Pod fs-bi-stat-bfc75496b-79hm2 / 10.71.142.234<br />FSW-664159.1047-01M39DP8627RFS81HCJZ0JN3G1",
+  "html_footer": "证据边界：记录名是获取主题列表，线上入口是模板接口。物理数据库名、schemaList、文案表、权限表、Node 和 requests 未取证。",
+  "index_md": "# 证据索引\n\n`FSW-664159.1047-01M39DP8627RFS81HCJZ0JN3G1`\n\n| 内容 | 路径 |\n| --- | --- |\n| CEP 入口 | `/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-tracing-log-cep.json` |\n| 摘记 | `/Users/liushanshan/code/bug-finder/output/evidence/20260924-trace-FSW-664159-01M39DP86/evidence/TRC-chain-notes.md` |\n\n## 查询范围\n\n- log_cep_dist：getDomainTemplateResult，200，111 ms。\n- app_log_dist：app `fs-bi-stat`，profile `foneshare-vip`，rpcId `01M39DWG9EWVB7KGENB7DPTR4Q`，18:02:56 到 18:02:58。\n- 源码：fs-bi 的 StatDomainTemplateService、StatDomainTemplateMapper、StatSchemaMapper、UdfObjMapper。\n"
+}

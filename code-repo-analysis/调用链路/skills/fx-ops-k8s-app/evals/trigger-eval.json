@@ -1,0 +1,7 @@
+[
+  { "query": "帮我查一下 crm-web 的 Pod 日志", "should_trigger": true },
+  { "query": "这个服务当前运行的镜像版本是什么", "should_trigger": true },
+  { "query": "帮我重启一下 crm-web", "should_trigger": true },
+  { "query": "用 PromQL 看一下这个应用最近半小时 CPU", "should_trigger": false },
+  { "query": "traceId=16-9ab321，帮我追一下这条请求", "should_trigger": false }
+]

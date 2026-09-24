@@ -1,0 +1,22 @@
+[
+  { "query": "看下这个应用最近半小时 CPU、内存、重启次数是不是异常", "should_trigger": true },
+  { "query": "RocketMQ 消费延迟飙高，帮我看下监控是不是 broker 压力", "should_trigger": true },
+  { "query": "Heap 一直涨，GC 也越来越频繁，帮我判断是不是内存泄漏", "should_trigger": true },
+  { "query": "Tomcat 线程池满了没有，最近请求慢是不是被入口层卡住了", "should_trigger": true },
+  { "query": "https://grafana.foneshare.cn/d/abc123/app-overview?var-k8s_cluster=tke70-k8s1&from=now-1h&to=now 帮我按这个看板看看", "should_trigger": true },
+  { "query": "帮我搜一下标题带 JVM 的 Grafana dashboard", "should_trigger": true },
+  { "query": "列出当前环境 Grafana 数据源（只要元数据）", "should_trigger": true },
+  { "query": "打开 Grafana home dashboard 看看", "should_trigger": true },
+  { "query": "列出 Grafana folder，再按 folder 搜看板", "should_trigger": true },
+  { "query": "foneshare 公网 LB qce_lb_public_clientnewconn_max 是什么单位", "should_trigger": true },
+  { "query": "foneshare 腾讯云 RocketMQ qce_rocketmq_rocketmqexpensepulltps_sum 是什么单位，tenant rmq-8rgrpm9a3 是 4.x 还是 5.x", "should_trigger": true },
+  { "query": "这个服务 requests/limits 配得合理吗，按最近 14 天 CPU/内存给我资源优化建议", "should_trigger": false },
+  { "query": "哪些 Kubernetes 服务资源冗余可以回收，给出带历史峰值和回滚条件的建议", "should_trigger": false },
+  { "query": "列出 namespace 里 CPU/内存用量和 request/limit 的 TopN/BottomN，帮我评估容量边界", "should_trigger": false },
+  { "query": "traceId=16-9ab321，帮我追一下这条请求", "should_trigger": false },
+  { "query": "帮我跑条 SQL 查最近 1 小时 slow_log_dist", "should_trigger": false },
+  { "query": "查一下对象字段定义是不是变了", "should_trigger": false },
+  { "query": "帮我在 wiki 里找去年的 OOM 复盘", "should_trigger": false },
+  { "query": "帮我改 Grafana 告警规则 contact-points", "should_trigger": false },
+  { "query": "traceId=16-9ab321，这个 Grafana 链接也看看", "should_trigger": false }
+]

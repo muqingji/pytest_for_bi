@@ -1,0 +1,13 @@
+[
+ { "query": "这个 NPE 在哪抛的，帮我看下源码", "should_trigger": true },
+ { "query": "我有一段错误堆栈，帮我定位具体是哪个方法的代码 bug", "should_trigger": true },
+ { "query": "OrderService.createOrder 这个函数是不是代码缺陷，帮我查源码和最近改动", "should_trigger": true },
+ { "query": "fs-crm-sfa 这个仓库是做什么的，业务规则和代码逻辑在哪儿查", "should_trigger": true },
+ { "query": "客户公海的领取/退回/收回规则我记不清了，对应哪个仓库、领域知识在哪里", "should_trigger": true },
+ { "query": "TPM 活动核销的机制和术语在哪查，先帮我把仓库和知识入口找出来", "should_trigger": true },
+ { "query": "给你一个 traceId 16-9ab321，帮我追一下这条请求", "should_trigger": false },
+ { "query": "帮我跑条 SQL 查最近一小时 biz-app-log.log_error_dist", "should_trigger": false },
+ { "query": "看下这个应用最近半小时 CPU 和 JVM 指标", "should_trigger": false },
+ { "query": "查一下公司 wiki 里有没有这次故障的复盘", "should_trigger": false },
+ { "query": "这个仓库谁负责维护，找一下负责人", "should_trigger": false }
+]

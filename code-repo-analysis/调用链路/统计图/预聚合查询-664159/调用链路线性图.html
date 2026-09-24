@@ -19,7 +19,6 @@
     h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.02em; }
     .sub { color: var(--muted); font-size: 13px; line-height: 1.6; }
     .meta { text-align: right; font-size: 12px; color: var(--muted); line-height: 1.7; }
-    .meta code, .card code { background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
     .stack { display: grid; gap: 10px; }
     .layer { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--card);
       box-shadow: 0 8px 24px rgba(27, 36, 51, 0.05); }
@@ -37,8 +36,10 @@
     .l4 .layer-head { background: var(--l4-bg); color: var(--l4); }
     .sync .layer-head { background: var(--sync-bg); color: var(--sync); }
     .arrow { text-align: center; color: #94a3b8; font-size: 18px; line-height: 10px; }
+    .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .flow-item { background: #fff; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 10px; text-align: center; font-size: 13px; font-weight: 650; }
+    .flow-item span { display: block; margin-top: 4px; font-size: 11px; font-weight: 400; color: var(--muted); }
     .note { margin-top: 14px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-    @media print { body { background: #fff; } .page { max-width: none; padding: 8px; } .layer { box-shadow: none; } }
 </style>
 </head>
 <body>
@@ -48,12 +49,13 @@
         <h1>统计图预聚合查询</h1>
         <div class="sub">/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query · 200 · 785 ms · 同 trace 上还有三次更早的 HTTP</div>
       </div>
-      <div class="meta">承载服务 fs-bi-stat<br />Pod fs-bi-stat-bfc75496b-f6fq6<br />租户 664159<br />FSW-664159.1047-01M36NH7ASNKA8DMXD8PKDXFZV</div>
+      <div class="meta">承载服务 fs-bi-stat<br />data/query Pod fs-bi-stat-bfc75496b-f6fq6 / 10.71.137.85<br />Node 10.71.240.111<br />chartConfig Pod fs-bi-stat-bfc75496b-x5v4d / 10.71.17.1<br />租户 664159<br />FSW-664159.1047-01M36NH7ASNKA8DMXD8PKDXFZV</div>
     </header>
     <div class="stack">
       <section class="layer l2">
         <div class="layer-head"><span>L2 网关层</span><span class="tag">CEP</span></div>
-        <div class="layer-body"><div class="cards">
+        <div class="layer-body">
+          <div class="cards">
             <div class="card">
               <h3>读取统计视图</h3>
               <p>同一次 trace 先经过 `getStatView`，接口是 /FHH/EM1HBICRM/statEditController/getStatView。状态 200，耗时 246 ms。fs-bi-stat 应用日志没有这条 URI，对应 Pod 未取证。</p>
@@ -62,12 +64,14 @@
               <h3>数据查询入口</h3>
               <p>用户说的预聚合查询对应 `stat/data/query`，完整路径 /FHH/EM1HBISTAT/fs-bi-stat/stat/data/query。状态 200，网关耗时 785 ms，进入 fs-bi-stat。</p>
             </div>
-        </div></div>
+          </div>
+        </div>
       </section>
 <div class="arrow">▼</div>
       <section class="layer l3">
         <div class="layer-head"><span>L3 服务层</span><span class="tag">应用</span></div>
-        <div class="layer-body"><div class="cards">
+        <div class="layer-body">
+          <div class="cards">
             <div class="card">
               <h3>读取图表配置</h3>
               <p>`getViewChartConfById` 读取 /fs-bi-stat/stat/chartConfig/query。结果 chartType=table，视图 BI_6aa427deec2d2200076ef9f6，日志中的名称是销售订单统计_副本-报表。网关耗时 604 ms，方法耗时未细分。</p>
@@ -94,22 +98,48 @@
             </div>
             <div class="card">
               <h3>回写查询缓存</h3>
-              <p>`cacheSyncReqResultWithBinary` 在 ReleaseResourcesThreadLocalNode 释放线程变量之后回写查询缓存。EasyStat 总观察窗口是 294 ms。缓存介质未取证。</p>
+              <p>`cacheSyncReqResultWithBinary` 在 ReleaseResourcesThreadLocalNode 释放线程变量之后回写查询缓存。缓存键是 bi_stat_querycache_BI_6aa427deec2d2200076ef9f6_20260912002404_83291e22ae30788cbce14df75ae23545_binary。EasyStat 总观察窗口是 294 ms。</p>
             </div>
-        </div></div>
+          </div>
+        </div>
       </section>
 <div class="arrow">▼</div>
       <section class="layer l4">
         <div class="layer-head"><span>L4 数据层</span><span class="tag">查询时依赖</span></div>
-        <div class="layer-body"><div class="cards">
+        <div class="layer-body">
+          <div class="cards">
             <div class="card">
               <h3>执行统计 SQL</h3>
-              <p>`ClickHouseSQLExecutor` 由 DataQueryFlowNode 执行 easyStat SQL，应用侧耗时 88 ms。SQL 中能确认 CTE d1_select_option 和表 agg_data。数据库服务端耗时未取证。</p>
+              <p>`ClickHouseSQLExecutor` 由 DataQueryFlowNode 执行 easyStat SQL，应用侧耗时 88 ms。SQL 中能确认 CTE d1_select_option 和表 agg_data。主代理 10.17.44.222:9090，JDBC 10.17.44.27:8123，从库 10.17.46.27:8123，库 fsbidb044027003。数据库服务端耗时未取证。</p>
             </div>
-        </div></div>
+            <div class="card">
+              <h3>Redis 查询缓存</h3>
+              <p>日志打出缓存键 bi_stat_querycache_BI_6aa427deec2d2200076ef9f6_20260912002404_83291e22ae30788cbce14df75ae23545_binary，并由 cacheSyncReqResultWithBinary 回写。本地架构说明把 `bi_stat_querycache` 这个键对应到 Redis。本 trace 没有打出 Redis 地址。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+<div class="arrow">▼</div>
+      <section class="layer sync">
+        <div class="layer-head"><span>后台同步 / 计算（查询前写入）</span><span class="tag">不在本次请求热路径</span></div>
+        <div class="layer-body">
+          <div class="flow">
+            <div class="flow-item">op-log<span>对象变更日志</span></div>
+            <div class="flow-item">RocketMQ<span>同步消息</span></div>
+            <div class="flow-item">paas-bi-copier<span>拷贝 / 转换</span></div>
+            <div class="flow-item">聚合框架<span>预聚合计算</span></div>
+            <div class="flow-item">ClickHouse<span>agg_data / dim_data</span></div>
+          </div>
+          <div class="cards">
+            <div class="card">
+              <h3>预聚合写入链路</h3>
+              <p>本 trace 没有 MQ 或 copier span。同目录架构说明写明，查询前的数据由 op-log、RocketMQ、`paas-bi-copier` 和聚合框架写入 ClickHouse。这不是本次请求的已观测调用。</p>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
-    <p class="note">四次 HTTP 按时间顺序发生，没有并行重叠。getStatView 的应用 Pod、dataQuerySource 枚举、RPC 方法、缓存介质、ClickHouse 服务端耗时和源码行号都未取证。</p>
+    <p class="note">ClickHouse、Pod、Node IP 来自本次日志和 Pod 快照。Redis 只确认到缓存键，没有 Redis 地址。MQ 与 copier 不在本 trace span 中，按架构说明放在请求外链路。</p>
   </div>
 </body>
 </html>

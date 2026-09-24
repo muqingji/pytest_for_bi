@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>新建统计图获取主题列表 · 泳道图</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --ink: #1b2433;
+      --muted: #5b677a;
+      --line: #d8dee9;
+      --card: #ffffff;
+      --cep: #4f46e5;
+      --cep-bg: #eef2ff;
+      --psm: #0f766e;
+      --psm-bg: #f0fdfa;
+      --db: #c2410c;
+      --db-bg: #fff7ed;
+      --i18n: #7c3aed;
+      --i18n-bg: #f5f3ff;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+    .page { max-width: 1360px; margin: 0 auto; padding: 28px 20px 48px; }
+    header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-end; margin-bottom: 16px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.01em; }
+    .sub, .meta { color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .meta { text-align: right; font-size: 12px; }
+    code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+    .pill { border-radius: 999px; padding: 3px 10px; font-size: 12px; background: #fff; border: 1px solid var(--line); color: var(--muted); }
+    .board {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: auto;
+      box-shadow: 0 10px 28px rgba(27, 36, 51, 0.05);
+    }
+    .lanes { min-width: 1080px; position: relative; }
+    .heads, .step { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .heads { position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1px solid var(--line); }
+    .head { padding: 14px 16px 12px; border-right: 1px solid var(--line); }
+    .head:last-child { border-right: 0; }
+    .head .kind { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+    .head h2 { margin: 4px 0 2px; font-size: 16px; }
+    .head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .h-cep .kind { color: var(--cep); }
+    .h-psm .kind { color: var(--psm); }
+    .h-db .kind { color: var(--db); }
+    .h-i18n .kind { color: var(--i18n); }
+    .canvas { position: relative; padding: 8px 0 18px; }
+    .rails { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(4, 1fr); pointer-events: none; }
+    .rails i { border-left: 2px dashed #e2e8f0; margin-left: calc(50% - 1px); }
+    .step { position: relative; z-index: 1; min-height: 8px; }
+    .card {
+      margin: 8px 14px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px 11px;
+      box-shadow: 0 4px 14px rgba(27, 36, 51, 0.04);
+    }
+    .c1 { grid-column: 1; border-top: 3px solid var(--cep); }
+    .c2 { grid-column: 2; border-top: 3px solid var(--psm); }
+    .c3 { grid-column: 3; border-top: 3px solid var(--db); }
+    .c4 { grid-column: 4; border-top: 3px solid var(--i18n); }
+    .card h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.4; }
+    .card p { margin: 0; color: #334155; font-size: 12.5px; line-height: 1.6; }
+    .method { display: block; margin-top: 6px; color: #1e293b; word-break: break-all; }
+    .meta-line { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .tag { font-size: 11px; border-radius: 999px; padding: 1px 7px; background: #f8fafc; color: var(--muted); border: 1px solid var(--line); }
+    .tag.obs { color: #1d4ed8; background: #eff6ff; border-color: #dbeafe; }
+    .tag.map { color: #9a3412; background: #fff7ed; border-color: #ffedd5; }
+    .tag.miss { color: #6b7280; background: #f8fafc; }
+    .tables { margin: 8px 0 0; padding: 0; list-style: none; }
+    .tables li { padding: 6px 0; border-top: 1px dashed var(--line); font-size: 12.5px; line-height: 1.5; }
+    .tables b { font-weight: 650; }
+    .hop { position: relative; height: 34px; z-index: 1; }
+    .hop .line {
+      position: absolute; top: 15px; height: 2px; background: #64748b;
+    }
+    .hop .line::after {
+      content: ""; position: absolute; top: -4px; border: 5px solid transparent;
+    }
+    .hop.fwd .line::after { right: -1px; border-left-color: #64748b; }
+    .hop.back .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop.back .line::after { left: -1px; border-right-color: #94a3b8; }
+    .hop .label {
+      position: absolute; top: 0; font-size: 11px; color: #475569; background: #fff; padding: 0 6px; white-space: nowrap;
+    }
+    .f1t2 .line { left: 12.5%; width: 25%; }
+    .f1t2 .label { left: 18%; }
+    .f2t3 .line { left: 37.5%; width: 25%; }
+    .f2t3 .label { left: 42%; }
+    .f2t4 .line { left: 37.5%; width: 50%; }
+    .f2t4 .label { left: 56%; }
+    .f3t2 .line { left: 37.5%; width: 25%; }
+    .f3t2 .label { left: 43%; }
+    .f4t2 .line { left: 37.5%; width: 50%; }
+    .f4t2 .label { left: 54%; }
+    .f2t1 .line { left: 12.5%; width: 25%; }
+    .f2t1 .label { left: 16%; }
+    .note { margin: 14px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>新建统计图获取主题列表</h1>
+        <div class="sub">泳道从左到右是参与方，从上到下是调用顺序。实线是发出，虚线是返回。</div>
+      </div>
+      <div class="meta">
+        <div><code>/FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult</code></div>
+        <div>200 · 网关 111 ms · 2026-09-24 18:02:56.502</div>
+        <div>FSW-664159.1047-01M39DP8627RFS81HCJZ0JN3G1</div>
+      </div>
+    </header>
+    <div class="legend">
+      <span class="pill">网关 CEP</span>
+      <span class="pill">PSM fs-bi-stat</span>
+      <span class="pill">中间件 PostgreSQL</span>
+      <span class="pill">远程服务 文案</span>
+      <span class="pill">没有 Redis / MQ / copier / ClickHouse，不单开列</span>
+    </div>
+    <div class="board">
+      <div class="lanes">
+        <div class="heads">
+          <div class="head h-cep"><div class="kind">网关</div><h2>CEP</h2><p>入口记录状态和总耗时</p></div>
+          <div class="head h-psm"><div class="kind">PSM</div><h2>fs-bi-stat</h2><p>Pod fs-bi-stat-bfc75496b-79hm2<br/>Pod IP 10.71.142.234</p></div>
+          <div class="head h-db"><div class="kind">中间件</div><h2>PostgreSQL</h2><p>数据源配置 fs-bi-postgresql-tenant-auth<br/>物理数据库名未取证</p></div>
+          <div class="head h-i18n"><div class="kind">远程服务</div><h2>文案服务</h2><p>I18nRestClientImpl 远程调用</p></div>
+        </div>
+        <div class="canvas">
+          <div class="rails"><i></i><i></i><i></i><i></i></div>
+
+          <div class="step">
+            <article class="card c1">
+              <h3>1. 接入模板和主题域请求</h3>
+              <p>记录名是获取主题列表，线上对上的是模板接口，不是 schemaList/query。</p>
+              <code class="method">/FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult</code>
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag">200</span><span class="tag">111 ms</span></div>
+            </article>
+          </div>
+          <div class="hop fwd f1t2"><span class="line"></span><span class="label">转发到 fs-bi-stat</span></div>
+          <div class="step">
+            <article class="card c2">
+              <h3>2. 请求进入统计图服务</h3>
+              <p>过滤器记下应用路径。处理 Pod 是 fs-bi-stat-bfc75496b-79hm2，Pod IP 10.71.142.234。Node IP 未取证。</p>
+              <code class="method">CEPRequestFilter · /fs-bi-stat/stat/template/getDomainTemplateResult</code>
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag">耗时未单列</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card c2">
+              <h3>3. 按主题域组装模板</h3>
+              <p>控制器把 getDomainTemplateResult 交给模板服务。源码按 subject_domain 分组，并追加自选主题。返回 200，没有走到无权限异常。</p>
+              <code class="method">StatTemplateController → StatDomainTemplateService.getDomainTemplate</code>
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag">含在 111 ms 内</span></div>
+            </article>
+          </div>
+          <div class="hop fwd f2t3"><span class="line"></span><span class="label">一次 SQL 连接四张表</span></div>
+          <div class="step">
+            <article class="card c3">
+              <h3>4. 查询模板、主题域、样式和图表类型</h3>
+              <p>这是一次连接查询，不是四次往返。源码把租户切到系统企业 -1。慢 SQL 没有这条，物理数据库名未取证，不能把数据源配置名当成库名。</p>
+              <code class="method">StatDomainTemplateMapper.getDomainTemplate</code>
+              <ul class="tables">
+                <li><b>数据库名未取证</b>：配置 fs-bi-postgresql-tenant-auth，biz BI，租户 -1</li>
+                <li><b>stat_template</b>：source = 1，且未删除</li>
+                <li><b>subject_domain</b>：取 subject_domain_id、subject_domain_name，排除 perm_id = 99</li>
+                <li><b>stat_template_property</b>：只保留未删除的样式行</li>
+                <li><b>chart_property</b>：取出 chart_type</li>
+              </ul>
+              <div class="meta-line"><span class="tag map">代码映射</span><span class="tag">耗时未单列</span></div>
+            </article>
+          </div>
+          <div class="hop back f3t2"><span class="line"></span><span class="label">返回模板和主题域</span></div>
+          <div class="hop fwd f2t3"><span class="line"></span><span class="label">按对象名查企业主题</span></div>
+          <div class="step">
+            <article class="card c3">
+              <h3>5. 查询企业统计图主题</h3>
+              <p>先按对象名批量过滤，再按 new_opportunity 查同一张表。源码走当前请求租户，不是系统企业 -1。物理数据库名未取证。</p>
+              <code class="method">StatSchemaMapper.querySchemaByObjNames · StatSchemaMapper.querySchemaByObjName</code>
+              <ul class="tables">
+                <li><b>数据库名未取证</b>：同一租户数据源，租户是当前请求企业</li>
+                <li><b>stat_schema</b>：排除 status = 5 和已删除行</li>
+              </ul>
+              <div class="meta-line"><span class="tag map">代码映射</span><span class="tag">耗时未单列</span></div>
+            </article>
+          </div>
+          <div class="hop back f3t2"><span class="line"></span><span class="label">返回 stat_schema</span></div>
+          <div class="hop fwd f2t3"><span class="line"></span><span class="label">查商机对象描述</span></div>
+          <div class="step">
+            <article class="card c3">
+              <h3>6. 查询商机对象描述</h3>
+              <p>分组完成后查对象是否存在，决定要不要去掉商机 2.0 主题域。源码走当前请求租户。物理数据库名未取证。</p>
+              <code class="method">UdfObjMapper.queryUdfObjByName</code>
+              <ul class="tables">
+                <li><b>数据库名未取证</b>：同一租户数据源，租户是当前请求企业</li>
+                <li><b>udf_obj</b>：对象名 new_opportunity，且未删除</li>
+              </ul>
+              <div class="meta-line"><span class="tag map">代码映射</span><span class="tag">耗时未单列</span></div>
+            </article>
+          </div>
+          <div class="hop back f3t2"><span class="line"></span><span class="label">返回对象描述</span></div>
+          <div class="step">
+            <article class="card c2">
+              <h3>7. 校验主题域功能权限</h3>
+              <p>日志只有权限结果。没有单独的权限表或中间件，所以留在 fs-bi-stat 这一列，不另开列。</p>
+              <code class="method">PermissionUtil.functionPerm</code>
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag">约 15 ms</span><span class="tag miss">权限表未取证</span></div>
+            </article>
+          </div>
+          <div class="hop fwd f2t4"><span class="line"></span><span class="label">远程翻译 5 个文案 key</span></div>
+          <div class="step">
+            <article class="card c4">
+              <h3>8. 翻译主题和模板文案</h3>
+              <p>一次远程调用。文案背后的物理表没有日志，不能画成数据库表。</p>
+              <code class="method">I18nRestClientImpl.loadByLangBatch</code>
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag">11 ms</span><span class="tag">keysSize 5</span><span class="tag miss">文案表未取证</span></div>
+            </article>
+          </div>
+          <div class="hop back f4t2"><span class="line"></span><span class="label">返回译文</span></div>
+          <div class="hop back f2t1"><span class="line"></span><span class="label">返回 200</span></div>
+          <div class="step">
+            <article class="card c1">
+              <h3>9. 网关返回模板和主题域</h3>
+              <p>应用日志从 18:02:56.507 到 18:02:56.606，约 99 ms。和网关 111 ms 的差额未细分，不记到某个方法上。</p>
+              <code class="method">/FHH/EM1HBISTAT/fs-bi-stat/stat/template/getDomainTemplateResult</code>
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag">200</span><span class="tag">差额未细分</span></div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note">证据边界：同 trace 的 getStatResource 只算配额，不画进本接口。物理数据库名未取证，只核对到租户数据源配置 fs-bi-postgresql-tenant-auth，没有把其他请求的库名抄过来。schemaList/query、权限表、文案物理表、Node IP、容器 requests/limits 未取证。Redis、MQ、copier、ClickHouse 这条链路没有出现。</p>
+  </div>
+</body>
+</html>

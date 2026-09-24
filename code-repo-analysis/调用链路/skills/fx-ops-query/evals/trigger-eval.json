@@ -1,0 +1,18 @@
+[
+ { "query": "帮我跑条 SQL 查某个租户最近 1 小时的订单数据", "should_trigger": true },
+ { "query": "查一下这个表结构和字段定义，确认字段有没有发版", "should_trigger": true },
+ { "query": "我不知道 biz 名，先帮我找一下 metadata changes 该查哪个数据源", "should_trigger": true },
+ { "query": "帮我看下自定义函数定义和执行日志", "should_trigger": true },
+ { "query": "同一个 SOQL 帮我查 PG 和 ES，对比数量、差异 ID 和更新时间", "should_trigger": true },
+ { "query": "查这个企业 ES 数据总量，大对象分片也一起累加", "should_trigger": true },
+ { "query": "traceId=16-9ab321，帮我追一下这条请求", "should_trigger": false },
+ { "query": "AccountObj 在列表里有但 ES 搜不到，帮我排查根因", "should_trigger": false },
+ { "query": "看下 fs-paas-app-data 最近一小时 JVM 内存和 CPU 指标", "should_trigger": false },
+ { "query": "查一下 AccountObj 里系统管理员字段叫什么", "should_trigger": false },
+ { "query": "帮我画个故障时间线，把发布和报错串起来", "should_trigger": false },
+ { "query": "帮我查这个企业互联网盘最近改过的文件", "should_trigger": true },
+ { "query": "互联通知公告素材和发送记录在哪个库", "should_trigger": true },
+ { "query": "查医院主数据 hospital-spider 的医院列表，只要前 20 条", "should_trigger": true },
+ { "query": "EIP 同步策略 sync_ploy 用哪个 biz，instance1 的 sync_data 呢", "should_trigger": true },
+ { "query": "帮我查 ClickHouse system 库，SHOW DATABASES 和 SHOW TABLES FROM system", "should_trigger": true }
+]

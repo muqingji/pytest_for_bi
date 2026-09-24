@@ -1,0 +1,28 @@
+{
+  "schema_version": "trace-fact-card-v1",
+  "mode": "knowledge",
+  "trace_id": "FSW-DEMO.0001-ABCDEFGHIJKLMN",
+  "title": "演示链路",
+  "nodes": [
+    {
+      "id": "demo",
+      "service": "demo-app",
+      "entry": "/demo/query",
+      "method": "DemoController",
+      "flow": "接收请求 → 返回结果",
+      "downstream": "无",
+      "timing": "未细分",
+      "evidence": "样例",
+      "label": "已观测",
+      "row": 0,
+      "kind": "app",
+      "title_zh": "演示入口",
+      "layer": "service",
+      "detail": "演示控制器 DemoController 接收 /demo/query，并返回结果。这是校验夹具，没有线上耗时，其余时间未细分。"
+    }
+  ],
+  "gaps": [
+    "演示夹具没有线上证据"
+  ],
+  "evidence": []
+}

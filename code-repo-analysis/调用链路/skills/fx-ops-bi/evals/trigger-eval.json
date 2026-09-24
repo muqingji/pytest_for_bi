@@ -1,0 +1,12 @@
+[
+  { "query": "BI 报表数据还是昨天的，业务数据半小时前就改了，帮我看下是不是 copier 卡住了", "should_trigger": false, "note": "RCA → fx-ops" },
+  { "query": "业务系统有数据，但 BI 报表统计结果少很多，帮我查下仓库是不是漏同步", "should_trigger": false },
+  { "query": "驾驶舱打开一直转圈最后超时，帮我判断是 CH 查询慢还是链路别的环节卡住", "should_trigger": false },
+  { "query": "报表导出一直无反应，帮我看看导出链路哪里挂了", "should_trigger": false },
+  { "query": "字段选不到，归属部门停用了以后报表还在报错，帮我查下 BI 字段和权限问题", "should_trigger": false },
+  { "query": "BI 数仓 copier 和聚合订阅机制讲一下，没有具体故障", "should_trigger": true, "note": "Standalone" },
+  { "query": "帮我追一下 traceId=16-9ab321 这条请求", "should_trigger": false },
+  { "query": "帮我跑条 SQL 查 clickhouse 最近 20 条慢查询", "should_trigger": false },
+  { "query": "很多企业这 40 分钟都在报错，先判断严重度", "should_trigger": false },
+  { "query": "Confluence 里帮我找下去年 BI 故障复盘文档", "should_trigger": false }
+]

@@ -1,0 +1,58 @@
+{
+ "skill_name": "fx-ops-bi",
+ "mode": "path-evaluation",
+ "_note": "路径评估模式：验证 fx-ops-bi 是否在 BI 领域内命中正确模块，并围绕同步链路、数据一致性、CH 查询和渲染/权限等问题给出本领域证据重点。",
+ "evals": [
+  {
+   "id": 1,
+   "name": "sync-delay-copier-lag",
+   "prompt": "BI 报表数据还是昨天的，业务数据半小时前就改了，copier 也有人反馈卡住，帮我看看延迟卡在哪一段",
+   "expected_path": [
+    "进入 sync-delay 模块",
+    "先量化仓库最新时间与源数据时间差",
+    "沿 op-log -> MQ -> copier -> CH -> 聚合链路逐段定位",
+    "输出 sync_lag_minutes、mq_consumer_lag、last_sync_timestamp"
+   ],
+   "must_not": [
+    "直接跳到 CH SQL 慢查询，不检查同步链路",
+    "不量化延迟就下结论",
+    "在 bi 技能内抢做主控级事故编排"
+   ],
+   "files": []
+  },
+  {
+   "id": 2,
+   "name": "data-consistency-source-vs-warehouse",
+   "prompt": "业务系统列表里有数据，但 BI 报表统计结果少了很多，帮我查下是不是仓库漏同步还是聚合算错了",
+   "expected_path": [
+    "进入 data-consistency 模块",
+    "先做源数据 vs 仓库数据双向对比",
+    "区分漏同步、重复计算、聚合偏差或维度口径差异",
+    "输出 expected_value、actual_value、diff_ratio"
+   ],
+   "must_not": [
+    "只查 CH 一侧，不回看源数据",
+    "没做双向对比就判定聚合错误",
+    "把一致性问题直接当性能问题处理"
+   ],
+   "files": []
+  },
+  {
+   "id": 3,
+   "name": "slow-query-dashboard-timeout",
+   "prompt": "驾驶舱打开一直转圈，最后超时，帮我看下是 CH 查询慢还是报表请求链路其他环节卡住",
+   "expected_path": [
+    "进入 slow-query 模块",
+    "如有 traceId 优先追请求链路拿到实际 SQL；没有也要先围绕慢查询证据收敛",
+    "输出 slow_query_sql、query_duration_ms、rows_read、bottleneck_type",
+    "需要时再 handoff 到 monitoring 看 CH 集群指标"
+   ],
+   "must_not": [
+    "直接把所有慢都归因到 CH 集群",
+    "不查实际 SQL 就只看前端现象",
+    "在模块内继续做跨领域总调度"
+   ],
+   "files": []
+  }
+ ]
+}

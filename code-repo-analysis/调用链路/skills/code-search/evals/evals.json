@@ -1,0 +1,41 @@
+{
+ "skill_name": "code-search",
+ "evals": [
+  {
+   "id": 1,
+   "prompt": "帮我查下这个 NPE 是不是代码 bug：\n\njava.lang.NullPointerException: Cannot invoke \"com.example.order.model.Order.getId()\" because \"order\" is null\n\tat com.example.order.service.OrderService.processOrder(OrderService.java:142)\n\tat com.example.order.controller.OrderController.create(OrderController.java:89)\n\tat sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)",
+   "expected_output": "应该使用 code-search skill，通过 sourcebot-cli.py 搜索 OrderService.java 文件，定位第 142 行附近的代码，分析 order 变量为何为 null，追踪 processOrder 方法的调用链和数据流，给出结构化的代码级 RCA 结论。搜索必须带 --repo 参数。",
+   "files": []
+  },
+  {
+   "id": 2,
+   "prompt": "biz-app-log.log_error_dist 里看到这个错误，帮我在代码里找一下原因：DuplicateKeyException: Duplicate entry 'OBJ-20240101-001' for key 'uk_obj_code'，应用名是 fx-crm-object",
+   "expected_output": "应该使用 code-search skill，先通过 sourcebot-cli.py list-repos --query 找到 fx-crm-object 对应的仓库，然后 grep 搜索 DuplicateKeyException 相关代码，分析 uk_obj_code 唯一索引的插入逻辑，找到重复数据的产生路径。所有调用必须带 --repo 参数。",
+   "files": []
+  },
+  {
+   "id": 3,
+   "prompt": "这个接口之前正常，最近开始报 NumberFormatException: For input string \"\" ，我看 git 记录上周有人改过这个方法。帮我看看最近改了什么导致的。函数是 DataConverter.parseAmount，文件在 common-utils 仓库",
+   "expected_output": "应该使用 code-search skill，在 common-utils 仓库中用 sourcebot-cli.py symbol-def 找到 parseAmount 方法，读取源码分析空字符串处理逻辑，同时用 commits --since '7 days ago' 查看最近对该文件的修改，用 diff 对比变更内容，定位引入 bug 的具体 commit。",
+   "files": []
+  },
+  {
+   "id": 4,
+   "prompt": "线上报了一个 IllegalArgumentException，但我不知道这个错误在哪个仓库。异常消息是 'Invalid status code: -1'，堆栈里有 StatusValidator.validate 方法，帮我找到源码定位下。",
+   "expected_output": "应该使用 code-search skill，先通过 symbol-def 搜索 StatusValidator 类来发现仓库，确认仓库后再 grep 搜索 'Invalid status code' 消息的抛出位置，读取源码分析 -1 状态码的来源。必须先完成仓库发现再进入代码搜索。",
+   "files": []
+  },
+  {
+   "id": 5,
+   "prompt": "我在看一个 ConcurrentModificationException，报错在 fx-order 和 fx-payment 两个服务都有，帮我同时在两个仓库搜一下看看原因是不是类似。",
+   "expected_output": "应该使用 code-search skill，扫描两个仓库中分别用 grep --compact 搜索 ConcurrentModificationException，定位异常位置，读取源码对比分析，判断是否是相同的代码模式导致的。",
+   "files": []
+  },
+  {
+   "id": 6,
+   "prompt": "我要排查快消外勤的 TPM 活动核销问题，但我不知道代码在哪个仓库，也不清楚这块的领域规则和术语。先帮我把仓库和领域知识入口定位出来。",
+   "expected_output": "应该使用 code-search skill：第一步读 references/repo-catalog.md，把「快消/TPM/核销」定位到仓库（如 AppServer/fs-crm-fmcg、AppServer/fs-crm-fmcg-wq）并拿到其 ai-wiki 目录 <ai-wiki-root>/domains/<group>/<project>/；第二步读该仓 README.md 的「按任务路由」进领域页，拿到机制、不变量与代码行锚；第三步用 repo-catalog 的 canonical name 作为 --repo 做定向 read-file/grep 确认。禁止跳过仓库索引直接全库 grep，也禁止凭记忆编造仓库路径。",
+   "files": []
+  }
+ ]
+}

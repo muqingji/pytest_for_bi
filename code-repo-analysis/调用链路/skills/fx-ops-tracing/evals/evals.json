@@ -1,0 +1,56 @@
+{
+ "skill_name": "fx-ops-tracing",
+ "mode": "path-evaluation",
+ "_note": "路径评估模式：验证 fx-ops-tracing 是否在已知 traceId / CEP 错误码 / 截图报错场景下选择正确入口 playbook，并保持单请求证据驱动，不膨胀成主控级事故编排。",
+ "evals": [
+  {
+   "id": 1,
+   "name": "traceid-end-to-end-routing",
+   "prompt": "traceId=16-9ab321，这个请求失败了，帮我追一下这条链路到底挂在哪一跳",
+   "expected_path": [
+    "进入 trace-end-to-end playbook",
+    "先在 slow/error 高价值表并行命中，再按 rpcId 重建调用顺序",
+    "输出 service_timeline、first_error_hop 和后续 handoff_needed"
+   ],
+   "must_not": [
+    "把单 trace 请求升级成主控级全局事故编排",
+    "一上来就全量查 eye_trace_dist 或 app_log_dist",
+    "不做 evidence_dir 规划就直接下结论"
+   ],
+   "files": []
+  },
+  {
+   "id": 2,
+   "name": "cep-error-code-routing",
+   "prompt": "前端报了个 15-84f875，截图时间是 05-15 14:13:13，帮我快速判断这个报错是哪里出的",
+   "expected_path": [
+    "进入 cep-error-code playbook",
+    "优先利用错误码和截图时间收窄 CEP 查询窗口",
+    "从 reqId 反查 traceId，再并行查 log_error_dist / slow_log_dist",
+    "根据 token 聚合判断是否需要从快速模式升级到继续深挖"
+   ],
+   "must_not": [
+    "把错误码直接当 traceId 查",
+    "不利用截图时间，直接大窗口扫 CEP 日志",
+    "无视 source ID 与云环境映射关系"
+   ],
+   "files": []
+  },
+  {
+   "id": 3,
+   "name": "traceid-time-unknown-routing",
+   "prompt": "我只有一个 traceId：FSA-tenant123-abcde，不知道是几天前的，帮我先把时间窗找出来",
+   "expected_path": [
+    "进入 traceid-time-unknown playbook",
+    "Step 0 先从 traceId 提取时间和辅助过滤条件",
+    "提取不到时间时按分天或扩窗策略搜索，并在找到时间窗后回到 trace-end-to-end"
+   ],
+   "must_not": [
+    "直接按最近 24 小时全表扫完不做时间提取",
+    "找到时间窗前就开始做完整链路结论",
+    "无限扩窗而不设置停止条件"
+   ],
+   "files": []
+  }
+ ]
+}

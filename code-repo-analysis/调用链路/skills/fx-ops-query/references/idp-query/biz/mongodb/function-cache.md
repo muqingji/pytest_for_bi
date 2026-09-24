@@ -1,0 +1,40 @@
+# function-cache
+
+**方言**: `mongodb` 
+**说明**: 平台功能缓存与许可证管理，存储APL开发包、证书、租户监听器及许可证资源等配置 
+**路由**: `fixed`（`show/query` 免传 `--tenant-id`；表级 WHERE 仍按 filterHint 拼）
+
+下列为 **表级租户筛选**（租户列、时间列、WHERE 模板）参考；拼 SQL 见 [filter-hint 通用规则](../../../idp-query-filter-hint.md)。
+
+执行前用 `show columns function-cache <name> -j` 核对 `filterHint` 与列类型。
+
+**查询入口**: `fx-ops idp query function-cache`（方言规则见 ../../../idp-query-mongodb.md，biz 索引见 [index.md](./index.md)）
+
+## 推荐流程
+
+```bash
+fx-ops idp --profile <profile> show tables function-cache --dialect mongodb -j
+fx-ops idp --profile <profile> show columns function-cache <table> --dialect mongodb -j
+fx-ops idp --profile <profile> tenant get --tenant-id <EI> -j  # 取 tenantAccount（EA）
+fx-ops idp --profile <profile> query function-cache --collection <collection> --filter '<JSON>' -j
+```
+
+## 统计
+
+- 表级筛选条目: **6**
+- 复杂筛选（无租户列和/或子查询）: **0**
+- 使用 `$tenant_id` / EI: **6**
+- 使用 `$tenant_account` / EA: **0**
+
+## 租户 ID（EI）筛选表
+
+模板占位符含 `$tenant_id` / `$ei`；`--tenant-id` 传 EI 即可。
+
+| 表名 | 租户列 | 时间列 | 筛选模板 |
+| --- | --- | --- | --- |
+| `APLDevJar` | tenantId | `lastUpdateTime` | `{"tenantId":"$tenant_id"}` |
+| `Certificate` | T | `CT` | `{"T":"$tenant_id"}` |
+| `DashboardSubscribe` | tenantId | `-` | `{"tenantId":"$tenant_id"}` |
+| `FunctionCache` | tenantId | `-` | `{"tenantId":"$tenant_id"}` |
+| `LicenseResource` | tenantId | `updateTime` | `{"tenantId":"$tenant_id"}` |
+| `TenantListener` | EI | `-` | `{"EI":"$tenant_id"}` |

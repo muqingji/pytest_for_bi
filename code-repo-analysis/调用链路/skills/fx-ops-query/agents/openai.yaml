@@ -1,0 +1,4 @@
+interface:
+ display_name: "FX Ops Query"
+ short_description: "执行 SQL、对象 PG/ES 对账、日志查询与数据源发现"
+ default_prompt: "Use $fx-ops-query to inspect business data, table structure, log tables, or discover the right biz/data source before querying."

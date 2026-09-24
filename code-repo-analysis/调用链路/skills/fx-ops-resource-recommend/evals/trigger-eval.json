@@ -1,0 +1,16 @@
+[
+  { "query": "这个服务 requests/limits 配得合理吗，帮我看看 CPU 和内存有没有冗余", "should_trigger": true },
+  { "query": "哪些 Pod 用量最多，哪些资源可以回收，顺便做容量评估", "should_trigger": true },
+  { "query": "CPU throttling 和内存接近 limit，帮我判断是否有资源不足风险", "should_trigger": true },
+  { "query": "帮我按服务列出 CPU/内存使用量和 request、limit 的 TopN/BottomN", "should_trigger": true },
+  { "query": "帮我根据最近 28 天 P95/P99、业务高峰和合理冗余计算 CPU/内存资源优化建议", "should_trigger": true },
+  { "query": "服务只运行了 3 天，平均用量很低，是否能回收资源？请说明历史是否足够", "should_trigger": true },
+  { "query": "hsyk-k8s1 的 hsyk-public-prod 命名空间 payment-api 最近 14 天的 resources 是否合理", "should_trigger": true },
+  { "query": "生产 cluster-a 的 payment-api 是否该降配；如果集群映射不清请说明需要确认什么", "should_trigger": true },
+  { "query": "帮我生成这次资源分析的 HTML 页面并分享链接", "should_trigger": true },
+  { "query": "帮我看下这个应用最近半小时 CPU、内存、重启次数是不是异常", "should_trigger": false },
+  { "query": "给我看这个 Grafana 看板的 CPU 曲线", "should_trigger": false },
+  { "query": "traceId=16-9ab321，帮我追一下这条请求", "should_trigger": false },
+  { "query": "帮我跑 SQL 查最近一小时的资源数据", "should_trigger": false },
+  { "query": "帮我改 Deployment 的 CPU limit 和 HPA 配置", "should_trigger": false }
+]

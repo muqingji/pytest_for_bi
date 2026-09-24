@@ -16,7 +16,9 @@
     "pod": "fs-bi-stat-bfc75496b-8zrtc",
     "namespace": "foneshare-vip",
     "cluster": "tke70-k8s1",
-    "replicaset": "fs-bi-stat-bfc75496b"
+    "replicaset": "fs-bi-stat-bfc75496b",
+    "pod_ip": "10.71.139.52",
+    "node": "10.71.241.83"
   },
   "resources": {
     "requests": {
@@ -121,7 +123,7 @@
       "row": 0,
       "title_zh": "查询部门层级",
       "layer": "data",
-      "detail": "`getMaxLevelForDepartment` 通过 ClickHouseSQLExecutor 查询 org_dept 的部门父路径，得到 maxLevel 6。数据库服务端耗时未取证。"
+      "detail": "`getMaxLevelForDepartment` 通过 ClickHouseSQLExecutor 查询 org_dept 的部门父路径，得到 maxLevel 6。主代理 10.17.44.222:9090，JDBC 10.17.44.27:8123，从库 10.17.46.27:8123，库 fsbidb044027003。数据库服务端耗时未取证。账号和密码不写入报告。"
     },
     {
       "id": "i18n",

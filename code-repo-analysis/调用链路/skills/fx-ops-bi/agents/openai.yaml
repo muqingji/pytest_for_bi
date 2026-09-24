@@ -1,0 +1,4 @@
+interface:
+ display_name: "FX Ops BI"
+ short_description: "排查 BI 同步延迟、数据不准、报表超时与导出订阅问题"
+ default_prompt: "使用 $fx-ops-bi 诊断 BI 同步延迟、数据一致性、报表/驾驶舱加载慢、导出失败或订阅推送问题。"
