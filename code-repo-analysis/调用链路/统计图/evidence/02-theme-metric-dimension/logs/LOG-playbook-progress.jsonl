@@ -1,0 +1,2 @@
+{"event":"progress","milestone":"M1","phase":0,"status":"ok","duration_ms":966,"key_evidence":{"anchor":{"status":200,"request_time_ms":3537,"uri":"/FHH/EM1HBISTAT/fs-bi-stat/describes/detail","stamp":"2026-09-22 22:55:25.731"},"slow_sql_count":0,"tomcat_slow_count":0,"apl_hit":false}}
+{"event":"progress","milestone":"M2","phase":1,"status":"gated","duration_ms":4444,"key_evidence":{"anchor":{"status":200,"request_time_ms":3537,"uri":"/FHH/EM1HBISTAT/fs-bi-stat/describes/detail","stamp":"2026-09-22 22:55:25.731"},"slow_sql_count":1,"tomcat_slow_count":0,"apl_hit":false}}
