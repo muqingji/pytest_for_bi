@@ -44,6 +44,15 @@ description: 单请求级链路追踪与错误定位能力：从 CEP 网关日�
 
 **没有 `traceId/traceIdParsed`、env 和 time_window，无法确定查哪个企业、哪个环境、哪个时间分区的数据——不要进入后续链路 SQL。CEP 错误码没有 `traceIdParsed` 只允许停留在 `traceIdLookup` 阶段，必须先通过 `fx-ops-query` 的 `log_cep_dist.reqId` 小表反查能力解析出 traceId。**
 
+## 调用方带了路由
+
+调用链报告会把一次进页里重复的 traceId 按描述末尾路由拆开。此时本 skill 仍只追一个请求，锚点是这条路由，不是该 traceId 下的全部 URI。
+
+1. 先按 traceId 查 `log_cep_dist`，只保留 `uri` 或 `uri2` 对上该路由的行。对不上的其他接口不进入后续 app_log、慢 SQL 和 RPC。
+2. 没有对得上的行时，贴来的 traceId 只提供 `ea` 和时间锚。按路由、`bizName` 候选和 `stamp` 窄窗反查真正的 traceId。唯一命中才继续；多候选返回 `partial`，不猜。
+3. 反查规则和 `bizName` 候选以 `trace-chain-report` 的「重复 traceId 按路由拆链」为准，不在这里另写一套路径匹配。
+
+
 ## 证据优先与取证规范 (Evidence-First)
 
 1. **证据落盘**：所有关键查询结果必须保存至主控分配的 evidence_dir；独立调用时使用 `output/evidence/<YYYYMMDD-HHMMSS>-<short-topic>-<channel_value>/` 格式。

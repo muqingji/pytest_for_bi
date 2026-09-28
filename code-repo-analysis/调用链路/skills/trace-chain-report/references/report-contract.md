@@ -12,7 +12,9 @@
 └── 证据索引.md
 ```
 
-`<中文描述>` 来自调用日志里 traceId 前的文字。短标识用企业 ID、接口短名或 traceId 前 6 到 10 位，只为消歧。
+`<中文描述>` 来自调用日志里 traceId 前、路由之前的文字。短标识优先用解析结果里的 `slug`：有路由时是路由末段，没有路由时是 traceId 尾部。同一 traceId 的不同路由必须落在不同目录。调用日志里的结果目录如果没有包含该路由，忽略，使用 `parse_call_log.py` 的 `output_dir`。
+
+事实卡有路由时增加 `route`。贴来的 traceId 和取证用的 traceId 不同时，`trace_id` 写实际取证的那条，`pasted_trace_id` 保留用户贴来的值。
 
 ## 模式
 

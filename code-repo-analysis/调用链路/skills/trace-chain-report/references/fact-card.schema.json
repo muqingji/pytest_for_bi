@@ -7,6 +7,8 @@
     "schema_version": {"const": "trace-fact-card-v1"},
     "mode": {"enum": ["knowledge", "live"]},
     "trace_id": {"type": "string", "minLength": 8},
+    "pasted_trace_id": {"type": "string"},
+    "route": {"type": "string"},
     "title": {"type": "string"},
     "profile": {"type": "string"},
     "entry_time": {"type": "string"},

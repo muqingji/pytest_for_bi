@@ -112,6 +112,11 @@ def validate_report(directory: Path, peer: Path | None = None, check_evidence: b
         errors.append("html missing trace_id")
     if trace_id and trace_id not in index:
         errors.append("evidence index missing trace_id")
+    route = str(card.get("route") or "")
+    if route and route not in markdown:
+        errors.append("markdown missing route")
+    if route and route not in html:
+        errors.append("html missing route")
 
     for heading in HEADINGS:
         if heading not in markdown:
@@ -205,8 +210,17 @@ def validate_report(directory: Path, peer: Path | None = None, check_evidence: b
             errors.append(f"peer fact card unreadable: {exc}")
         else:
             other_trace = str(other.get("trace_id") or "")
+            other_route = str(other.get("route") or "")
             if other_trace and other_trace != trace_id and other_trace in visible:
                 errors.append("report contains the peer trace_id")
+            if route and other_route and route != other_route:
+                entry = ""
+                for node in nodes:
+                    if isinstance(node, dict):
+                        entry = f"{node.get('entry') or ''} {node.get('method') or ''}"
+                        break
+                if other_route in entry and route not in entry:
+                    errors.append("entry matches the peer route instead of its own route")
             own_pod = str((card.get("runtime") or {}).get("pod") or "") if isinstance(card.get("runtime"), dict) else ""
             other_runtime = other.get("runtime")
             other_pod = str(other_runtime.get("pod") or "") if isinstance(other_runtime, dict) else ""

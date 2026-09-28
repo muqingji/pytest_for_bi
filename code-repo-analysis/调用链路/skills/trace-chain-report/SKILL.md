@@ -1,6 +1,6 @@
 ---
 name: trace-chain-report
-description: "当用户给出 traceId、调用日志，或要求生成调用链报告、代码走读和泳道 HTML 链路图时使用。先写事实卡再写报告，校验通过后才交付；禁止编造未取证的 RPC、耗时或根因。"
+description: "当用户给出 traceId、调用日志，或要求生成调用链报告、代码走读和泳道 HTML 链路图时使用。同一 traceId 被多个接口复用时，按描述末尾路由拆开，只追该路由。先写事实卡再写报告，校验通过后才交付；禁止编造未取证的 RPC、耗时或根因。"
 ---
 
 # trace-chain-report
@@ -22,9 +22,17 @@ description: "当用户给出 traceId、调用日志，或要求生成调用链�
 
 ## 输入与输出
 
-输入可以是调用日志、直接粘贴的 traceId，或已经落盘的 evidence index。同一行多个 traceId 拆开。描述优先用 traceId 前的中文名。
+输入可以是调用日志、直接粘贴的 traceId，或已经落盘的 evidence index。同一行多个 traceId 拆开。描述优先用 traceId 前的中文名。描述末尾的路由是另一条任务的身份，不能被 traceId 去重丢掉。
 
-输出目录只有一种写法：`<分析根目录>/调用链路/统计图/<中文描述>-<短标识>/`。短标识用企业或 traceId 前几位消歧。每条 trace 四份文件：
+先解析，再写报告。解析只抽出任务，不查日志：
+
+```bash
+uv run --no-sync python scripts/parse_call_log.py <调用日志.md>
+```
+
+在本技能目录执行。安装到 `.agents/skills/trace-chain-report` 时，把 `scripts/parse_call_log.py` 换成那个路径。每条任务用返回的 `output_dir`，不要沿用调用日志里抄错的结果目录。
+
+输出目录是 `<分析根目录>/调用链路/` 加上解析结果里的 `output_dir`。有路由时短标识用路由末段，不用企业号或 traceId 前几位硬凑。每条任务四份文件：
 
 - `fact-card.json`
 - `调用链路分析.md`
@@ -34,6 +42,27 @@ description: "当用户给出 traceId、调用日志，或要求生成调用链�
 证据目录由调用方传入。不要写死仓库里的 `output/evidence/<issue>`，也不要发明 issue 编号。
 
 批量时，协调者只解析列表和汇总状态；每个 worker 只写自己的目录。一条失败标 `partial`，其他继续。重跑先读该目录的事实卡和证据索引，只补缺口。分享链接必须等用户明确要求。
+
+
+## 重复 traceId 按路由拆链
+
+一次进页会打出多个接口。抓包时这些接口的 traceId 可能相同，调用日志也会把同一个 traceId 贴在多行。不能按 traceId 合并成一份报告，也不能用其中一行的耗时、Pod 或 SQL 填另一行。
+
+路由取描述末尾，不取正文中间的字段名。末尾反引号或末尾路径都算，例如 `getCategoryAndRpt`、`WatermarkApi/getWatermark`、`stat/chartConfig/query`、`FHH/EM1HBISTAT/fs-bi-stat/stat/data/query`。`chartType`、`source=1` 这种夹在句子里的记号不是路由。
+
+| 解析结果 | 怎么处理 |
+| --- | --- |
+| 同一 traceId，末尾路由不同 | 各写一份。任务身份是 `traceId + route` |
+| 同一 traceId，描述相同且没有路由 | 合并为先出现的那条 |
+| 同一 traceId，描述不同但没有末尾路由 | 无法拆开，只保留先出现的描述。解析结果的 `merged_without_route` 要写进汇总 |
+| 路由是完整 `FHH/EM1H...` | `service_code` 取 `EM1H` 后面的服务码，当作 CEP `bizName` 候选 |
+
+`live` 取证时，路由是主过滤条件，贴来的 traceId 只是时间锚和企业锚：
+
+1. 用贴来的 traceId 查 `log_cep_dist`，只保留 `uri` 或 `uri2` 对上该路由的行。对不上的其他接口留在证据边界，写「同 traceId 的其他路由，未纳入」。
+2. 一行都对不上，说明这个 traceId 属于同页的另一个接口。用它的 `ea` 和解析时间做窄窗，再按路由反查真正的 traceId。有完整路径时 `uri2` 等值；只有末段时用 `position(uri, '<route>') > 0`。CEP 必须带 `bizName` 候选和 `stamp`，禁止无 bizName 的宽窗 `uri LIKE`。`EM1HBISTAT` 先试 `BISTAT`，`EM1HBICRM` 先试 `BICRM`，`EM1HQIXINEXT` 先试 `QIXINEXT`；后缀路由没有服务码时，用同页已命中行的 `bizName`，对不上就换候选，不要猜一个扫数小时。
+3. 反查到唯一行，事实卡 `trace_id` 改成该行的 traceId，`pasted_trace_id` 保留原值。反查到多条，标 `partial` 并列出候选，不选一条继续写。
+4. 报告入口必须是这条路由。同 traceId 下的兄弟接口不是本请求的下游，除非这条路由的应用日志里真有对它的调用。
 
 ## 写作门禁
 
@@ -68,8 +97,8 @@ MQ 的发送和消费节点必须同时写 MQ 名字、发送方、消费方。�
 解析和校验只检查结构，不生成报告正文：
 
 ```bash
-uv run --no-sync python .agents/skills/trace-chain-report/scripts/parse_call_log.py <调用日志.md>
-uv run --no-sync python .agents/skills/trace-chain-report/scripts/validate_report.py <报告目录> --peer <另一条报告目录> --check-evidence
+uv run --no-sync python scripts/parse_call_log.py <调用日志.md>
+uv run --no-sync python scripts/validate_report.py <报告目录> --peer <另一条报告目录> --check-evidence
 ```
 
 校验失败就改事实卡或正文，不能把未通过的报告当完成。

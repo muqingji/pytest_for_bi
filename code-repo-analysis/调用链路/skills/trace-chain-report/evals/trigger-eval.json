@@ -12,6 +12,10 @@
     "should_trigger": true
   },
   {
+    "query": "这几个接口的 traceId 是重复的，按描述末尾路由分别找调用链",
+    "should_trigger": true
+  },
+  {
     "query": "traceId 报了 500，帮我查根因",
     "should_trigger": false
   },

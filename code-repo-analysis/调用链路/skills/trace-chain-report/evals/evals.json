@@ -20,6 +20,11 @@
       "id": 4,
       "prompt": "没有源码仓库、文件和符号时，不要写接口内部实现步骤。",
       "expected": "第 6 节写未取得精确源码"
+    },
+    {
+      "id": 5,
+      "prompt": "调用日志里三个接口贴了同一个 traceId，描述末尾分别是 stat/chartConfig/query、stat/filters/getFiltersResult 和 stat/data/query。请分别给出调用链。",
+      "expected": "按路由拆成三份报告；每份入口只对应该路由，不用同 traceId 的其他接口填空"
     }
   ]
 }
