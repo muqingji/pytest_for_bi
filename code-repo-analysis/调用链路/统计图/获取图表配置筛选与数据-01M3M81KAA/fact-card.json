@@ -1,0 +1,345 @@
+{
+  "schema_version": "trace-fact-card-v1",
+  "mode": "live",
+  "trace_id": "FSW-fktest7572.1001-01M3M81KAA1PZ0YASE8SYY95XQ",
+  "title": "获取图表配置筛选与数据",
+  "profile": "foneshare",
+  "entry_time": "2026-09-28 22:52:32.793",
+  "identity": {
+    "ea": "fktest7572",
+    "app": "fs-bi-stat",
+    "ei": "816324"
+  },
+  "runtime": {
+    "pod": "fs-bi-stat-7cb754895-ph8dq",
+    "pod_ip": "10.71.137.15",
+    "profile": "foneshare-gray",
+    "data_query_pod": "fs-bi-stat-7cb754895-8wqvk",
+    "data_query_pod_ip": "10.71.33.152"
+  },
+  "resources": {
+    "node_ip": "未取证",
+    "requests": "未取证"
+  },
+  "nodes": [
+    {
+      "id": "gw-view",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBICRM/statEditController/getStatView",
+      "method": "/FHH/EM1HBICRM/statEditController/getStatView",
+      "flow": "同步主路径",
+      "downstream": "fs-bi-crm-report-web",
+      "timing": "89 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "网关读取统计视图",
+      "detail": "CEP 在 2026-09-28 22:52:32.793 记录 /FHH/EM1HBICRM/statEditController/getStatView，200，89 ms。viewId 为 BI_6a8874cc0310a30008296669。"
+    },
+    {
+      "id": "svc-view",
+      "service": "fs-bi-crm-report-web",
+      "entry": "StatViewService.getStatView",
+      "method": "StatViewService.getStatView",
+      "flow": "同步主路径",
+      "downstream": "权限",
+      "timing": "58 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-crm.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "校验并返回统计视图",
+      "detail": "StatViewService.getStatView 22:52:32.823 进入，22:52:32.881 离开，statusCode 0。RptViewRepository 先尝试缓存。"
+    },
+    {
+      "id": "data-pte",
+      "service": "PostgreSQL",
+      "entry": "ChartPrivatePermissionMapper.getPteRecordsByDataIds",
+      "method": "ChartPrivatePermissionMapper.getPteRecordsByDataIds",
+      "flow": "同步主路径",
+      "downstream": "chart_private_permission",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-crm.json",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "查询视图私有归属",
+      "detail": "getStatView 调用 DataPermService.queryPteOwnerByDataId，最终 ChartPrivatePermissionMapper.getPteRecordsByDataIds 查表 chart_private_permission。数据库名未取证。",
+      "source": {
+        "repo": "fs-bi-crm-report",
+        "file": "fs-bi-crm-report-web/src/main/java/com/facishare/bi/permission/dao/mapper/ChartPrivatePermissionMapper.java",
+        "symbol": "ChartPrivatePermissionMapper.getPteRecordsByDataIds"
+      }
+    },
+    {
+      "id": "gw-conf",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query",
+      "method": "/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query",
+      "flow": "同步主路径",
+      "downstream": "fs-bi-stat",
+      "timing": "251 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "网关进入图表配置",
+      "detail": "CEP 在 2026-09-28 22:52:33.104 记录 /FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query，200，251 ms。"
+    },
+    {
+      "id": "svc-filter",
+      "service": "fs-bi-stat",
+      "entry": "CEPRequestFilter",
+      "method": "CEPRequestFilter",
+      "flow": "同步主路径",
+      "downstream": "StatEditController",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "请求进入统计图服务",
+      "detail": "CEPRequestFilter 记下 pathUrl 为 /fs-bi-stat/stat/chartConfig/query。Pod 是 fs-bi-stat-7cb754895-ph8dq，Pod IP 10.71.137.15。"
+    },
+    {
+      "id": "svc-topo",
+      "service": "fs-bi-stat",
+      "entry": "StatViewService.handleTopologyStatus",
+      "method": "StatViewService.handleTopologyStatus",
+      "flow": "同步主路径",
+      "downstream": "PostgreSQL",
+      "timing": "9 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "读取视图拓扑",
+      "detail": "CostMonitor 显示 StatViewService.handleTopologyStatus 总耗时 9 ms，其中 StatViewRepository.getViewById 7 ms。"
+    },
+    {
+      "id": "data-view",
+      "service": "PostgreSQL",
+      "entry": "StatViewMapper.getViewById",
+      "method": "StatViewMapper.getViewById",
+      "flow": "同步主路径",
+      "downstream": "stat_view",
+      "timing": "7 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "按视图编号查询统计图",
+      "detail": "StatViewRepository.getViewById 对应 StatViewMapper.getViewById，FROM 表 stat_view。数据库名未取证。",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-metadata/src/main/java/com/facishare/bi/metadata/stat/dao/system/mapper/StatViewMapper.java",
+        "symbol": "StatViewMapper.getViewById"
+      }
+    },
+    {
+      "id": "svc-conf",
+      "service": "fs-bi-stat",
+      "entry": "StatChartConfService.getViewChartConfById",
+      "method": "StatChartConfService.getViewChartConfById",
+      "flow": "同步主路径",
+      "downstream": "筛选和字段",
+      "timing": "156 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "组装图表配置",
+      "detail": "StatChartConfService.getViewChartConfById 进入后离开时 chartType 为 pie。日志随后多次 I18nRestClientImpl.loadByLangBatch。"
+    },
+    {
+      "id": "data-filter",
+      "service": "PostgreSQL",
+      "entry": "StatFilterMapper.getStatViewFiltersByViewIds",
+      "method": "StatFilterMapper.getStatViewFiltersByViewIds",
+      "flow": "同步主路径",
+      "downstream": "stat_view_filter",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "查询已保存的筛选",
+      "detail": "getViewChartConfById 和 getFilters 都走 StatFilterService.getFilters，底层 StatFilterMapper.getStatViewFiltersByViewIds 查询表 stat_view_filter。数据库名未取证。",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-stat/src/main/java/com/facishare/bi/stat/dao/mysql/mapper/StatFilterMapper.java",
+        "symbol": "StatFilterMapper.getStatViewFiltersByViewIds"
+      }
+    },
+    {
+      "id": "svc-i18n",
+      "service": "文案服务",
+      "entry": "I18nRestClientImpl.loadByLangBatch",
+      "method": "I18nRestClientImpl.loadByLangBatch",
+      "flow": "同步主路径",
+      "downstream": "文案服务",
+      "timing": "7 ms 到 10 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "翻译指标和维度文案",
+      "detail": "chartConfig 路径上多次 I18nRestClientImpl.loadByLangBatch 远程完成，单次 7 ms 到 10 ms。文案物理表未取证。"
+    },
+    {
+      "id": "gw-filter",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getFiltersResult",
+      "method": "/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getFiltersResult",
+      "flow": "同步主路径",
+      "downstream": "fs-bi-stat",
+      "timing": "37 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "网关进入筛选结果",
+      "detail": "CEP 在 2026-09-28 22:52:33.377 记录 /FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getFiltersResult，200，37 ms。应用侧 getFilters 约 33 ms。"
+    },
+    {
+      "id": "gw-data",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query",
+      "method": "/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query",
+      "flow": "同步主路径",
+      "downstream": "fs-bi-stat",
+      "timing": "494 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "网关进入聚合查询",
+      "detail": "CEP 在 2026-09-28 22:52:33.446 记录 /FHH/EM1HBISTAT/fs-bi-stat/stat/data/query，200，494 ms。处理 Pod 换成 fs-bi-stat-7cb754895-8wqvk，Pod IP 10.71.33.152。"
+    },
+    {
+      "id": "svc-fill",
+      "service": "fs-bi-stat",
+      "entry": "StatDataServiceHelper.fulFillQueryChartDataArg",
+      "method": "StatDataServiceHelper.fulFillQueryChartDataArg",
+      "flow": "同步主路径",
+      "downstream": "PostgreSQL",
+      "timing": "20 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "补齐查询参数",
+      "detail": "StatDataServiceHelper.fulFillQueryChartDataArg 耗时 20 ms，超过 5 ms 的有 StatSchemaService.getStatSchemaRange、isSlaveSchema、DefaultStatFieldMapper.queryStatFieldListByIds、StatFilterService.getFilters。"
+    },
+    {
+      "id": "data-field",
+      "service": "PostgreSQL",
+      "entry": "DefaultStatFieldMapper.queryStatFieldListByIds",
+      "method": "DefaultStatFieldMapper.queryStatFieldListByIds",
+      "flow": "同步主路径",
+      "downstream": "stat_field",
+      "timing": "7 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "按字段编号查统计字段",
+      "detail": "CostMonitor 给出 DefaultStatFieldMapper.queryStatFieldListByIds 7 ms。对应 StatFieldMapper.queryStatFieldListByIds，FROM 表 stat_field。应用日志另有 AsynQueryTask SQL 提到 stat_field 和 dim_rule。数据库名未取证。",
+      "source": {
+        "repo": "fs-bi",
+        "file": "fs-bi-metadata/src/main/java/com/facishare/bi/metadata/stat/dao/mapper/StatFieldMapper.java",
+        "symbol": "StatFieldMapper.queryStatFieldListByIds"
+      }
+    },
+    {
+      "id": "svc-model",
+      "service": "fs-bi-stat",
+      "entry": "StatExecModelGenerator.generateModel",
+      "method": "StatExecModelGenerator.generateModel",
+      "flow": "同步主路径",
+      "downstream": "ClickHouse",
+      "timing": "89 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "生成统计查询模型",
+      "detail": "StatExecModelGenerator.generateModel 耗时 89 ms，各子方法都在 5 ms 阈值内。随后进入 EasyStat，总 StopWatch 246 ms。"
+    },
+    {
+      "id": "data-ch-agg",
+      "service": "ClickHouse",
+      "entry": "ClickHouseSQLExecutor",
+      "method": "ClickHouseSQLExecutor",
+      "flow": "同步主路径",
+      "downstream": "agg_metric_data",
+      "timing": "35 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "查询客户统计聚合结果",
+      "detail": "DataQueryFlowNode 经 ClickHouseSQLExecutor 执行 easyStat SQL，StopWatch EasyStat-watch-dataQuery-sql 35 ms。日志 SQL 能确认表 agg_metric_data。数据库名 fsbidb044019002。主代理 10.17.44.221:9090，JDBC 10.17.44.19:8123，从库 10.17.46.19:8123。"
+    },
+    {
+      "id": "data-ch-area",
+      "service": "ClickHouse",
+      "entry": "MapElement.mapCodeToName",
+      "method": "MapElement.mapCodeToName",
+      "flow": "同步主路径",
+      "downstream": "dim_sys_area_region,area_region_version_binding",
+      "timing": "185 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "把地区编码映射成名称",
+      "detail": "MapElement.mapCodeToName 连续两次查地区维表，MainStep-3.1 185 ms。一次 SQL 连接表 dim_sys_area_region 和 area_region_version_binding。数据库名 fsbidb044019002。"
+    },
+    {
+      "id": "data-redis",
+      "service": "Redis",
+      "entry": "cacheSyncReqResultWithBinary",
+      "method": "cacheSyncReqResultWithBinary",
+      "flow": "同步主路径",
+      "downstream": "bi_stat_querycache",
+      "timing": "未取证",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "回写统计查询缓存",
+      "detail": "StatBaseController.cacheSyncReqResultWithBinary 打出缓存键 bi_stat_querycache，长度 3348。Redis 地址未取证。数据库名未取证，表名未取证。"
+    }
+  ],
+  "gaps": [
+    "PostgreSQL 物理数据库名未取证。",
+    "Redis 地址未取证。",
+    "文案物理表未取证。",
+    "Node IP 与容器配额未取证。",
+    "data/query 494 ms 减去 EasyStat 246 ms 后的差额未细分。"
+  ],
+  "evidence": [
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-tracing-log-cep.json",
+      "note": "CEP 入口"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-stat.json",
+      "note": "fs-bi-stat 应用日志"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-app-log-crm.json",
+      "note": "fs-bi-crm-report-web 应用日志"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-sql-slow.json",
+      "note": "sql_slow_dist 计数"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KAA/evidence/TRC-chain-notes.md",
+      "note": "摘记"
+    }
+  ]
+}

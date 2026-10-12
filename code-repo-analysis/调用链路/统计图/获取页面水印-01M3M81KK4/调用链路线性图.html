@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>获取页面水印 · 泳道图</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --ink: #1b2433;
+      --muted: #5b677a;
+      --line: #d8dee9;
+      --card: #ffffff;
+      --cep: #4f46e5;
+      --psm: #0f766e;
+      --db: #c2410c;
+      --i18n: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+    .page { max-width: 1480px; margin: 0 auto; padding: 28px 20px 48px; }
+    header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-end; margin-bottom: 16px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.01em; }
+    .sub, .meta { color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .meta { text-align: right; font-size: 12px; }
+    code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+    .pill { border-radius: 999px; padding: 3px 10px; font-size: 12px; background: #fff; border: 1px solid var(--line); color: var(--muted); }
+    .board {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: auto;
+      box-shadow: 0 10px 28px rgba(27, 36, 51, 0.05);
+    }
+    .lanes { min-width: 1080px; position: relative; }
+    .heads, .step { display: grid; grid-template-columns: 1fr, 1fr, 1fr; }
+    .heads { position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1px solid var(--line); }
+    .head { padding: 14px 16px 12px; border-right: 1px solid var(--line); }
+    .head:last-child { border-right: 0; }
+    .head .kind { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+    .head h2 { margin: 4px 0 2px; font-size: 16px; }
+    .head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .h-cep .kind { color: var(--cep); }
+    .h-psm .kind { color: var(--psm); }
+    .h-db .kind { color: var(--db); }
+    .h-i18n .kind { color: var(--i18n); }
+    .canvas { position: relative; padding: 8px 0 18px; }
+    .rails { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr, 1fr, 1fr; pointer-events: none; }
+    .rails i { border-left: 2px dashed #e2e8f0; margin-left: calc(50% - 1px); }
+    .step { position: relative; z-index: 1; min-height: 8px; }
+    .card {
+      margin: 8px 14px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px 11px;
+      box-shadow: 0 4px 14px rgba(27, 36, 51, 0.04);
+    }
+    .card[data-col="1"] { grid-column: 1; border-top: 3px solid var(--cep); }
+    .card[data-col="2"] { grid-column: 2; border-top: 3px solid var(--psm); }
+    .card[data-col="3"] { grid-column: 3; border-top: 3px solid var(--db); }
+    .card[data-col="4"] { grid-column: 4; border-top: 3px solid var(--i18n); }
+    .card[data-col="5"] { grid-column: 5; border-top: 3px solid #0369a1; }
+    .card[data-col="6"] { grid-column: 6; border-top: 3px solid #b45309; }
+    .card[data-col="7"] { grid-column: 7; border-top: 3px solid #7c3aed; }
+    .hop[data-dir="fwd"] .line::after { right: -1px; border-left-color: #64748b; }
+    .hop[data-dir="back"] .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop[data-dir="back"] .line::after { left: -1px; border-right-color: #94a3b8; }
+    .card h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.4; }
+    .card p { margin: 0; color: #334155; font-size: 12.5px; line-height: 1.6; }
+    .method { display: block; margin-top: 6px; color: #1e293b; word-break: break-all; }
+    .meta-line { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .tag { font-size: 11px; border-radius: 999px; padding: 1px 7px; background: #f8fafc; color: var(--muted); border: 1px solid var(--line); }
+    .tag.obs { color: #1d4ed8; background: #eff6ff; border-color: #dbeafe; }
+    .tag.map { color: #9a3412; background: #fff7ed; border-color: #ffedd5; }
+    .tag.miss { color: #6b7280; background: #f8fafc; }
+    .tables { margin: 8px 0 0; padding: 0; list-style: none; }
+    .tables li { padding: 6px 0; border-top: 1px dashed var(--line); font-size: 12.5px; line-height: 1.5; }
+    .hop { position: relative; height: 34px; z-index: 1; }
+    .hop .line { position: absolute; top: 15px; height: 2px; background: #64748b; }
+    .hop .line::after { content: ""; position: absolute; top: -4px; border: 5px solid transparent; }
+    .hop.fwd .line::after { right: -1px; border-left-color: #64748b; }
+    .hop.back .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop.back .line::after { left: -1px; border-right-color: #94a3b8; }
+    .hop .label { position: absolute; top: 0; font-size: 11px; color: #475569; background: #fff; padding: 0 6px; white-space: nowrap; }
+    .note { margin: 14px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>获取页面水印</h1>
+        <div class="sub">泳道从左到右是参与方，从上到下是调用顺序。实线是发出，虚线是返回。</div>
+      </div>
+      <div class="meta"><div><code>/FHH/EM1HQIXINEXT/WatermarkApi/getWatermark</code></div><div>200 · 网关 6 ms · 2026-09-28 22:52:32.860</div><div>FSW-fktest7572.1001-01M3M81KK4VBA8GA3X0YY3FJ80</div><div>Pod fs-qixin-extension-provider-b6b56c79b-dngw5 · 10.71.137.67</div></div>
+    </header>
+    <div class="legend"><span class="pill">网关 CEP</span><span class="pill">PSM fs-qixin-extension-provider</span><span class="pill">中间件 数据库未取证</span><span class="pill">没有 Redis / MQ / ClickHouse，不单开列</span></div>
+    <div class="board">
+      <div class="lanes">
+        <div class="heads"><div class="head h-cep"><div class="kind">网关</div><h2>CEP</h2><p>入口记录状态和总耗时</p></div><div class="head h-psm"><div class="kind">PSM</div><h2>fs-qixin-extension-provider</h2><p>Pod fs-qixin-extension-provider-b6b56c79b-dngw5<br/>Pod IP 10.71.137.67</p></div><div class="head h-db"><div class="kind">中间件</div><h2>数据库未取证</h2><p>慢 SQL 为空，源码也没有表名</p></div></div>
+        <div class="canvas">
+          <div class="rails"><i></i><i></i><i></i></div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>网关进入页面水印</h3>
+              <p>CEP 在 2026-09-28 22:52:32.860 记录 /FHH/EM1HQIXINEXT/WatermarkApi/getWatermark，状态 200，网关耗时 6 ms。后端是 fs-qixin-extension-provider。</p>
+              <code class="method">/FHH/EM1HQIXINEXT/WatermarkApi/getWatermark</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">6 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:16.6667%;width:33.3333%;"></span><span class="label" style="left:21.6667%;">转发到企信扩展</span></div>
+          <div class="step">
+            <article class="card" data-col="2">
+              <h3>读取水印配置</h3>
+              <p>应用日志 ARG Action 为 getWatermark，3 ms 后 RETURN ErrorCode 0。方法落在 ExtensionBizAop.getWatermark。Pod 是 fs-qixin-extension-provider-b6b56c79b-dngw5，Pod IP 10.71.137.67。</p>
+              <code class="method">ExtensionBizAop.getWatermark</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">3 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:50.0000%;width:33.3333%;"></span><span class="label" style="left:55.0000%;">查存储未取证</span></div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>水印存储未取证</h3>
+              <p>sql_slow_dist 为 0 不能当成没有查表。已查应用日志叶子方法 ExtensionBizAop.getWatermark，以及 fs-bi、fs-bi-crm-report 源码，没有 Mapper 或 FROM 表。数据库名未取证，表名未取证。</p>
+              <code class="method">ExtensionBizAop.getWatermark</code>
+              <ul class="tables"><li>数据库名未取证 · 表名未取证</li></ul>
+              <div class="meta-line"><span class="tag miss">未取证</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:50.0000%;width:33.3333%;"></span><span class="label" style="left:55.0000%;">无存储结果</span></div>
+          <div class="hop" data-dir="back"><span class="line" style="left:16.6667%;width:33.3333%;"></span><span class="label" style="left:21.6667%;">返回水印</span></div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>网关返回水印</h3>
+              <p>同一条 CEP 记录 /FHH/EM1HQIXINEXT/WatermarkApi/getWatermark 状态 200，总耗时 6 ms。应用侧 ARG 到 RETURN 约 3 ms，差额未细分。</p>
+              <code class="method">/FHH/EM1HQIXINEXT/WatermarkApi/getWatermark</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">200</span></div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note">证据边界：未取得精确源码，数据库名未取证，表名未取证。没有 MQ。</p>
+  </div>
+</body>
+</html>

@@ -22,13 +22,16 @@ SAMPLE = """
 | 获取页面水印`WatermarkApi/getWatermark` | `FSW-fktest7572.1001-01M3M81KK4VBA8GA3X0YY3FJ80` |
 | 文件夹列表`getCategoryAndRpt` | `FSW-fktest7572.1001-01M3M81CB41A438TKSTEHZMNV3` |
 | 完整路径`FHH/EM1HBISTAT/fs-bi-stat/stat/data/query` | `FSW-fktest7572.1001-01M3M81CB41A438TKSTEHZMNV3` |
+| 编辑审批流，获取审批流详情 | `FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C` |
+| 审批定义详情`FHH/EM1HAPPROVAL/Definition/Detail` | `FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C` |
 """
 
 
 def main() -> int:
     tasks = parse_call_log(SAMPLE)
     by_route = {task["route"]: task for task in tasks}
-    assert by_route[""]["description"] == "实时查询"
+    realtime = [task for task in tasks if task["trace_id"].endswith("01M36MYX64CWZ33VQ03BHQF14K")]
+    assert realtime and realtime[0]["description"] == "实时查询"
     assert [task["trace_id"] for task in tasks].count("FSW-664159.1047-01M36MYX64CWZ33VQ03BHQF14K") == 1
     shared = [task for task in tasks if task["trace_id"].endswith("01M3M81KAA1PZ0YASE8SYY95XQ")]
     assert [task["route"] for task in shared] == [
@@ -46,6 +49,11 @@ def main() -> int:
     assert len(slugs) == len(set(slugs))
     dirs = [task["output_dir"] for task in tasks]
     assert len(dirs) == len(set(dirs))
+    assert all(task["output_dir"].startswith("统计图/") for task in tasks if "审批" not in str(task["description"]) and "APPROVAL" not in str(task.get("route") or "").upper())
+    approval = [task for task in tasks if "01M4HXEQXBSGBA9CABQ392ZC6C" in task["trace_id"]]
+    assert approval
+    assert all(task["category"] == "审批流" for task in approval)
+    assert all(task["output_dir"].startswith("审批流/") for task in approval)
     print("ok", len(tasks))
     return 0
 

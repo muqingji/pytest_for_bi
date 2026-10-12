@@ -178,7 +178,7 @@
       "row": 0,
       "title_zh": "执行统计 SQL",
       "layer": "data",
-      "detail": "`ClickHouseSQLExecutor` 由 DataQueryFlowNode 执行 easyStat SQL，应用侧耗时 88 ms。SQL 中能确认 CTE d1_select_option 和表 agg_data。主代理 10.17.44.222:9090，JDBC 10.17.44.27:8123，从库 10.17.46.27:8123，库 fsbidb044027003。数据库服务端耗时未取证。"
+      "detail": "`ClickHouseSQLExecutor` 由 DataQueryFlowNode 执行 easyStat SQL，应用侧耗时 88 ms。SQL 中能确认 CTE d1_select_option 和表 agg_data。主代理 10.17.44.222:9090，JDBC 10.17.44.27:8123，从库 10.17.46.27:8123，数据库名 fsbidb044027003。数据库服务端耗时未取证。"
     },
     {
       "id": "done",
@@ -210,7 +210,7 @@
       "row": 0,
       "title_zh": "Redis 查询缓存",
       "layer": "data",
-      "detail": "日志打出缓存键 bi_stat_querycache_BI_6aa427deec2d2200076ef9f6_20260912002404_83291e22ae30788cbce14df75ae23545_binary，并由 cacheSyncReqResultWithBinary 回写。本地架构说明把 `bi_stat_querycache` 这个键对应到 Redis。本 trace 没有打出 Redis 地址。"
+      "detail": "日志打出缓存键 bi_stat_querycache_BI_6aa427deec2d2200076ef9f6_20260912002404_83291e22ae30788cbce14df75ae23545_binary，并由 cacheSyncReqResultWithBinary 回写。本地架构说明把 `bi_stat_querycache` 这个键对应到 Redis。本 trace 没有打出 Redis 地址。 数据库名未取证。 表名未取证。"
     },
     {
       "id": "sync",
@@ -226,7 +226,7 @@
       "row": 1,
       "title_zh": "预聚合写入链路",
       "layer": "offpath",
-      "detail": "本 trace 没有 MQ 或 copier span。同目录架构说明写明，查询前的数据由 op-log、RocketMQ、`paas-bi-copier` 和聚合框架写入 ClickHouse。这不是本次请求的已观测调用。"
+      "detail": "本 trace 没有 MQ 或 copier span。同目录架构说明写明，查询前的数据由 op-log、RocketMQ、`paas-bi-copier` 和聚合框架写入 ClickHouse。这不是本次请求的已观测调用。 MQ 名字 RocketMQ，发送方未取证，消费方未取证。"
     }
   ],
   "gaps": [

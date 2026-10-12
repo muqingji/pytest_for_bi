@@ -3,116 +3,199 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>统计图实时查询</title>
+  <title>统计图实时查询 · 泳道图</title>
   <style>
     :root {
-      --bg: #f4f6fb; --ink: #1b2433; --muted: #5b677a; --line: #d8dee9; --card: #ffffff;
-      --l1: #2563eb; --l1-bg: #eff6ff; --l2: #4f46e5; --l2-bg: #eef2ff;
-      --l3: #0f766e; --l3-bg: #f0fdfa; --l4: #c2410c; --l4-bg: #fff7ed;
-      --sync: #334155; --sync-bg: #f8fafc;
+      --bg: #f4f6fb;
+      --ink: #1b2433;
+      --muted: #5b677a;
+      --line: #d8dee9;
+      --card: #ffffff;
+      --cep: #4f46e5;
+      --psm: #0f766e;
+      --db: #c2410c;
+      --i18n: #7c3aed;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
-      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
-    .page { max-width: 1280px; margin: 0 auto; padding: 28px 24px 40px; }
-    header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 18px; }
-    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.02em; }
-    .sub { color: var(--muted); font-size: 13px; line-height: 1.6; }
-    .meta { text-align: right; font-size: 12px; color: var(--muted); line-height: 1.7; }
-    .stack { display: grid; gap: 10px; }
-    .layer { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--card);
-      box-shadow: 0 8px 24px rgba(27, 36, 51, 0.05); }
-    .layer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 10px 16px; font-weight: 700; letter-spacing: 0.04em; }
-    .layer-head .tag { font-size: 12px; opacity: 0.9; font-weight: 600; }
-    .layer-body { display: grid; gap: 10px; padding: 12px; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
-    .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-height: 108px; }
-    .card h3 { margin: 0 0 8px; font-size: 15px; }
-    .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
-    .l1 .layer-head { background: var(--l1-bg); color: var(--l1); }
-    .l2 .layer-head { background: var(--l2-bg); color: var(--l2); }
-    .l3 .layer-head { background: var(--l3-bg); color: var(--l3); }
-    .l4 .layer-head { background: var(--l4-bg); color: var(--l4); }
-    .sync .layer-head { background: var(--sync-bg); color: var(--sync); }
-    .arrow { text-align: center; color: #94a3b8; font-size: 18px; line-height: 10px; }
-    .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-    .flow-item { background: #fff; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 10px; text-align: center; font-size: 13px; font-weight: 650; }
-    .flow-item span { display: block; margin-top: 4px; font-size: 11px; font-weight: 400; color: var(--muted); }
-    .note { margin-top: 14px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-</style>
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+    .page { max-width: 1480px; margin: 0 auto; padding: 28px 20px 48px; }
+    header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-end; margin-bottom: 16px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.01em; }
+    .sub, .meta { color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .meta { text-align: right; font-size: 12px; }
+    code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+    .pill { border-radius: 999px; padding: 3px 10px; font-size: 12px; background: #fff; border: 1px solid var(--line); color: var(--muted); }
+    .board {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: auto;
+      box-shadow: 0 10px 28px rgba(27, 36, 51, 0.05);
+    }
+    .lanes { min-width: 1080px; position: relative; }
+    .heads, .step { display: grid; grid-template-columns: 1fr, 1fr, 1fr; }
+    .heads { position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1px solid var(--line); }
+    .head { padding: 14px 16px 12px; border-right: 1px solid var(--line); }
+    .head:last-child { border-right: 0; }
+    .head .kind { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+    .head h2 { margin: 4px 0 2px; font-size: 16px; }
+    .head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .h-cep .kind { color: var(--cep); }
+    .h-psm .kind { color: var(--psm); }
+    .h-db .kind { color: var(--db); }
+    .h-i18n .kind { color: var(--i18n); }
+    .canvas { position: relative; padding: 8px 0 18px; }
+    .rails { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr, 1fr, 1fr; pointer-events: none; }
+    .rails i { border-left: 2px dashed #e2e8f0; margin-left: calc(50% - 1px); }
+    .step { position: relative; z-index: 1; min-height: 8px; }
+    .card {
+      margin: 8px 14px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px 11px;
+      box-shadow: 0 4px 14px rgba(27, 36, 51, 0.04);
+    }
+    .card[data-col="1"] { grid-column: 1; border-top: 3px solid var(--cep); }
+    .card[data-col="2"] { grid-column: 2; border-top: 3px solid var(--psm); }
+    .card[data-col="3"] { grid-column: 3; border-top: 3px solid var(--db); }
+    .card[data-col="4"] { grid-column: 4; border-top: 3px solid var(--i18n); }
+    .card[data-col="5"] { grid-column: 5; border-top: 3px solid #0369a1; }
+    .card[data-col="6"] { grid-column: 6; border-top: 3px solid #b45309; }
+    .card[data-col="7"] { grid-column: 7; border-top: 3px solid #7c3aed; }
+    .hop[data-dir="fwd"] .line::after { right: -1px; border-left-color: #64748b; }
+    .hop[data-dir="back"] .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop[data-dir="back"] .line::after { left: -1px; border-right-color: #94a3b8; }
+    .card h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.4; }
+    .card p { margin: 0; color: #334155; font-size: 12.5px; line-height: 1.6; }
+    .method { display: block; margin-top: 6px; color: #1e293b; word-break: break-all; }
+    .meta-line { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .tag { font-size: 11px; border-radius: 999px; padding: 1px 7px; background: #f8fafc; color: var(--muted); border: 1px solid var(--line); }
+    .tag.obs { color: #1d4ed8; background: #eff6ff; border-color: #dbeafe; }
+    .tag.map { color: #9a3412; background: #fff7ed; border-color: #ffedd5; }
+    .tag.miss { color: #6b7280; background: #f8fafc; }
+    .tables { margin: 8px 0 0; padding: 0; list-style: none; }
+    .tables li { padding: 6px 0; border-top: 1px dashed var(--line); font-size: 12.5px; line-height: 1.5; }
+    .hop { position: relative; height: 34px; z-index: 1; }
+    .hop .line { position: absolute; top: 15px; height: 2px; background: #64748b; }
+    .hop .line::after { content: ""; position: absolute; top: -4px; border: 5px solid transparent; }
+    .hop.fwd .line::after { right: -1px; border-left-color: #64748b; }
+    .hop.back .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop.back .line::after { left: -1px; border-right-color: #94a3b8; }
+    .hop .label { position: absolute; top: 0; font-size: 11px; color: #475569; background: #fff; padding: 0 6px; white-space: nowrap; }
+    .note { margin: 14px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+  </style>
 </head>
 <body>
   <div class="page">
     <header>
       <div>
         <h1>统计图实时查询</h1>
-        <div class="sub">/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query · 200 · 1891 ms · 图表配置，不是数据 SQL</div>
+        <div class="sub">泳道从左到右是参与方，从上到下是调用顺序。实线是发出，虚线是返回。</div>
       </div>
-      <div class="meta">承载服务 fs-bi-stat<br />Pod fs-bi-stat-bfc75496b-8zrtc / 10.71.139.52<br />Node 10.71.241.83<br />租户 664159<br />FSW-664159.1047-01M36MYX64CWZ33VQ03BHQF14K</div>
+      <div class="meta"><div><code>chartConfig/query</code></div><div>200 · 网关 1891 ms · 2026-09-23 16:08:51.825</div><div>FSW-664159.1047-01M36MYX64CWZ33VQ03BHQF14K</div><div>Pod fs-bi-stat-bfc75496b-8zrtc · 10.71.139.52 · Node 10.71.241.83</div></div>
     </header>
-    <div class="stack">
-      <section class="layer l2">
-        <div class="layer-head"><span>L2 网关层</span><span class="tag">CEP</span></div>
-        <div class="layer-body">
-          <div class="cards">
-            <div class="card">
+    <div class="legend"><span class="pill">网关 CEP</span><span class="pill">PSM fs-bi-stat</span><span class="pill">中间件 ClickHouse</span><span class="pill">没有 Redis / MQ，不单开列</span></div>
+    <div class="board">
+      <div class="lanes">
+        <div class="heads"><div class="head h-cep"><div class="kind">网关</div><h2>CEP</h2><p>入口记录状态和总耗时</p></div><div class="head h-psm"><div class="kind">PSM</div><h2>fs-bi-stat</h2><p>Pod fs-bi-stat-bfc75496b-8zrtc<br/>Pod IP 10.71.139.52</p></div><div class="head h-db"><div class="kind">中间件</div><h2>ClickHouse</h2><p>库 fsbidb044027003</p></div></div>
+        <div class="canvas">
+          <div class="rails"><i></i><i></i><i></i></div>
+          <div class="step">
+            <article class="card" data-col="1">
               <h3>网关入口</h3>
               <p>CEP 记录图表配置接口 `chartConfig/query`，完整路径 /FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query。状态 200，网关总耗时 1891 ms，下一跳进入 fs-bi-stat。</p>
-            </div>
-            <div class="card">
-              <h3>网关返回</h3>
-              <p>应用日志结束后，网关对 chartConfig/query `返回 200`。返回 200 对应的总耗时仍是 1891 ms，已点名方法之外的时间未细分。</p>
-            </div>
+              <code class="method">chartConfig/query</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">1891 ms</span></div>
+            </article>
           </div>
-        </div>
-      </section>
-<div class="arrow">▼</div>
-      <section class="layer l3">
-        <div class="layer-head"><span>L3 服务层</span><span class="tag">应用</span></div>
-        <div class="layer-body">
-          <div class="cards">
-            <div class="card">
+          <div class="hop" data-dir="fwd"><span class="line" style="left:16.6667%;width:33.3333%;"></span><span class="label" style="left:21.6667%;">转发到统计服务</span></div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>请求进入应用</h3>
               <p>`CEPRequestFilter` 记录应用内路径 /fs-bi-stat/stat/chartConfig/query，然后把请求交给编辑控制器。这一跳没有单独耗时。</p>
-            </div>
-            <div class="card">
+              <code class="method">CEPRequestFilter</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>编辑控制器</h3>
               <p>`StatEditController.start` 接过过滤后的请求，开始读取视图拓扑。耗时未单列。</p>
-            </div>
-            <div class="card">
+              <code class="method">StatEditController.start</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>读取视图拓扑</h3>
               <p>`handleTopologyStatus` 处理视图拓扑，并调用 getViewById。已观测总耗时 13 ms，其中 getViewById 为 8 ms。</p>
-            </div>
-            <div class="card">
+              <code class="method">handleTopologyStatus</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">13 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>读取图表配置</h3>
               <p>`getViewChartConfById` 校验视图权限并读出配置。结果是 bar，视图 BI_6a17ab049317110007ca8cc2。方法自身耗时未细分。</p>
-            </div>
-            <div class="card">
+              <code class="method">getViewChartConfById</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:50.0000%;width:33.3333%;"></span><span class="label" style="left:55.0000%;">查 ClickHouse</span></div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>查询部门层级</h3>
+              <p>`getMaxLevelForDepartment` 通过 ClickHouseSQLExecutor 查询 org_dept 的部门父路径，得到 maxLevel 6。主代理 10.17.44.222:9090，JDBC 10.17.44.27:8123，从库 10.17.46.27:8123，数据库名 fsbidb044027003。数据库服务端耗时未取证。账号和密码不写入报告。 表 org_dept。</p>
+              <code class="method">getMaxLevelForDepartment</code>
+              <ul class="tables"><li>数据库名 fsbidb044027003 · 表 org_dept</li></ul>
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:50.0000%;width:33.3333%;"></span><span class="label" style="left:55.0000%;">返回层级</span></div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>加载文案</h3>
               <p>`loadByLangBatch` 在配置组装时按语言批量读取文案，已观测 19 ms。</p>
-            </div>
-            <div class="card">
+              <code class="method">loadByLangBatch</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">19 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>合并对象许可</h3>
               <p>`CrmObjLicenseService` 查询企业可见对象，并合并 license 结果。下游 RPC 方法未命中 span，耗时未单列。</p>
-            </div>
+              <code class="method">CrmObjLicenseService</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:16.6667%;width:33.3333%;"></span><span class="label" style="left:21.6667%;">返回配置</span></div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>网关返回</h3>
+              <p>应用日志结束后，网关对 chartConfig/query `返回 200`。返回 200 对应的总耗时仍是 1891 ms，已点名方法之外的时间未细分。</p>
+              <code class="method">返回 200</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">200</span></div>
+            </article>
           </div>
         </div>
-      </section>
-<div class="arrow">▼</div>
-      <section class="layer l4">
-        <div class="layer-head"><span>L4 数据层</span><span class="tag">查询时依赖</span></div>
-        <div class="layer-body">
-          <div class="cards">
-            <div class="card">
-              <h3>查询部门层级</h3>
-              <p>`getMaxLevelForDepartment` 通过 ClickHouseSQLExecutor 查询 org_dept 的部门父路径，得到 maxLevel 6。主代理 10.17.44.222:9090，JDBC 10.17.44.27:8123，从库 10.17.46.27:8123，库 fsbidb044027003。数据库服务端耗时未取证。账号和密码不写入报告。</p>
-            </div>
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
-    <p class="note">本 trace 没有 Redis、MQ、copier。ClickHouse 地址和 Pod、Node IP 来自本次日志与 Pod 快照。展示层、RPC 方法和数据库服务端耗时未取证。</p>
+    <p class="note">证据边界：跨服务 RPC、ClickHouse 服务端耗时、容器配额未取证。未取得精确源码。</p>
   </div>
 </body>
 </html>

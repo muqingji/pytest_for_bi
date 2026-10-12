@@ -109,12 +109,20 @@ def _service_code(route: str) -> str:
     return match.group(1) if match else ""
 
 
+def _category(description: str, route: str) -> str:
+    haystack = f"{description} {route}".lower()
+    if "审批" in description or "approval" in haystack:
+        return "审批流"
+    return "统计图"
+
+
 def _assign_output_dirs(tasks: list[dict[str, object]]) -> None:
     for task in tasks:
         route = str(task.get("route") or "")
         trace_id = str(task["trace_id"])
         task["title"] = _short_title(str(task["description"]))
         task["slug"] = _route_slug(route) if route else _trace_slug(trace_id)
+        task["category"] = _category(str(task["description"]), route)
     seen: dict[str, int] = {}
     for task in tasks:
         slug = str(task["slug"])
@@ -128,7 +136,7 @@ def _assign_output_dirs(tasks: list[dict[str, object]]) -> None:
             slug = f"{slug}-{task['line']}"
         used.add(slug)
         task["slug"] = slug
-        task["output_dir"] = f"统计图/{task['title']}-{slug}/"
+        task["output_dir"] = f"{task['category']}/{task['title']}-{slug}/"
 
 
 def parse_call_log(text: str) -> list[dict[str, object]]:

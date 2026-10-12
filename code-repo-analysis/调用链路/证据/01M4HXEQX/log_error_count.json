@@ -1,0 +1,1 @@
+{"code":0,"data":{"columns":[{"name":"cnt","type":"unknown"}],"items":[["0"]],"returnedCount":1,"hasMore":false,"truncated":false,"meta":{"maskingState":"disabled","maskedFields":[],"emptyColumnPolicy":{"mode":"preserve","omittedColumnCount":0,"columnMetadataState":"available"}}},"meta":{"hints":["fx-ops idp show tables \u003cdatasource\u003e"]}}

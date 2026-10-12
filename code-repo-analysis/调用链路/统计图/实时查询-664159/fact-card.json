@@ -123,7 +123,7 @@
       "row": 0,
       "title_zh": "查询部门层级",
       "layer": "data",
-      "detail": "`getMaxLevelForDepartment` 通过 ClickHouseSQLExecutor 查询 org_dept 的部门父路径，得到 maxLevel 6。主代理 10.17.44.222:9090，JDBC 10.17.44.27:8123，从库 10.17.46.27:8123，库 fsbidb044027003。数据库服务端耗时未取证。账号和密码不写入报告。"
+      "detail": "`getMaxLevelForDepartment` 通过 ClickHouseSQLExecutor 查询 org_dept 的部门父路径，得到 maxLevel 6。主代理 10.17.44.222:9090，JDBC 10.17.44.27:8123，从库 10.17.46.27:8123，数据库名 fsbidb044027003。数据库服务端耗时未取证。账号和密码不写入报告。 表 org_dept。"
     },
     {
       "id": "i18n",

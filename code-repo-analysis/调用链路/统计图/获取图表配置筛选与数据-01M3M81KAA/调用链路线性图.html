@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>获取图表配置筛选与数据 · 泳道图</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --ink: #1b2433;
+      --muted: #5b677a;
+      --line: #d8dee9;
+      --card: #ffffff;
+      --cep: #4f46e5;
+      --psm: #0f766e;
+      --db: #c2410c;
+      --i18n: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+    .page { max-width: 1480px; margin: 0 auto; padding: 28px 20px 48px; }
+    header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-end; margin-bottom: 16px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.01em; }
+    .sub, .meta { color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .meta { text-align: right; font-size: 12px; }
+    code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+    .pill { border-radius: 999px; padding: 3px 10px; font-size: 12px; background: #fff; border: 1px solid var(--line); color: var(--muted); }
+    .board {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: auto;
+      box-shadow: 0 10px 28px rgba(27, 36, 51, 0.05);
+    }
+    .lanes { min-width: 1820px; position: relative; }
+    .heads, .step { display: grid; grid-template-columns: 1fr, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr; }
+    .heads { position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1px solid var(--line); }
+    .head { padding: 14px 16px 12px; border-right: 1px solid var(--line); }
+    .head:last-child { border-right: 0; }
+    .head .kind { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+    .head h2 { margin: 4px 0 2px; font-size: 16px; }
+    .head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .h-cep .kind { color: var(--cep); }
+    .h-psm .kind { color: var(--psm); }
+    .h-db .kind { color: var(--db); }
+    .h-i18n .kind { color: var(--i18n); }
+    .canvas { position: relative; padding: 8px 0 18px; }
+    .rails { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr; pointer-events: none; }
+    .rails i { border-left: 2px dashed #e2e8f0; margin-left: calc(50% - 1px); }
+    .step { position: relative; z-index: 1; min-height: 8px; }
+    .card {
+      margin: 8px 14px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px 11px;
+      box-shadow: 0 4px 14px rgba(27, 36, 51, 0.04);
+    }
+    .card[data-col="1"] { grid-column: 1; border-top: 3px solid var(--cep); }
+    .card[data-col="2"] { grid-column: 2; border-top: 3px solid var(--psm); }
+    .card[data-col="3"] { grid-column: 3; border-top: 3px solid var(--db); }
+    .card[data-col="4"] { grid-column: 4; border-top: 3px solid var(--i18n); }
+    .card[data-col="5"] { grid-column: 5; border-top: 3px solid #0369a1; }
+    .card[data-col="6"] { grid-column: 6; border-top: 3px solid #b45309; }
+    .card[data-col="7"] { grid-column: 7; border-top: 3px solid #7c3aed; }
+    .hop[data-dir="fwd"] .line::after { right: -1px; border-left-color: #64748b; }
+    .hop[data-dir="back"] .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop[data-dir="back"] .line::after { left: -1px; border-right-color: #94a3b8; }
+    .card h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.4; }
+    .card p { margin: 0; color: #334155; font-size: 12.5px; line-height: 1.6; }
+    .method { display: block; margin-top: 6px; color: #1e293b; word-break: break-all; }
+    .meta-line { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .tag { font-size: 11px; border-radius: 999px; padding: 1px 7px; background: #f8fafc; color: var(--muted); border: 1px solid var(--line); }
+    .tag.obs { color: #1d4ed8; background: #eff6ff; border-color: #dbeafe; }
+    .tag.map { color: #9a3412; background: #fff7ed; border-color: #ffedd5; }
+    .tag.miss { color: #6b7280; background: #f8fafc; }
+    .tables { margin: 8px 0 0; padding: 0; list-style: none; }
+    .tables li { padding: 6px 0; border-top: 1px dashed var(--line); font-size: 12.5px; line-height: 1.5; }
+    .hop { position: relative; height: 34px; z-index: 1; }
+    .hop .line { position: absolute; top: 15px; height: 2px; background: #64748b; }
+    .hop .line::after { content: ""; position: absolute; top: -4px; border: 5px solid transparent; }
+    .hop.fwd .line::after { right: -1px; border-left-color: #64748b; }
+    .hop.back .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop.back .line::after { left: -1px; border-right-color: #94a3b8; }
+    .hop .label { position: absolute; top: 0; font-size: 11px; color: #475569; background: #fff; padding: 0 6px; white-space: nowrap; }
+    .note { margin: 14px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>获取图表配置筛选与数据</h1>
+        <div class="sub">泳道从左到右是参与方，从上到下是调用顺序。实线是发出，虚线是返回。</div>
+      </div>
+      <div class="meta"><div><code>/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query</code></div><div>200 · 数据查询 494 ms · 2026-09-28 22:52:33.446</div><div>FSW-fktest7572.1001-01M3M81KAA1PZ0YASE8SYY95XQ</div><div>配置 Pod fs-bi-stat-7cb754895-ph8dq · 数据 Pod fs-bi-stat-7cb754895-8wqvk</div></div>
+    </header>
+    <div class="legend"><span class="pill">网关 CEP</span><span class="pill">PSM fs-bi-crm-report-web</span><span class="pill">PSM fs-bi-stat</span><span class="pill">PostgreSQL</span><span class="pill">ClickHouse</span><span class="pill">Redis</span><span class="pill">文案服务</span><span class="pill">没有 MQ / copier，不单开列</span></div>
+    <div class="board">
+      <div class="lanes">
+        <div class="heads"><div class="head h-cep"><div class="kind">网关</div><h2>CEP</h2><p>四个接口的状态和耗时</p></div><div class="head h-psm"><div class="kind">PSM</div><h2>fs-bi-crm-report-web</h2><p>getStatView</p></div><div class="head h-psm"><div class="kind">PSM</div><h2>fs-bi-stat</h2><p>配置、筛选、聚合查询</p></div><div class="head h-db"><div class="kind">中间件</div><h2>PostgreSQL</h2><p>物理数据库名未取证</p></div><div class="head h-db"><div class="kind">中间件</div><h2>ClickHouse</h2><p>库 fsbidb044019002</p></div><div class="head h-db"><div class="kind">中间件</div><h2>Redis</h2><p>地址未取证</p></div><div class="head h-i18n"><div class="kind">远程服务</div><h2>文案服务</h2><p>I18nRestClientImpl 远程调用</p></div></div>
+        <div class="canvas">
+          <div class="rails"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>网关读取统计视图</h3>
+              <p>CEP 在 2026-09-28 22:52:32.793 记录 /FHH/EM1HBICRM/statEditController/getStatView，200，89 ms。viewId 为 BI_6a8874cc0310a30008296669。</p>
+              <code class="method">/FHH/EM1HBICRM/statEditController/getStatView</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">89 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:7.1429%;width:14.2857%;"></span><span class="label" style="left:9.2857%;">转发到报表服务</span></div>
+          <div class="step">
+            <article class="card" data-col="2">
+              <h3>校验并返回统计视图</h3>
+              <p>StatViewService.getStatView 22:52:32.823 进入，22:52:32.881 离开，statusCode 0。RptViewRepository 先尝试缓存。</p>
+              <code class="method">StatViewService.getStatView</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:21.4286%;width:28.5714%;"></span><span class="label" style="left:25.7143%;">查私有权限</span></div>
+          <div class="step">
+            <article class="card" data-col="4">
+              <h3>查询视图私有归属</h3>
+              <p>getStatView 调用 DataPermService.queryPteOwnerByDataId，最终 ChartPrivatePermissionMapper.getPteRecordsByDataIds 查表 chart_private_permission。数据库名未取证。</p>
+              <code class="method">ChartPrivatePermissionMapper.getPteRecordsByDataIds</code>
+              <ul class="tables"><li>数据库名未取证 · 表 chart_private_permission</li></ul>
+              <div class="meta-line"><span class="tag map">代码映射</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:21.4286%;width:28.5714%;"></span><span class="label" style="left:25.7143%;">返回归属</span></div>
+          <div class="hop" data-dir="back"><span class="line" style="left:7.1429%;width:14.2857%;"></span><span class="label" style="left:9.2857%;">返回视图</span></div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>网关进入图表配置</h3>
+              <p>CEP 在 2026-09-28 22:52:33.104 记录 /FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query，200，251 ms。</p>
+              <code class="method">/FHH/EM1HBISTAT/fs-bi-stat/stat/chartConfig/query</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">251 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:7.1429%;width:28.5714%;"></span><span class="label" style="left:11.4286%;">转发到统计服务</span></div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>请求进入统计图服务</h3>
+              <p>CEPRequestFilter 记下 pathUrl 为 /fs-bi-stat/stat/chartConfig/query。Pod 是 fs-bi-stat-7cb754895-ph8dq，Pod IP 10.71.137.15。</p>
+              <code class="method">CEPRequestFilter</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>读取视图拓扑</h3>
+              <p>CostMonitor 显示 StatViewService.handleTopologyStatus 总耗时 9 ms，其中 StatViewRepository.getViewById 7 ms。</p>
+              <code class="method">StatViewService.handleTopologyStatus</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">9 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:35.7143%;width:14.2857%;"></span><span class="label" style="left:37.8571%;">查视图</span></div>
+          <div class="step">
+            <article class="card" data-col="4">
+              <h3>按视图编号查询统计图</h3>
+              <p>StatViewRepository.getViewById 对应 StatViewMapper.getViewById，FROM 表 stat_view。数据库名未取证。</p>
+              <code class="method">StatViewMapper.getViewById</code>
+              <ul class="tables"><li>数据库名未取证 · 表 stat_view</li></ul>
+              <div class="meta-line"><span class="tag map">代码映射</span><span class="tag ">7 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:35.7143%;width:14.2857%;"></span><span class="label" style="left:37.8571%;">返回视图行</span></div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>组装图表配置</h3>
+              <p>StatChartConfService.getViewChartConfById 进入后离开时 chartType 为 pie。日志随后多次 I18nRestClientImpl.loadByLangBatch。</p>
+              <code class="method">StatChartConfService.getViewChartConfById</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:35.7143%;width:14.2857%;"></span><span class="label" style="left:37.8571%;">查筛选</span></div>
+          <div class="step">
+            <article class="card" data-col="4">
+              <h3>查询已保存的筛选</h3>
+              <p>getViewChartConfById 和 getFilters 都走 StatFilterService.getFilters，底层 StatFilterMapper.getStatViewFiltersByViewIds 查询表 stat_view_filter。数据库名未取证。</p>
+              <code class="method">StatFilterMapper.getStatViewFiltersByViewIds</code>
+              <ul class="tables"><li>数据库名未取证 · 表 stat_view_filter</li></ul>
+              <div class="meta-line"><span class="tag map">代码映射</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:35.7143%;width:14.2857%;"></span><span class="label" style="left:37.8571%;">返回筛选</span></div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:35.7143%;width:57.1429%;"></span><span class="label" style="left:44.2857%;">翻译文案</span></div>
+          <div class="step">
+            <article class="card" data-col="7">
+              <h3>翻译指标和维度文案</h3>
+              <p>chartConfig 路径上多次 I18nRestClientImpl.loadByLangBatch 远程完成，单次 7 ms 到 10 ms。文案物理表未取证。</p>
+              <code class="method">I18nRestClientImpl.loadByLangBatch</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:35.7143%;width:57.1429%;"></span><span class="label" style="left:44.2857%;">返回文案</span></div>
+          <div class="hop" data-dir="back"><span class="line" style="left:7.1429%;width:28.5714%;"></span><span class="label" style="left:11.4286%;">返回图表配置</span></div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>网关进入筛选结果</h3>
+              <p>CEP 在 2026-09-28 22:52:33.377 记录 /FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getFiltersResult，200，37 ms。应用侧 getFilters 约 33 ms。</p>
+              <code class="method">/FHH/EM1HBISTAT/fs-bi-stat/stat/filters/getFiltersResult</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">37 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>网关进入聚合查询</h3>
+              <p>CEP 在 2026-09-28 22:52:33.446 记录 /FHH/EM1HBISTAT/fs-bi-stat/stat/data/query，200，494 ms。处理 Pod 换成 fs-bi-stat-7cb754895-8wqvk，Pod IP 10.71.33.152。</p>
+              <code class="method">/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">494 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:7.1429%;width:28.5714%;"></span><span class="label" style="left:11.4286%;">转发数据查询</span></div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>补齐查询参数</h3>
+              <p>StatDataServiceHelper.fulFillQueryChartDataArg 耗时 20 ms，超过 5 ms 的有 StatSchemaService.getStatSchemaRange、isSlaveSchema、DefaultStatFieldMapper.queryStatFieldListByIds、StatFilterService.getFilters。</p>
+              <code class="method">StatDataServiceHelper.fulFillQueryChartDataArg</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">20 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:35.7143%;width:14.2857%;"></span><span class="label" style="left:37.8571%;">查字段</span></div>
+          <div class="step">
+            <article class="card" data-col="4">
+              <h3>按字段编号查统计字段</h3>
+              <p>CostMonitor 给出 DefaultStatFieldMapper.queryStatFieldListByIds 7 ms。对应 StatFieldMapper.queryStatFieldListByIds，FROM 表 stat_field。应用日志另有 AsynQueryTask SQL 提到 stat_field 和 dim_rule。数据库名未取证。</p>
+              <code class="method">DefaultStatFieldMapper.queryStatFieldListByIds</code>
+              <ul class="tables"><li>数据库名未取证 · 表 stat_field</li></ul>
+              <div class="meta-line"><span class="tag map">代码映射</span><span class="tag ">7 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:35.7143%;width:14.2857%;"></span><span class="label" style="left:37.8571%;">返回字段</span></div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>生成统计查询模型</h3>
+              <p>StatExecModelGenerator.generateModel 耗时 89 ms，各子方法都在 5 ms 阈值内。随后进入 EasyStat，总 StopWatch 246 ms。</p>
+              <code class="method">StatExecModelGenerator.generateModel</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">89 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:35.7143%;width:28.5714%;"></span><span class="label" style="left:40.0000%;">查 ClickHouse</span></div>
+          <div class="step">
+            <article class="card" data-col="5">
+              <h3>查询客户统计聚合结果</h3>
+              <p>DataQueryFlowNode 经 ClickHouseSQLExecutor 执行 easyStat SQL，StopWatch EasyStat-watch-dataQuery-sql 35 ms。日志 SQL 能确认表 agg_metric_data。数据库名 fsbidb044019002。主代理 10.17.44.221:9090，JDBC 10.17.44.19:8123，从库 10.17.46.19:8123。</p>
+              <code class="method">ClickHouseSQLExecutor</code>
+              <ul class="tables"><li>数据库名 fsbidb044019002 · 表 agg_metric_data</li></ul>
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">35 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="5">
+              <h3>把地区编码映射成名称</h3>
+              <p>MapElement.mapCodeToName 连续两次查地区维表，MainStep-3.1 185 ms。一次 SQL 连接表 dim_sys_area_region 和 area_region_version_binding。数据库名 fsbidb044019002。</p>
+              <code class="method">MapElement.mapCodeToName</code>
+              <ul class="tables"><li>数据库名 fsbidb044019002 · 表 dim_sys_area_region</li><li>数据库名 fsbidb044019002 · 表 area_region_version_binding</li></ul>
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">185 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:35.7143%;width:28.5714%;"></span><span class="label" style="left:40.0000%;">返回数据集</span></div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:35.7143%;width:42.8571%;"></span><span class="label" style="left:42.1429%;">写查询缓存</span></div>
+          <div class="step">
+            <article class="card" data-col="6">
+              <h3>回写统计查询缓存</h3>
+              <p>StatBaseController.cacheSyncReqResultWithBinary 打出缓存键 bi_stat_querycache，长度 3348。Redis 地址未取证。数据库名未取证，表名未取证。</p>
+              <code class="method">cacheSyncReqResultWithBinary</code>
+              <ul class="tables"><li>数据库名未取证 · 表名未取证</li></ul>
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:35.7143%;width:42.8571%;"></span><span class="label" style="left:42.1429%;">缓存完成</span></div>
+          <div class="hop" data-dir="back"><span class="line" style="left:7.1429%;width:28.5714%;"></span><span class="label" style="left:11.4286%;">返回聚合结果</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="note">证据边界：PostgreSQL 物理库名、Redis 地址、文案物理表、Node IP 未取证。没有 MQ。</p>
+  </div>
+</body>
+</html>

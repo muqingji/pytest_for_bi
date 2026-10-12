@@ -44,6 +44,76 @@ HEADINGS = (
 )
 SECRET_RE = re.compile(r"password|passwd|userId|userName\s*=|uid\s*[:=]", re.IGNORECASE)
 
+
+def _line_present(text: str, line: object) -> bool:
+    try:
+        number = int(line)
+    except (TypeError, ValueError):
+        return False
+    return f":{number}" in text or f"第 {number} 行" in text or f"第{number}行" in text
+
+
+def _hop_for(section: str, needle: str) -> str:
+    index = section.find(needle)
+    if index < 0:
+        return ""
+    start = section.rfind("\n", 0, index)
+    start = 0 if start < 0 else start + 1
+    match = re.search(r"\n\d+\. ", section[index + len(needle):])
+    end = len(section) if match is None else index + len(needle) + match.start()
+    return section[start:end]
+
+
+def code_mapping_errors(node_id: str, source: object, detail: str, code_section: str, html: str) -> list[str]:
+    """Reject walkthroughs that name a call without its implementation file and line."""
+    if not isinstance(source, dict) or not all(source.get(key) for key in ("repo", "file", "symbol", "declaration_file")):
+        return [f"node {node_id} code mapping missing declaration or implementation source"]
+    errors: list[str] = []
+    repo = str(source["repo"])
+    body = str(source["file"])
+    symbol = str(source["symbol"])
+    declaration = str(source["declaration_file"])
+    for text, name in ((detail, "detail"), (code_section, "code section"), (html, "html")):
+        if body not in text:
+            errors.append(f"node {node_id} {name} missing implementation file")
+    if repo not in code_section or symbol not in code_section or declaration not in code_section:
+        errors.append(f"node {node_id} code section missing repo, symbol, or declaration file")
+    impl_hop = _hop_for(code_section, symbol) or code_section
+    decl_hop = _hop_for(code_section, declaration) or code_section
+    if declaration != body:
+        if declaration not in detail or declaration not in html:
+            errors.append(f"node {node_id} missing declaration file in reader text")
+        if "没有" not in decl_hop and "没有" not in detail:
+            errors.append(f"node {node_id} must say the declaration file has no call")
+        if not _line_present(code_section, source.get("declaration_line")):
+            errors.append(f"node {node_id} code section missing declaration line")
+    calls = source.get("calls", [])
+    if calls is None:
+        calls = []
+    if not isinstance(calls, list):
+        return [*errors, f"node {node_id} source.calls must be a list"]
+    mentions_call = "调用" in detail or "调用" in impl_hop
+    if mentions_call and not calls:
+        errors.append(f"node {node_id} describes a call without source.calls")
+    if not calls and "行号未取证" not in detail and not _line_present(detail, source.get("line")):
+        errors.append(f"node {node_id} missing method line or 行号未取证")
+    for call in calls:
+        if not isinstance(call, dict) or not all(call.get(key) for key in ("symbol", "file", "line")):
+            errors.append(f"node {node_id} call missing symbol, file, or line")
+            continue
+        call_file = str(call["file"])
+        call_symbol = str(call["symbol"])
+        if call_file != body:
+            errors.append(f"node {node_id} call {call_symbol} is not pinned to the implementation file")
+        if declaration != body and call_file == declaration:
+            errors.append(f"node {node_id} call {call_symbol} is pinned to the declaration file")
+        for text, name in ((detail, "detail"), (impl_hop, "code section"), (html, "html")):
+            if call_file not in text or call_symbol not in text or not _line_present(text, call["line"]):
+                errors.append(f"node {node_id} {name} missing call site for {call_symbol}")
+    return errors
+
+
+
 def _load_card(path: Path) -> dict[str, object]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
@@ -122,14 +192,12 @@ def validate_report(directory: Path, peer: Path | None = None, check_evidence: b
         label = str(node["label"])
         if label not in ALLOWED_LABELS:
             errors.append(f"node {node['id']} has unknown label {label}")
-        if label == "代码映射":
-            mapped = True
-            source = node.get("source")
-            if not isinstance(source, dict) or not all(source.get(key) for key in ("repo", "file", "symbol")):
-                errors.append(f"node {node['id']} code mapping missing source")
         layer = str(node["layer"])
         title = str(node["title_zh"])
         detail = str(node["detail"])
+        if label == "代码映射":
+            mapped = True
+            errors.extend(code_mapping_errors(str(node.get("id")), node.get("source"), detail, code_section, html))
         if layer not in LAYERS:
             errors.append(f"node {node['id']} has unknown layer {layer}")
         if not CJK_RE.search(title) or not CJK_RE.search(detail):
@@ -140,6 +208,10 @@ def validate_report(directory: Path, peer: Path | None = None, check_evidence: b
             errors.append(f"html missing card text for {node['id']}")
         if str(node["method"]) not in markdown:
             errors.append(f"markdown missing method {node['method']}")
+    if mapped:
+        for token in ("起点", "为什么", "下一步", "跨服务", "数据层"):
+            if token not in code_section:
+                errors.append(f"code section missing reading route {token}")
     if mapped and "代码映射" not in code_section:
         errors.append("code section missing 代码映射")
     if not mapped and "未取得精确源码" not in code_section:

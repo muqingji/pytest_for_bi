@@ -1,0 +1,280 @@
+{
+  "schema_version": "trace-fact-card-v1",
+  "mode": "live",
+  "trace_id": "FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C",
+  "title": "编辑审批流获取详情",
+  "profile": "foneshare",
+  "entry_time": "2026-10-10 11:24:39.994",
+  "identity": {
+    "ea": "fktest7572",
+    "app": "fs-crm-workflow",
+    "ei": "816324"
+  },
+  "runtime": {
+    "pod": "fs-crm-workflow-fc5ff5898-zj4gg",
+    "pod_ip": "10.71.21.24",
+    "profile": "foneshare-gray",
+    "paas_pod": "fs-paas-workflow-7bdff9dc7d-9zcvt",
+    "paas_pod_ip": "10.71.16.118",
+    "cluster": "tke70-k8s1"
+  },
+  "resources": {
+    "node_ip": "未取证",
+    "requests": "未取证"
+  },
+  "nodes": [
+    {
+      "id": "gw-in",
+      "service": "CEP",
+      "entry": "/FHH/EM1HAPPROVAL/Definition/Detail",
+      "method": "/FHH/EM1HAPPROVAL/Definition/Detail",
+      "flow": "同步主路径",
+      "downstream": "fs-crm-workflow",
+      "timing": "104 ms",
+      "evidence": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/log_cep_dist.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "网关进入审批流详情",
+      "detail": "CEP 在 2026-10-10 11:24:39.994 记录 /FHH/EM1HAPPROVAL/Definition/Detail，状态 200，网关耗时 104 ms。后端地址是 fs-crm-workflow.foneshare-gray，CEP profile 是 foneshare02。"
+    },
+    {
+      "id": "svc-def",
+      "service": "fs-crm-workflow",
+      "entry": "/fs-crm-workflow/Definition/Detail",
+      "method": "/fs-crm-workflow/Definition/Detail",
+      "flow": "同步主路径",
+      "downstream": "fs-paas-workflow",
+      "timing": "102 ms",
+      "evidence": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/tomcat_access.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "审批服务接收定义详情",
+      "detail": "Tomcat 记录 /fs-crm-workflow/Definition/Detail，状态 200，耗时 102 ms。应用日志 queryName 为 EM1HAPPROVAL.Definition.Detail。Pod fs-crm-workflow-fc5ff5898-zj4gg，Pod IP 10.71.21.24，集群 tke70-k8s1，profile foneshare-gray。"
+    },
+    {
+      "id": "svc-impl",
+      "service": "fs-crm-workflow",
+      "entry": "ApprovalDefinitionAction.getDefinition -> ApprovalDefinitionApprovalActionImpl.getDefinition",
+      "method": "ApprovalDefinitionApprovalActionImpl.getDefinition",
+      "flow": "同步主路径",
+      "downstream": "ApprovalDefinitionServiceImpl.getWorkflow",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/TRC-chain-notes.md",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "组装审批流定义详情",
+      "detail": "ApprovalDefinitionApprovalActionImpl.getDefinition 的方法体不在接口里。接口文件 fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/ApprovalDefinitionAction.java 第 49 行只声明 getDefinition，没有 approvalDefinitionService，也没有 approvalDefinitionService.getWorkflow。第 191 行调用 approvalDefinitionService.getWorkflow，第 193 行调用 i18NServiceProxy.getDefTranslateList。文件 fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/impl/ApprovalDefinitionApprovalActionImpl.java。",
+      "source": {
+        "repo": "fs-crm-workflow",
+        "file": "fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/impl/ApprovalDefinitionApprovalActionImpl.java",
+        "symbol": "ApprovalDefinitionApprovalActionImpl.getDefinition",
+        "line": 189,
+        "declaration_file": "fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/ApprovalDefinitionAction.java",
+        "declaration_line": 49,
+        "calls": [
+          {
+            "symbol": "approvalDefinitionService.getWorkflow",
+            "file": "fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/impl/ApprovalDefinitionApprovalActionImpl.java",
+            "line": 191
+          },
+          {
+            "symbol": "i18NServiceProxy.getDefTranslateList",
+            "file": "fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/impl/ApprovalDefinitionApprovalActionImpl.java",
+            "line": 193
+          }
+        ]
+      }
+    },
+    {
+      "id": "svc-def-service",
+      "service": "fs-crm-workflow",
+      "entry": "ApprovalDefinitionServiceImpl.getWorkflow",
+      "method": "ApprovalDefinitionServiceImpl.getWorkflow",
+      "flow": "同步主路径",
+      "downstream": "PaasServiceImpl.getWorkflow",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/FLow/server/fs-crm-workflow/fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/service/impl/ApprovalDefinitionServiceImpl.java",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "服务层读取流程定义",
+      "detail": "ApprovalDefinitionServiceImpl.getWorkflow 的方法体不在接口里。接口文件 fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/service/ApprovalDefinitionService.java 第 27 行只声明 getWorkflow，没有 paasService.getWorkflow。第 209 行调用 paasService.getWorkflow。文件 fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/service/impl/ApprovalDefinitionServiceImpl.java。",
+      "source": {
+        "repo": "fs-crm-workflow",
+        "file": "fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/service/impl/ApprovalDefinitionServiceImpl.java",
+        "symbol": "ApprovalDefinitionServiceImpl.getWorkflow",
+        "line": 208,
+        "declaration_file": "fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/service/ApprovalDefinitionService.java",
+        "declaration_line": 27,
+        "calls": [
+          {
+            "symbol": "paasService.getWorkflow",
+            "file": "fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/service/impl/ApprovalDefinitionServiceImpl.java",
+            "line": 209
+          }
+        ]
+      }
+    },
+    {
+      "id": "svc-proxy",
+      "service": "fs-crm-workflow",
+      "entry": "PaasServiceImpl.getWorkflow",
+      "method": "PaasServiceImpl.getWorkflow",
+      "flow": "同步主路径",
+      "downstream": "fs-paas-workflow",
+      "timing": "9 ms",
+      "evidence": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/app_log_crm_workflow.json",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "经 API 总线查询流程定义",
+      "detail": "PaasServiceImpl.getWorkflow 的方法体不在接口里。接口文件 fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/proxy/PaasWorkflowService.java 第 34 行只声明 getWorkflow，没有 approvalFlowEngineResource.getWorkflow。第 127 行调用 approvalFlowEngineResource.getWorkflow。应用日志看到 POST fs-apibus-global.foneshare:8887/fs-paas-workflow/paas/crm/approval/detail，HTTP 200，客户端耗时 9 ms。apibus 自身日志未取证。文件 fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/proxy/impl/PaasServiceImpl.java。",
+      "source": {
+        "repo": "fs-crm-workflow",
+        "file": "fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/proxy/impl/PaasServiceImpl.java",
+        "symbol": "PaasServiceImpl.getWorkflow",
+        "line": 122,
+        "declaration_file": "fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/proxy/PaasWorkflowService.java",
+        "declaration_line": 34,
+        "calls": [
+          {
+            "symbol": "approvalFlowEngineResource.getWorkflow",
+            "file": "fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/proxy/impl/PaasServiceImpl.java",
+            "line": 127
+          }
+        ]
+      }
+    },
+    {
+      "id": "svc-paas",
+      "service": "fs-paas-workflow",
+      "entry": "/fs-paas-workflow/paas/crm/approval/detail",
+      "method": "CrmController.getApprovalFlowDetail",
+      "flow": "同步主路径",
+      "downstream": "MongoDB",
+      "timing": "7 ms",
+      "evidence": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/app_log_paas_workflow.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "流程引擎读取定义详情",
+      "detail": "Tomcat 记录 /fs-paas-workflow/paas/crm/approval/detail，状态 200，耗时 7 ms。CrmController.getApprovalFlowDetail 进入 ApprovalFlowCommonServiceImpl.getAfDefinitionDetail。Pod fs-paas-workflow-7bdff9dc7d-9zcvt，Pod IP 10.71.16.118，集群 tke70-k8s1。"
+    },
+    {
+      "id": "data-wf",
+      "service": "MongoDB",
+      "entry": "EffektifAdapter.findWorkflowById",
+      "method": "EffektifAdapter.findWorkflowById",
+      "flow": "同步主路径",
+      "downstream": "workflows",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/TRC-chain-notes.md",
+      "label": "未取证",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "按编号查询流程定义",
+      "detail": "EffektifAdapter.findWorkflowById 这次没有打开 fs-paas-workflow 源码核对。日志没有打出查数方法。数据库名未取证。集合是否为 workflows 未取证。"
+    },
+    {
+      "id": "data-rule",
+      "service": "MongoDB",
+      "entry": "StartupRuleDao.findWorkflowRule",
+      "method": "StartupRuleDao.findWorkflowRule",
+      "flow": "同步主路径",
+      "downstream": "workflow_rules",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/TRC-chain-notes.md",
+      "label": "未取证",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "按编号查询启动规则",
+      "detail": "StartupRuleDao.findWorkflowRule 这次没有打开 fs-paas-workflow 源码核对。日志没有打出查数方法。数据库名未取证。集合是否为 workflow_rules 未取证。"
+    },
+    {
+      "id": "svc-i18n",
+      "service": "i18n-service",
+      "entry": "POST /i18n/load",
+      "method": "POST /i18n/load",
+      "flow": "同步主路径",
+      "downstream": "未取证",
+      "timing": "91 ms",
+      "evidence": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/app_log_crm_workflow.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "加载定义文案",
+      "detail": "定义返回后，DefaultInvokeHandler 发出 POST /i18n/load，地址 oss.foneshare.cn/i18n-service/i18n/load，HTTP 200，耗时 91 ms。调用方是 I18NServiceProxy.getDefTranslateList。文案数据库名未取证，表名未取证。"
+    },
+    {
+      "id": "gw-out",
+      "service": "CEP",
+      "entry": "/FHH/EM1HAPPROVAL/Definition/Detail",
+      "method": "/FHH/EM1HAPPROVAL/Definition/Detail",
+      "flow": "同步主路径",
+      "downstream": "前端",
+      "timing": "104 ms",
+      "evidence": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/log_cep_dist.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "网关返回审批流详情",
+      "detail": "同一条 CEP 记录 /FHH/EM1HAPPROVAL/Definition/Detail 状态 200，总耗时 104 ms。应用 Tomcat 102 ms，差额未细分。"
+    }
+  ],
+  "gaps": [
+    "Mongo 物理数据库名未取证。dataStore 和租户 816324 不是物理库名。",
+    "文案物理表未取证。",
+    "apibus 自身日志未取证。",
+    "Node IP 与容器配额未取证。",
+    "没有 MQ、Redis、ClickHouse、copier span。"
+  ],
+  "evidence": [
+    {
+      "path": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/log_cep_dist.json",
+      "note": "CEP 入口"
+    },
+    {
+      "path": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/tomcat_access.json",
+      "note": "Tomcat 访问"
+    },
+    {
+      "path": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/app_log_crm_workflow.json",
+      "note": "fs-crm-workflow 应用日志"
+    },
+    {
+      "path": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/app_log_paas_workflow.json",
+      "note": "fs-paas-workflow 应用日志"
+    },
+    {
+      "path": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/slow_log_count.json",
+      "note": "slow_log_dist 计数为 0"
+    },
+    {
+      "path": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/log_error_count.json",
+      "note": "log_error_dist 计数为 0"
+    },
+    {
+      "path": "/Users/liushanshan/code/my/pytest_for_bi/code-repo-analysis/调用链路/证据/01M4HXEQX/TRC-chain-notes.md",
+      "note": "摘记"
+    },
+    {
+      "path": "/Users/liushanshan/code/FLow/server/fs-crm-workflow/fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/impl/ApprovalDefinitionApprovalActionImpl.java",
+      "note": "ApprovalDefinitionApprovalActionImpl.getDefinition 源码"
+    },
+    {
+      "path": "/Users/liushanshan/code/FLow/server/fs-crm-workflow/fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/service/impl/ApprovalDefinitionServiceImpl.java",
+      "note": "ApprovalDefinitionServiceImpl.getWorkflow 源码"
+    },
+    {
+      "path": "/Users/liushanshan/code/FLow/server/fs-crm-workflow/fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/proxy/impl/PaasServiceImpl.java",
+      "note": "PaasServiceImpl.getWorkflow 源码"
+    },
+    {
+      "path": "/Users/liushanshan/code/FLow/server/fs-crm-workflow/fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/ApprovalDefinitionAction.java",
+      "note": "ApprovalDefinitionAction 接口，只声明 getDefinition，没有 getWorkflow 调用"
+    }
+  ]
+}

@@ -157,7 +157,7 @@
         "file": "fs-bi-crm-report-web/src/main/java/com/facishare/bi/repository/RptViewRepository.java",
         "symbol": "RptViewRepository.getRptViewByCategoryId"
       },
-      "detail": "listRange 为全部时调用 RptViewRepository.getRptViewByCategoryId。租户 XML 的 FROM 是 rpt_view。是否改读系统库由 isReadSysRpt 决定，本次未取证。排序字段是 update_time。"
+      "detail": "listRange 为全部时调用 RptViewRepository.getRptViewByCategoryId。租户 XML 的 FROM 是 rpt_view。是否改读系统库由 isReadSysRpt 决定，本次未取证。排序字段是 update_time。 数据库名未取证。 表 rpt_view。"
     },
     {
       "id": "data-stat",
@@ -177,7 +177,7 @@
         "file": "fs-bi-crm-report-web/src/main/java/com/facishare/bi/repository/StatViewRepository.java",
         "symbol": "StatViewRepository.getStatViewByCategoryId"
       },
-      "detail": "同一分支调用 StatViewRepository.getStatViewByCategoryId。租户 XML 的 FROM 是 stat_view。系统库分支还会连接 stat_template 和 subject_domain，本次未取证走哪一支。"
+      "detail": "同一分支调用 StatViewRepository.getStatViewByCategoryId。租户 XML 的 FROM 是 stat_view。系统库分支还会连接 stat_template 和 subject_domain，本次未取证走哪一支。 数据库名未取证。 表 stat_view。"
     },
     {
       "id": "data-cat",
@@ -197,7 +197,7 @@
         "file": "fs-bi-crm-report-web/src/main/java/com/facishare/bi/repository/RptCategoryRepository.java",
         "symbol": "RptCategoryRepository.getAllCategoryListByEi"
       },
-      "detail": "fillCategoryExtInfo 调用 RptCategoryRepository.getAllCategoryListByEi。对应语句 FROM rpt_category，条件包含 ei，并排除 is_delete 等于 1。"
+      "detail": "fillCategoryExtInfo 调用 RptCategoryRepository.getAllCategoryListByEi。对应语句 FROM rpt_category，条件包含 ei，并排除 is_delete 等于 1。 数据库名未取证。 表 rpt_category。"
     },
     {
       "id": "data-perm",
@@ -217,7 +217,7 @@
         "file": "fs-bi-crm-report-web/src/main/java/com/facishare/bi/permission/dao/mapper/ChartPrivatePermissionMapper.java",
         "symbol": "ChartPrivatePermissionMapper.getPteRecordsByDataIds"
       },
-      "detail": "queryPteOwnerByDataIds 调用 ChartPrivatePermissionMapper.getPteRecordsByDataIds，语句从 chart_private_permission 按 tenant_id 和 object_id 查询。本次全量列表没有慢 SQL。同 trace 的搜索请求在 17:59:50.595 命中该表，耗时 10 ms，库 10.17.10.207:6432/fsbidb017013074004。"
+      "detail": "queryPteOwnerByDataIds 调用 ChartPrivatePermissionMapper.getPteRecordsByDataIds，语句从 chart_private_permission 按 tenant_id 和 object_id 查询。本次全量列表没有慢 SQL。同 trace 的搜索请求在 17:59:50.595 命中该表，耗时 10 ms，库 10.17.10.207:6432/fsbidb017013074004。 本列表请求的数据库名未取证。"
     }
   ],
   "gaps": [

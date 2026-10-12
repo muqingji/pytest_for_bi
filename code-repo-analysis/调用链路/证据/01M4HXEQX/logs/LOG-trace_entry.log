@@ -1,0 +1,44 @@
+[11:45:18.013] [trace_entry] start trace_id='FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C' profile=foneshare at='2026-10-10 11:24:39'
+[11:45:18.027] [fxops] DEBUG exec fx-ops idp --profile <redacted> query <redacted> --sql <redacted> -j --timeout <redacted> timeout_sec=180
+[11:45:18.160] ERROR [fxops:trace] fx-ops failed exit=2 error_code=None api_code=2
+[11:45:18.161] [cep_sql] trace query_ok=false error=fx-ops exited with code 2
+[11:45:18.161] [cep_sql] trace=FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C window=2026-10-10 11:14:39..2026-10-10 11:34:39 rows=0 ok=False
+[11:45:18.162] [trace_direct] exact ±10m probe ok=False rows=0
+[11:45:18.164] [fxops] DEBUG exec fx-ops idp --profile <redacted> query <redacted> --sql <redacted> -j --timeout <redacted> timeout_sec=180
+[11:45:18.251] ERROR [fxops:trace] fx-ops failed exit=2 error_code=None api_code=2
+[11:45:18.252] [cep_sql] trace query_ok=false error=fx-ops exited with code 2
+[11:45:18.252] [cep_sql] trace=FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C window=2026-10-10 10:24:39..2026-10-10 12:24:39 rows=0 ok=False
+[11:45:18.253] [trace_direct] exact ±60m probe ok=False rows=0
+[11:45:18.254] [fxops] DEBUG exec fx-ops idp --profile <redacted> query <redacted> --sql <redacted> -j --timeout <redacted> timeout_sec=180
+[11:45:18.433] ERROR [fxops:trace] fx-ops failed exit=2 error_code=None api_code=2
+[11:45:18.434] [cep_sql] trace query_ok=false error=fx-ops exited with code 2
+[11:45:18.435] [cep_sql] trace=FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C window=2026-10-10 05:24:39..2026-10-10 17:24:39 rows=0 ok=False
+[11:45:18.436] [trace_direct] exact ±360m probe ok=False rows=0
+[11:45:18.437] [fxops] DEBUG exec fx-ops idp --profile <redacted> query <redacted> --sql <redacted> -j --timeout <redacted> timeout_sec=180
+[11:45:18.539] ERROR [fxops:trace] fx-ops failed exit=2 error_code=None api_code=2
+[11:45:18.540] [cep_sql] trace query_ok=false error=fx-ops exited with code 2
+[11:45:18.540] [cep_sql] trace=FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C window=2026-10-09 11:24:39..2026-10-11 11:24:39 rows=0 ok=False
+[11:45:18.541] [trace_direct] exact ±1440m probe ok=False rows=0
+[11:45:18.545] [trace_entry] summary status=error match=- anchor='user_at' files=1
+[11:46:35.504] [trace_entry] start trace_id='FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C' profile=foneshare at='2026-10-10 11:24:39'
+[11:46:35.525] [fxops] DEBUG exec fx-ops idp --profile <redacted> query <redacted> --sql <redacted> -j --timeout <redacted> timeout_sec=180
+[11:46:36.174] ERROR [fxops:trace] fx-ops failed exit=0 error_code=unsupported_envelope api_code=None
+[11:46:36.175] [cep_sql] trace query_ok=false error=v2 query columns require known non-empty string types
+[11:46:36.176] [cep_sql] trace=FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C window=2026-10-10 11:14:39..2026-10-10 11:34:39 rows=0 ok=False
+[11:46:36.177] [trace_direct] exact ±10m probe ok=False rows=0
+[11:46:36.179] [fxops] DEBUG exec fx-ops idp --profile <redacted> query <redacted> --sql <redacted> -j --timeout <redacted> timeout_sec=180
+[11:46:36.946] ERROR [fxops:trace] fx-ops failed exit=0 error_code=unsupported_envelope api_code=None
+[11:46:36.947] [cep_sql] trace query_ok=false error=v2 query columns require known non-empty string types
+[11:46:36.948] [cep_sql] trace=FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C window=2026-10-10 10:24:39..2026-10-10 12:24:39 rows=0 ok=False
+[11:46:36.950] [trace_direct] exact ±60m probe ok=False rows=0
+[11:46:36.953] [fxops] DEBUG exec fx-ops idp --profile <redacted> query <redacted> --sql <redacted> -j --timeout <redacted> timeout_sec=180
+[11:46:37.704] ERROR [fxops:trace] fx-ops failed exit=0 error_code=unsupported_envelope api_code=None
+[11:46:37.706] [cep_sql] trace query_ok=false error=v2 query columns require known non-empty string types
+[11:46:37.708] [cep_sql] trace=FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C window=2026-10-10 05:24:39..2026-10-10 17:24:39 rows=0 ok=False
+[11:46:37.711] [trace_direct] exact ±360m probe ok=False rows=0
+[11:46:37.714] [fxops] DEBUG exec fx-ops idp --profile <redacted> query <redacted> --sql <redacted> -j --timeout <redacted> timeout_sec=180
+[11:46:38.030] ERROR [fxops:trace] fx-ops failed exit=2 error_code=sql_query.time_range_exceeded api_code=400
+[11:46:38.031] [cep_sql] trace query_ok=false error=fx-ops exited with code 2
+[11:46:38.031] [cep_sql] trace=FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C window=2026-10-09 11:24:39..2026-10-11 11:24:39 rows=0 ok=False
+[11:46:38.033] [trace_direct] exact ±1440m probe ok=False rows=0
+[11:46:38.036] [trace_entry] summary status=error match=- anchor='user_at' files=1

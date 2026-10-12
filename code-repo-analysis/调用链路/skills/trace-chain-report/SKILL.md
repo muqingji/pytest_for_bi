@@ -32,7 +32,7 @@ uv run --no-sync python scripts/parse_call_log.py <调用日志.md>
 
 在本技能目录执行。安装到 `.agents/skills/trace-chain-report` 时，把 `scripts/parse_call_log.py` 换成那个路径。每条任务用返回的 `output_dir`，不要沿用调用日志里抄错的结果目录。
 
-输出目录是 `<分析根目录>/调用链路/` 加上解析结果里的 `output_dir`。有路由时短标识用路由末段，不用企业号或 traceId 前几位硬凑。每条任务四份文件：
+输出目录是 `<分析根目录>/调用链路/` 加上解析结果里的 `output_dir`。有路由时短标识用路由末段，不用企业号或 traceId 前几位硬凑。业务文件夹由解析结果的 `category` 决定：描述含「审批」或路由含 `APPROVAL` 的 trace 用 `审批流/`，其余默认 `统计图/`。不要把审批流再写进 `统计图/`。每条任务四份文件：
 
 - `fact-card.json`
 - `调用链路分析.md`

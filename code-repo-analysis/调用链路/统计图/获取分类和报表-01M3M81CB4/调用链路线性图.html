@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>获取分类和报表 · 泳道图</title>
+  <style>
+    :root {
+      --bg: #f4f6fb;
+      --ink: #1b2433;
+      --muted: #5b677a;
+      --line: #d8dee9;
+      --card: #ffffff;
+      --cep: #4f46e5;
+      --psm: #0f766e;
+      --db: #c2410c;
+      --i18n: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+    .page { max-width: 1480px; margin: 0 auto; padding: 28px 20px 48px; }
+    header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-end; margin-bottom: 16px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.01em; }
+    .sub, .meta { color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .meta { text-align: right; font-size: 12px; }
+    code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+    .pill { border-radius: 999px; padding: 3px 10px; font-size: 12px; background: #fff; border: 1px solid var(--line); color: var(--muted); }
+    .board {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: auto;
+      box-shadow: 0 10px 28px rgba(27, 36, 51, 0.05);
+    }
+    .lanes { min-width: 1080px; position: relative; }
+    .heads, .step { display: grid; grid-template-columns: 1fr, 1fr, 1fr, 1fr; }
+    .heads { position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1px solid var(--line); }
+    .head { padding: 14px 16px 12px; border-right: 1px solid var(--line); }
+    .head:last-child { border-right: 0; }
+    .head .kind { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+    .head h2 { margin: 4px 0 2px; font-size: 16px; }
+    .head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .h-cep .kind { color: var(--cep); }
+    .h-psm .kind { color: var(--psm); }
+    .h-db .kind { color: var(--db); }
+    .h-i18n .kind { color: var(--i18n); }
+    .canvas { position: relative; padding: 8px 0 18px; }
+    .rails { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr, 1fr, 1fr, 1fr; pointer-events: none; }
+    .rails i { border-left: 2px dashed #e2e8f0; margin-left: calc(50% - 1px); }
+    .step { position: relative; z-index: 1; min-height: 8px; }
+    .card {
+      margin: 8px 14px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px 11px;
+      box-shadow: 0 4px 14px rgba(27, 36, 51, 0.04);
+    }
+    .card[data-col="1"] { grid-column: 1; border-top: 3px solid var(--cep); }
+    .card[data-col="2"] { grid-column: 2; border-top: 3px solid var(--psm); }
+    .card[data-col="3"] { grid-column: 3; border-top: 3px solid var(--db); }
+    .card[data-col="4"] { grid-column: 4; border-top: 3px solid var(--i18n); }
+    .card[data-col="5"] { grid-column: 5; border-top: 3px solid #0369a1; }
+    .card[data-col="6"] { grid-column: 6; border-top: 3px solid #b45309; }
+    .card[data-col="7"] { grid-column: 7; border-top: 3px solid #7c3aed; }
+    .hop[data-dir="fwd"] .line::after { right: -1px; border-left-color: #64748b; }
+    .hop[data-dir="back"] .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop[data-dir="back"] .line::after { left: -1px; border-right-color: #94a3b8; }
+    .card h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.4; }
+    .card p { margin: 0; color: #334155; font-size: 12.5px; line-height: 1.6; }
+    .method { display: block; margin-top: 6px; color: #1e293b; word-break: break-all; }
+    .meta-line { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .tag { font-size: 11px; border-radius: 999px; padding: 1px 7px; background: #f8fafc; color: var(--muted); border: 1px solid var(--line); }
+    .tag.obs { color: #1d4ed8; background: #eff6ff; border-color: #dbeafe; }
+    .tag.map { color: #9a3412; background: #fff7ed; border-color: #ffedd5; }
+    .tag.miss { color: #6b7280; background: #f8fafc; }
+    .tables { margin: 8px 0 0; padding: 0; list-style: none; }
+    .tables li { padding: 6px 0; border-top: 1px dashed var(--line); font-size: 12.5px; line-height: 1.5; }
+    .hop { position: relative; height: 34px; z-index: 1; }
+    .hop .line { position: absolute; top: 15px; height: 2px; background: #64748b; }
+    .hop .line::after { content: ""; position: absolute; top: -4px; border: 5px solid transparent; }
+    .hop.fwd .line::after { right: -1px; border-left-color: #64748b; }
+    .hop.back .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop.back .line::after { left: -1px; border-right-color: #94a3b8; }
+    .hop .label { position: absolute; top: 0; font-size: 11px; color: #475569; background: #fff; padding: 0 6px; white-space: nowrap; }
+    .note { margin: 14px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>获取分类和报表</h1>
+        <div class="sub">泳道从左到右是参与方，从上到下是调用顺序。实线是发出，虚线是返回。</div>
+      </div>
+      <div class="meta"><div><code>/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt</code></div><div>200 · 根目录网关 480 ms · 2026-09-28 22:52:25.861</div><div>FSW-fktest7572.1001-01M3M81CB41A438TKSTEHZMNV3</div><div>Pod fs-bi-crm-report-web-6f987897d5-qt29g · 10.71.142.239</div></div>
+    </header>
+    <div class="legend"><span class="pill">网关 CEP</span><span class="pill">PSM fs-bi-crm-report-web</span><span class="pill">中间件 PostgreSQL</span><span class="pill">远程服务 文案</span><span class="pill">没有 Redis / MQ / copier / ClickHouse，不单开列</span></div>
+    <div class="board">
+      <div class="lanes">
+        <div class="heads"><div class="head h-cep"><div class="kind">网关</div><h2>CEP</h2><p>入口记录状态和总耗时</p></div><div class="head h-psm"><div class="kind">PSM</div><h2>fs-bi-crm-report-web</h2><p>Pod fs-bi-crm-report-web-6f987897d5-qt29g<br/>Pod IP 10.71.142.239</p></div><div class="head h-db"><div class="kind">中间件</div><h2>PostgreSQL</h2><p>物理库 fsbidb017054072003 仅对 rpt_view 取证</p></div><div class="head h-i18n"><div class="kind">远程服务</div><h2>文案服务</h2><p>I18nRestClientImpl 远程调用</p></div></div>
+        <div class="canvas">
+          <div class="rails"><i></i><i></i><i></i><i></i></div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>网关进入根目录报表列表</h3>
+              <p>CEP 在 2026-09-28 22:52:25.861 记录 /FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt，状态 200，网关耗时 480 ms。这是根目录 categoryID 为 0 的列表请求。</p>
+              <code class="method">/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">200</span><span class="tag ">480 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:12.5000%;width:25.0000%;"></span><span class="label" style="left:16.2500%;">转发到报表服务</span></div>
+          <div class="step">
+            <article class="card" data-col="2">
+              <h3>按文件夹读取分类和视图</h3>
+              <p>应用日志 Enter getCategoryAndView，参数 categoryID 为 0、type 为 3、listRange 为 2。方法 ViewCategoryService.getCategoryAndView 随后拼出按更新时间倒序的排序串。处理 Pod 是 fs-bi-crm-report-web-6f987897d5-qt29g，Pod IP 10.71.142.239。</p>
+              <code class="method">ViewCategoryService.getCategoryAndView</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="2">
+              <h3>读取当前企业文件夹和图表</h3>
+              <p>日志写 Get current enterprise files and reports 后进入 ViewCategoryService.getAllCategoryAndView。22:52:25.904 进入，22:52:26.160 离开，返回报表 7 条、统计图 15 条。</p>
+              <code class="method">ViewCategoryService.getAllCategoryAndView</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">256 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:37.5000%;width:25.0000%;"></span><span class="label" style="left:41.2500%;">查 PostgreSQL</span></div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>查询有报表的文件夹</h3>
+              <p>listRange 为全部时，RptCategoryMapperTenant.getRptCategoriesByEi 一条 SQL 从 rpt_category 取目录，并用子查询连接 rpt_view 排除空文件夹。数据库名未取证。表 rpt_category，表 rpt_view。数据源配置名不是物理库名。</p>
+              <code class="method">RptCategoryMapperTenant.getRptCategoriesByEi</code>
+              <ul class="tables"><li>数据库名未取证 · 表 rpt_category</li><li>数据库名未取证 · 表 rpt_view</li></ul>
+              <div class="meta-line"><span class="tag map">代码映射</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:37.5000%;width:25.0000%;"></span><span class="label" style="left:41.2500%;">返回目录</span></div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>查询有统计图的文件夹</h3>
+              <p>同一路径上 RptCategoryMapperTenant.getCategoriesWithEi 一条 SQL 从 rpt_category 取目录，子查询连接 stat_view。数据库名未取证。表 rpt_category，表 stat_view。</p>
+              <code class="method">RptCategoryMapperTenant.getCategoriesWithEi</code>
+              <ul class="tables"><li>数据库名未取证 · 表 rpt_category</li><li>数据库名未取证 · 表 stat_view</li></ul>
+              <div class="meta-line"><span class="tag map">代码映射</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>按目录查询报表视图</h3>
+              <p>慢 SQL 与 DynamicRptViewMapperTenant.getRptViewByCategoryId 一致，RptViewRepository.getRptViewByCategoryId 查询表 rpt_view，过滤 category_id、企业和未删除。数据库名 fsbidb017054072003，JDBC 地址 10.17.51.207:6432/fsbidb017054072003，耗时 211 ms。</p>
+              <code class="method">RptViewRepository.getRptViewByCategoryId</code>
+              <ul class="tables"><li>数据库名 fsbidb017054072003 · 表 rpt_view</li></ul>
+              <div class="meta-line"><span class="tag map">代码映射</span><span class="tag obs">211 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>按目录查询统计图视图</h3>
+              <p>getAllCategoryAndView 随后调用 StatViewRepository.getStatViewByCategoryId，XML 从 stat_view 按 category_id 和企业过滤未删除行。数据库名未取证。表 stat_view。</p>
+              <code class="method">StatViewRepository.getStatViewByCategoryId</code>
+              <ul class="tables"><li>数据库名未取证 · 表 stat_view</li></ul>
+              <div class="meta-line"><span class="tag map">代码映射</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:37.5000%;width:25.0000%;"></span><span class="label" style="left:41.2500%;">返回视图列表</span></div>
+          <div class="step">
+            <article class="card" data-col="2">
+              <h3>组装带权限的列表结果</h3>
+              <p>ViewCategoryUnFoldDataSetService.constructFoldResDataSetNew 在目录名「报表列表」上组装 64 条展示项，并回填用户名。</p>
+              <code class="method">ViewCategoryUnFoldDataSetService.constructFoldResDataSetNew</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:37.5000%;width:25.0000%;"></span><span class="label" style="left:41.2500%;">查私有权限</span></div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>查询私有权限归属</h3>
+              <p>constructOwnerMap 调用 DataPermService.queryPteOwnerByDataIds，最终 ChartPrivatePermissionMapper.getPteRecordsByDataIds 查询表 chart_private_permission。数据库名未取证。</p>
+              <code class="method">ChartPrivatePermissionMapper.getPteRecordsByDataIds</code>
+              <ul class="tables"><li>数据库名未取证 · 表 chart_private_permission</li></ul>
+              <div class="meta-line"><span class="tag map">代码映射</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:37.5000%;width:25.0000%;"></span><span class="label" style="left:41.2500%;">返回归属</span></div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:37.5000%;width:50.0000%;"></span><span class="label" style="left:45.0000%;">翻译文案</span></div>
+          <div class="step">
+            <article class="card" data-col="4">
+              <h3>翻译列表文案</h3>
+              <p>第二次进目录时 I18nRestClientImpl.loadByLangBatch 远程调用完成，租户 816324，2 个 key，耗时 16 ms。文案物理表未取证。</p>
+              <code class="method">I18nRestClientImpl.loadByLangBatch</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">16 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:37.5000%;width:50.0000%;"></span><span class="label" style="left:45.0000%;">返回文案</span></div>
+          <div class="hop" data-dir="back"><span class="line" style="left:12.5000%;width:25.0000%;"></span><span class="label" style="left:16.2500%;">返回根目录列表</span></div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>网关进入子文件夹列表</h3>
+              <p>CEP 在 2026-09-28 22:52:30.773 再次记录 /FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt，状态 200，网关耗时 141 ms。应用日志 categoryID 为 BI_6a8874ca17bbb4000737faa5，目录名「双维度」，返回统计图 2 条。</p>
+              <code class="method">/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">141 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>同 trace 拉取驾驶舱列表</h3>
+              <p>同一 trace 还有 /FHH/EM1HBICRM/dashBoardController/getDashBoardList，200，341 ms。应用 CostMonitor 总耗时 335 ms。驾驶舱表查询未在本报告展开。</p>
+              <code class="method">/FHH/EM1HBICRM/dashBoardController/getDashBoardList</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">341 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>同 trace 读取列表字段配置</h3>
+              <p>同一 trace 的 /FHH/EM1HBICRM/rptCategoryController/getCategoryAndRptConfigByRank 返回 200，16 ms。</p>
+              <code class="method">/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRptConfigByRank</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">16 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="1">
+              <h3>同 trace 读取时区</h3>
+              <p>同一 trace 的 /FHH/EM1HNCRM/API/v1/object/personnelrest/service/GetAllTimezones 打到 fs-plat-org-management，200，36 ms。该服务应用日志未取证。</p>
+              <code class="method">/FHH/EM1HNCRM/API/v1/object/personnelrest/service/GetAllTimezones</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">36 ms</span></div>
+            </article>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note">证据边界：fs-plat-org-management 应用日志、其余物理库名、文案物理表、Node IP 未取证。没有 MQ。</p>
+  </div>
+</body>
+</html>

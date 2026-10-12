@@ -1,0 +1,288 @@
+{
+  "schema_version": "trace-fact-card-v1",
+  "mode": "live",
+  "trace_id": "FSW-fktest7572.1001-01M3M81CB41A438TKSTEHZMNV3",
+  "title": "获取分类和报表",
+  "profile": "foneshare",
+  "entry_time": "2026-09-28 22:52:25.861",
+  "identity": {
+    "ea": "fktest7572",
+    "app": "fs-bi-crm-report-web",
+    "ei": "816324"
+  },
+  "runtime": {
+    "pod": "fs-bi-crm-report-web-6f987897d5-qt29g",
+    "pod_ip": "10.71.142.239",
+    "profile": "foneshare-gray"
+  },
+  "resources": {
+    "node_ip": "未取证",
+    "requests": "未取证"
+  },
+  "nodes": [
+    {
+      "id": "gw-list1",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt",
+      "method": "/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt",
+      "flow": "同步主路径",
+      "downstream": "fs-bi-crm-report-web",
+      "timing": "480 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "网关进入根目录报表列表",
+      "detail": "CEP 在 2026-09-28 22:52:25.861 记录 /FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt，状态 200，网关耗时 480 ms。这是根目录 categoryID 为 0 的列表请求。"
+    },
+    {
+      "id": "svc-view",
+      "service": "fs-bi-crm-report-web",
+      "entry": "ViewCategoryService.getCategoryAndView",
+      "method": "ViewCategoryService.getCategoryAndView",
+      "flow": "同步主路径",
+      "downstream": "getAllCategoryAndView",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-app-log-crm.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "按文件夹读取分类和视图",
+      "detail": "应用日志 Enter getCategoryAndView，参数 categoryID 为 0、type 为 3、listRange 为 2。方法 ViewCategoryService.getCategoryAndView 随后拼出按更新时间倒序的排序串。处理 Pod 是 fs-bi-crm-report-web-6f987897d5-qt29g，Pod IP 10.71.142.239。"
+    },
+    {
+      "id": "svc-all",
+      "service": "fs-bi-crm-report-web",
+      "entry": "ViewCategoryService.getAllCategoryAndView",
+      "method": "ViewCategoryService.getAllCategoryAndView",
+      "flow": "同步主路径",
+      "downstream": "PostgreSQL",
+      "timing": "256 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-app-log-crm.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "读取当前企业文件夹和图表",
+      "detail": "日志写 Get current enterprise files and reports 后进入 ViewCategoryService.getAllCategoryAndView。22:52:25.904 进入，22:52:26.160 离开，返回报表 7 条、统计图 15 条。"
+    },
+    {
+      "id": "data-cat",
+      "service": "PostgreSQL",
+      "entry": "RptCategoryMapperTenant.getRptCategoriesByEi",
+      "method": "RptCategoryMapperTenant.getRptCategoriesByEi",
+      "flow": "同步主路径",
+      "downstream": "rpt_category,rpt_view",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-chain-notes.md",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "查询有报表的文件夹",
+      "detail": "listRange 为全部时，RptCategoryMapperTenant.getRptCategoriesByEi 一条 SQL 从 rpt_category 取目录，并用子查询连接 rpt_view 排除空文件夹。数据库名未取证。表 rpt_category，表 rpt_view。数据源配置名不是物理库名。",
+      "source": {
+        "repo": "fs-bi-crm-report",
+        "file": "fs-bi-crm-report-web/src/main/java/com/facishare/bi/dao/tenantmapper/RptCategoryMapperTenant.java",
+        "symbol": "RptCategoryMapperTenant.getRptCategoriesByEi"
+      }
+    },
+    {
+      "id": "data-statcat",
+      "service": "PostgreSQL",
+      "entry": "RptCategoryMapperTenant.getCategoriesWithEi",
+      "method": "RptCategoryMapperTenant.getCategoriesWithEi",
+      "flow": "同步主路径",
+      "downstream": "rpt_category,stat_view",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-chain-notes.md",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "查询有统计图的文件夹",
+      "detail": "同一路径上 RptCategoryMapperTenant.getCategoriesWithEi 一条 SQL 从 rpt_category 取目录，子查询连接 stat_view。数据库名未取证。表 rpt_category，表 stat_view。",
+      "source": {
+        "repo": "fs-bi-crm-report",
+        "file": "fs-bi-crm-report-web/src/main/java/com/facishare/bi/dao/tenantmapper/RptCategoryMapperTenant.java",
+        "symbol": "RptCategoryMapperTenant.getCategoriesWithEi"
+      }
+    },
+    {
+      "id": "data-rpt",
+      "service": "PostgreSQL",
+      "entry": "RptViewRepository.getRptViewByCategoryId",
+      "method": "RptViewRepository.getRptViewByCategoryId",
+      "flow": "同步主路径",
+      "downstream": "rpt_view",
+      "timing": "211 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-sql-slow-detail.json",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "按目录查询报表视图",
+      "detail": "慢 SQL 与 DynamicRptViewMapperTenant.getRptViewByCategoryId 一致，RptViewRepository.getRptViewByCategoryId 查询表 rpt_view，过滤 category_id、企业和未删除。数据库名 fsbidb017054072003，JDBC 地址 10.17.51.207:6432/fsbidb017054072003，耗时 211 ms。",
+      "source": {
+        "repo": "fs-bi-crm-report",
+        "file": "fs-bi-crm-report-web/src/main/resources/mybatis/DynamicRptViewMapperTenant.xml",
+        "symbol": "getRptViewByCategoryId"
+      }
+    },
+    {
+      "id": "data-stat",
+      "service": "PostgreSQL",
+      "entry": "StatViewRepository.getStatViewByCategoryId",
+      "method": "StatViewRepository.getStatViewByCategoryId",
+      "flow": "同步主路径",
+      "downstream": "stat_view",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-chain-notes.md",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "按目录查询统计图视图",
+      "detail": "getAllCategoryAndView 随后调用 StatViewRepository.getStatViewByCategoryId，XML 从 stat_view 按 category_id 和企业过滤未删除行。数据库名未取证。表 stat_view。",
+      "source": {
+        "repo": "fs-bi-crm-report",
+        "file": "fs-bi-crm-report-web/src/main/resources/mybatis/DynamicStatViewTenantMapper.xml",
+        "symbol": "getStatViewByCategoryId"
+      }
+    },
+    {
+      "id": "svc-fold",
+      "service": "fs-bi-crm-report-web",
+      "entry": "ViewCategoryUnFoldDataSetService.constructFoldResDataSetNew",
+      "method": "ViewCategoryUnFoldDataSetService.constructFoldResDataSetNew",
+      "flow": "同步主路径",
+      "downstream": "权限过滤",
+      "timing": "113 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-app-log-crm.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "组装带权限的列表结果",
+      "detail": "ViewCategoryUnFoldDataSetService.constructFoldResDataSetNew 在目录名「报表列表」上组装 64 条展示项，并回填用户名。"
+    },
+    {
+      "id": "data-pte",
+      "service": "PostgreSQL",
+      "entry": "ChartPrivatePermissionMapper.getPteRecordsByDataIds",
+      "method": "ChartPrivatePermissionMapper.getPteRecordsByDataIds",
+      "flow": "同步主路径",
+      "downstream": "chart_private_permission",
+      "timing": "未单列",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-chain-notes.md",
+      "label": "代码映射",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "查询私有权限归属",
+      "detail": "constructOwnerMap 调用 DataPermService.queryPteOwnerByDataIds，最终 ChartPrivatePermissionMapper.getPteRecordsByDataIds 查询表 chart_private_permission。数据库名未取证。",
+      "source": {
+        "repo": "fs-bi-crm-report",
+        "file": "fs-bi-crm-report-web/src/main/java/com/facishare/bi/permission/dao/mapper/ChartPrivatePermissionMapper.java",
+        "symbol": "ChartPrivatePermissionMapper.getPteRecordsByDataIds"
+      }
+    },
+    {
+      "id": "svc-i18n",
+      "service": "文案服务",
+      "entry": "I18nRestClientImpl.loadByLangBatch",
+      "method": "I18nRestClientImpl.loadByLangBatch",
+      "flow": "同步主路径",
+      "downstream": "文案服务",
+      "timing": "16 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-app-log-crm.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "翻译列表文案",
+      "detail": "第二次进目录时 I18nRestClientImpl.loadByLangBatch 远程调用完成，租户 816324，2 个 key，耗时 16 ms。文案物理表未取证。"
+    },
+    {
+      "id": "gw-list2",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt",
+      "method": "/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt",
+      "flow": "同步主路径",
+      "downstream": "fs-bi-crm-report-web",
+      "timing": "141 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "网关进入子文件夹列表",
+      "detail": "CEP 在 2026-09-28 22:52:30.773 再次记录 /FHH/EM1HBICRM/rptCategoryController/getCategoryAndRpt，状态 200，网关耗时 141 ms。应用日志 categoryID 为 BI_6a8874ca17bbb4000737faa5，目录名「双维度」，返回统计图 2 条。"
+    },
+    {
+      "id": "gw-board",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBICRM/dashBoardController/getDashBoardList",
+      "method": "/FHH/EM1HBICRM/dashBoardController/getDashBoardList",
+      "flow": "同步主路径",
+      "downstream": "fs-bi-crm-report-web",
+      "timing": "341 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "同 trace 拉取驾驶舱列表",
+      "detail": "同一 trace 还有 /FHH/EM1HBICRM/dashBoardController/getDashBoardList，200，341 ms。应用 CostMonitor 总耗时 335 ms。驾驶舱表查询未在本报告展开。"
+    },
+    {
+      "id": "gw-rank",
+      "service": "CEP",
+      "entry": "/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRptConfigByRank",
+      "method": "/FHH/EM1HBICRM/rptCategoryController/getCategoryAndRptConfigByRank",
+      "flow": "同步主路径",
+      "downstream": "fs-bi-crm-report-web",
+      "timing": "16 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "同 trace 读取列表字段配置",
+      "detail": "同一 trace 的 /FHH/EM1HBICRM/rptCategoryController/getCategoryAndRptConfigByRank 返回 200，16 ms。"
+    },
+    {
+      "id": "gw-tz",
+      "service": "CEP",
+      "entry": "/FHH/EM1HNCRM/API/v1/object/personnelrest/service/GetAllTimezones",
+      "method": "/FHH/EM1HNCRM/API/v1/object/personnelrest/service/GetAllTimezones",
+      "flow": "同步主路径",
+      "downstream": "fs-plat-org-management",
+      "timing": "36 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "同 trace 读取时区",
+      "detail": "同一 trace 的 /FHH/EM1HNCRM/API/v1/object/personnelrest/service/GetAllTimezones 打到 fs-plat-org-management，200，36 ms。该服务应用日志未取证。"
+    }
+  ],
+  "gaps": [
+    "GetAllTimezones 的 fs-plat-org-management 应用日志未取证。",
+    "除 rpt_view 外其余 PostgreSQL 物理数据库名未取证。",
+    "文案物理表未取证。",
+    "Node IP 与容器 requests 未取证。",
+    "根目录 480 ms 中除 211 ms 慢 SQL 外的差额未细分。"
+  ],
+  "evidence": [
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-tracing-log-cep.json",
+      "note": "CEP 入口"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-app-log-crm.json",
+      "note": "fs-bi-crm-report-web 应用日志"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-sql-slow.json",
+      "note": "sql_slow_dist 计数"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-sql-slow-detail.json",
+      "note": "rpt_view 慢 SQL"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81CB4/evidence/TRC-chain-notes.md",
+      "note": "摘记"
+    }
+  ]
+}

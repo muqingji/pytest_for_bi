@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>编辑审批流获取详情 · 泳道图</title>
+  <style>
+    :root {
+      --bg: #f4f6fb; --ink: #1b2433; --muted: #5b677a; --line: #d8dee9; --card: #ffffff;
+      --cep: #4f46e5; --psm: #0f766e; --paas: #0369a1; --db: #c2410c; --i18n: #7c3aed;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+    .page { max-width: 1480px; margin: 0 auto; padding: 28px 20px 48px; }
+    header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-end; margin-bottom: 16px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.01em; }
+    .sub, .meta { color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .meta { text-align: right; font-size: 12px; }
+    code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+    .pill { border-radius: 999px; padding: 3px 10px; font-size: 12px; background: #fff; border: 1px solid var(--line); color: var(--muted); }
+    .board { background: #fff; border: 1px solid var(--line); border-radius: 18px; overflow: auto; box-shadow: 0 10px 28px rgba(27, 36, 51, 0.05); }
+    .lanes { min-width: 1280px; position: relative; }
+    .heads, .step { display: grid; grid-template-columns: repeat(5, 1fr); }
+    .heads { position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1px solid var(--line); }
+    .head { padding: 14px 16px 12px; border-right: 1px solid var(--line); }
+    .head:last-child { border-right: 0; }
+    .head .kind { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+    .head h2 { margin: 4px 0 2px; font-size: 16px; }
+    .head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .h-cep .kind { color: var(--cep); }
+    .h-psm .kind { color: var(--psm); }
+    .h-paas .kind { color: var(--paas); }
+    .h-db .kind { color: var(--db); }
+    .h-i18n .kind { color: var(--i18n); }
+    .canvas { position: relative; padding: 8px 0 18px; }
+    .rails { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(5, 1fr); pointer-events: none; }
+    .rails i { border-left: 2px dashed #e2e8f0; margin-left: calc(50% - 1px); }
+    .step { position: relative; z-index: 1; min-height: 8px; }
+    .card { margin: 8px 14px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 11px; box-shadow: 0 4px 14px rgba(27, 36, 51, 0.04); }
+    .card[data-col="1"] { grid-column: 1; border-top: 3px solid var(--cep); }
+    .card[data-col="2"] { grid-column: 2; border-top: 3px solid var(--psm); }
+    .card[data-col="3"] { grid-column: 3; border-top: 3px solid var(--paas); }
+    .card[data-col="4"] { grid-column: 4; border-top: 3px solid var(--db); }
+    .card[data-col="5"] { grid-column: 5; border-top: 3px solid var(--i18n); }
+    .card h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.4; }
+    .card p { margin: 0; color: #334155; font-size: 12.5px; line-height: 1.6; }
+    .method { display: block; margin-top: 6px; color: #1e293b; word-break: break-all; }
+    .path { display: block; margin-top: 4px; color: #0f766e; word-break: break-all; }
+    .meta-line { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .tag { font-size: 11px; border-radius: 999px; padding: 1px 7px; background: #f8fafc; color: var(--muted); border: 1px solid var(--line); }
+    .tag.obs { color: #1d4ed8; background: #eff6ff; border-color: #dbeafe; }
+    .tag.map { color: #9a3412; background: #fff7ed; border-color: #ffedd5; }
+    .tag.miss { color: #6b7280; background: #f8fafc; }
+    .tables { margin: 8px 0 0; padding: 0; list-style: none; }
+    .tables li { padding: 6px 0; border-top: 1px dashed var(--line); font-size: 12.5px; line-height: 1.5; }
+    .hop { position: relative; height: 34px; z-index: 1; }
+    .hop .line { position: absolute; top: 15px; height: 2px; background: #64748b; }
+    .hop .line::after { content: ""; position: absolute; top: -4px; border: 5px solid transparent; }
+    .hop[data-dir="fwd"] .line::after { right: -1px; border-left-color: #64748b; }
+    .hop[data-dir="back"] .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop[data-dir="back"] .line::after { left: -1px; border-right-color: #94a3b8; }
+    .hop .label { position: absolute; top: 0; font-size: 11px; color: #475569; background: #fff; padding: 0 6px; white-space: nowrap; }
+    .note { margin: 14px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div>
+        <h1>编辑审批流获取详情</h1>
+        <div class="sub">泳道从左到右是参与方，从上到下是调用顺序。实线是发出，虚线是返回。</div>
+      </div>
+      <div class="meta">
+        <div><code>/FHH/EM1HAPPROVAL/Definition/Detail</code></div>
+        <div>200 · 网关 104 ms · 2026-10-10 11:24:39.994</div>
+        <div>FSW-fktest7572.1001-01M4HXEQXBSGBA9CABQ392ZC6C</div>
+        <div>Pod fs-crm-workflow-fc5ff5898-zj4gg · 10.71.21.24</div>
+        <div>Pod fs-paas-workflow-7bdff9dc7d-9zcvt · 10.71.16.118</div>
+      </div>
+    </header>
+    <div class="legend"><span class="pill">网关 CEP</span><span class="pill">PSM fs-crm-workflow</span><span class="pill">PSM fs-paas-workflow</span><span class="pill">中间件 MongoDB</span><span class="pill">远程服务 文案</span><span class="pill">没有 Redis / MQ / copier / ClickHouse，不单开列</span></div>
+    <div class="board"><div class="lanes">
+      <div class="heads">
+        <div class="head h-cep"><div class="kind">网关</div><h2>CEP</h2><p>入口记录状态和总耗时</p></div>
+        <div class="head h-psm"><div class="kind">PSM</div><h2>fs-crm-workflow</h2><p>Pod fs-crm-workflow-fc5ff5898-zj4gg<br/>Pod IP 10.71.21.24</p></div>
+        <div class="head h-paas"><div class="kind">PSM</div><h2>fs-paas-workflow</h2><p>Pod fs-paas-workflow-7bdff9dc7d-9zcvt<br/>Pod IP 10.71.16.118</p></div>
+        <div class="head h-db"><div class="kind">中间件</div><h2>MongoDB</h2><p>物理库名未取证。集合 workflows、workflow_rules</p></div>
+        <div class="head h-i18n"><div class="kind">远程服务</div><h2>i18n-service</h2><p>POST /i18n/load</p></div>
+      </div>
+      <div class="canvas"><div class="rails"><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="step"><article class="card" data-col="1"><h3>网关进入审批流详情</h3><p>CEP 在 2026-10-10 11:24:39.994 记录 /FHH/EM1HAPPROVAL/Definition/Detail，状态 200，网关耗时 104 ms。后端地址是 fs-crm-workflow.foneshare-gray，CEP profile 是 foneshare02。</p><code class="method">/FHH/EM1HAPPROVAL/Definition/Detail</code><div class="meta-line"><span class="tag obs">已观测</span><span class="tag">104 ms</span></div></article></div><div class="hop" data-dir="fwd"><span class="line" style="left:10.0000%;width:20.0000%;"></span><span class="label" style="left:12.0000%;">转发到审批服务</span></div><div class="step"><article class="card" data-col="2"><h3>审批服务接收定义详情</h3><p>Tomcat 记录 /fs-crm-workflow/Definition/Detail，状态 200，耗时 102 ms。应用日志 queryName 为 EM1HAPPROVAL.Definition.Detail。Pod fs-crm-workflow-fc5ff5898-zj4gg，Pod IP 10.71.21.24，集群 tke70-k8s1，profile foneshare-gray。</p><code class="method">/fs-crm-workflow/Definition/Detail</code><div class="meta-line"><span class="tag obs">已观测</span><span class="tag">102 ms</span></div></article></div><div class="step"><article class="card" data-col="2"><h3>组装审批流定义详情</h3><p>ApprovalDefinitionApprovalActionImpl.getDefinition 的方法体不在接口里。接口文件 fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/ApprovalDefinitionAction.java 第 49 行只声明 getDefinition，没有 approvalDefinitionService，也没有 approvalDefinitionService.getWorkflow。第 191 行调用 approvalDefinitionService.getWorkflow，第 193 行调用 i18NServiceProxy.getDefTranslateList。文件 fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/impl/ApprovalDefinitionApprovalActionImpl.java。</p><code class="path">/Users/liushanshan/code/FLow/server/fs-crm-workflow/fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/ApprovalDefinitionAction.java:49</code><code class="method">ApprovalDefinitionApprovalActionImpl.getDefinition</code><code class="path">/Users/liushanshan/code/FLow/server/fs-crm-workflow/fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/impl/ApprovalDefinitionApprovalActionImpl.java:189</code><div class="meta-line"><span class="tag map">代码映射</span><span class="tag">未单列</span></div></article></div><div class="step"><article class="card" data-col="2"><h3>服务层读取流程定义</h3><p>ApprovalDefinitionServiceImpl.getWorkflow 的方法体不在接口里。接口文件 fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/service/ApprovalDefinitionService.java 第 27 行只声明 getWorkflow，没有 paasService.getWorkflow。第 209 行调用 paasService.getWorkflow。文件 fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/service/impl/ApprovalDefinitionServiceImpl.java。</p><code class="method">ApprovalDefinitionServiceImpl.getWorkflow</code><code class="path">/Users/liushanshan/code/FLow/server/fs-crm-workflow/fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/service/impl/ApprovalDefinitionServiceImpl.java:208</code><div class="meta-line"><span class="tag map">代码映射</span><span class="tag">未单列</span></div></article></div><div class="step"><article class="card" data-col="2"><h3>经 API 总线查询流程定义</h3><p>PaasServiceImpl.getWorkflow 的方法体不在接口里。接口文件 fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/proxy/PaasWorkflowService.java 第 34 行只声明 getWorkflow，没有 approvalFlowEngineResource.getWorkflow。第 127 行调用 approvalFlowEngineResource.getWorkflow。应用日志看到 POST fs-apibus-global.foneshare:8887/fs-paas-workflow/paas/crm/approval/detail，HTTP 200，客户端耗时 9 ms。apibus 自身日志未取证。文件 fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/proxy/impl/PaasServiceImpl.java。</p><code class="method">PaasServiceImpl.getWorkflow</code><code class="path">/Users/liushanshan/code/FLow/server/fs-crm-workflow/fs-crm-workflow-core/src/main/java/com/facishare/workflow/crm/proxy/impl/PaasServiceImpl.java:122</code><div class="meta-line"><span class="tag map">代码映射</span><span class="tag">9 ms</span></div></article></div><div class="hop" data-dir="fwd"><span class="line" style="left:30.0000%;width:20.0000%;"></span><span class="label" style="left:32.0000%;">经 API 总线转发</span></div><div class="step"><article class="card" data-col="3"><h3>流程引擎读取定义详情</h3><p>Tomcat 记录 /fs-paas-workflow/paas/crm/approval/detail，状态 200，耗时 7 ms。CrmController.getApprovalFlowDetail 进入 ApprovalFlowCommonServiceImpl.getAfDefinitionDetail。Pod fs-paas-workflow-7bdff9dc7d-9zcvt，Pod IP 10.71.16.118，集群 tke70-k8s1。</p><code class="method">CrmController.getApprovalFlowDetail</code><div class="meta-line"><span class="tag obs">已观测</span><span class="tag">7 ms</span></div></article></div><div class="hop" data-dir="fwd"><span class="line" style="left:50.0000%;width:20.0000%;"></span><span class="label" style="left:52.0000%;">查流程定义</span></div><div class="step"><article class="card" data-col="4"><h3>按编号查询流程定义</h3><p>EffektifAdapter.findWorkflowById 这次没有打开 fs-paas-workflow 源码核对。日志没有打出查数方法。数据库名未取证。集合是否为 workflows 未取证。</p><code class="method">EffektifAdapter.findWorkflowById</code><ul class="tables"><li>数据库名未取证 · 集合 workflows</li></ul><div class="meta-line"><span class="tag map">代码映射</span><span class="tag">未单列</span></div></article></div><div class="step"><article class="card" data-col="4"><h3>按编号查询启动规则</h3><p>StartupRuleDao.findWorkflowRule 这次没有打开 fs-paas-workflow 源码核对。日志没有打出查数方法。数据库名未取证。集合是否为 workflow_rules 未取证。</p><code class="method">StartupRuleDao.findWorkflowRule</code><ul class="tables"><li>数据库名未取证 · 集合 workflow_rules</li></ul><div class="meta-line"><span class="tag map">代码映射</span><span class="tag">未单列</span></div></article></div><div class="hop" data-dir="back"><span class="line" style="left:50.0000%;width:20.0000%;"></span><span class="label" style="left:52.0000%;">返回定义</span></div><div class="hop" data-dir="back"><span class="line" style="left:30.0000%;width:20.0000%;"></span><span class="label" style="left:32.0000%;">返回审批服务</span></div><div class="hop" data-dir="fwd"><span class="line" style="left:30.0000%;width:60.0000%;"></span><span class="label" style="left:32.0000%;">加载文案</span></div><div class="step"><article class="card" data-col="5"><h3>加载定义文案</h3><p>定义返回后，DefaultInvokeHandler 发出 POST /i18n/load，地址 oss.foneshare.cn/i18n-service/i18n/load，HTTP 200，耗时 91 ms。调用方是 I18NServiceProxy.getDefTranslateList。文案数据库名未取证，表名未取证。</p><code class="method">POST /i18n/load</code><div class="meta-line"><span class="tag obs">已观测</span><span class="tag">91 ms</span></div></article></div><div class="hop" data-dir="back"><span class="line" style="left:30.0000%;width:60.0000%;"></span><span class="label" style="left:32.0000%;">返回文案</span></div><div class="hop" data-dir="back"><span class="line" style="left:10.0000%;width:20.0000%;"></span><span class="label" style="left:12.0000%;">返回网关</span></div><div class="step"><article class="card" data-col="1"><h3>网关返回审批流详情</h3><p>同一条 CEP 记录 /FHH/EM1HAPPROVAL/Definition/Detail 状态 200，总耗时 104 ms。应用 Tomcat 102 ms，差额未细分。</p><code class="method">/FHH/EM1HAPPROVAL/Definition/Detail</code><div class="meta-line"><span class="tag obs">已观测</span><span class="tag">104 ms</span></div></article></div>
+      </div>
+    </div></div>
+    <p class="note">证据边界：Mongo 物理数据库名、文案物理表、apibus 自身日志、Node IP 未取证。没有 MQ、Redis、ClickHouse、copier。</p>
+  </div>
+</body>
+</html>

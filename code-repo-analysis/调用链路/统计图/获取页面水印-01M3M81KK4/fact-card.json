@@ -1,0 +1,107 @@
+{
+  "schema_version": "trace-fact-card-v1",
+  "mode": "live",
+  "trace_id": "FSW-fktest7572.1001-01M3M81KK4VBA8GA3X0YY3FJ80",
+  "title": "获取页面水印",
+  "profile": "foneshare",
+  "entry_time": "2026-09-28 22:52:32.860",
+  "identity": {
+    "ea": "fktest7572",
+    "app": "fs-qixin-extension-provider",
+    "ei": "816324"
+  },
+  "runtime": {
+    "pod": "fs-qixin-extension-provider-b6b56c79b-dngw5",
+    "pod_ip": "10.71.137.67",
+    "profile": "foneshare"
+  },
+  "resources": {
+    "node_ip": "未取证",
+    "requests": "未取证"
+  },
+  "nodes": [
+    {
+      "id": "gw-in",
+      "service": "CEP",
+      "entry": "/FHH/EM1HQIXINEXT/WatermarkApi/getWatermark",
+      "method": "/FHH/EM1HQIXINEXT/WatermarkApi/getWatermark",
+      "flow": "同步主路径",
+      "downstream": "fs-qixin-extension-provider",
+      "timing": "6 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KK4/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "网关进入页面水印",
+      "detail": "CEP 在 2026-09-28 22:52:32.860 记录 /FHH/EM1HQIXINEXT/WatermarkApi/getWatermark，状态 200，网关耗时 6 ms。后端是 fs-qixin-extension-provider。"
+    },
+    {
+      "id": "svc-wm",
+      "service": "fs-qixin-extension-provider",
+      "entry": "ExtensionBizAop.getWatermark",
+      "method": "ExtensionBizAop.getWatermark",
+      "flow": "同步主路径",
+      "downstream": "未取证",
+      "timing": "3 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KK4/evidence/TRC-app-log-qixin.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "service",
+      "title_zh": "读取水印配置",
+      "detail": "应用日志 ARG Action 为 getWatermark，3 ms 后 RETURN ErrorCode 0。方法落在 ExtensionBizAop.getWatermark。Pod 是 fs-qixin-extension-provider-b6b56c79b-dngw5，Pod IP 10.71.137.67。"
+    },
+    {
+      "id": "data-miss",
+      "service": "数据库未取证",
+      "entry": "ExtensionBizAop.getWatermark",
+      "method": "ExtensionBizAop.getWatermark",
+      "flow": "同步主路径",
+      "downstream": "未取证",
+      "timing": "未取证",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KK4/evidence/TRC-chain-notes.md",
+      "label": "未取证",
+      "row": 0,
+      "layer": "data",
+      "title_zh": "水印存储未取证",
+      "detail": "sql_slow_dist 为 0 不能当成没有查表。已查应用日志叶子方法 ExtensionBizAop.getWatermark，以及 fs-bi、fs-bi-crm-report 源码，没有 Mapper 或 FROM 表。数据库名未取证，表名未取证。"
+    },
+    {
+      "id": "gw-out",
+      "service": "CEP",
+      "entry": "/FHH/EM1HQIXINEXT/WatermarkApi/getWatermark",
+      "method": "/FHH/EM1HQIXINEXT/WatermarkApi/getWatermark",
+      "flow": "同步主路径",
+      "downstream": "前端",
+      "timing": "6 ms",
+      "evidence": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KK4/evidence/TRC-tracing-log-cep.json",
+      "label": "已观测",
+      "row": 0,
+      "layer": "gateway",
+      "title_zh": "网关返回水印",
+      "detail": "同一条 CEP 记录 /FHH/EM1HQIXINEXT/WatermarkApi/getWatermark 状态 200，总耗时 6 ms。应用侧 ARG 到 RETURN 约 3 ms，差额未细分。"
+    }
+  ],
+  "gaps": [
+    "未取得精确源码。",
+    "数据库名未取证，表名未取证。",
+    "Node IP 与容器配额未取证。"
+  ],
+  "evidence": [
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KK4/evidence/TRC-tracing-log-cep.json",
+      "note": "CEP 入口"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KK4/evidence/TRC-app-log-qixin.json",
+      "note": "应用日志"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KK4/evidence/TRC-sql-slow.json",
+      "note": "sql_slow_dist 计数"
+    },
+    {
+      "path": "/Users/liushanshan/code/bug-finder/output/evidence/20260930-trace-FSW-fktest7572-01M3M81KK4/evidence/TRC-chain-notes.md",
+      "note": "摘记"
+    }
+  ]
+}

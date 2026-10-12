@@ -3,143 +3,227 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>统计图预聚合查询</title>
+  <title>统计图预聚合查询 · 泳道图</title>
   <style>
     :root {
-      --bg: #f4f6fb; --ink: #1b2433; --muted: #5b677a; --line: #d8dee9; --card: #ffffff;
-      --l1: #2563eb; --l1-bg: #eff6ff; --l2: #4f46e5; --l2-bg: #eef2ff;
-      --l3: #0f766e; --l3-bg: #f0fdfa; --l4: #c2410c; --l4-bg: #fff7ed;
-      --sync: #334155; --sync-bg: #f8fafc;
+      --bg: #f4f6fb;
+      --ink: #1b2433;
+      --muted: #5b677a;
+      --line: #d8dee9;
+      --card: #ffffff;
+      --cep: #4f46e5;
+      --psm: #0f766e;
+      --db: #c2410c;
+      --i18n: #7c3aed;
     }
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
-      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
-    .page { max-width: 1280px; margin: 0 auto; padding: 28px 24px 40px; }
-    header { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 18px; }
-    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.02em; }
-    .sub { color: var(--muted); font-size: 13px; line-height: 1.6; }
-    .meta { text-align: right; font-size: 12px; color: var(--muted); line-height: 1.7; }
-    .stack { display: grid; gap: 10px; }
-    .layer { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--card);
-      box-shadow: 0 8px 24px rgba(27, 36, 51, 0.05); }
-    .layer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 10px 16px; font-weight: 700; letter-spacing: 0.04em; }
-    .layer-head .tag { font-size: 12px; opacity: 0.9; font-weight: 600; }
-    .layer-body { display: grid; gap: 10px; padding: 12px; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
-    .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-height: 108px; }
-    .card h3 { margin: 0 0 8px; font-size: 15px; }
-    .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
-    .l1 .layer-head { background: var(--l1-bg); color: var(--l1); }
-    .l2 .layer-head { background: var(--l2-bg); color: var(--l2); }
-    .l3 .layer-head { background: var(--l3-bg); color: var(--l3); }
-    .l4 .layer-head { background: var(--l4-bg); color: var(--l4); }
-    .sync .layer-head { background: var(--sync-bg); color: var(--sync); }
-    .arrow { text-align: center; color: #94a3b8; font-size: 18px; line-height: 10px; }
-    .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-    .flow-item { background: #fff; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 10px; text-align: center; font-size: 13px; font-weight: 650; }
-    .flow-item span { display: block; margin-top: 4px; font-size: 11px; font-weight: 400; color: var(--muted); }
-    .note { margin-top: 14px; color: var(--muted); font-size: 12px; line-height: 1.6; }
-</style>
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+    .page { max-width: 1480px; margin: 0 auto; padding: 28px 20px 48px; }
+    header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-end; margin-bottom: 16px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: 0.01em; }
+    .sub, .meta { color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .meta { text-align: right; font-size: 12px; }
+    code { font-family: "SFMono-Regular", Consolas, monospace; font-size: 12px; }
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
+    .pill { border-radius: 999px; padding: 3px 10px; font-size: 12px; background: #fff; border: 1px solid var(--line); color: var(--muted); }
+    .board {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: auto;
+      box-shadow: 0 10px 28px rgba(27, 36, 51, 0.05);
+    }
+    .lanes { min-width: 1080px; position: relative; }
+    .heads, .step { display: grid; grid-template-columns: 1fr, 1fr, 1fr, 1fr; }
+    .heads { position: sticky; top: 0; z-index: 3; background: #fff; border-bottom: 1px solid var(--line); }
+    .head { padding: 14px 16px 12px; border-right: 1px solid var(--line); }
+    .head:last-child { border-right: 0; }
+    .head .kind { font-size: 12px; font-weight: 700; letter-spacing: 0.04em; }
+    .head h2 { margin: 4px 0 2px; font-size: 16px; }
+    .head p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .h-cep .kind { color: var(--cep); }
+    .h-psm .kind { color: var(--psm); }
+    .h-db .kind { color: var(--db); }
+    .h-i18n .kind { color: var(--i18n); }
+    .canvas { position: relative; padding: 8px 0 18px; }
+    .rails { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr, 1fr, 1fr, 1fr; pointer-events: none; }
+    .rails i { border-left: 2px dashed #e2e8f0; margin-left: calc(50% - 1px); }
+    .step { position: relative; z-index: 1; min-height: 8px; }
+    .card {
+      margin: 8px 14px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px 11px;
+      box-shadow: 0 4px 14px rgba(27, 36, 51, 0.04);
+    }
+    .card[data-col="1"] { grid-column: 1; border-top: 3px solid var(--cep); }
+    .card[data-col="2"] { grid-column: 2; border-top: 3px solid var(--psm); }
+    .card[data-col="3"] { grid-column: 3; border-top: 3px solid var(--db); }
+    .card[data-col="4"] { grid-column: 4; border-top: 3px solid var(--i18n); }
+    .card[data-col="5"] { grid-column: 5; border-top: 3px solid #0369a1; }
+    .card[data-col="6"] { grid-column: 6; border-top: 3px solid #b45309; }
+    .card[data-col="7"] { grid-column: 7; border-top: 3px solid #7c3aed; }
+    .hop[data-dir="fwd"] .line::after { right: -1px; border-left-color: #64748b; }
+    .hop[data-dir="back"] .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop[data-dir="back"] .line::after { left: -1px; border-right-color: #94a3b8; }
+    .card h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.4; }
+    .card p { margin: 0; color: #334155; font-size: 12.5px; line-height: 1.6; }
+    .method { display: block; margin-top: 6px; color: #1e293b; word-break: break-all; }
+    .meta-line { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .tag { font-size: 11px; border-radius: 999px; padding: 1px 7px; background: #f8fafc; color: var(--muted); border: 1px solid var(--line); }
+    .tag.obs { color: #1d4ed8; background: #eff6ff; border-color: #dbeafe; }
+    .tag.map { color: #9a3412; background: #fff7ed; border-color: #ffedd5; }
+    .tag.miss { color: #6b7280; background: #f8fafc; }
+    .tables { margin: 8px 0 0; padding: 0; list-style: none; }
+    .tables li { padding: 6px 0; border-top: 1px dashed var(--line); font-size: 12.5px; line-height: 1.5; }
+    .hop { position: relative; height: 34px; z-index: 1; }
+    .hop .line { position: absolute; top: 15px; height: 2px; background: #64748b; }
+    .hop .line::after { content: ""; position: absolute; top: -4px; border: 5px solid transparent; }
+    .hop.fwd .line::after { right: -1px; border-left-color: #64748b; }
+    .hop.back .line { background: #94a3b8; height: 0; border-top: 2px dashed #94a3b8; }
+    .hop.back .line::after { left: -1px; border-right-color: #94a3b8; }
+    .hop .label { position: absolute; top: 0; font-size: 11px; color: #475569; background: #fff; padding: 0 6px; white-space: nowrap; }
+    .note { margin: 14px 2px 0; color: var(--muted); font-size: 12px; line-height: 1.7; }
+  </style>
 </head>
 <body>
   <div class="page">
     <header>
       <div>
         <h1>统计图预聚合查询</h1>
-        <div class="sub">/FHH/EM1HBISTAT/fs-bi-stat/stat/data/query · 200 · 785 ms · 同 trace 上还有三次更早的 HTTP</div>
+        <div class="sub">泳道从左到右是参与方，从上到下是调用顺序。实线是发出，虚线是返回。</div>
       </div>
-      <div class="meta">承载服务 fs-bi-stat<br />data/query Pod fs-bi-stat-bfc75496b-f6fq6 / 10.71.137.85<br />Node 10.71.240.111<br />chartConfig Pod fs-bi-stat-bfc75496b-x5v4d / 10.71.17.1<br />租户 664159<br />FSW-664159.1047-01M36NH7ASNKA8DMXD8PKDXFZV</div>
+      <div class="meta"><div><code>stat/data/query</code></div><div>200 · 数据查询 785 ms · 2026-09-23 16:18:53.146</div><div>FSW-664159.1047-01M36NH7ASNKA8DMXD8PKDXFZV</div><div>Pod fs-bi-stat-bfc75496b-f6fq6 · 10.71.137.85 · Node 10.71.240.111</div></div>
     </header>
-    <div class="stack">
-      <section class="layer l2">
-        <div class="layer-head"><span>L2 网关层</span><span class="tag">CEP</span></div>
-        <div class="layer-body">
-          <div class="cards">
-            <div class="card">
+    <div class="legend"><span class="pill">网关 CEP</span><span class="pill">PSM fs-bi-stat</span><span class="pill">ClickHouse</span><span class="pill">Redis</span><span class="pill">没有 MQ 证据，不单开列</span></div>
+    <div class="board">
+      <div class="lanes">
+        <div class="heads"><div class="head h-cep"><div class="kind">网关</div><h2>CEP</h2><p>getStatView 与 data/query</p></div><div class="head h-psm"><div class="kind">PSM</div><h2>fs-bi-stat</h2><p>Pod fs-bi-stat-bfc75496b-f6fq6<br/>Pod IP 10.71.137.85</p></div><div class="head h-db"><div class="kind">中间件</div><h2>ClickHouse</h2><p>库 fsbidb044027003</p></div><div class="head h-db"><div class="kind">中间件</div><h2>Redis</h2><p>地址未取证</p></div></div>
+        <div class="canvas">
+          <div class="rails"><i></i><i></i><i></i><i></i></div>
+          <div class="step">
+            <article class="card" data-col="1">
               <h3>读取统计视图</h3>
               <p>同一次 trace 先经过 `getStatView`，接口是 /FHH/EM1HBICRM/statEditController/getStatView。状态 200，耗时 246 ms。fs-bi-stat 应用日志没有这条 URI，对应 Pod 未取证。</p>
-            </div>
-            <div class="card">
+              <code class="method">getStatView</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">246 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="1">
               <h3>数据查询入口</h3>
               <p>用户说的预聚合查询对应 `stat/data/query`，完整路径 /FHH/EM1HBISTAT/fs-bi-stat/stat/data/query。状态 200，网关耗时 785 ms，进入 fs-bi-stat。</p>
-            </div>
+              <code class="method">stat/data/query</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">785 ms</span></div>
+            </article>
           </div>
-        </div>
-      </section>
-<div class="arrow">▼</div>
-      <section class="layer l3">
-        <div class="layer-head"><span>L3 服务层</span><span class="tag">应用</span></div>
-        <div class="layer-body">
-          <div class="cards">
-            <div class="card">
+          <div class="hop" data-dir="fwd"><span class="line" style="left:12.5000%;width:25.0000%;"></span><span class="label" style="left:16.2500%;">转发到统计服务</span></div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>读取图表配置</h3>
               <p>`getViewChartConfById` 读取 /fs-bi-stat/stat/chartConfig/query。结果 chartType=table，视图 BI_6aa427deec2d2200076ef9f6，日志中的名称是销售订单统计_副本-报表。网关耗时 604 ms，方法耗时未细分。</p>
-            </div>
-            <div class="card">
+              <code class="method">getViewChartConfById</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>读取筛选结果</h3>
               <p>`statFilterService.getFilters` 处理 /fs-bi-stat/stat/filters/getFiltersResult，从开始读取到结束读取都有日志。网关耗时 85 ms。</p>
-            </div>
-            <div class="card">
+              <code class="method">statFilterService.getFilters</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>接收查询参数</h3>
               <p>`StatBaseController` 接收 /fs-bi-stat/stat/data/query，日志写出 dataQuerySource=0。这个取值的枚举含义未取证，耗时未单列。</p>
-            </div>
-            <div class="card">
+              <code class="method">StatBaseController</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>补齐查询参数</h3>
               <p>`fulFillQueryChartDataArg` 已观测执行 61 ms，耗时明细里出现 isSlaveSchema。方法内部如何拼装参数未展开。</p>
-            </div>
-            <div class="card">
+              <code class="method">fulFillQueryChartDataArg</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">61 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>生成查询模型</h3>
               <p>`generateModel` 生成查询模型并写出 where，已观测 76 ms。条件涉及 dim_data 和 dt_auth_simple，对象是 SalesOrderObj。</p>
-            </div>
-            <div class="card">
+              <code class="method">generateModel</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">76 ms</span></div>
+            </article>
+          </div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>准备选项查询</h3>
               <p>`PreSqlContextCacheSelectOptionLegacyFlowNode` 执行 selectOption，StopWatch 为 124 ms，计入 MainStep-1。具体 RPC 方法未取证。</p>
-            </div>
-            <div class="card">
+              <code class="method">PreSqlContextCacheSelectOptionLegacyFlowNode</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">124 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="fwd"><span class="line" style="left:37.5000%;width:25.0000%;"></span><span class="label" style="left:41.2500%;">查 ClickHouse</span></div>
+          <div class="step">
+            <article class="card" data-col="3">
+              <h3>执行统计 SQL</h3>
+              <p>`ClickHouseSQLExecutor` 由 DataQueryFlowNode 执行 easyStat SQL，应用侧耗时 88 ms。SQL 中能确认 CTE d1_select_option 和表 agg_data。主代理 10.17.44.222:9090，JDBC 10.17.44.27:8123，从库 10.17.46.27:8123，数据库名 fsbidb044027003。数据库服务端耗时未取证。</p>
+              <code class="method">ClickHouseSQLExecutor</code>
+              <ul class="tables"><li>数据库名 fsbidb044027003 · 表 agg_data</li></ul>
+              <div class="meta-line"><span class="tag obs">已观测</span><span class="tag ">88 ms</span></div>
+            </article>
+          </div>
+          <div class="hop" data-dir="back"><span class="line" style="left:37.5000%;width:25.0000%;"></span><span class="label" style="left:41.2500%;">返回聚合</span></div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>回写查询缓存</h3>
               <p>`cacheSyncReqResultWithBinary` 在 ReleaseResourcesThreadLocalNode 释放线程变量之后回写查询缓存。缓存键是 bi_stat_querycache_BI_6aa427deec2d2200076ef9f6_20260912002404_83291e22ae30788cbce14df75ae23545_binary。EasyStat 总观察窗口是 294 ms。</p>
-            </div>
+              <code class="method">cacheSyncReqResultWithBinary</code>
+              
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
           </div>
-        </div>
-      </section>
-<div class="arrow">▼</div>
-      <section class="layer l4">
-        <div class="layer-head"><span>L4 数据层</span><span class="tag">查询时依赖</span></div>
-        <div class="layer-body">
-          <div class="cards">
-            <div class="card">
-              <h3>执行统计 SQL</h3>
-              <p>`ClickHouseSQLExecutor` 由 DataQueryFlowNode 执行 easyStat SQL，应用侧耗时 88 ms。SQL 中能确认 CTE d1_select_option 和表 agg_data。主代理 10.17.44.222:9090，JDBC 10.17.44.27:8123，从库 10.17.46.27:8123，库 fsbidb044027003。数据库服务端耗时未取证。</p>
-            </div>
-            <div class="card">
+          <div class="hop" data-dir="fwd"><span class="line" style="left:37.5000%;width:50.0000%;"></span><span class="label" style="left:45.0000%;">写查询缓存</span></div>
+          <div class="step">
+            <article class="card" data-col="4">
               <h3>Redis 查询缓存</h3>
-              <p>日志打出缓存键 bi_stat_querycache_BI_6aa427deec2d2200076ef9f6_20260912002404_83291e22ae30788cbce14df75ae23545_binary，并由 cacheSyncReqResultWithBinary 回写。本地架构说明把 `bi_stat_querycache` 这个键对应到 Redis。本 trace 没有打出 Redis 地址。</p>
-            </div>
+              <p>日志打出缓存键 bi_stat_querycache_BI_6aa427deec2d2200076ef9f6_20260912002404_83291e22ae30788cbce14df75ae23545_binary，并由 cacheSyncReqResultWithBinary 回写。本地架构说明把 `bi_stat_querycache` 这个键对应到 Redis。本 trace 没有打出 Redis 地址。 数据库名未取证。 表名未取证。</p>
+              <code class="method">bi_stat_querycache</code>
+              <ul class="tables"><li>数据库名未取证 · 表名未取证</li></ul>
+              <div class="meta-line"><span class="tag obs">已观测</span></div>
+            </article>
           </div>
-        </div>
-      </section>
-<div class="arrow">▼</div>
-      <section class="layer sync">
-        <div class="layer-head"><span>后台同步 / 计算（查询前写入）</span><span class="tag">不在本次请求热路径</span></div>
-        <div class="layer-body">
-          <div class="flow">
-            <div class="flow-item">op-log<span>对象变更日志</span></div>
-            <div class="flow-item">RocketMQ<span>同步消息</span></div>
-            <div class="flow-item">paas-bi-copier<span>拷贝 / 转换</span></div>
-            <div class="flow-item">聚合框架<span>预聚合计算</span></div>
-            <div class="flow-item">ClickHouse<span>agg_data / dim_data</span></div>
-          </div>
-          <div class="cards">
-            <div class="card">
+          <div class="hop" data-dir="back"><span class="line" style="left:37.5000%;width:50.0000%;"></span><span class="label" style="left:45.0000%;">缓存完成</span></div>
+          <div class="step">
+            <article class="card" data-col="2">
               <h3>预聚合写入链路</h3>
-              <p>本 trace 没有 MQ 或 copier span。同目录架构说明写明，查询前的数据由 op-log、RocketMQ、`paas-bi-copier` 和聚合框架写入 ClickHouse。这不是本次请求的已观测调用。</p>
-            </div>
+              <p>本 trace 没有 MQ 或 copier span。同目录架构说明写明，查询前的数据由 op-log、RocketMQ、`paas-bi-copier` 和聚合框架写入 ClickHouse。这不是本次请求的已观测调用。 MQ 名字 RocketMQ，发送方未取证，消费方未取证。</p>
+              <code class="method">paas-bi-copier</code>
+              
+              <div class="meta-line"><span class="tag ">推断</span></div>
+            </article>
           </div>
         </div>
-      </section>
+      </div>
     </div>
-    <p class="note">ClickHouse、Pod、Node IP 来自本次日志和 Pod 快照。Redis 只确认到缓存键，没有 Redis 地址。MQ 与 copier 不在本 trace span 中，按架构说明放在请求外链路。</p>
+    <p class="note">证据边界：getStatView 应用日志、ClickHouse 服务端耗时、容器配额、精确源码未取证。copier 为推断，不单开列。</p>
   </div>
 </body>
 </html>
