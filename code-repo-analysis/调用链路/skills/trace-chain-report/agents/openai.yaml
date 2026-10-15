@@ -1,4 +1,4 @@
 interface:
   display_name: "Trace Chain Report"
-  short_description: "按 traceId 和描述末尾路由生成可校验的链路报告"
-  default_prompt: "Use $trace-chain-report to build one fact card per traceId and write an evidence-backed Markdown report plus a layered HTML call-chain page."
+  short_description: "按路由生成链路报告，走读步骤写到方法和接口"
+  default_prompt: "Use $trace-chain-report to write the call-chain report. Make section 6 a Java walkthrough: each step says what the method does, gives the absolute file path, and ends with （方法：…，接口：…）."

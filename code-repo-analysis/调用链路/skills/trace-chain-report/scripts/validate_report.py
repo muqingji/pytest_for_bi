@@ -30,6 +30,12 @@ NODE_KEYS = (
 )
 LAYERS = {"display", "gateway", "service", "data", "offpath"}
 CJK_RE = re.compile(r"[\u4e00-\u9fff]")
+WALK_STEP_RE = re.compile(
+    r"(?m)^### 步骤 \d+\n"
+    r"1、这一步是干什么的：(?P<purpose>\S.*)\n"
+    r"2、文件绝对路径：`?(?P<path>未取证|/[^\s`]+)`?\n"
+    r"3、（方法：(?P<method>[^，）]+)，接口：(?P<iface>[^）]+)）[ \t]*$"
+)
 HEADINGS = (
     "## 1. 分析对象",
     "## 2. 一句话结论",
@@ -71,6 +77,42 @@ def _section(markdown: str, heading: str, following: str | None) -> str:
         return ""
     end = markdown.find(following, start + len(heading)) if following else -1
     return markdown[start:] if end < 0 else markdown[start:end]
+
+
+def walk_step_errors(node_id: str, source: dict[str, object], code_section: str) -> list[str]:
+    """Each mapped method must be one Java walk step: purpose, absolute path, method and interface."""
+    steps = list(WALK_STEP_RE.finditer(code_section))
+    if not steps:
+        return [f"node {node_id} code section missing Java walk step"]
+    body = str(source["file"])
+    filename = body.rsplit("/", 1)[-1]
+    method = str(source["symbol"]).rsplit(".", 1)[-1].strip()
+    declaration = str(source.get("declaration_file") or "")
+    impl_steps = [
+        step
+        for step in steps
+        if filename in step.group("path") and step.group("method").strip() == method
+    ]
+    if not impl_steps:
+        return [f"node {node_id} code section missing walk step for {method} in {filename}"]
+    step = impl_steps[0]
+    errors: list[str] = []
+    if not CJK_RE.search(step.group("purpose")):
+        errors.append(f"node {node_id} walk step missing Chinese purpose")
+    iface = step.group("iface").strip()
+    if not declaration or declaration == body:
+        if iface != "无":
+            errors.append(f"node {node_id} walk step interface must be 无")
+    else:
+        expected = declaration.rsplit("/", 1)[-1].removesuffix(".java")
+        if iface != expected:
+            errors.append(f"node {node_id} walk step interface must be {expected}")
+        decl_name = declaration.rsplit("/", 1)[-1]
+        if not any(decl_name in item.group("path") for item in steps):
+            errors.append(f"node {node_id} code section missing interface file walk step")
+    if not step.group("path").startswith("/"):
+        errors.append(f"node {node_id} walk step file is not absolute")
+    return errors
 
 
 def validate_report(directory: Path, peer: Path | None = None, check_evidence: bool = False) -> list[str]:
@@ -146,6 +188,8 @@ def validate_report(directory: Path, peer: Path | None = None, check_evidence: b
             source = node.get("source")
             if not isinstance(source, dict) or not all(source.get(key) for key in ("repo", "file", "symbol")):
                 errors.append(f"node {node['id']} code mapping missing source")
+            else:
+                errors.extend(walk_step_errors(str(node["id"]), source, code_section))
         layer = str(node["layer"])
         title = str(node["title_zh"])
         detail = str(node["detail"])
@@ -171,8 +215,6 @@ def validate_report(directory: Path, peer: Path | None = None, check_evidence: b
         isinstance(node, dict) and node.get("layer") == "data" for node in nodes
     ):
         errors.append("live report missing data-layer node")
-    if mapped and "代码映射" not in code_section:
-        errors.append("code section missing 代码映射")
     if not mapped and "未取得精确源码" not in code_section:
         errors.append("code section must say 未取得精确源码 when no code mapping exists")
 

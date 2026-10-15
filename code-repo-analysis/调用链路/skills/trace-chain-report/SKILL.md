@@ -68,7 +68,16 @@ uv run --no-sync python scripts/parse_call_log.py <调用日志.md>
 
 事实标记只有四档：`已观测`、`代码映射`、`推断`、`未取证`。网关总耗时减去已量化分段后，差额写 `未细分`，不记到某个方法上。时间戳空档不是方法耗时。
 
-代码走读：只有 `code-search` 给出仓库、文件和符号时，才允许标 `代码映射`，并且只写对得上的步骤。没有命中时，第 6 节必须写「未取得精确源码」，只列日志里的类名和方法名。
+代码走读：第 6 节是给 Java 开发按顺序打开文件用的走读步骤。只有 `code-search` 给出仓库、文件和符号时，才允许标 `代码映射`。没有命中、日志里也没有类名和方法名时，整节只写「未取得精确源码」。有命中或日志里的类名、方法名时，按调用顺序写 `### 步骤 N`，每步四行紧挨，只打开一个文件：
+
+```markdown
+### 步骤 1
+1、这一步是干什么的：获取审批流定义详情。这个接口把 Definition/Detail 声明成入口，文件里没有方法体。
+2、文件绝对路径：`/Users/liushanshan/code/FLow/server/fs-crm-workflow/fs-crm-workflow-biz-core/src/main/java/com/facishare/workflow/crm/controller/web/ApprovalDefinitionAction.java`
+3、（方法：getDefinition，接口：ApprovalDefinitionAction）
+```
+
+`1、` 先写动作，再写这个方法或接口在本链路里的作用。`2、` 是打开过的绝对路径，必须以 `/` 开头，路径后不加 `:行号`；没打开仓库就写 `2、文件绝对路径：未取证`。`3、` 固定是 `（方法：方法名，接口：接口名）`，用源码简单名。没有单独接口时接口写 `无`，没取到接口名时写 `未取证`。接口和实现分成连续两步。不要写「起点文件」「为什么从这里读」「下一步」。格式见 `references/report-contract.md`。
 
 脱敏：正文不写用户标识和密码。链路里出现的 Redis、MQ、copier，以及 ClickHouse、Pod、Node IP，必须写进对应卡片。没有日志或架构证据就不要补。完整 traceId 保留。
 

@@ -43,6 +43,12 @@ HEADINGS = (
     "## 10. 证据索引",
 )
 SECRET_RE = re.compile(r"password|passwd|userId|userName\s*=|uid\s*[:=]", re.IGNORECASE)
+WALK_STEP_RE = re.compile(
+    r"(?m)^### 步骤 \d+\n"
+    r"1、这一步是干什么的：(?P<purpose>\S.*)\n"
+    r"2、文件绝对路径：`?(?P<path>未取证|/[^\s`]+)`?\n"
+    r"3、（方法：(?P<method>[^，）]+)，接口：(?P<iface>[^）]+)）[ \t]*$"
+)
 
 
 def _line_present(text: str, line: object) -> bool:
@@ -53,47 +59,65 @@ def _line_present(text: str, line: object) -> bool:
     return f":{number}" in text or f"第 {number} 行" in text or f"第{number}行" in text
 
 
-def _hop_for(section: str, needle: str) -> str:
-    index = section.find(needle)
-    if index < 0:
-        return ""
-    start = section.rfind("\n", 0, index)
-    start = 0 if start < 0 else start + 1
-    match = re.search(r"\n\d+\. ", section[index + len(needle):])
-    end = len(section) if match is None else index + len(needle) + match.start()
-    return section[start:end]
+def walk_step_errors(node_id: str, source: dict[str, object], code_section: str) -> list[str]:
+    """Each mapped method must be one Java walk step: purpose, absolute path, method and interface."""
+    steps = list(WALK_STEP_RE.finditer(code_section))
+    if not steps:
+        return [f"node {node_id} code section missing Java walk step"]
+    body = str(source["file"])
+    filename = body.rsplit("/", 1)[-1]
+    method = str(source["symbol"]).rsplit(".", 1)[-1].strip()
+    declaration = str(source.get("declaration_file") or "")
+    impl_steps = [
+        step
+        for step in steps
+        if filename in step.group("path") and step.group("method").strip() == method
+    ]
+    if not impl_steps:
+        return [f"node {node_id} code section missing walk step for {method} in {filename}"]
+    step = impl_steps[0]
+    errors: list[str] = []
+    if not CJK_RE.search(step.group("purpose")):
+        errors.append(f"node {node_id} walk step missing Chinese purpose")
+    iface = step.group("iface").strip()
+    if not declaration or declaration == body:
+        if iface != "无":
+            errors.append(f"node {node_id} walk step interface must be 无")
+    else:
+        expected = declaration.rsplit("/", 1)[-1].removesuffix(".java")
+        if iface != expected:
+            errors.append(f"node {node_id} walk step interface must be {expected}")
+        decl_name = declaration.rsplit("/", 1)[-1]
+        if not any(decl_name in item.group("path") for item in steps):
+            errors.append(f"node {node_id} code section missing interface file walk step")
+    if not step.group("path").startswith("/"):
+        errors.append(f"node {node_id} walk step file is not absolute")
+    return errors
 
 
 def code_mapping_errors(node_id: str, source: object, detail: str, code_section: str, html: str) -> list[str]:
-    """Reject walkthroughs that name a call without its implementation file and line."""
+    """Reject mappings that name a call without its implementation file and line."""
     if not isinstance(source, dict) or not all(source.get(key) for key in ("repo", "file", "symbol", "declaration_file")):
         return [f"node {node_id} code mapping missing declaration or implementation source"]
     errors: list[str] = []
-    repo = str(source["repo"])
     body = str(source["file"])
-    symbol = str(source["symbol"])
     declaration = str(source["declaration_file"])
-    for text, name in ((detail, "detail"), (code_section, "code section"), (html, "html")):
+    for text, name in ((detail, "detail"), (html, "html")):
         if body not in text:
             errors.append(f"node {node_id} {name} missing implementation file")
-    if repo not in code_section or symbol not in code_section or declaration not in code_section:
-        errors.append(f"node {node_id} code section missing repo, symbol, or declaration file")
-    impl_hop = _hop_for(code_section, symbol) or code_section
-    decl_hop = _hop_for(code_section, declaration) or code_section
     if declaration != body:
         if declaration not in detail or declaration not in html:
             errors.append(f"node {node_id} missing declaration file in reader text")
-        if "没有" not in decl_hop and "没有" not in detail:
+        if "没有" not in detail:
             errors.append(f"node {node_id} must say the declaration file has no call")
-        if not _line_present(code_section, source.get("declaration_line")):
-            errors.append(f"node {node_id} code section missing declaration line")
+        if not _line_present(detail, source.get("declaration_line")) and not _line_present(html, source.get("declaration_line")):
+            errors.append(f"node {node_id} missing declaration line")
     calls = source.get("calls", [])
     if calls is None:
         calls = []
     if not isinstance(calls, list):
         return [*errors, f"node {node_id} source.calls must be a list"]
-    mentions_call = "调用" in detail or "调用" in impl_hop
-    if mentions_call and not calls:
+    if "调用" in detail and not calls:
         errors.append(f"node {node_id} describes a call without source.calls")
     if not calls and "行号未取证" not in detail and not _line_present(detail, source.get("line")):
         errors.append(f"node {node_id} missing method line or 行号未取证")
@@ -107,9 +131,11 @@ def code_mapping_errors(node_id: str, source: object, detail: str, code_section:
             errors.append(f"node {node_id} call {call_symbol} is not pinned to the implementation file")
         if declaration != body and call_file == declaration:
             errors.append(f"node {node_id} call {call_symbol} is pinned to the declaration file")
-        for text, name in ((detail, "detail"), (impl_hop, "code section"), (html, "html")):
+        for text, name in ((detail, "detail"), (html, "html")):
             if call_file not in text or call_symbol not in text or not _line_present(text, call["line"]):
                 errors.append(f"node {node_id} {name} missing call site for {call_symbol}")
+    if isinstance(source, dict):
+        errors.extend(walk_step_errors(node_id, source, code_section))
     return errors
 
 
@@ -208,12 +234,6 @@ def validate_report(directory: Path, peer: Path | None = None, check_evidence: b
             errors.append(f"html missing card text for {node['id']}")
         if str(node["method"]) not in markdown:
             errors.append(f"markdown missing method {node['method']}")
-    if mapped:
-        for token in ("起点", "为什么", "下一步", "跨服务", "数据层"):
-            if token not in code_section:
-                errors.append(f"code section missing reading route {token}")
-    if mapped and "代码映射" not in code_section:
-        errors.append("code section missing 代码映射")
     if not mapped and "未取得精确源码" not in code_section:
         errors.append("code section must say 未取得精确源码 when no code mapping exists")
 
